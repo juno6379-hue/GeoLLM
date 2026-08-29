@@ -1,0 +1,22 @@
+version: '2.0'
+rules:
+  source_provenance_required:
+    severity: error
+    applies_to:
+    - all_outputs
+  spatial_srid_4326:
+    severity: error
+    applies_to:
+    - spatial_layers
+  no_synthetic_features:
+    severity: error
+    applies_to:
+    - spatial_query_results
+  rag_evidence_required:
+    severity: error
+    applies_to:
+    - rag_answers
+  dynamic_observed_at_required:
+    severity: error
+    applies_to:
+    - DynamicTrafficLayer

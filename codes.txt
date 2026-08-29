@@ -1,0 +1,7 @@
+MarineFarmCulture: None
+BeaconCardinal: None
+BeaconLateral: None
+BeaconSpecialPurpose: None
+BuoyCardinal: None
+BuoyLateral: None
+BuoySpecialPurpose: None

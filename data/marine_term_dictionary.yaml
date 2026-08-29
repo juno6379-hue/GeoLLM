@@ -1,0 +1,86 @@
+version: '2.0'
+terms:
+  위험객체:
+    canonical_id: navigation_hazard_object
+    aliases:
+      - 위험물
+      - 항해 위험 객체
+      - hazard
+    maps_to_concepts:
+      - navigation_hazard_object
+    contexts:
+      - navigation_safety
+      - grounding_risk
+    provenance: data/marine_term_dictionary.yaml
+  침선:
+    canonical_id: Wreck
+    aliases:
+      - 침몰선
+      - 난파선
+      - 가라앉은 배
+      - wreck
+    maps_to_features:
+      - Wreck
+    contexts:
+      - navigation_safety
+      - grounding_risk
+    feature_type_code: 159
+    provenance: data/marine_term_dictionary.yaml
+  장애물:
+    canonical_id: Obstruction
+    aliases:
+      - 수중 장애물
+      - obstruction
+    maps_to_features:
+      - Obstruction
+    contexts:
+      - navigation_safety
+      - grounding_risk
+    feature_type_code: 86
+    provenance: data/marine_term_dictionary.yaml
+  배가 못 지나가는 곳:
+    canonical_id: navigation_hazard_area
+    aliases:
+      - 통항 금지 구역
+      - 항행 제한 구역
+      - 통항 제한 구역
+    maps_to_concepts:
+      - restricted_navigation_area
+      - navigation_hazard_area
+    contexts:
+      - navigation_safety
+      - grounding_risk
+      - route_planning
+    candidate_features:
+      - RestrictedArea
+      - TrafficSeparationScheme
+      - TrafficSeparationSchemeLanePart
+      - TrafficSeparationSchemeBoundary
+      - Fairway
+    provenance: data/marine_term_dictionary.yaml
+  암초:
+    canonical_id: UnderwaterAwashRock
+    aliases:
+      - 수중암초
+      - rock
+    maps_to_features:
+      - UnderwaterAwashRock
+    contexts:
+      - navigation_safety
+      - grounding_risk
+    feature_type_code: 153
+    provenance: data/marine_term_dictionary.yaml
+  항로:
+    canonical_id: Fairway
+    aliases:
+      - 통항로
+      - fairway
+    maps_to_features:
+      - Fairway
+      - TrafficSeparationScheme
+      - TrafficSeparationSchemeLanePart
+    contexts:
+      - navigation_safety
+      - route_planning
+    feature_type_code: 46
+    provenance: data/marine_term_dictionary.yaml

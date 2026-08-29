@@ -1,0 +1,57 @@
+version: '2.0'
+products:
+  S-100:
+    name: Universal Hydrographic Data Model
+    version: 5.2.0
+    source_type: standard_s100
+    role: framework_standard
+    data_type: product_specification
+  S-101:
+    name: Electronic Navigational Chart
+    version: 2.0.0
+    source_type: standard_s101
+    role: base_navigation_layer
+    data_type: vector_feature
+    related_agents:
+      - Spatial Analysis Agent
+      - Validation Agent
+      - Map Report Agent
+    related_tools:
+      - gbenc.s101_feature_search_by_radius
+      - postgis.dwithin
+  S-104:
+    name: Water Level Information
+    version: 2.0.0
+    source_type: standard_s104
+    role: water_level_for_surface_navigation
+    data_type: time_series
+    related_agents:
+      - Time-Series Agent
+      - Situation Interpretation Agent
+  S-111:
+    name: Surface Currents
+    version: 2.0.0
+    source_type: standard_s111
+    role: surface_current
+    data_type: gridded_or_time_series
+    related_agents:
+      - Time-Series Agent
+      - Spatial Analysis Agent
+  S-124:
+    name: Navigational Warnings
+    version: 2.0.0
+    source_type: standard_s124
+    role: navigational_warning
+    data_type: warning_feature
+    related_agents:
+      - Standard RAG Agent
+      - Spatial Analysis Agent
+      - Map Report Agent
+  S-158:
+    name: S-100 Product Validation
+    version: 1.x
+    source_type: validation_s158
+    role: product_validation
+    data_type: validation_rules
+    related_agents:
+      - Validation Agent

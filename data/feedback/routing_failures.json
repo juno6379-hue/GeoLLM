@@ -1,0 +1,38 @@
+[
+  {
+    "timestamp": "2026-07-30T20:01:41.712898",
+    "query": "??? ?? ?? 3000m ?? ????? ???",
+    "predicted_agent": "None",
+    "correct_agent": null,
+    "failure_reason": "하이브리드 라우터 및 LLM Fallback 모두 실패 (완전한 분석 불가)",
+    "fix": "새로운 의도 학습 또는 키워드 룰 추가 필요",
+    "status": "pending_review"
+  },
+  {
+    "timestamp": "2026-07-30T20:15:38.110571",
+    "query": "??? ?? ?? 3000m ?? ????? ???",
+    "predicted_agent": "None",
+    "correct_agent": null,
+    "failure_reason": "하이브리드 라우터 및 LLM Fallback 모두 실패 (완전한 분석 불가)",
+    "fix": "새로운 의도 학습 또는 키워드 룰 추가 필요",
+    "status": "pending_review"
+  },
+  {
+    "timestamp": "2026-07-30T20:20:07.495193",
+    "query": "??? ?? ?? 3000m ?? ????? ???",
+    "predicted_agent": "None",
+    "correct_agent": null,
+    "failure_reason": "하이브리드 라우터 및 LLM Fallback 모두 실패 (완전한 분석 불가)",
+    "fix": "새로운 의도 학습 또는 키워드 룰 추가 필요",
+    "status": "pending_review"
+  },
+  {
+    "timestamp": "2026-07-31T09:01:26.185488",
+    "query": "??? ?? ?? 3000m? ???? ???",
+    "predicted_agent": "None",
+    "correct_agent": null,
+    "failure_reason": "하이브리드 라우터 및 LLM Fallback 모두 실패 (완전한 분석 불가)",
+    "fix": "새로운 의도 학습 또는 키워드 룰 추가 필요",
+    "status": "pending_review"
+  }
+]

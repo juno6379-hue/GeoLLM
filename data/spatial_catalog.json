@@ -1,0 +1,20 @@
+[
+    {
+        "dataset_name": "전자해도(ENC) 피처 데이터",
+        "description": "국립해양조사원 전자해도의 포인트, 라인, 폴리곤 피처 정보 (침선, 수심, 등대 등 포함)",
+        "target_layer": "gbenc_feature",
+        "keywords": ["전자해도", "ENC", "피처", "수심", "침선", "등대", "항로표지", "장애물"],
+        "attributes": [
+            {"name": "nftc", "type": "integer", "description": "S-57 객체 클래스 코드 (예: 159는 침선)"},
+            {"name": "objl", "type": "string", "description": "객체 설명 (예: WRECKS)"},
+            {"name": "geometry", "type": "geometry", "description": "공간 기하 (Point, LineString, Polygon)"}
+        ]
+    },
+    {
+        "dataset_name": "해양사고",
+        "description": "중앙해양안전심판원 해양사고 통계 데이터",
+        "target_layer": "marine_accidents",
+        "keywords": ["해양사고", "사고", "충돌", "좌초", "침몰"],
+        "attributes": []
+    }
+]

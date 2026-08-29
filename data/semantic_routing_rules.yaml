@@ -1,0 +1,20 @@
+# semantic_routing_rules.yaml
+# Rule-based Context Resolver를 위한 정규식 및 키워드 매칭 룰
+rules:
+  - id: rule_nav_safety_1
+    description: "항행 안전을 명시적으로 물어본 경우"
+    pattern: "(항행|안전|사고|예방)"
+    context: "NAVIGATION_SAFETY"
+    priority: 1
+    
+  - id: rule_wind_farm_1
+    description: "해상풍력 입지를 명시적으로 물어본 경우"
+    pattern: "(해상풍력|입지|제약)"
+    context: "OFFSHORE_WIND_CONSTRAINT"
+    priority: 1
+
+  - id: rule_fishing_1
+    description: "어업권 또는 어장을 물어본 경우"
+    pattern: "(어업권|양식장|어장|조업)"
+    context: "FISHING_ZONE"
+    priority: 1

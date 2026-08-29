@@ -1,0 +1,8 @@
+data: {"event": "started", "task_id": "5f29869c-6b7a-40f4-ba85-64ab44b210d4"}
+
+data: {"event": "progress", "status": "INTENT_PARSING", "message": "\uc9c0\ub2a5\ud615 \ub77c\uc6b0\ud305 \ubc0f \uc2dc\ub9e8\ud2f1 \uce90\uc2dc \ud655\uc778 \uc911..."}
+
+data: {"event": "node_finished", "node": "parse_intent", "status": "NEEDS_CLARIFICATION", "clarification_questions": ["'\uc704\ud5d8\uac1d\uccb4' \uac1d\uccb4\uac00 \ub2e4\uc758\uc5b4\uc774\uac70\ub098 \ubd88\uba85\ud655\ud569\ub2c8\ub2e4. \ub2e4\uc74c \uc911 \uc5b4\ub290 \uac83\uc744 \ucc3e\uc73c\uc2dc\ub098\uc694? (Wreck, Obstruction, Rock, UnderwaterAwashRock, CableSubmarine, PipelineSubmarine, BuoyIsolatedDanger, BeaconIsolatedDanger, BuoyCardinal, BuoyLateral, BuoySpecialPurpose, BeaconCardinal, BeaconLateral, BeaconSpecialPurpose, Landmark, LightSectored, LightAllAround, MarineFarmCulture, HarbourFacility, ShorelineConstruction, FoulGround)"]}
+
+data: {"event": "completed", "status": "NEEDS_CLARIFICATION"}
+

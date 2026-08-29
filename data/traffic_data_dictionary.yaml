@@ -1,0 +1,21 @@
+version: '2.0'
+layer_type: DynamicTrafficLayer
+sources:
+  ais:
+    classification: dynamic_traffic_ais
+    required_columns:
+    - mmsi
+    - observed_at
+    - geom
+  vpass:
+    classification: dynamic_traffic_vpass
+    required_columns:
+    - vessel_id
+    - observed_at
+    - geom
+common_columns:
+- source_id
+- observed_at
+- ingested_at
+- geom
+- provenance

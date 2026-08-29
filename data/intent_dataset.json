@@ -1,0 +1,445 @@
+[
+  {
+    "query_id": "Q-SPATIAL-001",
+    "query": "부산항 입구 3km 이내 위험객체를 찾아줘",
+    "category": "SPATIAL_SEARCH",
+    "intent": "spatial_proximity_search",
+    "primary_agent": "Spatial Analysis Agent",
+    "secondary_agents": [
+      "Data Discovery Agent",
+      "Map Agent",
+      "Validation Agent"
+    ],
+    "required_tools": [
+      "gbenc.s101_feature_search",
+      "postgis.dwithin"
+    ],
+    "required_data": [
+      "GBENC feature",
+      "codeinformation"
+    ],
+    "slots": {
+      "location": "부산항 입구",
+      "distance_m": 3000,
+      "target_object": "위험객체"
+    },
+    "expected_outputs": [
+      "map_layer",
+      "geojson",
+      "summary"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "query_id": "Q-SPATIAL-002",
+    "query": "정박지와 항로가 겹치는 곳을 분석해줘",
+    "category": "SPATIAL_SEARCH",
+    "intent": "spatial_overlay_intersection",
+    "primary_agent": "Spatial Analysis Agent",
+    "secondary_agents": [
+      "Map Agent"
+    ],
+    "required_tools": [
+      "postgis.intersection"
+    ],
+    "required_data": [
+      "GBENC feature"
+    ],
+    "slots": {
+      "target_object_1": "정박지",
+      "target_object_2": "항로"
+    },
+    "expected_outputs": [
+      "map_layer",
+      "geojson"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "query_id": "Q-SPATIAL-003",
+    "query": "해상풍력 후보지가 보호구역과 중첩되는지 봐줘",
+    "category": "SPATIAL_SEARCH",
+    "intent": "spatial_overlay_intersection",
+    "primary_agent": "Spatial Analysis Agent",
+    "secondary_agents": [
+      "Map Agent"
+    ],
+    "required_tools": [
+      "postgis.intersection"
+    ],
+    "required_data": [
+      "GBENC feature",
+      "marine_hazards"
+    ],
+    "slots": {
+      "target_object_1": "해상풍력 후보지",
+      "target_object_2": "보호구역"
+    },
+    "expected_outputs": [
+      "map_layer",
+      "summary"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "query_id": "Q-SPATIAL-004",
+    "query": "제한구역 안에 있는 해양시설을 찾아줘",
+    "category": "SPATIAL_SEARCH",
+    "intent": "spatial_containment",
+    "primary_agent": "Spatial Analysis Agent",
+    "secondary_agents": [
+      "Map Agent"
+    ],
+    "required_tools": [
+      "postgis.within"
+    ],
+    "required_data": [
+      "GBENC feature"
+    ],
+    "slots": {
+      "base_area": "제한구역",
+      "target_object": "해양시설"
+    },
+    "expected_outputs": [
+      "map_layer",
+      "geojson"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "query_id": "Q-SPATIAL-005",
+    "query": "항로 주변 500m 이내 장애물을 표시해줘",
+    "category": "SPATIAL_SEARCH",
+    "intent": "spatial_proximity_search",
+    "primary_agent": "Spatial Analysis Agent",
+    "secondary_agents": [
+      "Map Agent"
+    ],
+    "required_tools": [
+      "postgis.dwithin"
+    ],
+    "required_data": [
+      "GBENC feature"
+    ],
+    "slots": {
+      "location": "항로",
+      "distance_m": 500,
+      "target_object": "장애물"
+    },
+    "expected_outputs": [
+      "map_layer"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "query_id": "Q-KNOWLEDGE-001",
+    "query": "해양보호구역이 뭐야?",
+    "category": "KNOWLEDGE_SEARCH",
+    "intent": "definition_search",
+    "primary_agent": "Standard RAG Agent",
+    "secondary_agents": [],
+    "required_tools": [
+      "rag.document_search"
+    ],
+    "required_data": [
+      "maritime_laws",
+      "s101_standards"
+    ],
+    "slots": {
+      "target_term": "해양보호구역"
+    },
+    "expected_outputs": [
+      "text_summary"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "query_id": "Q-KNOWLEDGE-002",
+    "query": "정박지는 S-101에서 어떤 Feature야?",
+    "category": "KNOWLEDGE_SEARCH",
+    "intent": "s101_feature_mapping",
+    "primary_agent": "Standard RAG Agent",
+    "secondary_agents": [],
+    "required_tools": [
+      "rag.s101_dictionary_search"
+    ],
+    "required_data": [
+      "s101_catalogue"
+    ],
+    "slots": {
+      "target_term": "정박지"
+    },
+    "expected_outputs": [
+      "text_summary",
+      "nftc_code"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "query_id": "Q-KNOWLEDGE-003",
+    "query": "등대는 어떤 객체명으로 검색해야 해?",
+    "category": "KNOWLEDGE_SEARCH",
+    "intent": "s101_feature_mapping",
+    "primary_agent": "Standard RAG Agent",
+    "secondary_agents": [],
+    "required_tools": [
+      "rag.s101_dictionary_search"
+    ],
+    "required_data": [
+      "s101_catalogue"
+    ],
+    "slots": {
+      "target_term": "등대"
+    },
+    "expected_outputs": [
+      "text_summary",
+      "feature_name"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "query_id": "Q-KNOWLEDGE-004",
+    "query": "부표 종류를 알려줘",
+    "category": "KNOWLEDGE_SEARCH",
+    "intent": "s101_feature_list",
+    "primary_agent": "Standard RAG Agent",
+    "secondary_agents": [],
+    "required_tools": [
+      "rag.s101_dictionary_search"
+    ],
+    "required_data": [
+      "s101_catalogue"
+    ],
+    "slots": {
+      "target_term": "부표"
+    },
+    "expected_outputs": [
+      "text_summary",
+      "feature_list"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "query_id": "Q-KNOWLEDGE-005",
+    "query": "AnchorageArea의 렌더링 규칙은 뭐야?",
+    "category": "KNOWLEDGE_SEARCH",
+    "intent": "s101_rendering_rule",
+    "primary_agent": "Standard RAG Agent",
+    "secondary_agents": [
+      "Map Agent"
+    ],
+    "required_tools": [
+      "rag.portrayal_catalogue_search"
+    ],
+    "required_data": [
+      "s101_portrayal_catalogue"
+    ],
+    "slots": {
+      "target_feature": "AnchorageArea"
+    },
+    "expected_outputs": [
+      "text_summary",
+      "svg_icon"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "query_id": "Q-KNOWLEDGE-006",
+    "query": "nftc 코드가 의미하는 객체명을 찾아줘",
+    "category": "KNOWLEDGE_SEARCH",
+    "intent": "s101_code_lookup",
+    "primary_agent": "Standard RAG Agent",
+    "secondary_agents": [],
+    "required_tools": [
+      "rag.s101_dictionary_search"
+    ],
+    "required_data": [
+      "s101_catalogue"
+    ],
+    "slots": {
+      "target_code": "nftc"
+    },
+    "expected_outputs": [
+      "text_summary",
+      "feature_name"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "query_id": "Q-S101-001",
+    "query": "해저케이블이 S-101에서 뭐야?",
+    "category": "KNOWLEDGE_SEARCH",
+    "intent": "s101_feature_mapping",
+    "primary_agent": "Standard RAG Agent",
+    "secondary_agents": [],
+    "required_tools": [
+      "rag.s101_dictionary_search"
+    ],
+    "required_data": [
+      "s101_catalogue"
+    ],
+    "slots": {
+      "target_term": "해저케이블"
+    },
+    "expected_outputs": [
+      "text_summary"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "query_id": "Q-S101-002",
+    "query": "Wreck의 렌더링 규칙을 보여줘",
+    "category": "KNOWLEDGE_SEARCH",
+    "intent": "s101_rendering_rule",
+    "primary_agent": "Standard RAG Agent",
+    "secondary_agents": [
+      "Map Agent"
+    ],
+    "required_tools": [
+      "rag.portrayal_catalogue_search"
+    ],
+    "required_data": [
+      "s101_portrayal_catalogue"
+    ],
+    "slots": {
+      "target_feature": "Wreck"
+    },
+    "expected_outputs": [
+      "text_summary",
+      "svg_icon"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "query_id": "Q-S101-003",
+    "query": "수심 영역 종류를 알려줘",
+    "category": "KNOWLEDGE_SEARCH",
+    "intent": "s101_feature_list",
+    "primary_agent": "Standard RAG Agent",
+    "secondary_agents": [],
+    "required_tools": [
+      "rag.s101_dictionary_search"
+    ],
+    "required_data": [
+      "s101_catalogue"
+    ],
+    "slots": {
+      "target_term": "수심 영역"
+    },
+    "expected_outputs": [
+      "text_summary"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "query_id": "Q-S101-004",
+    "query": "제한구역은 어떤 객체명으로 검색해야 해?",
+    "category": "KNOWLEDGE_SEARCH",
+    "intent": "s101_feature_mapping",
+    "primary_agent": "Standard RAG Agent",
+    "secondary_agents": [],
+    "required_tools": [
+      "rag.s101_dictionary_search"
+    ],
+    "required_data": [
+      "s101_catalogue"
+    ],
+    "slots": {
+      "target_term": "제한구역"
+    },
+    "expected_outputs": [
+      "text_summary"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "query_id": "Q-S101-005",
+    "query": "가공선이 의미하는 뜻이 뭐야",
+    "category": "KNOWLEDGE_SEARCH",
+    "intent": "definition_search",
+    "primary_agent": "Standard RAG Agent",
+    "secondary_agents": [],
+    "required_tools": [
+      "rag.document_search"
+    ],
+    "required_data": [
+      "s101_catalogue"
+    ],
+    "slots": {
+      "target_term": "가공선"
+    },
+    "expected_outputs": [
+      "text_summary"
+    ],
+    "difficulty": "easy"
+  },
+  {
+    "query_id": "Q-S101-006",
+    "query": "해양보호구역 반경 10km 이내의 등대를 분석해줘",
+    "category": "SPATIAL_SEARCH",
+    "intent": "spatial_proximity_search",
+    "primary_agent": "Spatial Analysis Agent",
+    "secondary_agents": [
+      "Map Agent"
+    ],
+    "required_tools": [
+      "postgis.dwithin",
+      "gbenc.s101_feature_search"
+    ],
+    "required_data": [
+      "GBENC feature"
+    ],
+    "slots": {
+      "location": "해양보호구역",
+      "distance_m": 10000,
+      "target_object": "등대"
+    },
+    "expected_outputs": [
+      "geojson",
+      "map_layer"
+    ],
+    "difficulty": "hard"
+  },
+  {
+    "query_id": "Q-S101-007",
+    "query": "Obstruction의 렌더링 규칙 설명해봐",
+    "category": "KNOWLEDGE_SEARCH",
+    "intent": "s101_rendering_rule",
+    "primary_agent": "Standard RAG Agent",
+    "secondary_agents": [],
+    "required_tools": [
+      "rag.portrayal_catalogue_search"
+    ],
+    "required_data": [
+      "s101_portrayal_catalogue"
+    ],
+    "slots": {
+      "target_feature": "Obstruction"
+    },
+    "expected_outputs": [
+      "text_summary"
+    ],
+    "difficulty": "medium"
+  },
+  {
+    "query_id": "Q-S101-008",
+    "query": "자연해안선이 뭐야",
+    "category": "KNOWLEDGE_SEARCH",
+    "intent": "definition_search",
+    "primary_agent": "Standard RAG Agent",
+    "secondary_agents": [],
+    "required_tools": [
+      "rag.document_search"
+    ],
+    "required_data": [
+      "s101_catalogue"
+    ],
+    "slots": {
+      "target_term": "자연해안선"
+    },
+    "expected_outputs": [
+      "text_summary"
+    ],
+    "difficulty": "easy"
+  }
+]

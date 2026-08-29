@@ -1,0 +1,11 @@
+[
+  {
+    "timestamp": "2026-07-22T02:58:46.793169",
+    "query": "부산항 입구 위험한 거 보여줘",
+    "predicted_agent": "Standard RAG Agent",
+    "correct_agent": "Spatial Analysis Agent",
+    "failure_reason": "위험한 거라는 표현을 공간객체 검색으로 해석하지 못함",
+    "fix": "위험한 거, 위험물, 위험객체 등을 navigational_hazards로 매핑",
+    "status": "pending_review"
+  }
+]

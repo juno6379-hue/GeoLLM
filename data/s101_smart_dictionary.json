@@ -1,0 +1,385 @@
+{
+  "risk_contexts": {
+    "navigation_safety": {
+      "description": "선박 항행 안전",
+      "risk_features": [
+        "Wreck",
+        "Obstruction",
+        "Rock",
+        "UnderwaterAwashRock",
+        "DepthArea",
+        "RestrictedArea",
+        "TrafficSeparationScheme"
+      ],
+      "risk_rules": [
+        "항로 500m 이내 침선은 HIGH",
+        "수심 10m 이하 구역은 선박 흘수 조건에 따라 위험",
+        "제한구역과 항로가 교차하면 WARNING"
+      ]
+    },
+    "offshore_wind_evaluation": {
+      "description": "해상풍력 후보지 평가",
+      "risk_features": [
+        "Fairway",
+        "NavigationLine",
+        "RecommendedTrack",
+        "AnchorageArea",
+        "MarineFarmCulture",
+        "MarineProtectedArea",
+        "MilitaryPracticeArea",
+        "CableSubmarine",
+        "PipelineSubmarine",
+        "DepthArea"
+      ],
+      "risk_rules": [
+        "해저케이블 및 파이프라인 반경 500m 이내는 원천 배제 (HIGH)",
+        "군사구역은 국방부 사전 협의 필요 (WARNING)",
+        "수심 50m 초과 구역은 고정식 불가, 부유식 풍력 검토 요망"
+      ]
+    },
+    "accident_risk_analysis": {
+      "description": "사고위험 분석",
+      "risk_features": [
+        "Accident_Hotspot_Layer",
+        "Collision_Point",
+        "Grounding_Point",
+        "AIS_Density_Layer"
+      ],
+      "risk_rules": [
+        "AIS 고밀도구역과 사고다발구역이 겹치면 CRITICAL",
+        "과거 좌초 지점 반경 1km 이내는 항행 주의 경보 발령"
+      ]
+    },
+    "marine_pollution_response": {
+      "description": "해양오염 대응",
+      "risk_features": [
+        "Oil_Spill_Location",
+        "Tidal_Current_Direction",
+        "MarineFarmCulture",
+        "MarineProtectedArea"
+      ],
+      "risk_rules": [
+        "유출지점 기준 조류 방향 하류에 위치한 양식장 및 보호구역은 1순위 방제 대상 (CRITICAL)"
+      ]
+    },
+    "port_operation": {
+      "description": "항만 운영",
+      "risk_features": [
+        "Berth",
+        "AnchorageArea",
+        "Traffic_Volume",
+        "DepthArea",
+        "Fairway_Congestion"
+      ],
+      "risk_rules": [
+        "수심 확보가 안된 정박지 진입 시도 시 경보 (WARNING)",
+        "항로 혼잡도 기준치 초과 시 우회 항로 권고"
+      ]
+    }
+  },
+  "위험객체": {
+    "description": "항해·입지·해양활동에 위험 또는 주의가 필요한 개별 객체",
+    "feature_candidates": [
+      "Wreck",
+      "Obstruction",
+      "Rock",
+      "UnderwaterAwashRock",
+      "CableSubmarine",
+      "PipelineSubmarine",
+      "BuoyIsolatedDanger",
+      "BeaconIsolatedDanger",
+      "BuoyCardinal",
+      "BuoyLateral",
+      "BuoySpecialPurpose",
+      "BeaconCardinal",
+      "BeaconLateral",
+      "BeaconSpecialPurpose",
+      "Landmark",
+      "LightSectored",
+      "LightAllAround",
+      "MarineFarmCulture",
+      "HarbourFacility",
+      "ShorelineConstruction",
+      "FoulGround"
+    ],
+    "analysis_hint": "spatial_feature_search",
+    "default_output": [
+      "map_layer",
+      "summary",
+      "table"
+    ],
+    "needs_context": false
+  },
+  "위험구역": {
+    "description": "항행 제한, 사고 가능성, 공간 충돌 가능성이 있는 면형 구역",
+    "feature_candidates": [
+      "RestrictedArea",
+      "AnchorageArea",
+      "TrafficSeparationScheme",
+      "TrafficSeparationZone",
+      "DepthArea",
+      "DredgedArea",
+      "MarineProtectedArea",
+      "MilitaryPracticeArea",
+      "Fairway",
+      "NavigationLine",
+      "RecommendedTrack"
+    ],
+    "analysis_hint": "spatial_overlay_or_proximity",
+    "default_output": [
+      "map_layer",
+      "risk_score",
+      "report_section"
+    ],
+    "needs_context": true
+  },
+  "침선": {
+    "description": "가라앉은 선박 객체",
+    "feature_candidates": [
+      "Wreck"
+    ],
+    "analysis_hint": "spatial_feature_search",
+    "needs_context": false
+  },
+  "장애물": {
+    "description": "수중 및 수상 일반 장애물",
+    "feature_candidates": [
+      "Obstruction"
+    ],
+    "analysis_hint": "spatial_feature_search",
+    "needs_context": false
+  },
+  "암초": {
+    "description": "수중 암초",
+    "feature_candidates": [
+      "Rock"
+    ],
+    "analysis_hint": "spatial_feature_search",
+    "needs_context": false
+  },
+  "간출암": {
+    "description": "조위에 따라 드러나는 암초",
+    "feature_candidates": [
+      "Rock",
+      "UnderwaterAwashRock"
+    ],
+    "analysis_hint": "spatial_feature_search",
+    "needs_context": false
+  },
+  "부표": {
+    "description": "항로 표지 역할을 하는 부표",
+    "feature_candidates": [
+      "BuoyCardinal",
+      "BuoyLateral",
+      "BuoySpecialPurpose",
+      "BuoyIsolatedDanger"
+    ],
+    "analysis_hint": "spatial_feature_search",
+    "needs_context": true
+  },
+  "등표": {
+    "description": "고정된 항로 표지 시설",
+    "feature_candidates": [
+      "BeaconCardinal",
+      "BeaconLateral",
+      "BeaconSpecialPurpose",
+      "BeaconIsolatedDanger"
+    ],
+    "analysis_hint": "spatial_feature_search",
+    "needs_context": true
+  },
+  "해저케이블": {
+    "description": "해저에 매설된 케이블",
+    "feature_candidates": [
+      "CableSubmarine",
+      "CableArea"
+    ],
+    "analysis_hint": "spatial_feature_search",
+    "needs_context": false
+  },
+  "파이프라인": {
+    "description": "해저에 매설된 파이프라인",
+    "feature_candidates": [
+      "PipelineSubmarine",
+      "PipelineArea"
+    ],
+    "analysis_hint": "spatial_feature_search",
+    "needs_context": false
+  },
+  "양식장": {
+    "description": "어업 및 양식 시설",
+    "feature_candidates": [
+      "MarineFarmCulture"
+    ],
+    "analysis_hint": "spatial_feature_search",
+    "needs_context": false
+  },
+  "항만 구조물": {
+    "description": "항만 부속 인공 구조물",
+    "feature_candidates": [
+      "HarbourFacility",
+      "ShorelineConstruction"
+    ],
+    "analysis_hint": "spatial_feature_search",
+    "needs_context": false
+  },
+  "제한구역": {
+    "description": "진입 및 통항이 제한된 구역",
+    "feature_candidates": [
+      "RestrictedArea"
+    ],
+    "analysis_hint": "spatial_overlay",
+    "needs_context": false
+  },
+  "정박지": {
+    "description": "선박이 닻을 내리고 정박하는 구역",
+    "feature_candidates": [
+      "AnchorageArea"
+    ],
+    "analysis_hint": "spatial_feature_search",
+    "needs_context": false
+  },
+  "항로": {
+    "description": "권장되는 선박 통항로",
+    "feature_candidates": [
+      "Fairway",
+      "NavigationLine",
+      "RecommendedTrack"
+    ],
+    "analysis_hint": "spatial_feature_search",
+    "needs_context": false
+  },
+  "통항분리수역": {
+    "description": "선박의 진행 방향을 분리하는 수역",
+    "feature_candidates": [
+      "TrafficSeparationScheme",
+      "TrafficSeparationZone"
+    ],
+    "analysis_hint": "spatial_feature_search",
+    "needs_context": false
+  },
+  "군사구역": {
+    "description": "군사 훈련 및 작전 구역",
+    "feature_candidates": [
+      "MilitaryPracticeArea",
+      "RestrictedArea"
+    ],
+    "analysis_hint": "spatial_overlay",
+    "needs_context": false
+  },
+  "보호구역": {
+    "description": "해양 생태계 보호를 위한 구역",
+    "feature_candidates": [
+      "MarineProtectedArea",
+      "RestrictedArea"
+    ],
+    "analysis_hint": "spatial_overlay",
+    "needs_context": false
+  },
+  "위험한 것": {
+    "normalized_term": "위험객체",
+    "feature_candidates": [
+      "Wreck",
+      "Obstruction",
+      "Rock",
+      "RestrictedArea"
+    ],
+    "confidence": 0.72,
+    "needs_context": false
+  },
+  "위험물": {
+    "normalized_term": "위험객체",
+    "feature_candidates": [
+      "Wreck",
+      "Obstruction",
+      "Rock",
+      "RestrictedArea"
+    ],
+    "confidence": 0.75,
+    "needs_context": false
+  },
+  "주의할 곳": {
+    "normalized_term": "주의구역",
+    "feature_candidates": [
+      "CautionArea",
+      "RestrictedArea",
+      "FoulGround"
+    ],
+    "confidence": 0.8,
+    "needs_context": true
+  },
+  "배가 걸릴 만한 곳": {
+    "normalized_term": "좌초위험",
+    "feature_candidates": [
+      "DepthArea",
+      "Rock",
+      "Obstruction",
+      "UnderwaterAwashRock"
+    ],
+    "analysis_type": "grounding_risk_analysis",
+    "confidence": 0.88,
+    "needs_context": false
+  },
+  "배가 못 지나가는 곳": {
+    "normalized_term": "통항제한구역",
+    "feature_candidates": [
+      "RestrictedArea",
+      "TrafficSeparationScheme",
+      "MilitaryPracticeArea"
+    ],
+    "analysis_type": "navigation_restriction_search",
+    "confidence": 0.84,
+    "needs_context": false
+  },
+  "암초 있는 곳": {
+    "normalized_term": "암초구역",
+    "feature_candidates": [
+      "Rock",
+      "UnderwaterAwashRock"
+    ],
+    "analysis_type": "spatial_feature_search",
+    "confidence": 0.95,
+    "needs_context": false
+  },
+  "얕은 곳": {
+    "normalized_term": "저수심구역",
+    "feature_candidates": [
+      "DepthArea",
+      "FoulGround"
+    ],
+    "analysis_type": "shallow_water_analysis",
+    "confidence": 0.9,
+    "needs_context": false
+  },
+  "사고 많은 곳": {
+    "normalized_term": "사고다발구역",
+    "feature_candidates": [
+      "Accident_Hotspot_Layer"
+    ],
+    "analysis_type": "accident_hotspot_analysis",
+    "confidence": 0.91,
+    "needs_context": false
+  },
+  "통항 위험지역": {
+    "normalized_term": "항행위험구역",
+    "feature_candidates": [
+      "TrafficSeparationScheme",
+      "RestrictedArea",
+      "CautionArea"
+    ],
+    "analysis_type": "navigation_risk_analysis",
+    "confidence": 0.85,
+    "needs_context": true
+  },
+  "10": {
+    "name": "Berth",
+    "name_kr": "선석",
+    "synonyms": [
+      "선석",
+      "부두",
+      "계류장"
+    ],
+    "geometry_type": "Curve, Surface",
+    "needs_context": false
+  }
+}

@@ -1,0 +1,50 @@
+[tool.poetry]
+name = "marine-geospatial-intelligence-platform"
+version = "0.1.0"
+description = "해양공간 지능분석 플랫폼"
+authors = ["Admin <admin@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.111.0"
+uvicorn = "^0.30.1"
+pydantic = "^2.8.0"
+pydantic-settings = "^2.3.4"
+sqlalchemy = "^2.0.31"
+geoalchemy2 = "^0.15.1"
+alembic = "^1.13.2"
+psycopg2-binary = "^2.9.9"
+structlog = "^24.2.0"
+opentelemetry-api = "^1.25.0"
+opentelemetry-sdk = "^1.25.0"
+opentelemetry-instrumentation-fastapi = "^0.46b0"
+langchain = "^0.2.0"
+langchain-openai = "^0.1.0"
+langgraph = "^0.1.0"
+faiss-cpu = "^1.8.0"
+langchain-community = "^0.2.0"
+tiktoken = "^0.7.0"
+laspy = "^2.6.1"
+pandas = "^2.2.3"
+shapely = "^2.1.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.2"
+pytest-asyncio = "^0.23.7"
+httpx = "^0.27.0"
+ruff = "^0.5.0"
+mypy = "^1.10.0"
+testcontainers = "^3.7.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true

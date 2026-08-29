@@ -1,0 +1,26 @@
+risk_profiles:
+  navigation_safety:
+    default_features:
+      - Wreck
+      - Obstruction
+      - Rock
+      - DepthArea
+      - RestrictedArea
+      - TrafficSeparationScheme
+    default_analysis: proximity_and_intersection
+  offshore_wind_site:
+    default_features:
+      - Fairway
+      - AnchorageArea
+      - RestrictedArea
+      - MarineProtectedArea
+      - CableArea
+      - FishingArea
+    default_analysis: constraint_overlay
+  accident_prevention:
+    default_layers:
+      - accident_points
+      - accident_hotspots
+      - AIS_density
+      - GBENC_navigation_hazards
+    default_analysis: hotspot_and_correlation

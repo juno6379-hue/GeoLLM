@@ -1,0 +1,191 @@
+contexts:
+  navigation_safety:
+    ko_name: "항행 안전"
+    description: "선박 운항, 항로, 통항, 좌초, 충돌, 위험객체와 관련된 맥락"
+    keywords:
+      - 항행
+      - 운항
+      - 통항
+      - 항로
+      - 선박
+      - 배
+      - 지나가기
+      - 항해
+      - 좌초
+      - 충돌
+      - 장애물
+      - 침선
+      - 암초
+      - 저수심
+      - 부표
+      - 등대
+      - 통항방해
+      - 운항저해
+    phrases:
+      - 배가 지나가기 위험한 곳
+      - 선박이 피해야 할 곳
+      - 항로 주변 위험한 것
+      - 운항에 방해되는 객체
+      - 좌초될 수 있는 구역
+    default_agents:
+      - Spatial Analysis Agent
+      - AIS Analysis Agent
+      - Validation Agent
+
+  offshore_wind_site:
+    ko_name: "해상풍력 입지 제약"
+    description: "해상풍력 후보지, 개발 가능성, 입지 제약, 인허가 검토와 관련된 맥락"
+    keywords:
+      - 해상풍력
+      - 풍력
+      - 입지
+      - 후보지
+      - 개발
+      - 제약
+      - 인허가
+      - 배제
+      - 회피
+      - 공유수면
+      - 발전단지
+      - 케이블
+      - 보호구역
+      - 어장
+      - 정박지
+      - 항로
+    phrases:
+      - 풍력발전 하면 안 되는 곳
+      - 개발이 어려운 해역
+      - 입지 제약 조건
+      - 후보지와 겹치는 제한구역
+      - 해상풍력 가능 구역
+    default_agents:
+      - Data Discovery Agent
+      - Spatial Analysis Agent
+      - Standard RAG Agent
+      - Map Report Agent
+
+  accident_prevention:
+    ko_name: "사고 예방"
+    description: "해양사고, 사고다발해역, 충돌, 좌초, 기관손상, 화재폭발, 예방대책 관련 맥락"
+    keywords:
+      - 사고
+      - 예방
+      - 사고다발
+      - 충돌
+      - 좌초
+      - 기관손상
+      - 화재
+      - 폭발
+      - 인명사상
+      - 안전운항저해
+      - 해양오염
+      - 구조
+      - 위험도
+    phrases:
+      - 사고가 많은 곳
+      - 사고 위험이 높은 해역
+      - 충돌이 잦은 구역
+      - 좌초 사고 위치
+      - 사고 예방이 필요한 해역
+    default_agents:
+      - Spatial Analysis Agent
+      - Standard RAG Agent
+      - Situation Interpretation Agent
+      - Map Report Agent
+
+  fishing_operations:
+    ko_name: "어업 및 양식장"
+    description: "조업 구역, 양식장, 어장, 어구, 수산자원 보호와 관련된 맥락"
+    keywords:
+      - 어업
+      - 조업
+      - 양식장
+      - 어장
+      - 어선
+      - 그물
+      - 어구
+      - 정치망
+      - 수산자원
+      - 보호구역
+      - 금지구역
+    phrases:
+      - 고기잡이 하는 곳
+      - 어선들이 모여있는 곳
+      - 양식장 피해서
+      - 조업 구역 찾기
+      - 어망이 얽힐 수 있는 곳
+    default_agents:
+      - Spatial Analysis Agent
+      - AIS Analysis Agent
+      - Map Report Agent
+
+  military_operations:
+    ko_name: "군사 훈련 및 사격 구역"
+    description: "해군 작전, 해상 사격 훈련, 군사 통제 구역 관련 맥락"
+    keywords:
+      - 군사
+      - 사격
+      - 훈련
+      - 통제구역
+      - 해군
+      - 작전
+      - 제한구역
+      - 금지구역
+      - 폭발물
+    phrases:
+      - 군사 훈련하는 곳
+      - 사격 통제 구역
+      - 배가 들어가면 안 되는 곳
+      - 해군 작전 구역
+    default_agents:
+      - Spatial Analysis Agent
+      - Validation Agent
+      - Map Report Agent
+
+  environmental_protection:
+    ko_name: "해양 환경 및 생태계 보전"
+    description: "해양보호구역, 갯벌, 국립공원, 멸종위기종, 생태계 보전 관련 맥락"
+    keywords:
+      - 환경
+      - 생태계
+      - 보호구역
+      - 국립공원
+      - 갯벌
+      - 습지
+      - 멸종위기
+      - 해양쓰레기
+      - 오염
+      - 보전
+    phrases:
+      - 환경을 보호해야 하는 곳
+      - 해양 국립공원 구역
+      - 생태계가 보존된 곳
+      - 개발이 금지된 보호구역
+    default_agents:
+      - Data Discovery Agent
+      - Spatial Analysis Agent
+      - Map Report Agent
+
+  marine_construction:
+    ko_name: "해양 공사 및 항만 개발"
+    description: "항만 공사, 준설, 매립, 방파제 건설 관련 맥락"
+    keywords:
+      - 공사
+      - 항만
+      - 개발
+      - 준설
+      - 매립
+      - 건설
+      - 방파제
+      - 인프라
+      - 부두
+      - 선석
+    phrases:
+      - 공사 중인 구역
+      - 새로 짓는 방파제
+      - 땅을 매립하는 곳
+      - 준설 작업 위치
+    default_agents:
+      - Spatial Analysis Agent
+      - Standard RAG Agent
+      - Map Report Agent

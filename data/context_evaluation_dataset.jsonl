@@ -1,0 +1,42 @@
+{"context_id": "navigation_safety", "query": "배가 지나가기 위험한 곳을 찾아줘"}
+{"context_id": "navigation_safety", "query": "항로 주변 장애물을 보여줘"}
+{"context_id": "navigation_safety", "query": "배가 걸릴만한 지점 알려줘"}
+{"context_id": "navigation_safety", "query": "수심이 얕아서 좌초될 수 있는 구역"}
+{"context_id": "navigation_safety", "query": "바다 밑에 가라앉은 배가 있는 곳"}
+{"context_id": "navigation_safety", "query": "항해할 때 피해야 하는 암초 위치"}
+{"context_id": "navigation_safety", "query": "선박 운항에 방해되는 요소들"}
+{"context_id": "navigation_safety", "query": "통항이 제한되는 바다 구역"}
+{"context_id": "navigation_safety", "query": "위험한 해저 지형 구조물"}
+{"context_id": "offshore_wind_site", "query": "해상풍력 후보지와 겹치는 제약구역을 찾아줘"}
+{"context_id": "offshore_wind_site", "query": "풍력 발전기 세울 때 피해야 할 곳"}
+{"context_id": "offshore_wind_site", "query": "신재생에너지 사업 불가능한 해역"}
+{"context_id": "offshore_wind_site", "query": "개발 제한이 걸려있는 바다"}
+{"context_id": "offshore_wind_site", "query": "해저 케이블이나 파이프라인이 지나가는 곳"}
+{"context_id": "offshore_wind_site", "query": "해상풍력 입지 타당성 조사"}
+{"context_id": "offshore_wind_site", "query": "발전단지 조성을 위한 공유수면 점용 제약"}
+{"context_id": "accident_prevention", "query": "사고가 많이 발생한 해역을 보여줘"}
+{"context_id": "accident_prevention", "query": "배끼리 부딪힌 적이 많은 곳"}
+{"context_id": "accident_prevention", "query": "과거 해난사고 이력 데이터"}
+{"context_id": "accident_prevention", "query": "안전사고 위험도가 높은 지역"}
+{"context_id": "accident_prevention", "query": "침몰 사고나 화재가 발생했던 구역"}
+{"context_id": "accident_prevention", "query": "해경 구조 출동이 잦은 바다"}
+{"context_id": "fishing_operations", "query": "어민들이 고기잡이 하는 구역"}
+{"context_id": "fishing_operations", "query": "양식장이 밀집해 있는 곳"}
+{"context_id": "fishing_operations", "query": "어망이나 통발이 설치된 위치"}
+{"context_id": "fishing_operations", "query": "조업 금지 구역 알려줘"}
+{"context_id": "fishing_operations", "query": "수산물 채취하는 어장"}
+{"context_id": "military_operations", "query": "해군이 훈련하는 통제 구역"}
+{"context_id": "military_operations", "query": "해상 사격 훈련장 위치"}
+{"context_id": "military_operations", "query": "군사 기지 주변 출입 금지 수역"}
+{"context_id": "military_operations", "query": "함포 사격이 예정된 바다"}
+{"context_id": "military_operations", "query": "기뢰나 폭발물이 있는 군사 작전 구역"}
+{"context_id": "environmental_protection", "query": "해양 생태계 보호구역"}
+{"context_id": "environmental_protection", "query": "멸종위기종이 서식하는 갯벌"}
+{"context_id": "environmental_protection", "query": "해상 국립공원으로 지정된 곳"}
+{"context_id": "environmental_protection", "query": "철새들이 오는 습지 보전 구역"}
+{"context_id": "environmental_protection", "query": "자연 환경 훼손이 금지된 지역"}
+{"context_id": "marine_construction", "query": "방파제 공사 중인 구역"}
+{"context_id": "marine_construction", "query": "바다를 메꾸는 매립 작업 위치"}
+{"context_id": "marine_construction", "query": "항만 인프라 개발을 위한 준설 공사"}
+{"context_id": "marine_construction", "query": "해상 크레인이 떠있는 작업선 구역"}
+{"context_id": "marine_construction", "query": "새로운 부두를 건설하는 신항만"}

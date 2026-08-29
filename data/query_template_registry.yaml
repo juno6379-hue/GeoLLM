@@ -1,0 +1,23 @@
+version: '2.0'
+templates:
+  feature_search_by_radius:
+    allowed_layers:
+    - GBENC_S101_feature
+    required_parameters:
+    - base_geometry
+    - distance_m
+    - nftc_codes
+    executor: postgis.dwithin
+  traffic_search_by_time_space:
+    allowed_layers:
+    - AIS
+    - V-PASS
+    required_parameters:
+    - time_range
+    - geometry
+    executor: traffic.dynamic_layer_search
+  graph_scoped_rag:
+    required_parameters:
+    - entity_ids
+    - query
+    executor: rag.graph_scoped_retrieve

@@ -1,0 +1,14 @@
+version: '2.0'
+layers:
+  GBENC_S101_feature:
+    zone: serving
+    physical_table: projection.s101_feature_current
+    geometry_column: geometry
+    code_column: feature_type_code
+    srid: 4326
+    database: S100_dev_postgis
+  marine_gazetteer:
+    zone: serving
+    physical_table: public.maritime_gazetteer
+    geometry_column: geom
+    srid: 4326

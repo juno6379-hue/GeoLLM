@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>해양공간 지능분석 플랫폼 - 드론 Lidar분석 뷰</title>
+    <!-- Error Logger -->
+    <script>
+        window.addEventListener('error', function(e) {
+            fetch('/api/v1/system/log', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({level: 'error', message: e.message + ' at ' + e.filename + ':' + e.lineno})
+            });
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            fetch('/api/v1/system/log', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({level: 'error', message: 'Unhandled Rejection: ' + e.reason})
+            });
+        });
+    </script>
+    <!-- CesiumJS -->
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Cesium.js"></script>
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Custom Style -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Top Navbar -->
+    <div class="navbar">
+        <div class="nav-brand">Marine GeoLLM</div>
+        <div class="nav-actions">
+            <button class="nav-btn active">통합 포털</button>
+            <button class="nav-btn">사용자 권한</button>
+            <button class="nav-btn">실시간 상태</button>
+        </div>
+    </div>
+
+    <div class="layout-main">
+        <!-- Left Sidebar (Original Dashboard Menu) -->
+        <div class="sidebar">
+            <div class="menu-title">주요 메뉴</div>
+            <a href="/"><div class="menu-item">통합 대시보드</div></a>
+            <div class="menu-item">전자해도/S-101</div>
+            <div class="menu-item">공간분석</div>
+            <div class="menu-item">AIS 분석</div>
+            <div class="menu-item active" style="justify-content: space-between;" onclick="document.getElementById('lidarSubmenu').style.display = document.getElementById('lidarSubmenu').style.display === 'none' ? 'flex' : 'none'">드론 Lidar분석 <i class="fa-solid fa-chevron-down" style="font-size:12px;"></i></div>
+            <div id="lidarSubmenu" style="display:flex; flex-direction:column; padding-left:15px; font-size:13px; background:rgba(0,0,0,0.1);">
+                <div class="menu-item" onclick="loadReactApp('upload')" style="margin:2px 0;">1. 데이터 업로드</div>
+                <div class="menu-item" onclick="loadReactApp('dashboard')" style="margin:2px 0;">2~9. 분석 프로세스</div>
+                <div class="menu-item" onclick="loadOriginalViewer()" style="margin:2px 0;">▶ 3D 뷰어 (기존)</div>
+            </div>
+            <div class="menu-item">시계열 분석</div>
+            <div class="menu-item">표준·RAG 검색</div>
+            <div class="menu-item">보고서 생성</div>
+            <div class="menu-item">검증·MLOps</div>
+            
+            <div class="menu-item active">
+                <span class="icon">🔍</span> 분석 도구
+            </div>
+            <div class="menu-item btnLoadProject" style="background: rgba(2, 132, 199, 0.2); border-left: 3px solid var(--accent-blue);">
+                <span class="icon">📁</span> 프로젝트 전체 로드
+            </div>
+            <div class="menu-item btnOrthomosaic">
+                <span class="icon">🗺️</span> 정사영상 로드
+            </div>
+            <div class="menu-item btnPointCloud">
+                <span class="icon">☁️</span> 3D 점군 로드
+            </div>
+            <div class="menu-item btnLoadTerrain">
+                <span class="icon">⛰️</span> 3D DSM 지형 로드
+            </div>
+            <div class="menu-item btnEncOverlay" style="color: #60a5fa;">
+                <span class="icon">⚓</span> S-101 전자해도 중첩
+            </div>
+            <div class="menu-item btnAiResults">
+                <span class="icon">🤖</span> AI 탐지 결과
+            </div>
+        </div>
+
+        <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="header">
+            <div>
+                <div class="header-title">드론 Lidar분석 UI</div>
+                <div class="header-subtitle">3D Lidar 점군 · 정사영상 · 변화탐지 · 객체탐지 · 세그멘테이션 통합 화면</div>
+            </div>
+            <div class="header-actions">
+                <i class="fa-regular fa-bell" style="font-size: 1.2rem; color: #5f6368; cursor:pointer;"></i>
+                <i class="fa-regular fa-circle-question" style="font-size: 1.2rem; color: #5f6368; cursor:pointer;"></i>
+                <div style="display: flex; align-items: center; gap: 8px; border: 1px solid #ddd; padding: 5px 15px; border-radius: 20px; cursor:pointer;">
+                    <i class="fa-regular fa-circle-user"></i> 관리자 <i class="fa-solid fa-chevron-down" style="font-size: 0.8rem;"></i>
+                </div>
+            </div>
+        </header>
+
+
+
+        <!-- Map Container -->
+        <div class="map-container">
+            <div class="map-toolbar">
+                <strong style="margin-right: 15px; padding-top: 5px; color: white;">드론 Lidar분석 뷰</strong>
+                <button class="btnLoadProject" style="background-color: var(--primary-blue); color: white; border:none; margin-right: 15px;"><i class="fa-solid fa-folder-open"></i> 프로젝트 전체 로드</button>
+                <button class="btnOrthomosaic"><i class="fa-regular fa-map"></i> 정사영상 로드</button>
+                <button class="btnPointCloud"><i class="fa-solid fa-cubes"></i> 3D 점군 로드</button>
+                <button class="btnAiResults"><i class="fa-solid fa-wand-magic-sparkles"></i> AI 탐지 결과</button>
+                <button class="btnLoadTerrain"><i class="fa-solid fa-mountain"></i> 3D DSM 지형 적용</button>
+            </div>
+            
+            <div id="cesiumContainer"></div>
+            
+            <div class="z-offset-control">
+                <label for="zOffsetSlider">Z-Offset (점군 고도 조절)</label>
+                <input type="range" id="zOffsetSlider" min="-100" max="100" value="0" step="1">
+                <span id="zOffsetValue">0 m</span>
+            </div>
+        </div>
+
+        <div id="reactAppContainer">
+            <iframe id="reactIframe" style="width:100%; height:100%; border:none;" src="/vision/react_lidar/index.html?embedded=true&v=1001"></iframe>
+        </div>
+    </main>
+
+    </div>
+    <!-- Web Folder Picker Modal -->
+    <div id="folderPickerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+        <div style="background:#1e293b; color:white; width:500px; max-height:80%; border-radius:8px; display:flex; flex-direction:column; box-shadow:0 4px 20px rgba(0,0,0,0.5);">
+            <div style="padding:15px; border-bottom:1px solid #334155; display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; font-size:16px;">폴더 선택 (드론 데이터)</h3>
+                <button id="btnClosePicker" style="background:transparent; border:none; color:#94a3b8; font-size:20px; cursor:pointer;">&times;</button>
+            </div>
+            <div style="padding:15px; border-bottom:1px solid #334155; background:#0f172a; font-size:14px; word-break:break-all;">
+                현재 경로: <span id="pickerCurrentPath" style="color:#38bdf8; font-weight:bold;">D:/</span>
+            </div>
+            <div id="pickerFolderList" style="flex:1; overflow-y:auto; padding:10px;">
+                <!-- Folders injected here -->
+            </div>
+            <div style="padding:15px; border-top:1px solid #334155; display:flex; justify-content:flex-end;">
+                <button id="btnSelectPickerFolder" style="background:var(--primary-blue); color:white; border:none; padding:8px 16px; border-radius:4px; cursor:pointer;">현재 폴더 선택</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script src="app.js?v=9"></script>
+    <script src="app.js?v=9"></script>
+    <script>
+        function loadReactApp(page) {
+            document.getElementById('reactIframe').src = '/vision/react_lidar/index.html?embedded=true&v=' + Date.now() + '&page=' + page;
+        }
+        function loadOriginalViewer() {
+            // No longer hides the React app since it's a split view.
+            console.log("3D Viewer selected");
+        }
+    </script>
+</body>
+</html>

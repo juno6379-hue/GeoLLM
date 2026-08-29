@@ -1,0 +1,92 @@
+version: '2.0'
+derived_concepts:
+  navigation_hazard_object:
+    aliases:
+      - 위험객체
+      - hazard
+    default_context: navigation_safety
+    analysis_type: feature_search_by_radius
+    primary_agent: Spatial Analysis Agent
+    required_tools:
+      - geocoder.resolve_location
+      - gbenc.s101_feature_search_by_radius
+      - postgis.dwithin
+    required_data:
+      - GBENC_S101_feature
+      - GBENC_codeinformation
+      - s101_feature_dictionary
+      - marine_term_dictionary
+      - location_gazetteer
+    target_features:
+      - Wreck
+      - Obstruction
+      - UnderwaterAwashRock
+      - BuoyIsolatedDanger
+      - BeaconIsolatedDanger
+    contexts:
+      - navigation_safety
+      - grounding_risk
+  restricted_navigation_area:
+    aliases:
+      - 배가 못 지나가는 곳
+      - 통항 금지 구역
+      - 항행 제한 구역
+    default_context: navigation_safety
+    analysis_type: feature_search_by_radius
+    primary_agent: Spatial Analysis Agent
+    required_tools:
+      - geocoder.resolve_location
+      - gbenc.s101_feature_search_by_radius
+      - postgis.dwithin
+    required_data:
+      - GBENC_S101_feature
+      - s101_feature_dictionary
+      - marine_term_dictionary
+      - location_gazetteer
+    candidate_features:
+      - RestrictedArea
+      - TrafficSeparationScheme
+      - TrafficSeparationSchemeLanePart
+      - TrafficSeparationSchemeBoundary
+      - Fairway
+    contexts:
+      - navigation_safety
+      - route_planning
+    provenance: data/derived_concept_registry_v2.yaml
+  navigation_hazard_area:
+    aliases:
+      - 배가 못 지나가는 곳
+      - 통항 제한 구역
+    default_context: navigation_safety
+    analysis_type: feature_search_by_radius
+    primary_agent: Spatial Analysis Agent
+    candidate_features:
+      - RestrictedArea
+      - TrafficSeparationScheme
+      - TrafficSeparationSchemeLanePart
+    required_tools:
+      - geocoder.resolve_location
+      - gbenc.s101_feature_search_by_radius
+      - postgis.dwithin
+    required_data:
+      - GBENC_S101_feature
+      - s101_feature_dictionary
+      - location_gazetteer
+    contexts:
+      - navigation_safety
+      - grounding_risk
+      - route_planning
+    provenance: data/derived_concept_registry_v2.yaml
+  dynamic_traffic:
+    aliases:
+      - AIS
+      - V-PASS
+      - 선박통항
+    default_context: maritime_traffic
+    primary_agent: AIS/V-PASS Analysis Agent
+    required_data:
+      - DynamicTrafficLayer
+      - traffic_data_dictionary
+    contexts:
+      - maritime_traffic
+      - collision_risk

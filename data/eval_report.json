@@ -1,0 +1,610 @@
+{
+  "metrics": {
+    "total": 119,
+    "agent_accuracy": 97.47899159663865,
+    "tool_accuracy": 34.45378151260504,
+    "slot_f1": 49.71988795518206
+  },
+  "failed_cases": [
+    {
+      "query": "항로 주변 500m 이내 장애물을 표시해줘",
+      "true_agent": "Spatial Analysis Agent",
+      "pred_agent": "Spatial Analysis Agent",
+      "true_slots": {
+        "location": "항로",
+        "distance_m": 500,
+        "target_object": "장애물"
+      },
+      "pred_slots": {
+        "location": "항로 주변",
+        "distance_m": 500,
+        "target_object": "장애물을 표시해줘"
+      },
+      "slot_f1": 0.33
+    },
+    {
+      "query": "부표 종류를 알려줘",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "부표"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "nftc 코드가 의미하는 객체명을 찾아줘",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_code": "nftc"
+      },
+      "pred_slots": {
+        "target_term": "nftc 코드가"
+      },
+      "slot_f1": 0.0
+    },
+    {
+      "query": "해저케이블이 S-101에서 뭐야?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "해저케이블"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "수심 영역 종류를 알려줘",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "수심 영역"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "가공선이 의미하는 뜻이 뭐야",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "가공선"
+      },
+      "pred_slots": {
+        "target_term": "가공선이 의미하는 뜻"
+      },
+      "slot_f1": 0.0
+    },
+    {
+      "query": "해양보호구역 반경 10km 이내의 등대를 분석해줘",
+      "true_agent": "Spatial Analysis Agent",
+      "pred_agent": "Spatial Analysis Agent",
+      "true_slots": {
+        "location": "해양보호구역",
+        "distance_m": 10000,
+        "target_object": "등대"
+      },
+      "pred_slots": {
+        "location": "해양보호구역 반경",
+        "distance_m": 10000,
+        "target_object": "등대를 분석해줘"
+      },
+      "slot_f1": 0.33
+    },
+    {
+      "query": "정박구역 반경 1m 내의 Wreck 분석해봐",
+      "true_agent": "Spatial Analysis Agent",
+      "pred_agent": "Spatial Analysis Agent",
+      "true_slots": {
+        "location": "정박구역",
+        "distance_m": 1,
+        "target_object": "Wreck"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "해양보호구역 반경 5m 내의 Breakwater 분석해봐",
+      "true_agent": "Spatial Analysis Agent",
+      "pred_agent": "Spatial Analysis Agent",
+      "true_slots": {
+        "location": "해양보호구역",
+        "distance_m": 5,
+        "target_object": "Breakwater"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "S-101에서 난파선은 어떻게 표기해?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "난파선"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "S-101에서 어장은 어떻게 표기해?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "어장"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "군사제한구역 반경 500km 내의 OverheadCable 분석해봐",
+      "true_agent": "Spatial Analysis Agent",
+      "pred_agent": "Spatial Analysis Agent",
+      "true_slots": {
+        "location": "군사제한구역",
+        "distance_m": 500000,
+        "target_object": "OverheadCable"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "OverheadCable 객체는 지도에서 어떻게 그려져?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_feature": "OverheadCable"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "해양보호구역 반경 1m 내의 UnderwaterAwashRock 분석해봐",
+      "true_agent": "Spatial Analysis Agent",
+      "pred_agent": "Spatial Analysis Agent",
+      "true_slots": {
+        "location": "해양보호구역",
+        "distance_m": 1,
+        "target_object": "UnderwaterAwashRock"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "MarineFarm 객체는 지도에서 어떻게 그려져?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Spatial Analysis Agent",
+      "true_slots": {
+        "target_feature": "MarineFarm"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "군사제한구역 반경 5km 내의 RestrictedArea 분석해봐",
+      "true_agent": "Spatial Analysis Agent",
+      "pred_agent": "Spatial Analysis Agent",
+      "true_slots": {
+        "location": "군사제한구역",
+        "distance_m": 5000,
+        "target_object": "RestrictedArea"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "S-101에서 제한구역은 어떻게 표기해?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "제한구역"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "해상풍력이 S-101에서 무슨 객체야?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "해상풍력"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "양식장이 S-101에서 무슨 객체야?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "양식장"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "울산항 반경 50km 내의 Light 분석해봐",
+      "true_agent": "Spatial Analysis Agent",
+      "pred_agent": "Spatial Analysis Agent",
+      "true_slots": {
+        "location": "울산항",
+        "distance_m": 50000,
+        "target_object": "Light"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "항만이 S-101에서 무슨 객체야?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "항만"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "암초이 S-101에서 무슨 객체야?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "암초"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "S-101에서 부표은 어떻게 표기해?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "부표"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "부두이 S-101에서 무슨 객체야?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "부두"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "부표이 S-101에서 무슨 객체야?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "부표"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "목포항 반경 10km 내의 OverheadCable 분석해봐",
+      "true_agent": "Spatial Analysis Agent",
+      "pred_agent": "Spatial Analysis Agent",
+      "true_slots": {
+        "location": "목포항",
+        "distance_m": 10000,
+        "target_object": "OverheadCable"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "S-101에서 암초은 어떻게 표기해?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "암초"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "목포항 반경 3m 내의 RestrictedArea 분석해봐",
+      "true_agent": "Spatial Analysis Agent",
+      "pred_agent": "Spatial Analysis Agent",
+      "true_slots": {
+        "location": "목포항",
+        "distance_m": 3,
+        "target_object": "RestrictedArea"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "S-101에서 해저케이블은 어떻게 표기해?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "해저케이블"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "CableSubmarine 객체는 지도에서 어떻게 그려져?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Spatial Analysis Agent",
+      "true_slots": {
+        "target_feature": "CableSubmarine"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "OffshorePlatform 객체는 지도에서 어떻게 그려져?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Spatial Analysis Agent",
+      "true_slots": {
+        "target_feature": "OffshorePlatform"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "부두이 S-101에서 무슨 객체야?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "부두"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "S-101에서 해저케이블은 어떻게 표기해?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "해저케이블"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "S-101에서 부두은 어떻게 표기해?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "부두"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "S-101에서 정박지은 어떻게 표기해?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "정박지"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "S-101에서 부표은 어떻게 표기해?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "부표"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "부표이 S-101에서 무슨 객체야?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "부표"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "HarbourFacility 객체는 지도에서 어떻게 그려져?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_feature": "HarbourFacility"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "난파선이 S-101에서 무슨 객체야?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "난파선"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "난파선이 S-101에서 무슨 객체야?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "난파선"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "HarbourFacility 객체는 지도에서 어떻게 그려져?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_feature": "HarbourFacility"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "S-101에서 암초은 어떻게 표기해?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "암초"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "해저케이블이 S-101에서 무슨 객체야?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "해저케이블"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "RestrictedArea 객체는 지도에서 어떻게 그려져?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_feature": "RestrictedArea"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "S-101에서 항로은 어떻게 표기해?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "항로"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "목포항 반경 3km 내의 Light 분석해봐",
+      "true_agent": "Spatial Analysis Agent",
+      "pred_agent": "Spatial Analysis Agent",
+      "true_slots": {
+        "location": "목포항",
+        "distance_m": 3000,
+        "target_object": "Light"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "울산항 반경 50m 내의 Berth 분석해봐",
+      "true_agent": "Spatial Analysis Agent",
+      "pred_agent": "Spatial Analysis Agent",
+      "true_slots": {
+        "location": "울산항",
+        "distance_m": 50,
+        "target_object": "Berth"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "S-101에서 부표은 어떻게 표기해?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "부표"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "부산항 반경 500m 내의 Breakwater 분석해봐",
+      "true_agent": "Spatial Analysis Agent",
+      "pred_agent": "Spatial Analysis Agent",
+      "true_slots": {
+        "location": "부산항",
+        "distance_m": 500,
+        "target_object": "Breakwater"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "부두이 S-101에서 무슨 객체야?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "부두"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "정박구역 반경 500m 내의 CableSubmarine 분석해봐",
+      "true_agent": "Spatial Analysis Agent",
+      "pred_agent": "Spatial Analysis Agent",
+      "true_slots": {
+        "location": "정박구역",
+        "distance_m": 500,
+        "target_object": "CableSubmarine"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "AnchorageArea 객체는 지도에서 어떻게 그려져?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_feature": "AnchorageArea"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "S-101에서 부표은 어떻게 표기해?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "부표"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "암초이 S-101에서 무슨 객체야?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "암초"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "Berth 객체는 지도에서 어떻게 그려져?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_feature": "Berth"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    },
+    {
+      "query": "S-101에서 제한구역은 어떻게 표기해?",
+      "true_agent": "Standard RAG Agent",
+      "pred_agent": "Standard RAG Agent",
+      "true_slots": {
+        "target_term": "제한구역"
+      },
+      "pred_slots": {},
+      "slot_f1": 0.0
+    }
+  ]
+}

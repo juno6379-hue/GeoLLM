@@ -1,0 +1,132 @@
+rules:
+  - rule_id: spatial_distance_rule
+    priority: 100
+    conditions:
+      any_keywords: ["반경", "이내", "주변", "근처", "거리", "km", "m", "항", "선석", "항로", "오륙도", "앞바다"]
+      any_actions: ["찾아줘", "분석", "표시", "지도", "검색", "보여"]
+    route:
+      primary_agent: "Spatial Analysis Agent"
+
+  - rule_id: standard_definition_rule
+    priority: 100
+    conditions:
+      any_keywords: ["정의", "뜻", "의미", "표준", "S-101", "규정", "SOLAS", "사양서", "명세서"]
+    route:
+      primary_agent: "Standard RAG Agent"
+
+  - rule_id: ais_rule
+    priority: 150
+    conditions:
+      any_keywords: ["AIS", "통항량", "선박", "항적", "MMSI", "CPA", "TCPA"]
+    route:
+      primary_agent: "AIS Analysis Agent"
+
+  - rule_id: map_output_rule
+    priority: 80
+    conditions:
+      any_keywords: ["지도", "표시", "레이어", "시각화"]
+    route:
+      add_agent: "Map Agent"
+
+  - rule_id: report_output_rule
+    priority: 80
+    conditions:
+      any_keywords: ["보고서", "PDF", "요약자료", "제출용"]
+    route:
+      add_agent: "Map Report Agent"
+
+  - rule_id: berth_feature_search
+    priority: 100
+    conditions:
+      any_terms:
+        - 선석
+        - 접안시설
+        - 배 대는 곳
+        - berth
+        - 계류시설
+      any_actions:
+        - 찾아줘
+        - 보여줘
+        - 검색
+        - 표시
+        - 조회
+    route:
+      primary_agent: Spatial Analysis Agent
+      secondary_agents:
+        - Data Discovery Agent
+        - Map Agent
+        - Validation Agent
+      required_tools:
+        - gbenc.s101_feature_search
+        - postgis.spatial_search
+      required_slots:
+        - target_feature
+        - location_or_bbox
+      output:
+        - map_layer
+        - attribute_table
+        - summary
+
+  - rule_id: berth_report_request
+    priority: 80
+    conditions:
+      any_terms:
+        - 선석
+        - 접안시설
+      any_actions:
+        - 보고서
+        - 정리
+        - 출력
+        - PDF
+    route:
+      add_agent:
+        - Map Report Agent
+
+  - rule_id: data_discovery_rule
+    priority: 110
+    conditions:
+      any_keywords: ["데이터", "통계", "조난사고", "사고", "관광", "레저", "CSV", "파일"]
+      any_actions: ["찾아줘", "검색", "보여줘", "알려줘"]
+    route:
+      primary_agent: "Data Discovery Agent"
+
+  - rule_id: drone_lidar_analysis
+    priority: 100
+    conditions:
+      any_terms:
+        - 드론
+        - LiDAR
+        - 라이다
+        - point cloud
+        - 포인트클라우드
+        - 점군
+        - 정사영상
+        - DSM
+        - DTM
+        - DEM
+        - 3D Tiles
+        - Potree
+        - 침하
+        - 변형
+        - 방파제 파손
+        - 호안 변형
+      any_actions:
+        - 분석
+        - 탐지
+        - 비교
+        - 중첩
+        - 시각화
+        - 가시화
+        - 변환
+    route:
+      primary_agent: Drone LiDAR Analysis Agent
+      secondary_agents:
+        - Data Discovery Agent
+        - Spatial Analysis Agent
+        - Vision·EO Agent
+        - Map·Report Agent
+        - Validation Agent
+      required_slots:
+        - area_of_interest
+        - input_assets
+        - analysis_type

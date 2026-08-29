@@ -1,0 +1,22 @@
+analysis_types:
+  feature_search_by_radius:
+    primary_agent: Spatial Analysis Agent
+    secondary_agents:
+      - Data Discovery Agent
+      - Map Report Agent
+      - Validation Agent
+    required_tools:
+      - geocoder.resolve_location
+      - gbenc.s101_feature_search_by_radius
+      - postgis.dwithin
+    required_data:
+      - GBENC_S101_feature
+      - GBENC_codeinformation
+      - s101_feature_dictionary
+      - marine_term_dictionary
+      - location_gazetteer
+    outputs:
+      - GeoJSON
+      - MapLayer
+      - FeatureTable
+      - Summary

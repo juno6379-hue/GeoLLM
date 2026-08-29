@@ -1,0 +1,46 @@
+version: '3.0'
+layer_class: DynamicTrafficLayer
+static_s101_feature: false
+layers:
+  ais_route_analysis:
+    source: AIS
+    source_path: Dataset/AIS항로분석.zip
+    data_type: dynamic_traffic_derived
+    geometry_type: Polygon
+    route_density_line_grid: grid_density
+    crs: EPSG:5179
+    related_concepts:
+      - traffic_density
+      - collision_risk
+      - route_risk
+  ais_major_route:
+    source: AIS
+    source_path: Dataset/AIS주요통항로분석.zip
+    data_type: dynamic_traffic_derived
+    geometry_type: raster_tile
+    route_density_line_grid: major_route_raster_tile
+    related_concepts:
+      - traffic_density
+      - collision_risk
+      - route_risk
+  vpass_route_analysis:
+    source: V-PASS
+    source_path: Dataset/V-PASS항로분석.zip
+    data_type: dynamic_traffic_derived
+    geometry_type: Polygon
+    route_density_line_grid: grid_density
+    crs: EPSG:5179
+    related_concepts:
+      - small_vessel_traffic
+      - collision_risk
+      - rescue_vulnerability
+  vpass_major_route:
+    source: V-PASS
+    source_path: Dataset/V-PASS주요통항로분석.zip
+    data_type: dynamic_traffic_derived
+    geometry_type: raster_tile
+    route_density_line_grid: major_route_raster_tile
+    related_concepts:
+      - small_vessel_traffic
+      - collision_risk
+      - rescue_vulnerability

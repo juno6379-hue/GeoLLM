@@ -1,0 +1,29 @@
+version: '2.0'
+datasets:
+  GBENC_S101_feature:
+    zone: serving
+    source: s100_dev_postgis.projection.s101_feature_current
+    status: restored_geometry_pending
+  GBENC_codeinformation:
+    zone: serving
+    source: s100_dev_postgis.canonical.feature_attribute_value
+    status: v2_catalogue_attribute_source
+  s101_feature_dictionary:
+    zone: knowledge
+    path: data/s101_feature_dictionary_v2.yaml
+  marine_term_dictionary:
+    zone: knowledge
+    path: data/marine_term_dictionary.yaml
+  location_gazetteer:
+    zone: serving
+    source: public.maritime_gazetteer
+    status: pending_restore
+  domestic_marine_layers:
+    zone: standardized
+    registry: data/spatial_layer_registry.yaml
+  DynamicTrafficLayer:
+    zone: serving
+    registry: data/traffic_layer_registry.yaml
+  accident_data:
+    zone: standardized
+    dictionary: data/accident_dictionary.yaml

@@ -1,0 +1,15 @@
+version: '2.0'
+tools:
+  geocoder.resolve_location:
+    kind: geocoding
+    provenance_required: true
+  gbenc.s101_feature_search_by_radius:
+    kind: spatial_query
+    template: feature_search_by_radius
+  postgis.dwithin:
+    kind: spatial_function
+    function: ST_DWithin
+  rag.graph_scoped_retrieve:
+    kind: graph_rag
+  traffic.dynamic_layer_search:
+    kind: temporal_spatial_query

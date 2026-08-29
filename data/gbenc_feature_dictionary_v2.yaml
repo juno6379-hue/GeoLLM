@@ -1,0 +1,18 @@
+version: '2.0'
+source: S100_dev_postgis
+table: projection.s101_feature_current
+columns:
+- name: feature_instance_id
+  type: bigint
+  role: feature_id
+- name: feature_type_code
+  type: integer
+  role: feature_type_code
+- name: geometry
+  type: geometry
+  srid: 4326
+- name: attributes
+  type: jsonb
+  role: feature_attributes
+catalogue_authority: s101_feature_dictionary_v2.yaml
+provenance_required: true

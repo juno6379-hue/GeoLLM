@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: an_geollm_postgis
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: marine_geo
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    container_name: geollm_backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../.env
+    environment:
+      # 로컬호스트 대신 도커 내부 DNS인 'db' 사용
+      - POSTGIS_URL=postgresql://postgres:postgres@db:5432/marine_geo
+      # The development database hosts the GBENC-compatible public.feature table.
+      - GBENC_DB_HOST=db
+      - GBENC_DB_PORT=5432
+      - GBENC_DB_NAME=marine_geo
+      - GBENC_DB_USER=postgres
+      - GBENC_DB_PASSWORD=postgres
+      - APP_STATE_DB_PATH=/app/geollm_results/geollm_state.sqlite3
+      - LANG=C.UTF-8
+      - LC_ALL=C.UTF-8
+      - PYTHONUTF8=1
+      - PYTHONIOENCODING=utf-8
+    depends_on:
+      - db
+    restart: unless-stopped
+    volumes:
+      - ../geollm_results:/app/geollm_results
+      - ../services:/app/services
+      - ../shared:/app/shared
+      - ../data:/app/data
+      - ../outputs:/app/outputs
+      - ../scripts:/app/scripts
+      - ../services/orchestrator/static:/app/services/orchestrator/static
+
+  tile-server:
+    image: geollm-container-1:latest
+    container_name: geollm-container-1
+    ports:
+      - "8057:8057"
+      - "8657:8657"
+      - "8687:8687"
+    environment:
+      - TileServer__MapEngineFallback__PreferMapEngine=false
+      - TileServer__MapEngineFallback__Enabled=true
+      - TileServer__MapEngineFallback__Url=http://127.0.0.1:8057/encService
+      - ASPNETCORE_URLS=http://0.0.0.0:8057
+      - TileServer__Host=0.0.0.0
+      - TileServer__Port=8657
+      - PORT=8687
+      - BACKEND_URL=http://127.0.0.1:8657/encService
+      - WMTS_TILE_ROOT=/data/tiles
+      - TILE_SOURCE_ROOT=/data/tiles
+      - TILE_CACHE_ROOT=/data/tiles/cache
+    volumes:
+      - ../appsettings.json:/app/tile-server/appsettings.json
+      - ../tiles:/app/tiles
+    restart: unless-stopped
+
+volumes:
+  postgis_data:

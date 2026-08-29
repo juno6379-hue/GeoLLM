@@ -1,0 +1,2794 @@
+{
+  "version": "2.0.0",
+  "source": {
+    "name": "Electronic Navigational Chart",
+    "scope": "Ocean, Coastal, Ports and Harbors. Excludes Inland waters.",
+    "fieldOfApplication": "Marine Navigation",
+    "versionNumber": "2.0.0",
+    "versionDate": "2024-10-16",
+    "productId": "S-101",
+    "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml",
+    "sha256": "2743d0689d8a2130f9b809554591d794f01cd9953f222f065ac891b590bd3cfc",
+    "namespace_aware": true
+  },
+  "features": [
+    {
+      "code": "QualityOfNonBathymetricData",
+      "nftc": null,
+      "name": "Quality of Non-Bathymetric Data",
+      "definition": "An area within which a uniform assessment of the quality of the non-bathymetric data exists.",
+      "aliases": [
+        "M_ACCY"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "DataCoverage",
+      "nftc": null,
+      "name": "Data Coverage",
+      "definition": "A geographical area that describes the coverage and extent of spatial objects.",
+      "aliases": [
+        "M_COVR",
+        "M_CSCL"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "NavigationalSystemOfMarks",
+      "nftc": null,
+      "name": "Navigational System of Marks",
+      "definition": "An area within which the navigational system of marks has been established in relation to a specific direction.",
+      "aliases": [
+        "M_NSYS"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "LocalDirectionOfBuoyage",
+      "nftc": null,
+      "name": "Local Direction of Buoyage",
+      "definition": "An area within which the navigational system of marks has been established in relation to a specific direction.",
+      "aliases": [
+        "M_NSYS"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "QualityOfBathymetricData",
+      "nftc": null,
+      "name": "Quality of Bathymetric Data",
+      "definition": "An area within which a uniform assessment of the quality of the bathymetric data exists.",
+      "aliases": [
+        "M_QUAL"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "SoundingDatum",
+      "nftc": null,
+      "name": "Sounding Datum",
+      "definition": "The horizontal plane or tidal datum to which soundings have been reduced. Also called datum for sounding reduction.",
+      "aliases": [
+        "M_SDAT"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "VerticalDatumOfData",
+      "nftc": null,
+      "name": "Vertical Datum of Data",
+      "definition": "Any level surface (for example Mean Sea Level) taken as a surface of reference to which the elevations within a data set are reduced. Also called datum level, reference level, reference plane, levelling datum, datum for heights.",
+      "aliases": [
+        "M_VDAT"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "QualityOfSurvey",
+      "nftc": null,
+      "name": "Quality of Survey",
+      "definition": "An area within which a uniform assessment of the reliability of source survey information exists.",
+      "aliases": [
+        "M_SREL"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "UpdateInformation",
+      "nftc": null,
+      "name": "Update Information",
+      "definition": "The Update Information metadata feature is used to represent a change to the information shown.",
+      "aliases": [],
+      "primitives": [
+        "point",
+        "curve",
+        "surface",
+        "noGeometry"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "MagneticVariation",
+      "nftc": null,
+      "name": "Magnetic Variation",
+      "definition": "The angle between the magnetic and geographic meridians at any place, expressed in degrees east or west to indicate the direction of magnetic north from true north. Also called magnetic declination.",
+      "aliases": [
+        "MAGVAR",
+        "Magnetic Declination",
+        "Variation"
+      ],
+      "primitives": [
+        "point",
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "LocalMagneticAnomaly",
+      "nftc": null,
+      "name": "Local Magnetic Anomaly",
+      "definition": "An anomaly of the magnetic field of the Earth, extending over a relatively small area, due to local magnetic influences. Also called local attraction or magnetic anomaly.",
+      "aliases": [
+        "LOCMAG",
+        "Local Attraction",
+        "Magnetic Anomaly",
+        "Local Magnetic Disturbance"
+      ],
+      "primitives": [
+        "point",
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Coastline",
+      "nftc": null,
+      "name": "Coastline",
+      "definition": "The line where shore and water meet. Shoreline and coastline are generally used synonymously.",
+      "aliases": [
+        "COALNE"
+      ],
+      "primitives": [
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "LandArea",
+      "nftc": 71,
+      "name": "Land Area",
+      "definition": "The solid portion of the Earth's surface, as opposed to sea, water.",
+      "aliases": [
+        "LNDARE"
+      ],
+      "primitives": [
+        "point",
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "IslandGroup",
+      "nftc": null,
+      "name": "Island Group",
+      "definition": "A named group of islands, including archipelagos.",
+      "aliases": [
+        "C_AGGR"
+      ],
+      "primitives": [
+        "surface",
+        "noGeometry"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "LandElevation",
+      "nftc": null,
+      "name": "Land Elevation",
+      "definition": "An elevation is the vertical distance of a point or a level, on, or affixed to, the surface of the earth, measured from a specified vertical datum.",
+      "aliases": [
+        "LNDELV"
+      ],
+      "primitives": [
+        "point",
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "River",
+      "nftc": null,
+      "name": "River",
+      "definition": "A relatively large natural stream of water.",
+      "aliases": [
+        "RIVERS"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Rapids",
+      "nftc": null,
+      "name": "Rapids",
+      "definition": "Portions of a stream with accelerated current where it descends rapidly but without a break in the slope of the bed sufficient to form a waterfall. Usually used in the plural.",
+      "aliases": [
+        "RAPIDS"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Waterfall",
+      "nftc": null,
+      "name": "Waterfall",
+      "definition": "A vertically descending part of a watercourse where it falls from a height (for example: over a rock or a precipice). In place names, commonly shortened to fall or falls, for example Niagara Falls.",
+      "aliases": [
+        "WATFAL"
+      ],
+      "primitives": [
+        "point",
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Lake",
+      "nftc": null,
+      "name": "Lake",
+      "definition": "A large body of water entirely surrounded by land.",
+      "aliases": [
+        "LAKARE"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "LandRegion",
+      "nftc": null,
+      "name": "Land Region",
+      "definition": "An area of natural or cultivated scenery defined by its geographical characteristics and may be known by its proper name.",
+      "aliases": [
+        "LNDRGN"
+      ],
+      "primitives": [
+        "point",
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Vegetation",
+      "nftc": null,
+      "name": "Vegetation",
+      "definition": "Plants collectively or individually, especially those dominating a particular area or habitat.",
+      "aliases": [
+        "VEGATN"
+      ],
+      "primitives": [
+        "point",
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "IceArea",
+      "nftc": null,
+      "name": "Ice Area",
+      "definition": "An area of ice over land or water.",
+      "aliases": [
+        "ICEARE"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "SlopingGround",
+      "nftc": null,
+      "name": "Sloping Ground",
+      "definition": "An inclined surface.",
+      "aliases": [
+        "SLOGRD"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "SlopeTopline",
+      "nftc": null,
+      "name": "Slope Topline",
+      "definition": "The upper marking of a slope, for example the ridge line or the separation line between two different gradients.",
+      "aliases": [
+        "SLOTOP"
+      ],
+      "primitives": [
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Tideway",
+      "nftc": null,
+      "name": "Tideway",
+      "definition": "A channel through which a tidal current runs.",
+      "aliases": [
+        "TIDEWY"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "BuiltUpArea",
+      "nftc": null,
+      "name": "Built-Up Area",
+      "definition": "An area of land or construction over the water containing a concentration of buildings and/or other structures.",
+      "aliases": [
+        "BUAARE"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Building",
+      "nftc": null,
+      "name": "Building",
+      "definition": "A free-standing self-supporting construction that is roofed, usually walled, and is intended for human occupancy (for example: a place of work or recreation) and/or habitation.",
+      "aliases": [
+        "BUISGL"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "AirportAirfield",
+      "nftc": null,
+      "name": "Airport/Airfield",
+      "definition": "A defined area on land (including any buildings, installations and equipment) intended to be used either wholly or in part for the arrival, departure and surface movement of aircraft.",
+      "aliases": [
+        "AIRARE"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Runway",
+      "nftc": null,
+      "name": "Runway",
+      "definition": "A defined area, on a land aerodrome, prepared for the landing and take-off run of aircraft.",
+      "aliases": [
+        "RUNWAY"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Helipad",
+      "nftc": null,
+      "name": "Helipad",
+      "definition": "A site on which helicopters may land and take off.",
+      "aliases": [],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Bridge",
+      "nftc": null,
+      "name": "Bridge",
+      "definition": "A structure erected over a depression or an obstacle such as a body of water, railroad, etc., to provide a roadway for vehicles or pedestrians.",
+      "aliases": [
+        "BRIDGE"
+      ],
+      "primitives": [
+        "curve",
+        "surface",
+        "noGeometry"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "SpanFixed",
+      "nftc": null,
+      "name": "Span Fixed",
+      "definition": "A fixed component of the deck of a bridge spanning successive bridge piers.",
+      "aliases": [
+        "BRIDGE"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "SpanOpening",
+      "nftc": null,
+      "name": "Span Opening",
+      "definition": "An opening component of the deck of a bridge spanning successive bridge piers.",
+      "aliases": [
+        "BRIDGE"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Conveyor",
+      "nftc": null,
+      "name": "Conveyor",
+      "definition": "A mechanical device for conveying bulk material or people using an endless moving belt or series of rollers.",
+      "aliases": [
+        "CONVYR"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "CableOverhead",
+      "nftc": null,
+      "name": "Cable Overhead",
+      "definition": "A single continuous rope-like bundle consisting of multiple strands of fiber, plastic, metal, and/or glass, which is supported by structures such as poles or pylons and passing over or nearby navigable waters.",
+      "aliases": [
+        "CBLOHD"
+      ],
+      "primitives": [
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "PipelineOverhead",
+      "nftc": null,
+      "name": "Pipeline Overhead",
+      "definition": "A string of interconnected pipes, supported by pylons and passing over or nearby navigable waters, used for the transport of matter, nowadays mainly oil or gas.",
+      "aliases": [
+        "PIPOHD"
+      ],
+      "primitives": [
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "PylonBridgeSupport",
+      "nftc": null,
+      "name": "Pylon/Bridge Support",
+      "definition": "A vertical construction consisting, for example, of a steel framework or pre-stressed concrete to carry cables, a bridge, etc.",
+      "aliases": [
+        "PYLONS"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "FenceWall",
+      "nftc": null,
+      "name": "Fence/Wall",
+      "definition": "A man-made barrier used as an enclosure or boundary or for protection.",
+      "aliases": [
+        "FNCLNE"
+      ],
+      "primitives": [
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Railway",
+      "nftc": null,
+      "name": "Railway",
+      "definition": "A rail or set of parallel rails on which a train, tram, or rail wagon runs.",
+      "aliases": [
+        "RAILWY"
+      ],
+      "primitives": [
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Road",
+      "nftc": null,
+      "name": "Road",
+      "definition": "A route with a specially prepared surface that is intended for use by wheeled vehicles or pedestrians.",
+      "aliases": [
+        "ROADWY"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Tunnel",
+      "nftc": null,
+      "name": "Tunnel",
+      "definition": "A passage that is open to the atmosphere at both ends, buried under the seabed or laid over the seafloor or bored under the ground or through mountains.",
+      "aliases": [
+        "TUNNEL"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Landmark",
+      "nftc": 74,
+      "name": "Landmark",
+      "definition": "Any prominent object at a fixed location on land which can be used in determining a location or a direction.",
+      "aliases": [
+        "LNDMRK"
+      ],
+      "primitives": [
+        "point",
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "SiloTank",
+      "nftc": null,
+      "name": "Silo/Tank",
+      "definition": "A large storage structure used for storing loose materials, liquids and/or gases.",
+      "aliases": [
+        "SILTNK"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "WindTurbine",
+      "nftc": null,
+      "name": "Wind Turbine",
+      "definition": "A tower and associated equipment that generates electrical power from wind. They can be sited offshore and may be either fixed or floating.",
+      "aliases": [
+        "LNDMRK (CATLMK = 19)"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "FortifiedStructure",
+      "nftc": null,
+      "name": "Fortified Structure",
+      "definition": "A structure that is specifically designed or reinforced to provide for defence from armed attack.",
+      "aliases": [
+        "FORSTC"
+      ],
+      "primitives": [
+        "point",
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "ProductionStorageArea",
+      "nftc": null,
+      "name": "Production/Storage Area",
+      "definition": "An area on land for the exploitation or storage of natural resources.",
+      "aliases": [
+        "PRDARE"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Checkpoint",
+      "nftc": null,
+      "name": "Checkpoint",
+      "definition": "An official location at which to register, declare and/or inspect goods and/or people.",
+      "aliases": [
+        "CHKPNT"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Hulk",
+      "nftc": null,
+      "name": "Hulk",
+      "definition": "The hull of a wrecked or condemned ship, from which the fittings and superstructure have usually been removed, which is moored in a permanent position or grounded. It may be abandoned or put to some other use.",
+      "aliases": [
+        "HULKES"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Pile",
+      "nftc": null,
+      "name": "Pile",
+      "definition": "A long heavy timber or section of steel, wood, concrete, etc., forced into the earth or seafloor to serve as a support, as for a pier, or to resist lateral pressure; or as a free standing pole within a marine environment.",
+      "aliases": [
+        "PILPNT"
+      ],
+      "primitives": [
+        "point",
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Dyke",
+      "nftc": null,
+      "name": "Dyke",
+      "definition": "A dyke (or dike) is an artificial embankment to contain or hold back water.",
+      "aliases": [
+        "DYKCON",
+        "Dike"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "ShorelineConstruction",
+      "nftc": null,
+      "name": "Shoreline Construction",
+      "definition": "A fixed artificial structure in the water and/or adjoining the land. It may also refer to features such as training walls, which are not necessarily connected to, nor form part of the shoreline.",
+      "aliases": [
+        "SLCONS"
+      ],
+      "primitives": [
+        "point",
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "StructureOverNavigableWater",
+      "nftc": null,
+      "name": "Structure Over Navigable Water",
+      "definition": "A roofed structure erected, or partly erected, over a body of water, to provide protection for a vessel or its cargo.",
+      "aliases": [],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Causeway",
+      "nftc": null,
+      "name": "Causeway",
+      "definition": "A raised way across low or wet ground or water.",
+      "aliases": [
+        "CAUSWY"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Canal",
+      "nftc": null,
+      "name": "Canal",
+      "definition": "An artificial waterway with no flow, or a controlled flow, used for navigation, or for draining or irrigating land (ditch).",
+      "aliases": [
+        "CANALS"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "DistanceMark",
+      "nftc": null,
+      "name": "Distance Mark",
+      "definition": "A distance mark indicates the distance measured from an origin and consists of either a solid visible structure or a distinct location without special installation. Usually found on canals.",
+      "aliases": [
+        "DISMAR"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Gate",
+      "nftc": null,
+      "name": "Gate",
+      "definition": "A structure that may be swung, drawn, or lowered to block an entrance or passageway on a watercourse.",
+      "aliases": [
+        "GATCON"
+      ],
+      "primitives": [
+        "point",
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Dam",
+      "nftc": null,
+      "name": "Dam",
+      "definition": "A barrier to check or confine anything in motion; particularly one constructed to hold back water and raise its level to form a reservoir, or to prevent flooding.",
+      "aliases": [
+        "DAMCON"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Crane",
+      "nftc": null,
+      "name": "Crane",
+      "definition": "A machine for lifting, shifting and lowering objects or materials by means of a swinging boom or with a lifting apparatus supported on an overhead track.",
+      "aliases": [
+        "CRANES"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Berth",
+      "nftc": 10,
+      "name": "Berth",
+      "definition": "A place, generally named or numbered, where a vessel may moor or anchor.",
+      "aliases": [
+        "BERTHS"
+      ],
+      "primitives": [
+        "point",
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Dolphin",
+      "nftc": null,
+      "name": "Dolphin",
+      "definition": "A post or group of posts, used for mooring or warping a vessel, or as an aid to navigation. The dolphin may be in the water, on a wharf or on the beach.",
+      "aliases": [],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Bollard",
+      "nftc": null,
+      "name": "Bollard",
+      "definition": "Small shaped post, mounted on a wharf or dolphin used to secure ship's lines.",
+      "aliases": [],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "DryDock",
+      "nftc": null,
+      "name": "Dry Dock",
+      "definition": "An artificial basin fitted with a gate or caisson, into which vessels can be floated and the water pumped out to expose the vessel's bottom. Also called graving dock.",
+      "aliases": [
+        "DRYDOC",
+        "Graving Dock"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "FloatingDock",
+      "nftc": null,
+      "name": "Floating Dock",
+      "definition": "A form of dry dock consisting of a floating structure of one or more sections which can be partly submerged by controlled flooding to receive a vessel, then raised by pumping out the water so that the vessel's bottom can be exposed.",
+      "aliases": [
+        "FLODOC"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Pontoon",
+      "nftc": null,
+      "name": "Pontoon",
+      "definition": "A floating structure, usually rectangular in shape which serves as landing, pier head, bridge support, etc.",
+      "aliases": [
+        "PONTON"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "DockArea",
+      "nftc": null,
+      "name": "Dock Area",
+      "definition": "An artificially enclosed area within which ships may moor and which may have gates to regulate water level.",
+      "aliases": [
+        "DOCARE"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Gridiron",
+      "nftc": null,
+      "name": "Gridiron",
+      "definition": "A structure in the intertidal zone serving as a support for vessels at low stages of the tide to permit work on the exposed portion of the vessel's hull.",
+      "aliases": [
+        "GRIDRN",
+        "Careening Grid"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "LockBasin",
+      "nftc": null,
+      "name": "Lock Basin",
+      "definition": "A wet dock in a waterway, permitting a ship to pass from one level to another.",
+      "aliases": [
+        "LOKBSN"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "MooringTrot",
+      "nftc": null,
+      "name": "Mooring Trot",
+      "definition": "A mooring is a place where a vessel may be secured. A mooring trot is a mooring that is composed of ground tackle, mooring cables, buoys and mooring berths on junction cables.",
+      "aliases": [
+        "C_AGGR"
+      ],
+      "primitives": [
+        "surface",
+        "noGeometry"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "SeaAreaNamedWaterArea",
+      "nftc": null,
+      "name": "Sea Area/Named Water Area",
+      "definition": "A geographically defined part of the sea or other navigable waters. It may be specified within its limits by its proper name.",
+      "aliases": [
+        "SEAARE"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "TidalStreamFloodEbb",
+      "nftc": null,
+      "name": "Tidal Stream - Flood/Ebb",
+      "definition": "Approximate tidal stream rates given as discrete rate values for flood and ebb flow during springs.",
+      "aliases": [
+        "TS_FEB"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "CurrentNonGravitational",
+      "nftc": null,
+      "name": "Current - Non-Gravitational",
+      "definition": "Any current that is caused by other than tide producing forces.",
+      "aliases": [
+        "CURENT",
+        "Non-Tidal Current"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "WaterTurbulence",
+      "nftc": null,
+      "name": "Water Turbulence",
+      "definition": "The disturbance of water caused by the interaction of any combination of waves, currents, tidal streams, wind, shoal patches and obstructions.",
+      "aliases": [
+        "WATTUR"
+      ],
+      "primitives": [
+        "point",
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "TidalStreamPanelData",
+      "nftc": null,
+      "name": "Tidal Stream Panel Data",
+      "definition": "Approximate tidal stream characteristics given as discrete value sets at a specified interval before and/or after a high or low water.",
+      "aliases": [
+        "TS_PAD"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Sounding",
+      "nftc": null,
+      "name": "Sounding",
+      "definition": "Measured or charted depth of water (may be a drying height), or the measurement of such a depth, which has been reduced to a vertical datum.",
+      "aliases": [
+        "SOUNDG"
+      ],
+      "primitives": [
+        "pointSet"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "DredgedArea",
+      "nftc": 38,
+      "name": "Dredged Area",
+      "definition": "An area of the bottom of a body of water which has been deepened by dredging.",
+      "aliases": [
+        "DRGARE"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "SweptArea",
+      "nftc": null,
+      "name": "Swept Area",
+      "definition": "An area that has been determined to be clear of navigational dangers to a specified depth.",
+      "aliases": [
+        "SWPARE"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "DepthContour",
+      "nftc": null,
+      "name": "Depth Contour",
+      "definition": "A line connecting points of equal water depth which is sometimes significantly displaced outside of soundings, symbols, and other chart detail for clarity as well as generalization. Depth contours therefore often represent an approximate location of the line of equal depth as related to the surveyed line delineated on the source.",
+      "aliases": [
+        "DEPCNT",
+        "Depth Curve"
+      ],
+      "primitives": [
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "DepthArea",
+      "nftc": null,
+      "name": "Depth Area",
+      "definition": "A water area whose depth is within a defined range of values.",
+      "aliases": [
+        "DEPARE"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "DepthNoBottomFound",
+      "nftc": null,
+      "name": "Depth - No Bottom Found",
+      "definition": "Upon investigation the bottom was not found at this depth.",
+      "aliases": [
+        "SOUNDG (QUASOU = 5)"
+      ],
+      "primitives": [
+        "pointSet"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "UnsurveyedArea",
+      "nftc": null,
+      "name": "Unsurveyed Area",
+      "definition": "An area where hydrographic survey data is non-existent.",
+      "aliases": [
+        "UNSARE"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "SeabedArea",
+      "nftc": null,
+      "name": "Seabed Area",
+      "definition": "A region of the seabed including the material of which it is composed and its physical characteristics. Also called nature of bottom, character (or characteristics) of the bottom, or quality of the bottom.",
+      "aliases": [
+        "SBDARE"
+      ],
+      "primitives": [
+        "point",
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "WeedKelp",
+      "nftc": null,
+      "name": "Weed/Kelp",
+      "definition": "Any macroscopic marine alga.",
+      "aliases": [
+        "WEDKLP"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Seagrass",
+      "nftc": null,
+      "name": "Seagrass",
+      "definition": "Any of various submerged monocotyledonous plants (such as eelgrass, tape grass, and turtle grass) of tropical to temperate usually shallow coastal waters that have narrow grass-like leaves and often form dense underwater meadows.",
+      "aliases": [
+        "WEDKLP (CATWED = 3)"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Sandwave",
+      "nftc": null,
+      "name": "Sandwave",
+      "definition": "Large mobile wave-like sediment feature in shallow water and composed of sand. The wavelength may reach 100 metres, the amplitude may be up to 20 metres.",
+      "aliases": [
+        "SNDWAV",
+        "Sand Wave",
+        "Sand-Wave",
+        "Mega-Ripple"
+      ],
+      "primitives": [
+        "point",
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Spring",
+      "nftc": null,
+      "name": "Spring",
+      "definition": "A natural issue of water or other substances from the earth. One on the bottom of the sea is called a submarine spring.",
+      "aliases": [
+        "SPRING"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "UnderwaterAwashRock",
+      "nftc": 153,
+      "name": "Underwater/Awash Rock",
+      "definition": "A concreted mass of stony material or coral which dries, is awash or is below the water surface.",
+      "aliases": [
+        "UWTROC"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Wreck",
+      "nftc": 159,
+      "name": "Wreck",
+      "definition": "The ruined remains of a stranded or sunken vessel which has been rendered useless.",
+      "aliases": [
+        "WRECKS"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Obstruction",
+      "nftc": 86,
+      "name": "Obstruction",
+      "definition": "In marine navigation, anything that hinders or prevents movement, particularly anything that endangers or prevents passage of a vessel. The term is usually used to refer to an isolated danger to navigation, such as a sunken rock or pinnacle.",
+      "aliases": [
+        "OBSTRN"
+      ],
+      "primitives": [
+        "point",
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "FoulGround",
+      "nftc": null,
+      "name": "Foul Ground",
+      "definition": "Areas over which it is safe to navigate but which should be avoided for anchoring, taking the ground or ground fishing.",
+      "aliases": [
+        "OBSTRN (CATOBS = 7)"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "DiscolouredWater",
+      "nftc": null,
+      "name": "Discoloured Water",
+      "definition": "Unnatural coloured areas in the sea which may or may not indicate the existence of shoals.",
+      "aliases": [
+        "CTNARE"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "FishingFacility",
+      "nftc": 54,
+      "name": "Fishing Facility",
+      "definition": "A structure for fishing purposes which can be an obstruction to ships in general. The position of these structures may vary frequently over time.",
+      "aliases": [
+        "FSHFAC"
+      ],
+      "primitives": [
+        "point",
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "MarineFarmCulture",
+      "nftc": 84,
+      "name": "Marine Farm/Culture",
+      "definition": "An assemblage of cages, nets, rafts and floats or posts where fish, including shellfish, are artificially cultivated.",
+      "aliases": [
+        "MARCUL"
+      ],
+      "primitives": [
+        "point",
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "OffshorePlatform",
+      "nftc": null,
+      "name": "Offshore Platform",
+      "definition": "A permanent offshore structure, either fixed or floating.",
+      "aliases": [
+        "OFSPLF"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "CableSubmarine",
+      "nftc": 27,
+      "name": "Cable Submarine",
+      "definition": "An assembly of wires or fibres, or a wire rope or chain, which has been laid underwater or buried beneath the seafloor.",
+      "aliases": [
+        "CBLSUB",
+        "Submarine Cable"
+      ],
+      "primitives": [
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "CableArea",
+      "nftc": null,
+      "name": "Cable Area",
+      "definition": "An area which contains one or more submarine cables.",
+      "aliases": [
+        "CBLARE"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "PipelineSubmarineOnLand",
+      "nftc": null,
+      "name": "Pipeline Submarine/On Land",
+      "definition": "A connected set of pipes for conveying liquids, slurries, or gases.",
+      "aliases": [
+        "PIPSOL"
+      ],
+      "primitives": [
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "SubmarinePipelineArea",
+      "nftc": null,
+      "name": "Submarine Pipeline Area",
+      "definition": "An area containing one or more submarine pipelines.",
+      "aliases": [
+        "PIPARE"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "OffshoreProductionArea",
+      "nftc": null,
+      "name": "Offshore Production Area",
+      "definition": "An area at sea within which there are production facilities.",
+      "aliases": [
+        "OSPARE"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "NavigationLine",
+      "nftc": null,
+      "name": "Navigation Line",
+      "definition": "A straight line extending towards an area of navigational interest and generally generated by two navigational aids or one navigational aid and a bearing.",
+      "aliases": [
+        "NAVLNE"
+      ],
+      "primitives": [
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "RecommendedTrack",
+      "nftc": null,
+      "name": "Recommended Track",
+      "definition": "A route which has been specially examined to ensure so far as possible that it is free of dangers and along which ships are advised to navigate.",
+      "aliases": [
+        "RECTRC"
+      ],
+      "primitives": [
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "RangeSystem",
+      "nftc": null,
+      "name": "Range System",
+      "definition": "Two or more features in the same horizontal direction, particularly those features so placed as navigational aids to mark any line of importance to vessels, as a channel. The one nearest the observer is the front mark and the one farthest from the observer is the rear mark.",
+      "aliases": [
+        "C_AGGR"
+      ],
+      "primitives": [
+        "curve",
+        "surface",
+        "noGeometry"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Fairway",
+      "nftc": 46,
+      "name": "Fairway",
+      "definition": "That part of a river, harbour and so on, where the main navigable channel for vessels of larger size lies. It is also the usual course followed by vessels entering or leaving harbours, called 'ship channel'.",
+      "aliases": [
+        "FAIRWY"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "FairwaySystem",
+      "nftc": null,
+      "name": "Fairway System",
+      "definition": "That part of a river, harbour and so on, where the main navigable channel for vessels of larger size lies. It is also the usual course followed by vessels entering or leaving harbours, called 'ship channel'. A fairway system is an aggregation of connected fairway features making up a complex fairway system.",
+      "aliases": [
+        "C_AGGR"
+      ],
+      "primitives": [
+        "surface",
+        "noGeometry"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "RecommendedRouteCentreline",
+      "nftc": null,
+      "name": "Recommended Route Centreline",
+      "definition": "The recommended route centreline indicates the 'centreline' of a recommended route.",
+      "aliases": [
+        "RCRTCL"
+      ],
+      "primitives": [
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "TwoWayRoutePart",
+      "nftc": null,
+      "name": "Two-Way Route Part",
+      "definition": "An area of a two-way route within which traffic flow is generally along one bearing (and possibly its reciprocal).",
+      "aliases": [
+        "TWRTPT"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "TwoWayRoute",
+      "nftc": null,
+      "name": "Two-Way Route",
+      "definition": "A route within defined limits inside which two way traffic is established, aimed at providing safe passage of ships through waters where navigation is difficult or dangerous.",
+      "aliases": [
+        "C_AGGR"
+      ],
+      "primitives": [
+        "surface",
+        "noGeometry"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "RecommendedTrafficLanePart",
+      "nftc": null,
+      "name": "Recommended Traffic Lane Part",
+      "definition": "A traffic flow pattern indicating a recommended directional movement of traffic where it is impractical or unnecessary to adopt an established direction of traffic flow.",
+      "aliases": [
+        "RCTLPT"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "DeepWaterRouteCentreline",
+      "nftc": null,
+      "name": "Deep Water Route Centreline",
+      "definition": "The Deep Water route centreline indicates the centreline of a route, the width of which is not explicitly defined.",
+      "aliases": [
+        "DWRTCL"
+      ],
+      "primitives": [
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "DeepWaterRoutePart",
+      "nftc": null,
+      "name": "Deep Water Route Part",
+      "definition": "An area of a deep water route within which ships proceed in the same direction.",
+      "aliases": [
+        "DWRTPT"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "DeepWaterRoute",
+      "nftc": null,
+      "name": "Deep Water Route",
+      "definition": "A route within defined limits which has been accurately surveyed for clearance of sea bottom and submerged obstacles as indicated on the chart.",
+      "aliases": [
+        "C_AGGR"
+      ],
+      "primitives": [
+        "surface",
+        "noGeometry"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "InshoreTrafficZone",
+      "nftc": null,
+      "name": "Inshore Traffic Zone",
+      "definition": "A routeing measure comprising a designated area between the landward boundary of a traffic separation scheme and the adjacent coast, to be used in accordance with the provisions of the International Regulations for Preventing Collisions at Sea.",
+      "aliases": [
+        "ISTZNE"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "PrecautionaryArea",
+      "nftc": null,
+      "name": "Precautionary Area",
+      "definition": "A routeing measure comprising an area within defined limits where ships must navigate with particular caution and within which the direction of traffic flow may be recommended.",
+      "aliases": [
+        "PRCARE"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "TrafficSeparationSchemeLanePart",
+      "nftc": 129,
+      "name": "Traffic Separation Scheme Lane Part",
+      "definition": "An area within defined limits in which one-way traffic is established. Natural obstacles, including those forming separation zones, may constitute a boundary.",
+      "aliases": [
+        "TSSLPT"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "SeparationZoneOrLine",
+      "nftc": null,
+      "name": "Separation Zone or Line",
+      "definition": "A zone or line separating the traffic lanes in which ships are proceeding in opposite, or nearly opposite directions; or separating a traffic lane from the adjacent sea area; or separating traffic lanes designated for particular classes of ships proceeding in the same direction.",
+      "aliases": [],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "TrafficSeparationSchemeBoundary",
+      "nftc": null,
+      "name": "Traffic Separation Scheme Boundary",
+      "definition": "The outer limit of a traffic lane part or a traffic separation scheme roundabout.",
+      "aliases": [
+        "TSSBND"
+      ],
+      "primitives": [
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "TrafficSeparationSchemeCrossing",
+      "nftc": null,
+      "name": "Traffic Separation Scheme Crossing",
+      "definition": "A defined area where traffic lanes cross.",
+      "aliases": [
+        "TSSCRS"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "TrafficSeparationSchemeRoundabout",
+      "nftc": null,
+      "name": "Traffic Separation Scheme Roundabout",
+      "definition": "A routeing measure comprising a separation point or circular separation zone and a circular traffic lane within defined limits. Traffic within the roundabout is separated by moving in a counter-clockwise direction around the separation point or zone.",
+      "aliases": [
+        "Roundabout",
+        "TSSRON"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "TrafficSeparationScheme",
+      "nftc": null,
+      "name": "Traffic Separation Scheme",
+      "definition": "A routeing measure aimed at the separation of opposing streams of traffic by appropriate means and by the establishment of traffic lanes.",
+      "aliases": [
+        "C_AGGR"
+      ],
+      "primitives": [
+        "surface",
+        "noGeometry"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "ArchipelagicSeaLaneArea",
+      "nftc": null,
+      "name": "Archipelagic Sea Lane Area",
+      "definition": "Sea lanes designated by an archipelagic State for the passage of ships and aircraft.",
+      "aliases": [
+        "ARCSLN"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "ArchipelagicSeaLaneAxis",
+      "nftc": null,
+      "name": "Archipelagic Sea Lane Axis",
+      "definition": "The reference line used to determine the maximum extents of an Archipelagic Sea Lane. It may not indicate the deepest water nor any recommended route or track.",
+      "aliases": [
+        "ASLXIS"
+      ],
+      "primitives": [
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "ArchipelagicSeaLane",
+      "nftc": null,
+      "name": "Archipelagic Sea Lane",
+      "definition": "Sea lanes designated by an archipelagic State for the passage of ships and aircraft. The Archipelagic Sea Lane aggregates all component parts of an Archipelagic Sea Lane system.",
+      "aliases": [
+        "C_AGGR"
+      ],
+      "primitives": [
+        "surface",
+        "noGeometry"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "RadioCallingInPoint",
+      "nftc": null,
+      "name": "Radio Calling-In Point",
+      "definition": "A designated position at which vessels are required to report to a traffic control centre. Also called reporting point or radio reporting point.",
+      "aliases": [
+        "RDOCAL",
+        "Radio Reporting Point",
+        "Reporting Point",
+        "Calling-In Point"
+      ],
+      "primitives": [
+        "point",
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "FerryRoute",
+      "nftc": null,
+      "name": "Ferry Route",
+      "definition": "A route in a body of water where a ferry crosses from one shoreline to another.",
+      "aliases": [
+        "FERYRT"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "RadarLine",
+      "nftc": null,
+      "name": "Radar Line",
+      "definition": "Recommended tracks along which ships can be guided by coastal radar stations in the event of bad visibility.",
+      "aliases": [
+        "RADLNE",
+        "Radar Guided Track"
+      ],
+      "primitives": [
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "RadarRange",
+      "nftc": null,
+      "name": "Radar Range",
+      "definition": "Indicates the coverage of a sea area by a radar surveillance station. Inside this area a vessel may request shore-based radar assistance, particularly in poor visibility.",
+      "aliases": [
+        "RADRNG"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "RadarStation",
+      "nftc": null,
+      "name": "Radar Station",
+      "definition": "A station with a transmitter emitting pulses of ultra-high frequency radio waves which are reflected by solid objects and are detected upon their return to the sending station.",
+      "aliases": [
+        "RADSTA"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "AnchorageArea",
+      "nftc": 4,
+      "name": "Anchorage Area",
+      "definition": "An area in which vessels or seaplanes anchor or may anchor.",
+      "aliases": [
+        "ACHARE"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "MooringArea",
+      "nftc": null,
+      "name": "Mooring Area",
+      "definition": "An area in which vessels may be secured to mooring buoys",
+      "aliases": [],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "AnchorBerth",
+      "nftc": null,
+      "name": "Anchor Berth",
+      "definition": "A designated area of water where a vessel, seaplane, etc., may anchor.",
+      "aliases": [
+        "ACHBRT"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "SeaplaneLandingArea",
+      "nftc": null,
+      "name": "Seaplane Landing Area",
+      "definition": "A designated portion of water for the landing and take-off of seaplanes.",
+      "aliases": [
+        "SPLARE"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "DumpingGround",
+      "nftc": null,
+      "name": "Dumping Ground",
+      "definition": "A sea area where dredged material or other potentially more harmful material, for example explosives, chemical waste, is deliberately deposited.",
+      "aliases": [
+        "DMPGRD"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "MilitaryPracticeArea",
+      "nftc": null,
+      "name": "Military Practice Area",
+      "definition": "An area within which naval, military or aerial exercises are carried out.",
+      "aliases": [
+        "MIPARE",
+        "Exercise Area"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "AdministrationArea",
+      "nftc": null,
+      "name": "Administration Area",
+      "definition": "A defined area within which a jurisdiction applies. It may or may not be named.",
+      "aliases": [
+        "ADMARE"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "CargoTranshipmentArea",
+      "nftc": null,
+      "name": "Cargo Transhipment Area",
+      "definition": "An area designated for transfer of cargo from one vessel to another sometimes in order to reduce a vessel's draught.",
+      "aliases": [
+        "CTSARE",
+        "Cargo Lightening Area",
+        "Cargo Transfer Area"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "CautionArea",
+      "nftc": null,
+      "name": "Caution Area",
+      "definition": "Generally, an area where the mariner has to be made aware of circumstances influencing the safety of navigation.",
+      "aliases": [
+        "CTNARE"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "InformationArea",
+      "nftc": null,
+      "name": "Information Area",
+      "definition": "An area for which general information regarding navigation, but not directly related to safety of navigation, is available.",
+      "aliases": [
+        "M_NPUB"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "ContiguousZone",
+      "nftc": null,
+      "name": "Contiguous Zone",
+      "definition": "A zone contiguous to a coastal State's Territorial Sea, which may not extend beyond 24 nautical miles from the baselines from which the breadth of the Territorial Sea is measured. The coastal State may exercise certain control in this zone subject to the provisions of International Law.",
+      "aliases": [
+        "CONZNE"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "ContinentalShelfArea",
+      "nftc": null,
+      "name": "Continental Shelf Area",
+      "definition": "The Continental Shelf of a coastal State comprises the seabed and subsoil of the submarine areas that extend beyond its Territorial Sea throughout the natural prolongation of its land territory to the outer edge of the continental margin, or to a distance of 200 nautical miles from the baselines from which the breadth of the Territorial Sea is measured where the outer edge of the continental margin does not extend up to that distance.",
+      "aliases": [
+        "COSARE"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "CustomZone",
+      "nftc": null,
+      "name": "Custom Zone",
+      "definition": "The area within which national custom regulations are in force.",
+      "aliases": [
+        "CUSZNE"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "ExclusiveEconomicZone",
+      "nftc": null,
+      "name": "Exclusive Economic Zone",
+      "definition": "An area, not exceeding 200 nautical miles from the baselines from which the breadth of the territorial sea is measured, subject to a specific legal regime established in the United Nations Convention on the Law of the Sea under which the coastal state has certain rights and jurisdiction.",
+      "aliases": [
+        "EXEZNE"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "FisheryZone",
+      "nftc": null,
+      "name": "Fishery Zone",
+      "definition": "The offshore zone in which exclusive fishing rights and management are held by the coastal nation.",
+      "aliases": [
+        "FSHZNE",
+        "Fishing Zone"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "FishingGround",
+      "nftc": null,
+      "name": "Fishing Ground",
+      "definition": "A water area in which fishing is frequently carried on.",
+      "aliases": [
+        "FSHGRD",
+        "Fishing Area",
+        "Fishing Zone"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "FreePortArea",
+      "nftc": null,
+      "name": "Free Port Area",
+      "definition": "A port where certain import and export duties are waived (unless goods pass into the country) to facilitate reshipment to other countries.",
+      "aliases": [
+        "FRPARE"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "HarbourAreaAdministrative",
+      "nftc": null,
+      "name": "Harbour Area (Administrative)",
+      "definition": "The area over which a harbour authority has jurisdiction.",
+      "aliases": [
+        "HRBARE"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "LogPond",
+      "nftc": null,
+      "name": "Log Pond",
+      "definition": "A maritime area enclosed with connected floating timbers used as a staging area for sawn logs.",
+      "aliases": [
+        "LOGPON"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "OilBarrier",
+      "nftc": null,
+      "name": "Oil Barrier",
+      "definition": "A floating barrier to stop and contain the spread of oil on a water body surface.",
+      "aliases": [
+        "OILBAR"
+      ],
+      "primitives": [
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "StraightTerritorialSeaBaseline",
+      "nftc": null,
+      "name": "Straight Territorial Sea Baseline",
+      "definition": "Straight baselines are a system of straight lines joining specified or discrete points on the low-water line, usually known as straight baseline turning points. Straight baselines are used in delimitation.",
+      "aliases": [
+        "STSLNE"
+      ],
+      "primitives": [
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "TerritorialSeaArea",
+      "nftc": null,
+      "name": "Territorial Sea Area",
+      "definition": "A belt of water of a defined breadth but not exceeding 12 nautical miles measured seaward from the territorial sea baseline.",
+      "aliases": [
+        "TESARE"
+      ],
+      "primitives": [
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "SubmarineTransitLane",
+      "nftc": null,
+      "name": "Submarine Transit Lane",
+      "definition": "A lane where submarines may navigate under water or at the surface.",
+      "aliases": [
+        "SUBTLN"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "PilotageDistrict",
+      "nftc": null,
+      "name": "Pilotage District",
+      "definition": "An area within which a pilotage direction exists. Such directions are regulated by a competent harbour authority which dictates circumstances under which they apply.",
+      "aliases": [],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "CollisionRegulationsLimit",
+      "nftc": null,
+      "name": "Collision Regulations Limit",
+      "definition": "Convention on the International Regulations for Preventing Collisions at Sea, 1972 (COLREGs). The demarcation line between inland navigation rules and international navigation rules.",
+      "aliases": [],
+      "primitives": [
+        "curve"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "MarinePollutionRegulationsArea",
+      "nftc": null,
+      "name": "Marine Pollution Regulations Area",
+      "definition": "The International Convention for the Prevention of Pollution from Ships (MARPOL) is the main international convention covering prevention of pollution of the marine environment by ships from operational or accidental causes.",
+      "aliases": [],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "RestrictedArea",
+      "nftc": 112,
+      "name": "Restricted Area",
+      "definition": "A specified area on land or water designated by an appropriate authority within which access or navigation is restricted in accordance with certain specified conditions.",
+      "aliases": [
+        "RESARE"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "LightAllAround",
+      "nftc": null,
+      "name": "Light All Around",
+      "definition": "An all around light is a light that is visible over the whole horizon of interest to marine navigation and having no change in the characteristics of the light.",
+      "aliases": [
+        "LIGHTS"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "LightSectored",
+      "nftc": null,
+      "name": "Light Sectored",
+      "definition": "A light presenting different appearances (in particular, different colours) over various parts of the horizon of interest to maritime navigation.",
+      "aliases": [
+        "LIGHTS",
+        "Sector Light"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "LightFogDetector",
+      "nftc": null,
+      "name": "Light Fog Detector",
+      "definition": "A fog detector light is a light used to automatically determine conditions of visibility which warrant the turning on or off of a sound signal.",
+      "aliases": [],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "LightAirObstruction",
+      "nftc": null,
+      "name": "Light Air Obstruction",
+      "definition": "An air obstruction light is a light marking an obstacle which constitutes a danger to air navigation.",
+      "aliases": [
+        "LIGHTS"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "LateralBuoy",
+      "nftc": null,
+      "name": "Lateral Buoy",
+      "definition": "A lateral buoy is used to indicate the port or starboard hand side of the route to be followed. They are generally used for well-defined channels and are used in conjunction with a conventional direction of buoyage.",
+      "aliases": [
+        "BOYLAT"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "CardinalBuoy",
+      "nftc": null,
+      "name": "Cardinal Buoy",
+      "definition": "A cardinal buoy is used in conjunction with the compass to indicate where the mariner may find the best navigable water. It is placed in one of the four quadrants (North, East, South and West), bounded by inter-cardinal bearings from the point marked.",
+      "aliases": [
+        "BOYCAR"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "IsolatedDangerBuoy",
+      "nftc": null,
+      "name": "Isolated Danger Buoy",
+      "definition": "An isolated danger buoy is a buoy moored on or above an isolated danger of limited extent, which has navigable water all around it.",
+      "aliases": [
+        "BOYISD"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "SafeWaterBuoy",
+      "nftc": null,
+      "name": "Safe Water Buoy",
+      "definition": "A safe water buoy is used to indicate that there is navigable water around the mark.",
+      "aliases": [
+        "BOYSAW"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "SpecialPurposeGeneralBuoy",
+      "nftc": null,
+      "name": "Special Purpose/General Buoy",
+      "definition": "A special purpose buoy is primarily used to indicate an area or feature, the nature of which is apparent from reference to a chart, Sailing Directions or Notices to Mariners.",
+      "aliases": [
+        "BOYSPP"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "EmergencyWreckMarkingBuoy",
+      "nftc": null,
+      "name": "Emergency Wreck Marking Buoy",
+      "definition": "An emergency wreck marking buoy is a buoy moored on or above a new wreck, designed to provide a prominent (both visual and radio) and easily identifiable temporary first response.",
+      "aliases": [],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "InstallationBuoy",
+      "nftc": null,
+      "name": "Installation Buoy",
+      "definition": "An installation buoy is a buoy used for loading tankers with gas or oil.",
+      "aliases": [
+        "BOYINB"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "MooringBuoy",
+      "nftc": null,
+      "name": "Mooring Buoy",
+      "definition": "A buoy secured to the bottom by permanent moorings with means for mooring a vessel by use of its anchor chain or mooring lines.",
+      "aliases": [],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "LateralBeacon",
+      "nftc": null,
+      "name": "Lateral Beacon",
+      "definition": "A lateral beacon is used to indicate the port or starboard hand side of the route to be followed. They are generally used for well defined channels and are used in conjunction with a conventional direction of buoyage.",
+      "aliases": [
+        "BCNLAT"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "CardinalBeacon",
+      "nftc": null,
+      "name": "Cardinal Beacon",
+      "definition": "A cardinal beacon is used in conjunction with the compass to indicate where the mariner may find the best navigable water. It is placed in one of the four quadrants (North, East, South and West), bounded by inter-cardinal bearings from the point marked.",
+      "aliases": [
+        "BCNCAR"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "IsolatedDangerBeacon",
+      "nftc": null,
+      "name": "Isolated Danger Beacon",
+      "definition": "An isolated danger beacon is a beacon erected on an isolated danger of limited extent, which has navigable water all around it.",
+      "aliases": [
+        "BCNISD"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "SafeWaterBeacon",
+      "nftc": null,
+      "name": "Safe Water Beacon",
+      "definition": "A safe water beacon is used to indicate that there is navigable water around the mark.",
+      "aliases": [
+        "BCNSAW"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "SpecialPurposeGeneralBeacon",
+      "nftc": null,
+      "name": "Special Purpose/General Beacon",
+      "definition": "A special purpose beacon is primarily used to indicate an area or feature, the nature of which is apparent from reference to a chart, Sailing Directions or Notices to Mariners.",
+      "aliases": [
+        "BCNSPP"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Daymark",
+      "nftc": null,
+      "name": "Daymark",
+      "definition": "The identifying characteristics of an aid to navigation which serve to facilitate its recognition against a daylight viewing background. On those structures that do not by themselves present an adequate viewing area to be seen at the required distance, the aid is made more visible by affixing a daymark to the structure. A daymark so affixed has a distinctive colour and shape depending on the purpose of the aid.",
+      "aliases": [
+        "DAYMAR"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "LightFloat",
+      "nftc": null,
+      "name": "Light Float",
+      "definition": "A boat-like structure used instead of a light buoy in waters where strong streams or currents are experienced, or when a greater elevation than that of a light buoy is necessary.",
+      "aliases": [
+        "LITFLT"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "LightVessel",
+      "nftc": null,
+      "name": "Light Vessel",
+      "definition": "A distinctively marked vessel anchored or moored at a charted point, to serve as an aid to navigation. By night, it displays a characteristic light(s) and is usually equipped with other devices, such as fog signal, submarine sound signal, and radio-beacon, to assist navigation.",
+      "aliases": [
+        "LITVES",
+        "Lightship"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Retroreflector",
+      "nftc": null,
+      "name": "Retroreflector",
+      "definition": "A means of distinguishing unlighted marks at night. Retroreflective material is secured to the mark in a particular pattern to reflect back light.",
+      "aliases": [
+        "RETRFL"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "RadarReflector",
+      "nftc": null,
+      "name": "Radar Reflector",
+      "definition": "A device capable of, or intended for, reflecting radar signals.",
+      "aliases": [
+        "RADRFL"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "FogSignal",
+      "nftc": null,
+      "name": "Fog Signal",
+      "definition": "A warning signal transmitted by a vessel, or aid to navigation, during periods of low visibility. Also, the device producing such a signal.",
+      "aliases": [
+        "FOGSIG"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "PhysicalAISAidToNavigation",
+      "nftc": null,
+      "name": "Physical AIS Aid to Navigation",
+      "definition": "An Automatic Identification System (AIS) message 21 transmitted from a physical Aid to Navigation, or transmitted from an AIS station for an Aid to Navigation which physically exists.",
+      "aliases": [],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "VirtualAISAidToNavigation",
+      "nftc": null,
+      "name": "Virtual AIS Aid to Navigation",
+      "definition": "An Automatic Identification System (AIS) message 21 transmitted from an AIS station to simulate on navigation systems an Aid to Navigation which does not physically exist.",
+      "aliases": [
+        "NEWOBJ"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "RadioStation",
+      "nftc": null,
+      "name": "Radio Station",
+      "definition": "A place equipped to transmit radio waves. Such a station may be either stationary or mobile, and may also be provided with a radio receiver.",
+      "aliases": [
+        "RDOSTA",
+        "W/T Station"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "RadarTransponderBeacon",
+      "nftc": null,
+      "name": "Radar Transponder Beacon",
+      "definition": "A transponder beacon transmitting a coded signal on radar frequency, permitting an interrogating craft to determine the bearing and range of the transponder.",
+      "aliases": [
+        "RTPBCN",
+        "Radar Beacon",
+        "RACON"
+      ],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "PilotBoardingPlace",
+      "nftc": null,
+      "name": "Pilot Boarding Place",
+      "definition": "A location offshore where a pilot may board a vessel in preparation to piloting it through local waters.",
+      "aliases": [
+        "PILBOP"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "VesselTrafficServiceArea",
+      "nftc": null,
+      "name": "Vessel Traffic Service Area",
+      "definition": "The area of any service implemented by a relevant authority primarily designed to improve safety and efficiency of traffic flow and the protection of the environment. It may range from simple information messages, to extensive organisation of the traffic involving national or regional schemes.",
+      "aliases": [
+        "ADMARE",
+        "VTS Area"
+      ],
+      "primitives": [
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "CoastGuardStation",
+      "nftc": null,
+      "name": "Coast Guard Station",
+      "definition": "A station at which a visual/radio/radar marine watch is kept either continuously or at certain times only.",
+      "aliases": [
+        "CGUSTA"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "SignalStationWarning",
+      "nftc": null,
+      "name": "Signal Station Warning",
+      "definition": "A warning signal station is a place on shore from which warning signals are made to ships at sea.",
+      "aliases": [
+        "SISTAW"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "SignalStationTraffic",
+      "nftc": null,
+      "name": "Signal Station Traffic",
+      "definition": "A traffic signal station is a place on shore from which signals are made to regulate the movement of traffic.",
+      "aliases": [
+        "SISTAT"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "RescueStation",
+      "nftc": null,
+      "name": "Rescue Station",
+      "definition": "A place where equipment for saving life at sea is maintained.",
+      "aliases": [
+        "RSCSTA",
+        "Life Saving Station"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "HarbourFacility",
+      "nftc": 64,
+      "name": "Harbour Facility",
+      "definition": "A harbour installation with a service or commercial operation of public interest.",
+      "aliases": [
+        "HRBFAC"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "SmallCraftFacility",
+      "nftc": null,
+      "name": "Small Craft Facility",
+      "definition": "A place at which a service generally of interest to small craft or pleasure boats is available.",
+      "aliases": [
+        "SMCFAC"
+      ],
+      "primitives": [
+        "point",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "TextPlacement",
+      "nftc": null,
+      "name": "Text Placement",
+      "definition": "The Text Placement feature is used in association with the Feature Name attribute or a light description to optimize text positioning in ECDIS.",
+      "aliases": [],
+      "primitives": [
+        "point"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    },
+    {
+      "code": "Chart1Feature",
+      "nftc": null,
+      "name": "Chart 1 Feature",
+      "definition": "A feature which exists to support the rendering of graphics or text in order to provide additional information that cannot be encoded using other features.",
+      "aliases": [],
+      "primitives": [
+        "point",
+        "pointSet",
+        "curve",
+        "surface"
+      ],
+      "attribute_bindings": [],
+      "source": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml"
+    }
+  ]
+}

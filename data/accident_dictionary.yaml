@@ -1,0 +1,13 @@
+version: '2.0'
+source_type: accident_data
+required_columns:
+- source_id
+- event_id
+- occurred_at
+- location
+- severity
+- provenance
+relations:
+- related_s101_feature
+- related_dynamic_traffic_layer
+- risk_profile

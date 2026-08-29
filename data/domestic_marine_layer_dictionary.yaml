@@ -1,0 +1,16 @@
+version: '2.0'
+source_types:
+- domestic_static_spatial_layer
+- marine_gazetteer
+standard:
+  crs: EPSG:4326
+  required_columns:
+  - source_id
+  - layer_id
+  - geom
+  - dataset_version
+  - provenance
+  geometry_validation:
+  - is_valid
+  - has_srid
+  - non_empty

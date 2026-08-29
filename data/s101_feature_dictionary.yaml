@@ -1,0 +1,71 @@
+s101_features:
+  선석:
+    feature_candidates: ["Berth", "HarbourFacility", "MooringWarpingFacility"]
+    geometry_types: ["Point", "LineString", "Polygon"]
+    ambiguity_policy: "request_user_clarification_if_multiple"
+    requires_location: true
+  정박지:
+    feature_candidates: ["AnchorageArea"]
+    geometry_types: ["Polygon"]
+  제한구역:
+    feature_candidates: ["RestrictedAreaNavigational", "RestrictedAreaRegulatory"]
+    geometry_types: ["Polygon"]
+  침선:
+    feature_candidates: ["Wreck"]
+    geometry_types: ["Point", "Polygon"]
+  장애물:
+    feature_candidates: ["Obstruction"]
+    geometry_types: ["Point", "LineString", "Polygon"]
+  암초:
+    feature_candidates: ["UnderwaterAwashRock"]
+    geometry_types: ["Point"]
+  해저케이블:
+    feature_candidates: ["CableSubmarine", "CableArea"]
+    geometry_types: ["LineString", "Polygon"]
+  등화:
+    feature_candidates: ["Light"]
+    geometry_types: ["Point"]
+  부표:
+    feature_candidates: ["BuoyCardinal", "BuoyLateral", "BuoyIsolatedDanger", "BuoySafeWater", "BuoySpecialPurposeGeneral"]
+    geometry_types: ["Point"]
+    ambiguity_policy: "allow_multiple_candidates"
+  위험객체:
+    feature_candidates: ["Wreck", "Obstruction", "Rock", "UnderwaterAwashRock", "BuoyIsolatedDanger", "BeaconIsolatedDanger"]
+    geometry_types: ["Point", "LineString", "Polygon"]
+    ambiguity_policy: "allow_multiple_candidates"
+  hazard_area:
+    feature_candidates: ["DepthArea", "RestrictedArea"]
+    geometry_types: ["Polygon"]
+    ambiguity_policy: "allow_multiple_candidates"
+
+feature_policies:
+  AnchorageArea:
+    allowed_templates: ["feature_search_by_area", "feature_search_by_radius", "feature_overlap_analysis", "nearest_feature_search"]
+    default_style: "anchorage_polygon"
+    default_popup_fields: ["feature_name", "nftc", "status", "source_dataset"]
+    valid_geometry_types: ["Polygon"]
+    requires_rendering_rule: true
+  Wreck:
+    allowed_templates: ["feature_search_by_area", "feature_search_by_radius", "distance_to_route"]
+    default_style: "hazard_point"
+    default_popup_fields: ["feature_name", "depth", "category", "distance_m", "risk_level"]
+    valid_geometry_types: ["Point", "Polygon"]
+    risk_context: ["navigation_safety", "grounding_risk"]
+    post_processor: "wreck_risk_classifier"
+  Berth:
+    allowed_templates: ["feature_search_by_area", "feature_search_by_radius", "nearest_feature_search"]
+    default_style: "port_facility"
+    default_popup_fields: ["feature_name", "nftc", "length", "depth"]
+    valid_geometry_types: ["Point", "LineString", "Polygon"]
+  DepthArea:
+    allowed_templates: ["feature_search_by_area", "feature_search_by_radius"]
+    default_style: "depth_polygon"
+    default_popup_fields: ["feature_name", "drval1", "drval2", "depth_risk"]
+    valid_geometry_types: ["Polygon"]
+    post_processor: "depth_area_risk_classifier"
+  Light:
+    allowed_templates: ["feature_search_by_area", "feature_search_by_radius"]
+    default_style: "light_point"
+    default_popup_fields: ["feature_name", "interpreted_light", "valnmr"]
+    valid_geometry_types: ["Point"]
+    post_processor: "light_attribute_interpreter"

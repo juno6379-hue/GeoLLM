@@ -1,0 +1,15 @@
+layers:
+  gbenc_feature:
+    physical_table: "feature"
+    geometry_column: "geom"
+    code_column: "nftc"
+    code_mapping_table: "codeinformation"
+    srid: 4326
+    database_route: "gbenc"
+    dataset_version: "GBENC_2026_05"
+    
+  postgis_analysis:
+    physical_table: "analysis_result"
+    geometry_column: "geom"
+    srid: 4326
+    database_route: "postgis"

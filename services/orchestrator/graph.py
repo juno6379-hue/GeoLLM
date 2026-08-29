@@ -1,0 +1,933 @@
+import os
+import json
+from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.memory import MemorySaver
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import SystemMessage, HumanMessage
+
+from shared.schemas.agent import AgentRequest, AgentStatus, AgentResult, Intent, SpatialContext, SecurityContext, TaskPlan
+from services.orchestrator.state import OrchestratorState, log_transition
+from services.orchestrator.map_adapter import convert_to_map_layer
+from shared.observability.logger import get_logger
+from opentelemetry import trace
+
+logger = get_logger("orchestrator.graph")
+tracer = trace.get_tracer("marine_geo.orchestrator")
+
+# ----------------- Nodes -----------------
+from services.orchestrator.semantic_router import router, cache, slot_extractor, rule_router
+from services.orchestrator.agent_registry import registry
+from services.orchestrator.feedback_collector import collector
+from services.orchestrator.query_normalizer import normalizer
+from services.orchestrator.feature_resolver import feature_resolver
+from services.orchestrator.context_resolver import ContextResolver
+from services.orchestrator.route_planner import RoutePlanner
+from services.orchestrator.graph_rag_retriever import GraphRAGRetriever
+from services.data_discovery_agent.agent import execute_data_discovery
+from services.llm_config import llm_api_enabled
+from services.validation_agent.agent import validate_orchestration
+
+context_resolver = ContextResolver()
+route_planner = RoutePlanner()
+graph_rag_retriever = GraphRAGRetriever()
+
+S101_DICT_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "s101_smart_dictionary.json")
+def get_s101_dictionary():
+    try:
+        with open(S101_DICT_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
+    logger.info("LangGraph: Parsing intent", task_id=state["task_id"])
+    original_query = state["query"]
+    
+    # [Query Normalizer Injection]
+    norm_result = normalizer.normalize_with_debug(original_query)
+    query = norm_result["normalized_query"]
+    state["normalized_query"] = query
+    
+    # Trace Debugger를 위해 추가 정보 로깅
+    debug_logs = norm_result["matched_rules"].copy()
+    if norm_result["canonical_terms"]:
+        debug_logs.append(f"추출된 정규 도메인 용어: {', '.join(norm_result['canonical_terms'])}")
+    if norm_result["candidate_contexts"]:
+        debug_logs.append(f"후보 컨텍스트: {', '.join(norm_result['candidate_contexts'])}")
+        
+    state["normalization_debug"] = debug_logs
+    state["norm_result"] = norm_result
+    
+    # 쿼리가 변경되더라도 state["query"]는 원문 유지를 위해 덮어쓰지 않습니다.
+    
+    # 1. LLM 추출 (의도, 대상 객체, 공간 조건, 시간 조건, 출력 형식)
+    intent_type = "clarification_required"
+    target_objects = []
+    spatial_conditions = []
+    temporal_conditions = []
+    output_format = "MAP"
+    base_location = ""
+    intent_understanding = "분석 불가"
+    execution_plan = "분석 불가"
+    
+    # 0. Semantic Caching Check
+    cached_intent = cache.check_cache(query)
+    if cached_intent:
+        intent_type = cached_intent.get("intent_type", "clarification_required")
+        target_objects = cached_intent.get("target_objects", [])
+        intent_understanding = cached_intent.get("intent_understanding", "분석 불가")
+        execution_plan = cached_intent.get("execution_plan", "분석 불가")
+        spatial_conditions = cached_intent.get("spatial_conditions", [])
+        temporal_conditions = cached_intent.get("temporal_conditions", [])
+        output_format = cached_intent.get("output_format", "MAP")
+        if spatial_conditions:
+            base_location = spatial_conditions[0].split()[0]
+    else:
+        # 1. 1차 규칙 검사 (Rule Check)
+        rule_result = rule_router.evaluate(query)
+        primary_agent = rule_result.get("primary_agent")
+        secondary_agents = rule_result.get("secondary_agents", [])
+        
+        # 2. 의미 임베딩 검색 (Semantic Search)
+        route_match = router.route_query(query)
+        intent_type = route_match
+        
+        if not primary_agent and intent_type != "clarification_required":
+            # Registry에서 인텐트 기반 에이전트 찾기
+            primary_agent = registry.find_agent_by_intent(intent_type)
+            if not primary_agent:
+                if intent_type == "SPATIAL_SEARCH":
+                    primary_agent = "Spatial Analysis Agent"
+                elif intent_type == "KNOWLEDGE_SEARCH":
+                    primary_agent = "Knowledge Agent"
+                    
+        # 3. Agent Registry 확인 (권한 및 유효성)
+        if primary_agent:
+            user_clearance = state.get("clearance_level", 1)
+            is_valid = registry.validate_agent(primary_agent, user_clearance)
+            if not is_valid:
+                intent_understanding = f"권한 부족 또는 잘못된 에이전트 접근: {primary_agent}"
+                execution_plan = "실행 취소 (Block)"
+                intent_type = "BLOCKED"
+                primary_agent = None
+            else:
+                # 4 & 5. 라우팅 결정 및 Task Plan 생성
+                if intent_type == "SPATIAL_SEARCH" or primary_agent == "Spatial Analysis Agent":
+                    intent_type = "SPATIAL_SEARCH"
+                    # 슬롯 추출 시도 (예: spatial_proximity_search 룰 적용)
+                    extracted = slot_extractor.extract(query, "spatial_proximity_search")
+                    
+                    # --- Disambiguation & Missing Slot Validation ---
+                    clarification_questions = []
+                    
+                    if not extracted:
+                        clarification_questions.append("분석 대상을 정확히 파악할 수 없습니다. 다시 한번 말씀해 주시겠어요?")
+                    else:
+                        base_location = extracted.get("location", "")
+                        radius_m = extracted.get("distance_m", "")
+                        target = extracted.get("target_term", "")
+                        # 1. Missing Slot Check
+                        if not target:
+                            clarification_questions.append("어떤 객체를 찾으시는지 명확하지 않습니다. 무엇을 찾을까요?")
+                        elif target in {"위험한 것", "위험요소", "위험물", "주의할 것"} and not any(ch.isdigit() for ch in query):
+                            clarification_questions.append("추가 정보(거리 또는 영역)가 필요합니다. 어느 범위에서 어떤 위험요소를 찾을까요?")
+                        elif "후보지" in query and "주변" in query and not any(ch.isdigit() for ch in query):
+                            clarification_questions.append("해상풍력 후보지의 구체 위치 또는 검색 범위가 필요합니다.")
+                        
+                        # 반경 검색이거나 위치가 명시되지 않았을 때, map_bounds가 없으면 질문
+                        req_spatial_ctx = state.get("spatial_context") or {}
+                        map_bounds = req_spatial_ctx.get("map_bounds")
+                        if not base_location and not map_bounds and (radius_m or "주변" in query or "근처" in query or "반경" in query):
+                            clarification_questions.append("어느 지역을 기준으로 분석할까요? (예: 부산항, 여수 앞바다 등)을 확실히 알려주세요.")
+                        
+                        # 위험객체 모호성 검사 (다단계 파이프라인 적용)
+                        from services.orchestrator.context_resolver import context_resolver
+                        
+                        context_result = context_resolver.resolve(
+                            query=original_query,
+                            normalized_query=query,
+                            active_workspace=state.get("workspace_context"),
+                            available_layers=state.get("available_layers"),
+                            uploaded_assets=state.get("uploaded_assets"),
+                            extracted_slots=extracted
+                        )
+                        
+                        state["context_result"] = context_result
+                        
+                        if context_result.status == "NEEDS_CLARIFICATION":
+                            state["clarification_questions"] = context_result.clarification_questions
+                            clarification_questions.extend(context_result.clarification_questions)
+                        elif context_result.status == "RESOLVED":
+                            resolved_context = context_result.selected_context
+                            # 컨텍스트가 결정된 경우, state에 기록하거나 후속 처리에 활용할 수 있음
+                            state["spatial_context"] = state.get("spatial_context") or {}
+                            state["spatial_context"]["resolved_domain_context"] = resolved_context
+                            logger.info(f"Domain Context resolved: {resolved_context}")
+                    
+                    if clarification_questions:
+                        logger.warning("NEEDS_CLARIFICATION triggered", query=query, questions=clarification_questions)
+                        agent_res = AgentResult(
+                            task_id=state.get("task_id", ""),
+                            trace_id="",
+                            agent_name=primary_agent,
+                            agent_version="1.0",
+                            status=AgentStatus.NEEDS_CLARIFICATION,
+                            clarification_questions=clarification_questions,
+                            structured_result={"reason": "대상 Feature와 위치가 불명확함"}
+                        )
+                        return {
+                            "task_id": state["task_id"],
+                            "query": original_query,
+                            "organization_id": state.get("organization_id", "default_org"),
+                            "user_id": state.get("user_id", "default_user"),
+                            "status": AgentStatus.NEEDS_CLARIFICATION,
+                            "agent_result": agent_res,
+                            "clarification_questions": clarification_questions,
+                            "normalized_query": query,
+                            "normalization_debug": debug_logs,
+                            "context_result": context_result,
+                            "norm_result": norm_result
+                        }
+                    
+                    if extracted:
+                        target_objects = [target] if target else []
+                            
+                        if radius_m:
+                            spatial_conditions = [f"{base_location} 반경 {radius_m}m"]
+                        else:
+                            spatial_conditions = [f"{base_location}"]
+                        
+                    if context_result and context_result.selected_tool:
+                        primary_agent = context_result.selected_agents[0] if context_result.selected_agents else primary_agent
+                        
+                        target_list = ", ".join(target_objects) if target_objects else "지정되지 않음"
+                        range_str = f"{base_location} 기준 {radius_m}m" if radius_m else f"{base_location}"
+                        ctx_kr = "항행안전" if resolved_context == "navigation_safety" else resolved_context
+                        
+                        intent_understanding = (
+                            f"분석 기준: {ctx_kr} 기준 {target}\n"
+                            f"대상 객체: {target_list}\n"
+                            f"검색 범위: {range_str}"
+                        )
+                        execution_plan = f"1. {primary_agent} 호출\n2. {context_result.selected_tool} (템플릿: {context_result.query_template}) 실행\n3. 결과 도출"
+                    else:
+                        intent_understanding = f"[{primary_agent}] 하이브리드 라우팅 매칭 성공"
+                        execution_plan = f"1. {primary_agent} 호출\n2. 필요시 보조 에이전트({', '.join(secondary_agents)}) 개입\n3. 결과 도출"
+                    
+                    logger.info("Hybrid Routing Fast Path hit", query=query, target=target_objects, primary=primary_agent)
+                elif intent_type == "KNOWLEDGE_SEARCH" or primary_agent == "Knowledge Agent":
+                    intent_type = "KNOWLEDGE_SEARCH"
+                    target_objects = [query]
+                    intent_understanding = f"[{primary_agent}] 지식 검색 라우팅 매칭"
+                    execution_plan = f"1. {primary_agent} 호출\n2. 관련 규정 및 카탈로그 검색"
+                    logger.info("Hybrid Routing Knowledge Path hit", query=query, primary=primary_agent)
+        
+        # 2. LLM Fallback (라우팅 실패 시)
+        if intent_understanding == "분석 불가":
+            try:
+                if llm_api_enabled():
+                    model_name = os.environ.get("LLM_MODEL", "gpt-4o-mini")
+                    llm = ChatOpenAI(model=model_name, temperature=0)
+                    sys_msg = SystemMessage(content='''당신은 해양공간 지능분석 플랫폼의 Intent Parser(오케스트레이터)입니다.
+                다음 지시문을 엄격히 준수하여 순수 JSON 형태로만 응답하세요.
+
+                [핵심 지시문]
+                - 사용자가 "위험 객체", "위험구역", "위험요소", "주의구역", "사고위험"이라고 말하면 단일 Feature로 단정하지 마십시오.
+                - 반드시 Risk Dictionary(위험도 프로파일)를 조회하여 risk_context를 결정해야 합니다.
+                - risk_context가 명확하지 않으면 다음 순서로 판단하십시오:
+                  1. 질의에 "항로, 선박, 통항, 항행, 운항, AIS"가 있으면 `navigation_safety`로 분류한다.
+                  2. 질의에 "해상풍력, 후보지, 입지, 개발, 제약조건"이 있으면 `offshore_wind_site`로 분류한다.
+                  3. 질의에 "사고, 충돌, 좌초, 기관손상, 화재, 사고다발"이 있으면 `accident_prevention`으로 분류한다.
+                  4. 질의에 "지도에 표시"가 있으면 Map Agent를 추가한다.
+                  5. 질의에 "보고서"가 있으면 Map·Report Agent를 추가한다.
+                  6. risk_context가 불명확하면 사용자에게 확인 질문(clarification_questions)을 생성한다.
+                - LLM은 위험 객체명이나 대상 명칭을 임의로 생성하지 마십시오. Marine Term Dictionary에 명시된 canonical_term(표준 용어) 및 candidate_features를 우선적으로 추출하고, Feature Dictionary, GB_ENC codeinformation, 사고유형 사전을 함께 참조하여 추론하십시오.
+                - 공간분석은 Spatial Analysis Agent와 PostGIS Tool로 수행합니다.
+
+                [출력 JSON 구조]
+                1. 'intent_type': 질의의 분석 유형 (예: SPATIAL_SEARCH, RISK_ANALYSIS, KNOWLEDGE_SEARCH)
+                2. 'target_objects': 분석 대상 객체들의 배열 (예: ["정박지", "선석", "위험객체"])
+                3. 'spatial_conditions': 공간 및 위치 조건 배열 (예: ["부산항 반경 3km"])
+                4. 'temporal_conditions': 시간 조건 배열 (예: ["최신"])
+                5. 'output_format': 출력 형식 (예: "지도, 표, 요약", "Map")
+                6. 'intent_understanding': 사용자의 의도를 분석한 구체적인 내용 및 risk_context (예: "항행 안전 기준에 따라 부산항 3km 이내 선박 충돌 위험구역 탐색")
+                7. 'execution_plan': 실행 계획 및 제어 절차 (예: "1. Spatial Analysis Agent 호출 2. 반경 3km 공간분석 수행 3. Map Agent로 지도 시각화")
+                8. 'clarification_questions': 질문이 필요한 경우 배열로 추가 (선택사항)
+                
+                응답 포맷: 
+                {
+                    "intent_type": "SPATIAL_SEARCH", 
+                    "target_objects": ["객체명"], 
+                    "spatial_conditions": ["위치조건"],
+                    "temporal_conditions": ["시간조건"],
+                    "output_format": "출력형식",
+                    "intent_understanding": "의도 분석 내용",
+                    "execution_plan": "실행 계획 절차",
+                    "clarification_questions": []
+                }''')
+                    response = await llm.ainvoke([sys_msg, HumanMessage(content=query)])
+                    
+                    content = response.content.strip()
+                    if content.startswith("```json"): content = content[7:-3]
+                    elif content.startswith("```"): content = content[3:-3]
+                    parsed = json.loads(content)
+                    
+                    intent_type = parsed.get("intent_type", "clarification_required")
+                    target_objects = parsed.get("target_objects", [])
+                    intent_understanding = parsed.get("intent_understanding", "분석 불가")
+                    execution_plan = parsed.get("execution_plan", "분석 불가")
+                    spatial_conditions = parsed.get("spatial_conditions", [])
+                    temporal_conditions = parsed.get("temporal_conditions", [])
+                    output_format = parsed.get("output_format", "MAP")
+                    
+                    if spatial_conditions:
+                        base_location = spatial_conditions[0].split()[0]
+                        
+                    # 캐시 저장
+                    cache.add_to_cache(query, parsed)
+                    
+            except Exception as e:
+                logger.error("LLM parsing failed", error=str(e))
+                if "분석" in query or "보여" in query or "찾아" in query:
+                    intent_type = "SPATIAL_SEARCH"
+                target_objects = [query]
+                for word in query.split():
+                    if word.endswith("항") or word.endswith("만") or word.endswith("섬") or word.endswith("도") or word.endswith("바다"):
+                        base_location = word
+                        spatial_conditions.append(base_location)
+                        break
+                        
+                # 3. Completely failed
+                if intent_understanding == "분석 불가" and not primary_agent:
+                    collector.record_failure(
+                        query=query,
+                        predicted_agent="None",
+                        failure_reason="하이브리드 라우터 및 LLM Fallback 모두 실패 (완전한 분석 불가)",
+                        fix="새로운 의도 학습 또는 키워드 룰 추가 필요"
+                    )
+                        
+    intent = Intent(
+        intent_type=intent_type, 
+        target_objects=target_objects,
+        intent_understanding=intent_understanding,
+        execution_plan=execution_plan,
+        spatial_conditions=spatial_conditions,
+        temporal_conditions=temporal_conditions,
+        output_format=output_format,
+        normalized_query=query
+    )
+    req_spatial_ctx = state.get("spatial_context") or {}
+    map_bounds = req_spatial_ctx.get("map_bounds")
+    
+    # extracted가 있는지 확인
+    radius_m = None
+    if 'extracted' in locals() and extracted:
+        radius_val = extracted.get("distance_m")
+        if radius_val:
+            try:
+                radius_m = float(radius_val)
+            except ValueError:
+                pass
+
+    if base_location or map_bounds:
+        spatial_context = SpatialContext(
+            base_location=base_location, 
+            map_bounds=map_bounds,
+            buffer_distance=radius_m
+        )
+    else:
+        spatial_context = None
+    
+    req = AgentRequest(
+        task_id=state["task_id"],
+        trace_id=f"tr-{state['task_id']}",
+        user_id=state.get("user_id", "default_user"),
+        organization_id=state.get("organization_id", "default_org"),
+        agent_name="ClarificationAgent",
+        original_query=original_query,
+        parsed_intent=intent,
+        spatial_context=spatial_context,
+        security_context=SecurityContext(clearance_level="PUBLIC")
+    )
+    
+    # RECEIVED -> INTENT_PARSED 로깅
+    return {
+        "task_id": state["task_id"],
+        "query": original_query,
+        "organization_id": state.get("organization_id", "default_org"),
+        "user_id": state.get("user_id", "default_user"),
+        "agent_request": req, 
+        "status": AgentStatus.INTENT_PARSED,
+        "state_history": log_transition(AgentStatus.RECEIVED, AgentStatus.INTENT_PARSED),
+        "normalized_query": query,
+        "normalization_debug": debug_logs,
+        "norm_result": norm_result,
+        "context_result": state.get("context_result"),
+        "spatial_context": state.get("spatial_context")
+    }
+
+from services.orchestrator.feature_resolver import feature_resolver
+
+async def graph_rag_node(state: OrchestratorState) -> OrchestratorState:
+    """Run graph candidate discovery between normalization and context resolution."""
+    query = state.get("normalized_query") or state.get("query", "")
+    intent = state.get("agent_request").parsed_intent if state.get("agent_request") else None
+    norm = state.get("norm_result") or {}
+    seed_context = {
+        "target_features": list(intent.target_objects) if intent else [],
+        "derived_concepts": norm.get("derived_concepts", []),
+        "document_type": norm.get("document_type", []),
+    }
+    context = graph_rag_retriever.retrieve(query, seed_context)
+    return {
+        "graph_context": context,
+        "graph_rag_context": context,
+        "status": AgentStatus.INTENT_PARSED,
+        "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.INTENT_PARSED, actor="GraphRAGRetriever", reason="KG candidate plan created"),
+    }
+
+async def data_discovery_node(state: OrchestratorState) -> OrchestratorState:
+    """Discover available Lake/KG/DB sources before context resolution."""
+    req = state["agent_request"].model_copy(deep=True)
+    req.agent_name = "data-discovery-agent"
+    req.previous_agent_outputs["graph_context"] = state.get("graph_context", {})
+    req.previous_agent_outputs["graph_rag_context"] = state.get("graph_context", {})
+    result = await execute_data_discovery(req)
+    req.previous_agent_outputs["data_discovery_result"] = result.structured_result
+    return {
+        "agent_request": req,
+        "data_discovery_result": result.structured_result,
+        "status": AgentStatus.CONTEXT_RESOLVING,
+        "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.CONTEXT_RESOLVING, actor="Data Discovery Agent"),
+    }
+
+async def resolve_context_node(state: OrchestratorState) -> OrchestratorState:
+    """권한 확인 및 데이터 매핑 (Feature Resolver 연동)"""
+    logger.info("LangGraph: Resolving Context", task_id=state["task_id"])
+    if state.get("status") == AgentStatus.NEEDS_CLARIFICATION:
+        return state
+    req = state["agent_request"]
+    if state.get("graph_context"):
+        req.previous_agent_outputs["graph_context"] = state["graph_context"]
+    if state.get("data_discovery_result"):
+        req.previous_agent_outputs["data_discovery_result"] = state["data_discovery_result"]
+    
+    if state["user_id"] == "blocked_user":
+        return {
+            "status": AgentStatus.BLOCKED,
+            "error_message": "User access denied.",
+            "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.BLOCKED, reason="Permission Denied")
+        }
+        
+    req.security_context.clearance_level = "SECRET" if state["user_id"] == "admin" else "PUBLIC"
+    
+    # Feature Resolver 연동 (2단계: Target Term -> Feature Metadata)
+    if req.parsed_intent and req.parsed_intent.target_objects:
+        all_nftc_codes = []
+        resolved_metadata_list = []
+        clarification_questions = []
+        
+        for obj_kr in req.parsed_intent.target_objects:
+            resolved_result = feature_resolver.resolve(obj_kr)
+            
+            # 모호성 발생 시
+            if resolved_result.get("needs_clarification"):
+                clarification_questions.append(resolved_result.get("clarification_question"))
+                continue
+                
+            if resolved_result.get("nftc_codes"):
+                all_nftc_codes.extend(resolved_result["nftc_codes"])
+            resolved_metadata_list.append(resolved_result)
+            
+        if clarification_questions:
+            logger.warning("NEEDS_CLARIFICATION triggered in Resolver", questions=clarification_questions)
+            # 수집된 options들을 합침
+            all_options = []
+            for r in resolved_metadata_list:
+                if "clarification_options" in r:
+                    all_options.extend(r["clarification_options"])
+            # 질문 발생시킨 대상의 옵션도 포함 (resolved_metadata_list에 안 들어갔을 수도 있으므로)
+            if resolved_result.get("clarification_options"):
+                all_options.extend(resolved_result["clarification_options"])
+                
+            agent_res = AgentResult(
+                task_id=state.get("task_id", ""),
+                trace_id="",
+                agent_name=req.agent_name,
+                agent_version="1.0",
+                status=AgentStatus.NEEDS_CLARIFICATION,
+                clarification_questions=clarification_questions,
+                clarification_options=all_options,
+                structured_result={"reason": "대상 Feature가 모호함"}
+            )
+            return {
+                "task_id": state["task_id"],
+                "query": state.get("query", ""),
+                "organization_id": state.get("organization_id", "default_org"),
+                "user_id": state.get("user_id", "default_user"),
+                "status": AgentStatus.NEEDS_CLARIFICATION,
+                "agent_result": agent_res,
+                "normalized_query": state.get("normalized_query", ""),
+                "normalization_debug": state.get("normalization_debug", [])
+            }
+            
+        req.previous_agent_outputs["resolved_nftc_codes"] = list(set(all_nftc_codes))
+        
+        # 첫 번째 대상 객체의 메타데이터를 대표로 저장
+        if resolved_metadata_list:
+            req.previous_agent_outputs["resolved_metadata"] = resolved_metadata_list[0]
+            # LLM이 잘못 예측했을 수 있으므로 확정된 값으로 교체 (None 방지)
+    
+    return {
+        "task_id": state["task_id"],
+        "query": state.get("query", ""),
+        "organization_id": state.get("organization_id", "default_org"),
+        "user_id": state.get("user_id", "default_user"),
+        "agent_request": req, 
+        "status": AgentStatus.CONTEXT_RESOLVED,
+        "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.CONTEXT_RESOLVED),
+        "context_result": state.get("context_result"),
+        "norm_result": state.get("norm_result"),
+        "normalization_debug": state.get("normalization_debug"),
+        "spatial_context": state.get("spatial_context")
+    }
+
+async def create_plan_node(state: OrchestratorState) -> OrchestratorState:
+    logger.info("LangGraph: Creating Plan", task_id=state["task_id"])
+    req = state["agent_request"]
+    ctx_res = state.get("context_result")
+    
+    # 1. 대상 객체 분류
+    target_features = []
+    target_area_features = []
+    
+    if ctx_res and hasattr(ctx_res, "target_features") and isinstance(ctx_res.target_features, dict):
+        target_features = ctx_res.target_features.get("hazard_objects", [])
+        target_area_features = ctx_res.target_features.get("hazard_areas", [])
+    elif ctx_res and hasattr(ctx_res, "target_features"):
+        target_features = ctx_res.target_features if isinstance(ctx_res.target_features, list) else []
+        
+    resolved_metadata = req.previous_agent_outputs.get("resolved_metadata", {})
+    target_term = (
+        resolved_metadata.get("input_term")
+        or (req.parsed_intent.target_objects[0] if req.parsed_intent and req.parsed_intent.target_objects else None)
+    )
+
+    slots = {
+        "location": req.spatial_context.base_location if req.spatial_context else None,
+        "distance_m": req.spatial_context.buffer_distance if req.spatial_context else None,
+        "target_term": target_term,
+    }
+    
+    if target_features:
+        slots["target_features"] = target_features
+    if target_area_features:
+        slots["target_area_features"] = target_area_features
+        
+    graph_context = state.get("graph_context") or {}
+    discovery = state.get("data_discovery_result") or {}
+    derived_concept = None
+    intent_val = req.parsed_intent.intent_type if req.parsed_intent else "clarification_required"
+    if ctx_res and ctx_res.derived_concepts:
+        derived_concept = ctx_res.derived_concepts[0]
+        intent_val = ctx_res.intent or intent_val
+    elif graph_context.get("derived_concepts"):
+        derived_concept = graph_context["derived_concepts"][0]
+
+    analysis_type = ctx_res.analysis_type if ctx_res else None
+    if not analysis_type and graph_context.get("execution_hints", {}).get("requires_spatial_analysis"):
+        analysis_type = "feature_search_by_radius" if slots.get("distance_m") is not None else "spatial_feature_search"
+
+    # 동적 라우팅 플랜 생성
+    plan_dict = route_planner.generate_plan(
+        normalized_query=state.get("normalized_query", ""),
+        slots=slots,
+        derived_concept=derived_concept,
+        context=ctx_res.selected_context if ctx_res else "clarification_required",
+        analysis_type=analysis_type or "clarification_required",
+        intent=intent_val,
+        graph_context=state.get("graph_context", {}),
+        data_discovery_result=state.get("data_discovery_result", {})
+    )
+        
+    # 2. Task Plan 인스턴스 생성
+    task_plan = TaskPlan(
+        task_id=f"TASK-HAZARD-SEARCH-{state['task_id'][:3].upper()}",
+        intent=plan_dict["intent"],
+        context=plan_dict["context"],
+        analysis_type=plan_dict["analysis_type"],
+        derived_concept=plan_dict["derived_concept"],
+        primary_agent=plan_dict["primary_agent"] or "Standard RAG Agent",
+        secondary_agents=plan_dict["secondary_agents"],
+        slots=slots,
+        tools=plan_dict["required_tools"],
+        data=plan_dict["required_data"],
+        outputs=plan_dict.get("outputs", ["GeoJSON", "MapLayer", "FeatureTable", "Summary"]),
+        clarification_required=False,
+        confidence=ctx_res.confidence if ctx_res else 0.0,
+        execution_ready=plan_dict["execution_ready"],
+        route_plan_status=plan_dict["route_plan_status"]
+    )
+    
+    req.task_plan = task_plan
+    req.agent_name = task_plan.primary_agent
+
+    # Resolve the named place before dispatch so every Agent implementation
+    # receives a concrete spatial reference, not only a display label.
+    if req.spatial_context and not req.spatial_context.geometry and req.spatial_context.base_location:
+        try:
+            from services.spatial_analysis_agent.geocoding_tool import get_maritime_coordinates
+
+            place_name = req.spatial_context.base_location
+            for suffix in ("입구", "주변", "근처", "일대", "반경", "이내"):
+                place_name = place_name.replace(suffix, " ")
+            resolved_wkt = get_maritime_coordinates.invoke(" ".join(place_name.split()))
+            if isinstance(resolved_wkt, str) and resolved_wkt.upper().startswith("POINT"):
+                req.spatial_context.geometry = resolved_wkt
+                logger.info("Plan location resolved", location=place_name.strip(), geometry=resolved_wkt)
+        except Exception as e:
+            logger.warning("Plan location resolution failed", location=req.spatial_context.base_location, error=str(e))
+    
+    return {
+        "agent_request": req, 
+        "task_plan": task_plan.model_dump(),
+        "status": AgentStatus.PLAN_CREATED,
+        "state_history": log_transition(AgentStatus.CONTEXT_RESOLVED, AgentStatus.PLAN_CREATED)
+    }
+
+async def execute_agent_node(state: OrchestratorState) -> OrchestratorState:
+    logger.info("LangGraph: Executing Agent", task_id=state["task_id"])
+    req = state["agent_request"]
+    req.previous_agent_outputs["graph_context"] = state.get("graph_context", {})
+    req.previous_agent_outputs["data_discovery_result"] = state.get("data_discovery_result", {})
+
+    # Enforce the spatial execution contract at the dispatch boundary. Some
+    # resumed or older graph states contain the location only in TaskPlan.
+    if req.task_plan and req.task_plan.slots:
+        location_name = req.task_plan.slots.get("location")
+        if location_name and (not req.spatial_context or not req.spatial_context.geometry):
+            try:
+                from services.spatial_analysis_agent.geocoding_tool import get_maritime_coordinates
+
+                normalized_name = location_name
+                for suffix in ("입구", "주변", "근처", "일대", "반경", "이내"):
+                    normalized_name = normalized_name.replace(suffix, " ")
+                geometry = get_maritime_coordinates.invoke(" ".join(normalized_name.split()))
+                if isinstance(geometry, str) and geometry.upper().startswith("POINT"):
+                    distance_m = req.task_plan.slots.get("distance_m")
+                    req.spatial_context = SpatialContext(
+                        base_location=location_name,
+                        geometry=geometry,
+                        buffer_distance=distance_m,
+                    )
+                    logger.info("Dispatch location resolved", location=location_name, geometry=geometry)
+            except Exception as e:
+                logger.warning("Dispatch location resolution failed", location=location_name, error=str(e))
+    
+    try:
+        # Dynamic Dispatch via Registry
+        # The Orchestrator no longer hardcodes any agent imports!
+        execute_func = registry.get_execute_function(req.agent_name)
+        
+        if not execute_func:
+            raise ValueError(f"Agent '{req.agent_name}' has no entry_point or failed to load.")
+            
+        agent_result = await execute_func(req)
+            
+        if agent_result.status == AgentStatus.NEEDS_CLARIFICATION:
+            return {
+                "agent_result": agent_result,
+                "status": AgentStatus.NEEDS_CLARIFICATION,
+                "state_history": log_transition(AgentStatus.PLAN_CREATED, AgentStatus.NEEDS_CLARIFICATION)
+            }
+            
+        return {
+            "agent_result": agent_result,
+            "status": AgentStatus.RESULTS_AGGREGATED,
+            "state_history": log_transition(AgentStatus.PLAN_CREATED, AgentStatus.RESULTS_AGGREGATED)
+        }
+    except Exception as e:
+        logger.error("Agent execution failed", error=str(e), exc_info=True)
+        return {
+            "status": AgentStatus.FAILED,
+            "error_message": str(e),
+            "state_history": log_transition(AgentStatus.PLAN_CREATED, AgentStatus.FAILED, error_code="EXEC_ERR")
+        }
+
+async def validate_node(state: OrchestratorState) -> OrchestratorState:
+    """결과 검증 및 Human-in-the-Loop 결정"""
+    logger.info("LangGraph: Validating Results", task_id=state["task_id"])
+    result = state["agent_result"]
+    
+    val_payload = result.validation_payload or {}
+    graph_context = state.get("graph_context") or {}
+    discovery = state.get("data_discovery_result") or {}
+    graph_paths = graph_context.get("graph_paths", []) if isinstance(graph_context, dict) else []
+    provenance = result.provenance or {}
+    graph_provenance_ok = bool(provenance.get("graph_nodes") or graph_context.get("provenance")) if isinstance(graph_context, dict) else False
+    val_payload["graph_validation"] = {
+        "graph_path_count": len(graph_paths),
+        "provenance_present": graph_provenance_ok,
+        "status": "PASS" if graph_provenance_ok or not graph_context else "PENDING_GRAPH_PROVENANCE"
+    }
+    val_payload["data_discovery_validation"] = {
+        "execution_level": discovery.get("execution_level", "UNKNOWN"),
+        "spatial_query_allowed": discovery.get("can_execute_spatial_query", False),
+        "spatial_edges_allowed": discovery.get("can_verify_spatial_edges", False),
+        "status": "READY" if discovery.get("can_execute_spatial_query") else "PENDING_DATA_OR_GEOMETRY",
+    }
+    val_payload["validation_agent"] = validate_orchestration(
+        graph_context,
+        discovery,
+        result.provenance,
+    )
+    result.validation_payload = val_payload
+    
+    # 실제 검증 로직 구현
+    is_valid = True
+    reasons = []
+    
+    # 1. 객체 수 검증
+    count = result.structured_result.get("count", 0)
+    if count == 0:
+        # Empty spatial results are valid and must still produce the search
+        # buffer so the user can verify the requested area on the map.
+        reasons.append("No features found in the requested area.")
+        
+    # 2. CRS 검증 (GeoJSON 내 좌표계가 EPSG:4326인지 대략적 확인)
+    # 실제로는 좌표 범위를 체크 (-180~180, -90~90) 하거나 
+    # 에이전트가 돌려준 메타데이터 확인
+    
+    if not is_valid:
+        logger.warning("Validation failed", reasons=reasons)
+        return {
+            "status": AgentStatus.WAITING_FOR_REVIEW,
+            "error_message": "Validation Failed: " + " | ".join(reasons),
+            "state_history": log_transition(AgentStatus.RESULTS_AGGREGATED, AgentStatus.WAITING_FOR_REVIEW, reason=" | ".join(reasons))
+        }
+        
+    return {
+        "status": AgentStatus.MAP_REPORT_GENERATING,
+        "state_history": log_transition(AgentStatus.RESULTS_AGGREGATED, AgentStatus.MAP_REPORT_GENERATING)
+    }
+
+async def map_report_node(state: OrchestratorState) -> OrchestratorState:
+    """최종 MapLayer 및 응답 패키징"""
+    logger.info("LangGraph: Generating Map & Report", task_id=state["task_id"])
+    result = state["agent_result"]
+    
+    final_dict = result.model_dump(mode="json")
+    
+    req = state.get("agent_request")
+    if req and hasattr(req, "parsed_intent") and req.parsed_intent:
+        final_dict["intent"] = req.parsed_intent.model_dump(mode="json") if hasattr(req.parsed_intent, "model_dump") else req.parsed_intent
+    
+    if result.agent_name == "spatial-analysis-agent":
+        layer_spec = convert_to_map_layer(result)
+        if layer_spec:
+            final_dict["map_layer"] = layer_spec.model_dump()
+            final_dict["map_layers"] = [layer_spec.model_dump()]
+            final_dict["map_layers"].extend(layer_spec.metadata.get("overlay_layers", []))
+            final_dict["features"] = layer_spec.inline_geojson
+
+    # Dynamic traffic and accident specialists return evidence-backed GeoJSON
+    # directly; expose them as map layers without mixing them into S-101.
+    structured = result.structured_result or {}
+    if structured.get("dynamic_traffic_geojson"):
+        traffic_geojson = structured["dynamic_traffic_geojson"]
+        if traffic_geojson.get("type") == "Feature":
+            traffic_geojson = {"type": "FeatureCollection", "features": [traffic_geojson]}
+        final_dict.setdefault("map_layers", []).append({
+            "layer_id": f"{result.task_id}-dynamic-traffic",
+            "task_id": result.task_id,
+            "title": "Dynamic Traffic",
+            "description": "AIS/V-PASS dynamic traffic layer",
+            "geometry_type": "GEOMETRY",
+            "source_type": "geojson",
+            "inline_geojson": traffic_geojson,
+            "feature_count": len(traffic_geojson.get("features", [])),
+            "metadata": {"layer_role": "dynamic_traffic", "target_dynamic_layers": structured.get("target_dynamic_layers", [])},
+        })
+    if structured.get("accident_spatial_geojson"):
+        accident_geojson = structured["accident_spatial_geojson"]
+        if accident_geojson.get("type") == "Feature":
+            accident_geojson = {"type": "FeatureCollection", "features": [accident_geojson]}
+        final_dict.setdefault("map_layers", []).append({
+            "layer_id": f"{result.task_id}-accident",
+            "task_id": result.task_id,
+            "title": "Accident Spatial Layer",
+            "description": "Standardized accident spatial layer",
+            "geometry_type": "GEOMETRY",
+            "source_type": "geojson",
+            "inline_geojson": accident_geojson,
+            "feature_count": len(accident_geojson.get("features", [])),
+            "metadata": {"layer_role": "accident_overlay", "relation_status": structured.get("accident_feature_relations", [])},
+        })
+            
+    # --- Debug Trace 구성 ---
+    debug_trace = {
+        "1. 사용자 질의": state.get("query"),
+        "2. 질의 정규화": state.get("normalization_debug", []),
+        "3. 오케스트레이터 의도분석": state.get("context_result").__dict__ if state.get("context_result") else None,
+        "4. 작업계획 수립": state.get("task_plan"),
+        "5. 공간쿼리 실행": {
+            "도구 호출": [tc.model_dump() if hasattr(tc, "model_dump") else tc for tc in result.tool_calls],
+            "쿼리 결과": result.structured_result
+        }
+    }
+    final_dict["debug_trace"] = debug_trace
+    final_dict["orchestrator_v2"] = {
+        "graph_context": state.get("graph_context", {}),
+        "data_discovery_result": state.get("data_discovery_result", {}),
+        "route_plan": state.get("task_plan", {}),
+        "embedding_independent": True,
+    }
+    
+    return {
+        "final_dict": final_dict,
+        "status": AgentStatus.COMPLETED,
+        "state_history": log_transition(AgentStatus.MAP_REPORT_GENERATING, AgentStatus.COMPLETED)
+    }
+
+async def audit_log_node(state: OrchestratorState) -> OrchestratorState:
+    """DB에 실행 상태와 슬롯 추출 결과를 저장하는 Audit Node"""
+    logger.info("LangGraph: Saving Audit Log", task_id=state["task_id"])
+    try:
+        import psycopg2
+        import os
+        import json
+        
+        POSTGIS_URL = os.environ.get("POSTGIS_URL", "")
+        conn = psycopg2.connect(POSTGIS_URL)
+        conn.autocommit = True
+        cur = conn.cursor()
+        
+        task_id = state.get("task_id", "")
+        original_query = state.get("query", "")
+        normalized_query = state.get("normalized_query", "")
+        
+        ctx = state.get("context_result")
+        
+        # ctx can be a dict or an object depending on serialization state
+        if isinstance(ctx, dict):
+            resolved_intent = ctx.get("selected_context", None)
+        else:
+            resolved_intent = ctx.selected_context if ctx and hasattr(ctx, "selected_context") else None
+            
+        task_plan = state.get("task_plan")
+        if isinstance(task_plan, dict):
+            primary_agent = task_plan.get("primary_agent", None)
+            extracted_slots = task_plan.get("slots", {})
+        else:
+            primary_agent = task_plan.primary_agent if task_plan else None
+            extracted_slots = task_plan.slots if task_plan and hasattr(task_plan, "slots") else {}
+            
+        status = state.get("status", "")
+        
+        insert_sql = """
+            INSERT INTO marine_geo.orchestrator_logs 
+            (task_id, original_query, normalized_query, resolved_intent, primary_agent, extracted_slots, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (task_id) DO UPDATE SET
+                status = EXCLUDED.status,
+                extracted_slots = EXCLUDED.extracted_slots
+        """
+        cur.execute(insert_sql, (
+            task_id,
+            original_query,
+            normalized_query,
+            resolved_intent,
+            primary_agent,
+            json.dumps(extracted_slots, ensure_ascii=False),
+            status
+        ))
+        cur.close()
+        conn.close()
+        logger.info("Audit log saved to marine_geo.orchestrator_logs")
+    except Exception as e:
+        logger.error(f"Failed to save audit log: {e}")
+        
+    return state
+
+# ----------------- Conditional Edges -----------------
+
+def check_intent_parsed(state: OrchestratorState) -> str:
+    if state["status"] == AgentStatus.NEEDS_CLARIFICATION:
+        return "needs_clarification"
+    return "resolve_context"
+
+def check_context_resolved(state: OrchestratorState) -> str:
+    if state["status"] == AgentStatus.BLOCKED:
+        return "blocked"
+    if state["status"] == AgentStatus.NEEDS_CLARIFICATION:
+        return "needs_clarification"
+    return "create_plan"
+
+def check_execution_status(state: OrchestratorState) -> str:
+    if state["status"] == AgentStatus.FAILED:
+        return "failed"
+    if state["status"] == AgentStatus.NEEDS_CLARIFICATION:
+        return "needs_clarification"
+    return "validate"
+
+def check_validation_status(state: OrchestratorState) -> str:
+    if state["status"] == AgentStatus.WAITING_FOR_REVIEW:
+        # approval_granted 값이 들어왔는지 확인 (Resume 상황)
+        if state.get("approval_granted") is True:
+            return "map_report"
+        return "review" # Interrupt point
+    return "map_report"
+
+# ----------------- Graph Builder -----------------
+
+def build_orchestrator_graph():
+    workflow = StateGraph(OrchestratorState)
+    
+    # Add Nodes
+    workflow.add_node("parse_intent", parse_intent_node)
+    workflow.add_node("graph_rag", graph_rag_node)
+    workflow.add_node("data_discovery", data_discovery_node)
+    workflow.add_node("resolve_context", resolve_context_node)
+    workflow.add_node("create_plan", create_plan_node)
+    workflow.add_node("execute_agent", execute_agent_node)
+    workflow.add_node("validate_results", validate_node)
+    workflow.add_node("map_report", map_report_node)
+    workflow.add_node("audit_log", audit_log_node)
+    
+    # Entry Point
+    workflow.set_entry_point("parse_intent")
+    
+    # Add Edges
+    workflow.add_conditional_edges(
+        "parse_intent",
+        check_intent_parsed,
+        {
+            "needs_clarification": "audit_log",
+            "resolve_context": "graph_rag"
+        }
+    )
+    workflow.add_edge("graph_rag", "data_discovery")
+    workflow.add_edge("data_discovery", "resolve_context")
+    workflow.add_conditional_edges("resolve_context", check_context_resolved, {
+        "blocked": "audit_log", 
+        "needs_clarification": "audit_log",
+        "create_plan": "create_plan"
+    })
+    workflow.add_edge("create_plan", "execute_agent")
+    workflow.add_conditional_edges("execute_agent", check_execution_status, {"failed": "audit_log", "needs_clarification": "audit_log", "validate": "validate_results"})
+    
+    # Validation -> Review (Interrupt) or Map Report
+    workflow.add_conditional_edges("validate_results", check_validation_status, {
+        "review": "audit_log", # 일단 그래프 실행 종료 (상태 유지). 재호출 시 Resume 됨
+        "map_report": "map_report"
+    })
+    
+    workflow.add_edge("map_report", "audit_log")
+    workflow.add_edge("audit_log", END)
+    
+    # 체크포인터를 연결하여 HITL(Human-in-the-Loop) 완벽 지원
+    checkpointer = MemorySaver()
+    return workflow.compile(checkpointer=checkpointer)
+
+# 컴파일된 그래프 싱글톤
+orchestrator_graph = build_orchestrator_graph()

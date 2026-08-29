@@ -1,0 +1,11 @@
+Wreck: None
+UnderwaterAwashRock: None
+CableSubmarine: None
+PipelineSubmarine: None
+MarineFarmCulture: None
+BeaconCardinal: None
+BeaconLateral: None
+BeaconSpecialPurpose: None
+BuoyCardinal: None
+BuoyLateral: None
+BuoySpecialPurpose: None

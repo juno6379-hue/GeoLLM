@@ -1,0 +1,63 @@
+risk_rules:
+  - rule_id: wreck_near_fairway
+    risk_context: navigation_safety
+    condition:
+      feature: Wreck
+      distance_to_layer: Fairway
+      operator: "<="
+      value_m: 500
+    risk_level: HIGH
+    reason: "항로 500m 이내 침선은 항행 위험요소"
+
+  - rule_id: rock_near_route
+    risk_context: navigation_safety
+    condition:
+      feature: Rock
+      distance_to_layer: NavigationLine
+      operator: "<="
+      value_m: 300
+    risk_level: HIGH
+    reason: "항로 주변 암초는 좌초 위험"
+
+  - rule_id: restricted_area_intersection
+    risk_context: navigation_safety
+    condition:
+      source_layer: PlannedRoute
+      intersects: RestrictedArea
+    risk_level: WARNING
+    reason: "예정 항로가 제한구역과 교차"
+
+  - rule_id: ukc_violation_critical
+    risk_context: navigation_safety
+    condition:
+      feature: DepthArea
+      logic: "depth <= draft"
+    risk_level: CRITICAL
+    reason: "선박 흘수가 수심보다 깊거나 같아 좌초 확정 (IHO UKC 가이드라인)"
+
+  - rule_id: ukc_violation_high
+    risk_context: navigation_safety
+    condition:
+      feature: DepthArea
+      logic: "depth > draft AND depth < (draft + draft * 0.10)"
+    risk_level: HIGH
+    reason: "여유수심(UKC)이 선박 흘수의 10% 미만으로 위험 (IHO 가이드라인 기반)"
+
+  - rule_id: high_traffic_intersection
+    risk_context: accident_prevention
+    condition:
+      feature: AIS_Density_Layer
+      density_level: "HIGH"
+      intersects_with: ["Wreck", "Obstruction", "Rock"]
+    risk_level: CRITICAL
+    reason: "교통 밀집 구역 내 위험 객체 존재로 인한 충돌/좌초 위험"
+
+  - rule_id: accident_hotspot_proximity
+    risk_context: accident_prevention
+    condition:
+      feature: Accident_Hotspot_Layer
+      distance_to_layer: PlannedRoute
+      operator: "<="
+      value_m: 1000
+    risk_level: WARNING
+    reason: "과거 사고다발구역 1km 이내 진입 (항행 주의 경보 발령)"

@@ -1,0 +1,34 @@
+marine_objects:
+  선석:
+    canonical_term: "선석"
+    aliases: ["접안시설", "부두 선석", "배 대는 곳", "berth", "계류시설"]
+  정박지:
+    canonical_term: "정박지"
+    aliases: ["묘박지", "anchorage", "배 머무는 곳"]
+  부표:
+    canonical_term: "부표"
+    aliases: ["buoy", "항로표지", "해상 표지"]
+  제한구역:
+    canonical_term: "제한구역"
+    aliases: ["통제구역", "금지구역", "restricted area"]
+  위험객체:
+    canonical_term: "위험객체"
+    aliases: ["위험한 것", "hazard"]
+  침선:
+    canonical_term: "침선"
+    aliases: ["가라앉은 배", "난파선", "wreck"]
+  장애물:
+    canonical_term: "장애물"
+    aliases: ["방해물", "obstruction"]
+  암초:
+    canonical_term: "암초"
+    aliases: ["rock", "숨은 바위", "수중 암초"]
+  저수심 위험구역:
+    canonical_term: "저수심 위험구역"
+    aliases: ["얕은 곳", "수심이 낮은 곳", "shallow water"]
+  해저케이블:
+    canonical_term: "해저케이블"
+    aliases: ["케이블", "submarine cable"]
+  등화:
+    canonical_term: "등화"
+    aliases: ["등대", "light", "비콘"]

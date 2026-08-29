@@ -1,0 +1,62 @@
+# Environment and local secrets
+.env
+.env.*
+!.env.example
+OpenAI_Key.txt
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Node / frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Logs and runtime output
+logs/
+*.log
+*.log.*
+docker_logs.txt
+backend_logs*.txt
+response*.log
+filter_log.py
+services/orchestrator/.last_dir.txt
+scratch/
+scratch*.txt
+scratch_*.py
+db_query.py
+
+# Local databases and state
+*.sqlite
+*.sqlite3
+*.db
+
+# Large/generated data artifacts
+S-111.zip
+S-111/
+tiles/
+processed/
+outputs/
+geollm_results/
+Dataset/
+data_lake/raw/source_files/
+data_lake/staging/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

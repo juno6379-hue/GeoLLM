@@ -1,0 +1,11 @@
+[
+    {
+        "dataset_id": "ext-kma-ocean-001",
+        "version": "v1.0",
+        "logical_name": "기상청 해양관측망 실시간 데이터",
+        "security_level": "PUBLIC",
+        "keywords": ["파고", "기상", "관측", "풍향", "풍속", "기온", "내일"],
+        "is_external_api": true,
+        "api_endpoint": "https://api.kma.go.kr/ocean/v1/buoy"
+    }
+]

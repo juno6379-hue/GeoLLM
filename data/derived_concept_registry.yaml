@@ -1,0 +1,42 @@
+derived_concepts:
+  위험객체:
+    concept_id: navigation_hazard_object
+    default_context: navigation_safety
+    ambiguity: conditional
+    description: "전자해도상 항행에 위험 또는 주의가 필요한 객체"
+    target_feature_groups:
+      hazard_objects:
+        - Wreck
+        - Obstruction
+        - Rock
+        - UnderwaterAwashRock
+        - BuoyIsolatedDanger
+        - BeaconIsolatedDanger
+      hazard_areas:
+        - DepthArea
+        - RestrictedArea
+    required_slots:
+      - location
+      - search_radius
+    slot_aliases:
+      search_radius:
+        - distance_m
+        - radius_m
+        - buffer_m
+    auto_execute_when_required_slots_present: true
+    default_analysis_type: feature_search_by_radius
+    default_agent: Spatial Analysis Agent
+    required_agents:
+      - Spatial Analysis Agent
+    required_tools:
+      - geocoder.resolve_location
+      - gbenc.s101_feature_search_by_radius
+      - postgis.dwithin
+    required_data:
+      - GBENC_S101_feature
+      - GBENC_codeinformation
+      - s101_feature_dictionary
+      - marine_term_dictionary
+      - location_gazetteer
+    default_tool: gbenc.s101_feature_search_by_radius
+    default_query_template: gbenc_feature_search_by_radius
