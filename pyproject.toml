@@ -28,6 +28,7 @@ tiktoken = "^0.7.0"
 laspy = "^2.6.1"
 pandas = "^2.2.3"
 shapely = "^2.1.1"
+pypdf = "^6.16.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"

@@ -61,7 +61,7 @@ def init_engines():
         except Exception as e:
             logger.error("Failed to initialize PostGIS engine", error=str(e))
             
-    if oracle_engine is None:
+    if oracle_engine is None and ORACLE_URL:
         try:
             oracle_engine = create_engine(ORACLE_URL, pool_pre_ping=True)
             OracleSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=oracle_engine)

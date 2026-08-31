@@ -42,19 +42,67 @@ def _probe_s101_db():
         import psycopg2
         with psycopg2.connect(**kwargs) as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT to_regclass('projection.s101_feature_current'), EXISTS (SELECT 1 FROM pg_extension WHERE extname='postgis')")
-                feature_table, postgis = cur.fetchone()
+                cur.execute("""
+                    SELECT to_regclass('projection.s101_feature_current'),
+                           to_regclass('projection.s101_feature_geojson'),
+                           EXISTS (SELECT 1 FROM pg_extension WHERE extname='postgis')
+                """)
+                feature_table, geojson_table, postgis = cur.fetchone()
                 if feature_table:
-                    cur.execute("SELECT count(*), count(geometry) FROM projection.s101_feature_current")
-                    feature_count, geometry_count = cur.fetchone()
+                    cur.execute("""
+                        SELECT count(*),
+                               count(geometry),
+                               count(*) FILTER (WHERE geometry IS NULL),
+                               count(*) FILTER (WHERE geometry IS NOT NULL AND ST_IsEmpty(geometry)),
+                               count(*) FILTER (WHERE geometry IS NOT NULL AND ST_SRID(geometry) <> 4326)
+                        FROM projection.s101_feature_current
+                    """)
+                    feature_count, geometry_count, null_geometry_count, empty_geometry_count, srid_mismatch_count = cur.fetchone()
                 else:
-                    feature_count, geometry_count = 0, 0
-                cur.execute("SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_s101_feature_current_geometry')")
+                    feature_count = geometry_count = null_geometry_count = empty_geometry_count = srid_mismatch_count = 0
+                cur.execute("""
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE schemaname = 'projection'
+                          AND tablename = 's101_feature_current'
+                          AND indexdef ILIKE '%USING gist%'
+                          AND indexdef ILIKE '%geometry%'
+                    )
+                """)
                 gist_index = cur.fetchone()[0]
-        return {"connected": True, "inventory_ready": bool(feature_table and feature_count),
-                "spatial_ready": bool(feature_table and geometry_count and postgis and gist_index),
-                "feature_count": feature_count, "geometry_count": geometry_count,
-                "reason": "S101 v2 projection probe succeeded"}
+        projection_ready = bool(feature_table and feature_count)
+        spatial_ready = bool(
+            projection_ready
+            and geojson_table
+            and geometry_count
+            and postgis
+            and gist_index
+            and not null_geometry_count
+            and not empty_geometry_count
+            and not srid_mismatch_count
+        )
+        validation_report = _read_json(PROJECT_ROOT / "outputs/reports/s101_v2_db_validation.json", {})
+        spatial_quality_ready = None
+        invalid_geometry_count = None
+        if validation_report.get("projection") == "projection.s101_feature_current":
+            spatial_quality_ready = bool(validation_report.get("ready"))
+            invalid_geometry_count = validation_report.get("summary", {}).get("invalid_geometry_count")
+        reason = "S101 v2 projection probe succeeded"
+        if projection_ready and not spatial_ready:
+            reason = "S101 v2 projection is reachable, but spatial readiness checks are incomplete"
+        elif spatial_quality_ready is False:
+            reason = "S101 v2 projection is executable, but full geometry validation found issues"
+        return {"connected": True, "inventory_ready": projection_ready,
+                "spatial_ready": spatial_ready, "feature_count": feature_count,
+                "geometry_count": geometry_count, "null_geometry_count": null_geometry_count,
+                "empty_geometry_count": empty_geometry_count,
+                "srid_mismatch_count": srid_mismatch_count,
+                "postgis_enabled": bool(postgis), "gist_index": bool(gist_index),
+                "geojson_projection_ready": bool(geojson_table),
+                "spatial_quality_ready": spatial_quality_ready,
+                "invalid_geometry_count": invalid_geometry_count,
+                "reason": reason}
     except Exception as exc:
         return {"connected": False, "inventory_ready": False, "spatial_ready": False, "reason": f"S101 v2 database probe failed: {type(exc).__name__}"}
 
@@ -95,17 +143,30 @@ def build_discovery_snapshot():
     missing = []
     if not db["connected"]: missing.append("S101 v2 DB connection and Feature Geometry")
     if not db["spatial_ready"]: missing.append("PostGIS spatial index and verified layer geometry")
+    if db.get("spatial_quality_ready") is False:
+        missing.append("S-101 invalid geometry repair")
     if not document_body_ready: missing.append("parsed document body chunks")
-    if not (PROJECT_ROOT / "outputs/inventories/accident_inventory.csv").exists(): missing.append("geocoded accident location geometry")
+    accident_inventory_ready = (PROJECT_ROOT / "outputs/inventories/accident_inventory.csv").exists()
+    if not accident_inventory_ready:
+        missing.append("geocoded accident location geometry")
     blocked = []
     for relation in DEFERRED_RELATIONS:
         if relation == "supportsConcept": status = "PENDING_DOCUMENT_PARSE" if not document_body_ready else "CANDIDATE"
-        elif relation == "occurredIn": status = "PENDING_ACCIDENT_GEOCODING"
-        else: status = "PENDING_DB_RESTORE" if not db["spatial_ready"] else "PENDING_LAYER_GEOMETRY"
+        elif relation == "occurredIn":
+            status = "PENDING_SPATIAL_JOIN" if accident_inventory_ready else "PENDING_ACCIDENT_GEOCODING"
+        else:
+            if not db["spatial_ready"]:
+                status = "PENDING_DB_RESTORE"
+            elif db.get("spatial_quality_ready") is False:
+                status = "PENDING_GEOMETRY_REPAIR"
+            else:
+                status = "PENDING_LAYER_GEOMETRY"
         blocked.append({"relation": relation, "status": status, "verified": False, "reason": "No LLM-inferred verification"})
     candidate = [{"relation": x["relation"], "status": "CANDIDATE", "reason": "Requires evidence evaluation"} for x in blocked if x["status"] == "CANDIDATE"]
+    can_execute = level == "EXECUTION_READY"
     return {"discovery_status": "READY" if available else "NO_DATA", "execution_level": level,
-            "can_execute_spatial_query": level == "EXECUTION_READY", "can_verify_spatial_edges": level == "EXECUTION_READY",
+            "can_execute_spatial_query": can_execute,
+            "can_verify_spatial_edges": can_execute and db.get("spatial_quality_ready") is not False,
             "available_data": available, "missing_data": missing, "blocked_relations": blocked,
             "candidate_data": candidate, "required_next_actions": ["Restore and configure S101 v2 DB", "Extract Feature/Layer geometry and create spatial indexes", "Parse document bodies and regenerate RAG chunks", "Geocode accident locations"] ,
             "provenance": {"inventory": "outputs/inventories/dataset_inventory.csv", "rag_manifest": "outputs/rag/rag_manifest.json", "kg": "outputs/graph/kg_nodes_v2.jsonl", "db_probe": db}}
