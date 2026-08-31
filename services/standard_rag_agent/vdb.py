@@ -77,6 +77,9 @@ def search_vdb(query: str, top_k: int = 2, user_id: str = "system", clearance_le
                            COALESCE(metadata->>'version', 'v2') AS version,
                            content,
                            COALESCE(metadata->>'section', '') AS section,
+                           source_id,
+                           source_sha256,
+                           metadata,
                            1 - (embedding <=> CAST(:vector AS vector)) AS similarity
                     FROM knowledge.document_chunks
                     WHERE embedding IS NOT NULL
