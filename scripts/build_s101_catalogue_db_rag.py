@@ -11,13 +11,17 @@ import json
 import os
 import re
 import urllib.request
+import zipfile
 from datetime import datetime, timezone
+from io import BytesIO
 from pathlib import Path
 from typing import Any
+from xml.etree import ElementTree
 
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CATALOGUE = ROOT / "data/s101_feature_catalogue_v2_parsed.json"
+DEFAULT_DATASET_ROOT = Path(os.getenv("DATASET_ROOT", str(ROOT / "Dataset")))
 DEFAULT_CHUNKS = ROOT / "outputs/rag/s101_catalogue_db_chunks.jsonl"
 DEFAULT_EMBEDDINGS = ROOT / "outputs/rag/s101_catalogue_db_embeddings.jsonl"
 DEFAULT_REPORT = ROOT / "outputs/reports/17_s101_catalogue_db_embedding_report.md"
@@ -25,9 +29,18 @@ DEFAULT_REPORT = ROOT / "outputs/reports/17_s101_catalogue_db_embedding_report.m
 SOURCE_IDS = {
     "feature_catalogue": "s101_feature_catalogue_v2_xml",
     "attribute_catalogue": "s101_attribute_catalogue_v2_xml",
-    "db_feature_profile": "s100_dev_s101_db_feature_profile",
-    "db_text_values": "s100_dev_s101_db_text_values",
+    "product_specification": "s101_product_specification_2_0_pdf",
+    "dceg": "s101_dceg_2_0_pdf",
+    "portrayal_catalogue": "s101_portrayal_catalogue_2_0",
+    "validation_checks": "s158_101_validation_checks_1_1",
+    "db_feature_profile": "gbhd_s101_20_db_feature_profile",
+    "db_text_values": "gbhd_s101_20_db_text_values",
+    "valid_geometry_profile": "gbhd_s101_20_valid_geometry_profile",
+    "accident_relation_profile": "gbhd_s101_20_accident_relation_profile",
 }
+
+S101_PRODUCT_SPECIFICATION = os.getenv("S101_PRODUCT_SPECIFICATION", "INT.IHO.S-101.2.0")
+S101_CATALOGUE_VERSION = os.getenv("S101_CATALOGUE_VERSION", "2.0.0")
 
 
 def stable_id(prefix: str, value: str) -> str:
@@ -44,6 +57,93 @@ def sha256_file(path: Path) -> str:
 
 def clean_text(value: Any) -> str:
     return " ".join(str(value or "").replace("\x00", " ").split())
+
+
+def decode_best(raw: bytes) -> str:
+    candidates = []
+    for encoding in ("utf-8-sig", "cp949", "euc-kr", "utf-8"):
+        try:
+            value = raw.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+        score = sum(1 for char in value if "\uac00" <= char <= "\ud7a3") - value.count("\ufffd") * 10000
+        candidates.append((score, value))
+    if candidates:
+        return max(candidates, key=lambda item: item[0])[1]
+    return raw.decode("utf-8", errors="replace")
+
+
+def xlsx_text(raw: bytes) -> str:
+    values: list[str] = []
+    with zipfile.ZipFile(BytesIO(raw)) as workbook:
+        for member in workbook.namelist():
+            if not member.endswith(".xml"):
+                continue
+            if "sheet" not in member and "sharedStrings" not in member:
+                continue
+            try:
+                root = ElementTree.fromstring(workbook.read(member))
+            except ElementTree.ParseError:
+                continue
+            values.extend(node.text.strip() for node in root.iter() if node.text and node.text.strip())
+    return "\n".join(values)
+
+
+def pdf_pages_from_bytes(raw: bytes) -> list[tuple[int, str]]:
+    try:
+        from pypdf import PdfReader
+    except ModuleNotFoundError:
+        print("pdf_extraction_unavailable=pypdf")
+        return []
+
+    reader = PdfReader(BytesIO(raw))
+    return [(index + 1, page.extract_text() or "") for index, page in enumerate(reader.pages)]
+
+
+def pdf_pages(path: Path) -> list[tuple[int, str]]:
+    return pdf_pages_from_bytes(path.read_bytes())
+
+
+def iter_zip_text_members(path: Path, max_depth: int = 2) -> list[tuple[str, str]]:
+    def walk(raw_zip: bytes, prefix: str, depth: int) -> list[tuple[str, str]]:
+        texts: list[tuple[str, str]] = []
+        with zipfile.ZipFile(BytesIO(raw_zip)) as archive:
+            for name in archive.namelist():
+                suffix = Path(name).suffix.lower()
+                member_name = f"{prefix}{name}"
+                raw = archive.read(name)
+                if suffix == ".zip" and depth < max_depth:
+                    texts.extend(walk(raw, member_name + "::", depth + 1))
+                elif suffix == ".pdf":
+                    for page_no, text in pdf_pages_from_bytes(raw):
+                        if text.strip():
+                            texts.append((f"{member_name}#page_{page_no}", text))
+                elif suffix == ".xlsx":
+                    text = xlsx_text(raw)
+                    if text.strip():
+                        texts.append((member_name, text))
+                elif suffix in {".xml", ".txt", ".lua", ".json", ".csv", ".xsl", ".xslt"}:
+                    text = decode_best(raw)
+                    if text.strip():
+                        texts.append((member_name, text))
+        return texts
+
+    return walk(path.read_bytes(), "", 0)
+
+
+def word_chunks(text: str, target_words: int = 900, overlap_words: int = 120) -> list[str]:
+    words = re.findall(r"\S+", text)
+    if not words:
+        return []
+    chunks: list[str] = []
+    start = 0
+    while start < len(words):
+        end = min(start + target_words, len(words))
+        chunks.append(" ".join(words[start:end]))
+        if end == len(words):
+            break
+        start = max(0, end - overlap_words)
+    return chunks
 
 
 def keywords_from_text(text: str, extra: list[str] | None = None) -> list[str]:
@@ -80,6 +180,7 @@ def chunk_row(
         "title": metadata["title"],
         "section": metadata["section"],
         "version": metadata.get("version", "2.0.0"),
+        "product_specification": metadata.get("product_specification", S101_PRODUCT_SPECIFICATION),
         "language": metadata.get("language", "en"),
         "source_file": metadata["source_file"],
         "page_no": None,
@@ -200,6 +301,182 @@ def load_catalogue_chunks(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def find_dataset_file(dataset_root: Path, pattern: str) -> Path | None:
+    if not dataset_root.exists():
+        return None
+    matches = sorted(
+        (path for path in dataset_root.iterdir() if path.is_file() and re.search(pattern, path.name, re.IGNORECASE)),
+        key=lambda path: ("(" in path.stem, path.name),
+    )
+    return matches[0] if matches else None
+
+
+def load_pdf_document_chunks(
+    path: Path,
+    *,
+    document_type: str,
+    title: str,
+    source_id: str,
+    related_concepts: list[str],
+) -> list[dict[str, Any]]:
+    source_sha = sha256_file(path)
+    rows: list[dict[str, Any]] = []
+    for page_no, text in pdf_pages(path):
+        page_text = clean_text(text)
+        if not page_text:
+            continue
+        for chunk_index, content in enumerate(word_chunks(page_text)):
+            section = f"page:{page_no}:chunk:{chunk_index}"
+            rows.append(chunk_row(
+                chunk_id=stable_id(document_type, f"{path.name}|{section}|{content[:120]}"),
+                content=content,
+                metadata={
+                    "document_type": document_type,
+                    "title": title,
+                    "section": section,
+                    "version": S101_CATALOGUE_VERSION,
+                    "source_file": str(path),
+                    "source_id": source_id,
+                    "source_sha256": source_sha,
+                    "page_no": page_no,
+                },
+                related_concepts=related_concepts,
+            ))
+    return rows
+
+
+def load_zip_document_chunks(
+    path: Path,
+    *,
+    document_type: str,
+    title: str,
+    source_id: str,
+    related_concepts: list[str],
+) -> list[dict[str, Any]]:
+    source_sha = sha256_file(path)
+    rows: list[dict[str, Any]] = []
+    for member, text in iter_zip_text_members(path):
+        member_text = clean_text(text)
+        if not member_text:
+            continue
+        for chunk_index, content in enumerate(word_chunks(member_text)):
+            section = f"member:{member}:chunk:{chunk_index}"
+            rows.append(chunk_row(
+                chunk_id=stable_id(document_type, f"{path.name}|{section}|{content[:120]}"),
+                content=f"Archive member: {member}. {content}",
+                metadata={
+                    "document_type": document_type,
+                    "title": title,
+                    "section": section[:480],
+                    "version": S101_CATALOGUE_VERSION,
+                    "source_file": str(path),
+                    "source_member": member,
+                    "source_id": source_id,
+                    "source_sha256": source_sha,
+                },
+                related_concepts=related_concepts,
+            ))
+    return rows
+
+
+def load_existing_s101_pdf_chunks(path: Path = ROOT / "outputs/rag/s101_dceg_chunks.jsonl") -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    rows: list[dict[str, Any]] = []
+    for line in path.read_text(encoding="utf-8-sig").splitlines():
+        if not line.strip():
+            continue
+        source = json.loads(line)
+        metadata = dict(source.get("metadata") or {})
+        if metadata.get("product_id") != "S-101":
+            continue
+        content = source.get("content") or source.get("text") or ""
+        title = clean_text(metadata.get("title") or "S-101 PDF Source")
+        document_type = "dceg" if "DCEG" in title.upper() else "product_specification"
+        source_id = SOURCE_IDS["dceg"] if document_type == "dceg" else SOURCE_IDS["product_specification"]
+        section = clean_text(metadata.get("section") or f"chunk:{len(rows)}")
+        rows.append(chunk_row(
+            chunk_id=source.get("chunk_id") or stable_id(f"s101_existing_{document_type}", f"{metadata.get('source_file')}|{section}|{content[:160]}"),
+            content=content,
+            metadata={
+                "document_type": document_type,
+                "title": title,
+                "section": section,
+                "version": metadata.get("version") or S101_CATALOGUE_VERSION,
+                "product_specification": S101_PRODUCT_SPECIFICATION,
+                "source_file": metadata.get("source_file") or str(path),
+                "source_id": source_id,
+                "source_sha256": metadata.get("source_sha256") or sha256_file(path),
+                "page_no": metadata.get("page_no"),
+                "legacy_chunk_id": source.get("chunk_id"),
+            },
+            related_features=metadata.get("related_features") or [],
+            related_concepts=(metadata.get("related_concepts") or []) + [document_type, "s101_core"],
+        ))
+    return rows
+
+
+def load_dataset_s101_core_chunks(dataset_root: Path) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    sources = [
+        (
+            find_dataset_file(dataset_root, r"^S-101_ENC_Product_Specification_Ed_2\.0\.0\.pdf$"),
+            "product_specification",
+            "S-101 ENC Product Specification 2.0.0",
+            SOURCE_IDS["product_specification"],
+            ["product_specification", "s101_core"],
+        ),
+        (
+            find_dataset_file(dataset_root, r"^S-101_Annex_A_DCEG_Ed_2\.0\.0\.pdf$"),
+            "dceg",
+            "S-101 Annex A DCEG 2.0.0",
+            SOURCE_IDS["dceg"],
+            ["dceg", "feature_encoding", "s101_core"],
+        ),
+    ]
+    for path, document_type, title, source_id, related_concepts in sources:
+        if path:
+            before = len(rows)
+            rows.extend(load_pdf_document_chunks(
+                path,
+                document_type=document_type,
+                title=title,
+                source_id=source_id,
+                related_concepts=related_concepts,
+            ))
+            if len(rows) == before:
+                print(f"pdf_chunks_missing source={path.name}; using existing JSONL fallback if available")
+
+    zip_sources = [
+        (
+            find_dataset_file(dataset_root, r"^101_Portrayal_Catalogue_2\.0\.0\.zip\.signature\.zip$"),
+            "portrayal_catalogue",
+            "S-101 Portrayal Catalogue 2.0.0",
+            SOURCE_IDS["portrayal_catalogue"],
+            ["portrayal", "drawing_rules", "s101_core"],
+        ),
+        (
+            find_dataset_file(dataset_root, r"^S-158-101_Validation_Checks_Ed_1\.1\.0\.zip$"),
+            "validation",
+            "S-158-101 Validation Checks 1.1.0",
+            SOURCE_IDS["validation_checks"],
+            ["validation", "s101_core"],
+        ),
+    ]
+    for path, document_type, title, source_id, related_concepts in zip_sources:
+        if path:
+            rows.extend(load_zip_document_chunks(
+                path,
+                document_type=document_type,
+                title=title,
+                source_id=source_id,
+                related_concepts=related_concepts,
+            ))
+    if not any(row["document_type"] in {"product_specification", "dceg"} for row in rows):
+        rows.extend(load_existing_s101_pdf_chunks())
+    return rows
+
+
 def connect(database_url: str):
     import psycopg2
 
@@ -211,45 +488,147 @@ def fetch_db_chunks(database_url: str) -> list[dict[str, Any]]:
     db_sha_seed: list[str] = []
     with connect(database_url) as conn:
         with conn.cursor() as cur:
-            cur.execute("""
-                SELECT feature_type_code,
-                       COUNT(*) AS feature_count,
-                       COUNT(geometry) AS geometry_count,
-                       COALESCE(string_agg(DISTINCT GeometryType(geometry), ', '), '') AS geometry_types
-                FROM projection.s101_feature_current
-                GROUP BY feature_type_code
-                ORDER BY feature_type_code
-            """)
+            cur.execute("SELECT to_regclass('projection.s101_feature_current')")
+            has_projection = cur.fetchone()[0] is not None
+            if has_projection:
+                cur.execute("""
+                    SELECT feature_type_code,
+                           COUNT(*) AS feature_count,
+                           COUNT(geometry) AS geometry_count,
+                           COALESCE(string_agg(DISTINCT GeometryType(geometry), ', '), '') AS geometry_types
+                    FROM projection.s101_feature_current
+                    WHERE product_specification = %s
+                    GROUP BY feature_type_code
+                    ORDER BY feature_type_code
+                """, (S101_PRODUCT_SPECIFICATION,))
+            else:
+                cur.execute("""
+                    SELECT f.featurecode AS feature_type_code,
+                           COUNT(*) AS feature_count,
+                           COUNT(f.geom) AS geometry_count,
+                           COALESCE(string_agg(DISTINCT GeometryType(f.geom), ', '), '') AS geometry_types
+                    FROM public.s101_feature AS f
+                    JOIN public.s101_legacy_meta_binding AS b
+                      ON b.legacy_meta_seq = f.meta_seq
+                    JOIN public.s101_dataset AS d
+                      ON d.dataset_id = b.dataset_id
+                    WHERE d.product_specification = %s
+                    GROUP BY f.featurecode
+                    ORDER BY f.featurecode
+                """, (S101_PRODUCT_SPECIFICATION,))
             feature_profiles = cur.fetchall()
 
-            cur.execute("""
-                SELECT fr.nftc,
-                       fav.natc,
-                       COUNT(*) AS value_count,
-                       array_agg(DISTINCT left(fav.value_text, 160)) FILTER (
-                           WHERE fav.value_text IS NOT NULL
-                             AND fav.value_text !~ '^[0-9. ()+-]+$'
-                       ) AS text_samples
-                FROM canonical.feature_record fr
-                JOIN canonical.feature_attribute_value fav
-                  ON fav.feature_record_id = fr.feature_record_id
-                GROUP BY fr.nftc, fav.natc
-                ORDER BY fr.nftc, fav.natc
-            """)
+            cur.execute("SELECT to_regclass('canonical.feature_record'), to_regclass('canonical.feature_attribute_value')")
+            has_canonical_record, has_canonical_attr = cur.fetchone()
+            if has_canonical_record and has_canonical_attr:
+                cur.execute("""
+                    SELECT fr.nftc,
+                           fav.natc,
+                           COUNT(*) AS value_count,
+                           array_agg(DISTINCT left(fav.value_text, 160)) FILTER (
+                               WHERE fav.value_text IS NOT NULL
+                                 AND fav.value_text !~ '^[0-9. ()+-]+$'
+                           ) AS text_samples
+                    FROM canonical.feature_record fr
+                    JOIN canonical.feature_attribute_value fav
+                      ON fav.feature_record_id = fr.feature_record_id
+                    GROUP BY fr.nftc, fav.natc
+                    ORDER BY fr.nftc, fav.natc
+                """)
+            else:
+                cur.execute("""
+                    SELECT f.featurecode AS nftc,
+                           fav.attrname AS natc,
+                           COUNT(*) AS value_count,
+                           array_agg(DISTINCT left(fav.attrvalue, 160)) FILTER (
+                               WHERE fav.attrvalue IS NOT NULL
+                                 AND fav.attrvalue !~ '^[0-9. ()+-]+$'
+                           ) AS text_samples
+                    FROM public.s101_feature AS f
+                    JOIN public.s101_legacy_meta_binding AS b
+                      ON b.legacy_meta_seq = f.meta_seq
+                    JOIN public.s101_dataset AS d
+                      ON d.dataset_id = b.dataset_id
+                    JOIN public.s101_feature_attr_value AS fav
+                      ON fav.feature_seq = f.seq
+                    WHERE d.product_specification = %s
+                    GROUP BY f.featurecode, fav.attrname
+                    ORDER BY f.featurecode, fav.attrname
+                """, (S101_PRODUCT_SPECIFICATION,))
             attr_profiles = cur.fetchall()
 
-            cur.execute("""
-                SELECT fav.natc,
-                       COUNT(*) AS value_count,
-                       array_agg(DISTINCT left(fav.value_text, 180)) FILTER (
-                           WHERE fav.value_text IS NOT NULL
-                             AND fav.value_text !~ '^[0-9. ()+-]+$'
-                       ) AS text_samples
-                FROM canonical.feature_attribute_value fav
-                GROUP BY fav.natc
-                ORDER BY fav.natc
-            """)
+            if has_canonical_attr:
+                cur.execute("""
+                    SELECT fav.natc,
+                           COUNT(*) AS value_count,
+                           array_agg(DISTINCT left(fav.value_text, 180)) FILTER (
+                               WHERE fav.value_text IS NOT NULL
+                                 AND fav.value_text !~ '^[0-9. ()+-]+$'
+                           ) AS text_samples
+                    FROM canonical.feature_attribute_value fav
+                    GROUP BY fav.natc
+                    ORDER BY fav.natc
+                """)
+            else:
+                cur.execute("""
+                    SELECT fav.attrname AS natc,
+                           COUNT(*) AS value_count,
+                           array_agg(DISTINCT left(fav.attrvalue, 180)) FILTER (
+                               WHERE fav.attrvalue IS NOT NULL
+                                 AND fav.attrvalue !~ '^[0-9. ()+-]+$'
+                           ) AS text_samples
+                    FROM public.s101_feature AS f
+                    JOIN public.s101_legacy_meta_binding AS b
+                      ON b.legacy_meta_seq = f.meta_seq
+                    JOIN public.s101_dataset AS d
+                      ON d.dataset_id = b.dataset_id
+                    JOIN public.s101_feature_attr_value AS fav
+                      ON fav.feature_seq = f.seq
+                    WHERE d.product_specification = %s
+                    GROUP BY fav.attrname
+                    ORDER BY fav.attrname
+                """, (S101_PRODUCT_SPECIFICATION,))
             text_value_profiles = cur.fetchall()
+
+            valid_geometry_profile = None
+            cur.execute("SELECT to_regclass('projection.s101_feature_valid')")
+            if cur.fetchone()[0] is not None:
+                cur.execute("""
+                    SELECT COUNT(*) AS feature_count,
+                           COUNT(*) FILTER (WHERE geometry IS NOT NULL) AS geometry_count,
+                           COUNT(*) FILTER (WHERE geometry IS NOT NULL) AS valid_geometry_count,
+                           0::bigint AS invalid_geometry_count,
+                           COUNT(*) FILTER (WHERE was_geometry_repaired) AS repaired_geometry_count,
+                           COALESCE(string_agg(DISTINCT GeometryType(geometry), ', '), '') AS geometry_types
+                    FROM projection.s101_feature_valid
+                    WHERE product_specification = %s
+                """, (S101_PRODUCT_SPECIFICATION,))
+                valid_geometry_profile = cur.fetchone()
+
+            accident_relation_profile = None
+            accident_relation_types = []
+            cur.execute("SELECT to_regclass('serving.accident_s101_relation_current')")
+            if cur.fetchone()[0] is not None:
+                cur.execute("""
+                    SELECT COUNT(*) AS relation_count,
+                           COUNT(DISTINCT event_id) AS accident_count,
+                           MIN(distance_meters) AS min_distance_meters,
+                           ROUND(AVG(distance_meters), 3) AS avg_distance_meters,
+                           MAX(distance_meters) AS max_distance_meters
+                    FROM serving.accident_s101_relation_current
+                    WHERE product_specification = %s
+                """, (S101_PRODUCT_SPECIFICATION,))
+                accident_relation_profile = cur.fetchone()
+                cur.execute("""
+                    SELECT relation_type,
+                           COUNT(*) AS relation_count,
+                           COUNT(DISTINCT event_id) AS accident_count
+                    FROM serving.accident_s101_relation_current
+                    WHERE product_specification = %s
+                    GROUP BY relation_type
+                    ORDER BY relation_type
+                """, (S101_PRODUCT_SPECIFICATION,))
+                accident_relation_types = cur.fetchall()
 
     attrs_by_nftc: dict[int, list[str]] = {}
     for nftc, natc, value_count, samples in attr_profiles:
@@ -263,7 +642,7 @@ def fetch_db_chunks(database_url: str) -> list[dict[str, Any]]:
     for feature_type_code, feature_count, geometry_count, geometry_types in feature_profiles:
         attr_text = ". ".join(attrs_by_nftc.get(feature_type_code, [])[:80])
         content = (
-            f"S100_dev S-101 database feature profile. DB feature_type_code/NFTC: {feature_type_code}. "
+            f"GBHD S-101 2.0 database feature profile. DB feature_type_code/NFTC: {feature_type_code}. "
             f"Feature instance count: {feature_count}. Geometry count: {geometry_count}. "
             f"Geometry types: {geometry_types or 'none'}. "
             f"Observed DB attribute profile: {attr_text if attr_text else 'no attribute values observed'}."
@@ -274,10 +653,11 @@ def fetch_db_chunks(database_url: str) -> list[dict[str, Any]]:
             content=content,
             metadata={
                 "document_type": "s101_db_feature_profile",
-                "title": "S100_dev S-101 DB Feature Profile",
+                "title": "GBHD S-101 2.0 DB Feature Profile",
                 "section": f"feature_type_code:{feature_type_code}",
-                "version": "2.0.0",
-                "source_file": "S100_dev/projection.s101_feature_current + canonical.feature_attribute_value",
+                "version": S101_CATALOGUE_VERSION,
+                "product_specification": S101_PRODUCT_SPECIFICATION,
+                "source_file": "gbhd_s101/projection.s101_feature_current + public.s101_feature_attr_value",
                 "source_id": SOURCE_IDS["db_feature_profile"],
                 "source_sha256": "pending",
                 "feature_type_code": feature_type_code,
@@ -285,7 +665,7 @@ def fetch_db_chunks(database_url: str) -> list[dict[str, Any]]:
                 "geometry_count": geometry_count,
                 "geometry_types": geometry_types,
             },
-            related_concepts=["s100_dev_db_profile"],
+            related_concepts=["gbhd_s101_20_db_profile"],
         ))
         profile_count += 1
 
@@ -294,7 +674,7 @@ def fetch_db_chunks(database_url: str) -> list[dict[str, Any]]:
         if not sample_values:
             continue
         content = (
-            f"S100_dev S-101 database textual attribute values. NATC: {natc}. "
+            f"GBHD S-101 2.0 database textual attribute values. NATC: {natc}. "
             f"Observed value count: {value_count}. Distinct text samples: {', '.join(sample_values[:120])}."
         )
         db_sha_seed.append(content)
@@ -303,22 +683,82 @@ def fetch_db_chunks(database_url: str) -> list[dict[str, Any]]:
             content=content,
             metadata={
                 "document_type": "s101_db_text_values",
-                "title": "S100_dev S-101 DB Text Attribute Values",
+                "title": "GBHD S-101 2.0 DB Text Attribute Values",
                 "section": f"natc:{natc}",
-                "version": "2.0.0",
-                "source_file": "S100_dev/canonical.feature_attribute_value",
+                "version": S101_CATALOGUE_VERSION,
+                "product_specification": S101_PRODUCT_SPECIFICATION,
+                "source_file": "gbhd_s101/public.s101_feature_attr_value",
                 "source_id": SOURCE_IDS["db_text_values"],
                 "source_sha256": "pending",
                 "natc": natc,
                 "value_count": value_count,
             },
-            related_concepts=["s100_dev_db_text_values"],
+            related_concepts=["gbhd_s101_20_db_text_values"],
         ))
 
     db_sha = hashlib.sha256("\n".join(db_sha_seed).encode("utf-8")).hexdigest()
     for row in rows:
         row["source_sha256"] = db_sha
         row["metadata"]["source_sha256"] = db_sha
+    if valid_geometry_profile:
+        feature_count, geometry_count, valid_count, invalid_count, repaired_count, geometry_types = valid_geometry_profile
+        content = (
+            "GBHD S-101 2.0 valid geometry serving profile. "
+            f"Feature count: {feature_count}. Geometry count: {geometry_count}. "
+            f"Valid geometry count: {valid_count}. Invalid geometry count: {invalid_count}. "
+            f"Repaired geometry count: {repaired_count}. Geometry types: {geometry_types or 'none'}. "
+            "This layer is the preferred S-101 spatial serving layer for validated geometry operations."
+        )
+        rows.append(chunk_row(
+            chunk_id=stable_id("s101_valid_geometry_profile", content),
+            content=content,
+            metadata={
+                "document_type": "s101_valid_geometry_profile",
+                "title": "GBHD S-101 2.0 Valid Geometry Profile",
+                "section": "projection.s101_feature_valid",
+                "version": S101_CATALOGUE_VERSION,
+                "product_specification": S101_PRODUCT_SPECIFICATION,
+                "source_file": "gbhd_s101/projection.s101_feature_valid",
+                "source_id": SOURCE_IDS["valid_geometry_profile"],
+                "source_sha256": db_sha,
+                "feature_count": feature_count,
+                "geometry_count": geometry_count,
+                "valid_geometry_count": valid_count,
+                "invalid_geometry_count": invalid_count,
+                "repaired_geometry_count": repaired_count,
+            },
+            related_concepts=["valid_geometry", "spatial_reliability"],
+        ))
+    if accident_relation_profile:
+        relation_count, accident_count, min_distance, avg_distance, max_distance = accident_relation_profile
+        relation_type_text = "; ".join(
+            f"{relation_type}: {rel_count} relations across {acc_count} accidents"
+            for relation_type, rel_count, acc_count in accident_relation_types
+        )
+        content = (
+            "GBHD S-101 2.0 accident relation serving profile. "
+            f"Relation count: {relation_count}. Accident count with relation: {accident_count}. "
+            f"Distance meters min/avg/max: {min_distance}/{avg_distance}/{max_distance}. "
+            f"Relation type distribution: {relation_type_text or 'none'}. "
+            "Relations are generated from standardized accident points and the S-101 valid geometry layer."
+        )
+        rows.append(chunk_row(
+            chunk_id=stable_id("s101_accident_relation_profile", content),
+            content=content,
+            metadata={
+                "document_type": "s101_accident_relation_profile",
+                "title": "GBHD S-101 2.0 Accident Relation Profile",
+                "section": "serving.accident_s101_relation_current",
+                "version": S101_CATALOGUE_VERSION,
+                "product_specification": S101_PRODUCT_SPECIFICATION,
+                "source_file": "gbhd_s101/serving.accident_s101_relation_current",
+                "source_id": SOURCE_IDS["accident_relation_profile"],
+                "source_sha256": db_sha,
+                "relation_count": relation_count,
+                "accident_count": accident_count,
+            },
+            related_concepts=["accident_hotspot", "s101_relation", "spatial_reliability"],
+        ))
     print(f"db_profiles={profile_count} db_text_value_chunks={len(rows) - profile_count}")
     return rows
 
@@ -332,15 +772,16 @@ def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
 
 
 def load_existing_embeddings(output: Path) -> dict[str, dict[str, Any]]:
-    if not output.exists():
-        return {}
     existing: dict[str, dict[str, Any]] = {}
-    for line in output.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
+    for source_path in (ROOT / "outputs/rag/embeddings_v2.jsonl", output):
+        if not source_path.exists():
             continue
-        row = json.loads(line)
-        if row.get("chunk_id") and row.get("embedding"):
-            existing[row["chunk_id"]] = row
+        for line in source_path.read_text(encoding="utf-8-sig").splitlines():
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if row.get("chunk_id") and row.get("embedding"):
+                existing[row["chunk_id"]] = row
     return existing
 
 
@@ -362,7 +803,16 @@ def embed_rows(rows: list[dict[str, Any]], output: Path, resume: bool = True) ->
     existing = load_existing_embeddings(output) if resume else {}
     if output.exists() and not resume:
         output.unlink()
-    embedded: list[dict[str, Any]] = [existing[row["chunk_id"]] for row in rows if row["chunk_id"] in existing]
+    embedded: list[dict[str, Any]] = []
+    for row in rows:
+        existing_row = existing.get(row["chunk_id"])
+        if not existing_row:
+            continue
+        item = dict(row)
+        item["embedding"] = existing_row["embedding"]
+        item["model"] = existing_row.get("model", model)
+        item["dimension"] = len(existing_row["embedding"])
+        embedded.append(item)
     pending = [row for row in rows if row["chunk_id"] not in existing]
     print(f"embedding_resume existing={len(embedded)} pending={len(pending)} total={len(rows)}")
     for start in range(0, len(pending), batch_size):
@@ -413,6 +863,7 @@ def ensure_table(cur, dimension: int) -> None:
             source_sha256 TEXT
         )
     """)
+    cur.execute(f"ALTER TABLE knowledge.document_chunks ADD COLUMN IF NOT EXISTS embedding vector({dimension})")
 
 
 def db_values(row: dict[str, Any]) -> tuple[Any, ...]:
@@ -497,9 +948,12 @@ def write_report(path: Path, chunks: list[dict[str, Any]], embedded: list[dict[s
     for row in chunks:
         counts[row["document_type"]] = counts.get(row["document_type"], 0) + 1
     lines = [
-        "# S-101 Catalogue and S100_dev DB RAG Build Report",
+        "# S-101 2.0 Catalogue and GBHD DB RAG Build Report",
         "",
         f"- generated_at: `{datetime.now(timezone.utc).isoformat()}`",
+        f"- dataset_root: `{DEFAULT_DATASET_ROOT}`",
+        f"- product_specification: `{S101_PRODUCT_SPECIFICATION}`",
+        f"- catalogue_version: `{S101_CATALOGUE_VERSION}`",
         f"- chunk_count: `{len(chunks)}`",
         f"- embedded_count: `{len(embedded)}`",
         f"- output_chunks: `{DEFAULT_CHUNKS.relative_to(ROOT)}`",
@@ -527,6 +981,7 @@ def write_report(path: Path, chunks: list[dict[str, Any]], embedded: list[dict[s
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--catalogue", type=Path, default=DEFAULT_CATALOGUE)
+    parser.add_argument("--dataset-root", type=Path, default=DEFAULT_DATASET_ROOT)
     parser.add_argument("--chunks-output", type=Path, default=DEFAULT_CHUNKS)
     parser.add_argument("--embeddings-output", type=Path, default=DEFAULT_EMBEDDINGS)
     parser.add_argument("--report-output", type=Path, default=DEFAULT_REPORT)
@@ -537,6 +992,7 @@ def main() -> None:
     args = parser.parse_args()
 
     chunks = load_catalogue_chunks(args.catalogue)
+    chunks.extend(load_dataset_s101_core_chunks(args.dataset_root))
     if args.database_url:
         chunks.extend(fetch_db_chunks(args.database_url))
     else:

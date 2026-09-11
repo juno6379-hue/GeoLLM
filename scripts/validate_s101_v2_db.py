@@ -102,15 +102,29 @@ def validate(database_url: str, max_invalid_samples: int) -> dict[str, Any]:
                     WHERE geometry IS NOT NULL
                 ) s
             """)
-            result["geometry_types"] = fetch_all(cur, """
-                SELECT GeometryType(geometry) AS geometry_type,
-                       COUNT(*) AS feature_count,
-                       COUNT(*) FILTER (WHERE NOT ST_IsValid(geometry)) AS invalid_geometry_count
-                FROM projection.s101_feature_current
-                WHERE geometry IS NOT NULL
-                GROUP BY 1
-                ORDER BY feature_count DESC
-            """)
+            if result["summary"]["invalid_geometry_count"]:
+                result["geometry_types"] = fetch_all(cur, """
+                    SELECT GeometryType(geometry) AS geometry_type,
+                           COUNT(*) AS feature_count,
+                           NULL::bigint AS invalid_geometry_count
+                    FROM projection.s101_feature_current
+                    WHERE geometry IS NOT NULL
+                    GROUP BY 1
+                    ORDER BY feature_count DESC
+                """)
+                result.setdefault("warnings", []).append(
+                    "Skipped geometry-type invalid counts; use invalid sample query for detailed repair triage."
+                )
+            else:
+                result["geometry_types"] = fetch_all(cur, """
+                    SELECT GeometryType(geometry) AS geometry_type,
+                           COUNT(*) AS feature_count,
+                           0::bigint AS invalid_geometry_count
+                    FROM projection.s101_feature_current
+                    WHERE geometry IS NOT NULL
+                    GROUP BY 1
+                    ORDER BY feature_count DESC
+                """)
             result["feature_type_top10"] = fetch_all(cur, """
                 SELECT feature_type_code,
                        COUNT(*) AS feature_count,
@@ -120,18 +134,21 @@ def validate(database_url: str, max_invalid_samples: int) -> dict[str, Any]:
                 ORDER BY feature_count DESC
                 LIMIT 10
             """)
-            result["invalid_geometry_samples"] = fetch_all(cur, """
-                SELECT feature_instance_id,
-                       dataset_id,
-                       feature_type_code,
-                       GeometryType(geometry) AS geometry_type,
-                       ST_IsValidReason(geometry) AS invalid_reason
-                FROM projection.s101_feature_current
-                WHERE geometry IS NOT NULL
-                  AND NOT ST_IsValid(geometry)
-                ORDER BY feature_instance_id
-                LIMIT %s
-            """, (max_invalid_samples,))
+            if result["summary"]["invalid_geometry_count"]:
+                result["invalid_geometry_samples"] = fetch_all(cur, """
+                    SELECT feature_instance_id,
+                           dataset_id,
+                           feature_type_code,
+                           GeometryType(geometry) AS geometry_type,
+                           ST_IsValidReason(geometry) AS invalid_reason
+                    FROM projection.s101_feature_current
+                    WHERE geometry IS NOT NULL
+                      AND NOT ST_IsValid(geometry)
+                    ORDER BY feature_instance_id
+                    LIMIT %s
+                """, (max_invalid_samples,))
+            else:
+                result["invalid_geometry_samples"] = []
             result["geojson_projection"] = fetch_one(cur, """
                 SELECT COUNT(*) AS feature_geojson_count
                 FROM projection.s101_feature_geojson

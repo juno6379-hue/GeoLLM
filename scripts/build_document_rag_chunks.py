@@ -5,6 +5,7 @@ import csv
 import hashlib
 import html
 import json
+import os
 import re
 import zipfile
 from datetime import datetime, timezone
@@ -14,7 +15,7 @@ from xml.etree import ElementTree
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DATASET = ROOT / "Dataset"
+DATASET = Path(os.getenv("DATASET_ROOT", str(ROOT / "Dataset")))
 OUT = ROOT / "outputs/rag"
 HASH_CACHE: dict[str, str] = {}
 WORD_TARGET = 900

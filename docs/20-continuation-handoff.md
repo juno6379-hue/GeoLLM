@@ -6,26 +6,33 @@ Generated: 2026-08-31
 
 Real data integration has been advanced across S-101, accident events, and document RAG.
 
-### S-101 v2 DB
+### S-101 2.0 GBHD DB
 
 - Connection target is configured through `S101_DB_URL`.
-- `projection.s101_feature_current` is reachable in the `s100_dev` database.
-- Current validated row count: 774,474 features.
-- Geometry count: 774,474.
-- SRID 4326 count: 774,474.
+- `projection.s101_feature_current` is reachable in the `gbhd_s101` database.
+- Runtime product specification is `INT.IHO.S-101.2.0`.
+- Current validated row count: 787,102 features.
+- Geometry count: 787,102.
+- SRID 4326 count: 787,102.
 - PostGIS and GiST indexes are present.
-- Full validation still reports 28,928 invalid `MULTIPOLYGON` geometries.
+- Full validation reports 0 invalid geometries.
+- `projection.s101_feature_valid` materializes a valid, 2D serving layer.
+- `projection.s101_feature_valid_anchor` materializes point anchors for fast accident relation joins.
 
 Relevant files:
 
 - `scripts/validate_s101_v2_db.py`
 - `scripts/ensure_s101_spatial_indexes.sql`
+- `scripts/ensure_s101_valid_geometry_and_accident_relations.sql`
+- `scripts/ensure_s101_valid_geometry_anchor.sql`
+- `scripts/ensure_accident_s101_relations.sql`
+- `docs/22-s101-spatial-reliability-accident-relations.md`
 - `outputs/reports/20_s101_v2_db_validation.md` (ignored generated output)
 - `outputs/reports/21_s101_spatial_index_performance.md` (ignored generated output)
 
 Next action:
 
-- Repair or materialize valid S-101 geometry before promoting spatial relation verification to verified status.
+- Add `ST_Subdivide`-based exhaustive exact relation validation if full 1 km relation coverage, not nearest relation coverage, is required.
 
 ### S-101 Query Performance
 
@@ -67,9 +74,17 @@ Discovery state:
 - `missing_data` no longer includes accident geocoding.
 - `occurredIn` now advances to `PENDING_SPATIAL_JOIN`.
 
+S-101 relation state:
+
+- `serving.accident_s101_relation_current` stores the nearest 5 S-101 feature relations per geocoded accident event.
+- Relation rows: 23,180.
+- Accidents with relation: 4,636.
+- Accidents without relation: 0.
+- Exact `ST_Intersects` smoke test on 100 accident events found intersections for all 100 sampled events.
+
 Next action:
 
-- Run accident-to-S-101 spatial joins after S-101 invalid geometry repair or against a repaired serving geometry view.
+- Wire `serving.accident_s101_relation_current` into the accident risk agent and map overlay response.
 
 ### Document RAG
 

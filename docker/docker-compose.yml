@@ -1,8 +1,9 @@
-version: '3.8'
-
 services:
   db:
-    image: postgis/postgis:16-3.4
+    build:
+      context: .
+      dockerfile: s100-db.Dockerfile
+    image: an-geollm-postgis:16-3.4-pgvector
     container_name: an_geollm_postgis
     environment:
       POSTGRES_USER: postgres
@@ -27,10 +28,18 @@ services:
     environment:
       # 로컬호스트 대신 도커 내부 DNS인 'db' 사용
       - POSTGIS_URL=postgresql://postgres:postgres@db:5432/marine_geo
+      - S101_DB_URL=postgresql://postgres:postgres@db:5432/gbhd_s101
+      - S101_PRODUCT_SPECIFICATION=INT.IHO.S-101.2.0
+      - S101_CATALOGUE_VERSION=2.0.0
+      - S101_RAG_METADATA_FILTER={"product_id":"S-101","version":"2.0.0","product_specification":"INT.IHO.S-101.2.0"}
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_CHAT_URL=http://host.docker.internal:11434/v1
+      - OLLAMA_EMBEDDING_URL=http://host.docker.internal:11434/api/embed
+      - OPENAI_BASE_URL=http://host.docker.internal:11434/v1
       # The development database hosts the GBENC-compatible public.feature table.
       - GBENC_DB_HOST=db
       - GBENC_DB_PORT=5432
-      - GBENC_DB_NAME=marine_geo
+      - GBENC_DB_NAME=gbhd_s101
       - GBENC_DB_USER=postgres
       - GBENC_DB_PASSWORD=postgres
       - APP_STATE_DB_PATH=/app/geollm_results/geollm_state.sqlite3
@@ -54,9 +63,9 @@ services:
     image: geollm-container-1:latest
     container_name: geollm-container-1
     ports:
-      - "8057:8057"
-      - "8657:8657"
-      - "8687:8687"
+      - "11000:11000"
+      - "11001:11001"
+      - "11002:11002"
     environment:
       - TileServer__MapEngineFallback__PreferMapEngine=false
       - TileServer__MapEngineFallback__Enabled=true

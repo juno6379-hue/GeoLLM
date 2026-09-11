@@ -11,6 +11,25 @@ from services.llm_config import llm_api_enabled, ollama_base_url
 
 logger = get_logger("standard_rag_agent.vdb")
 
+DEFAULT_S101_METADATA_FILTER = {
+    "product_id": "S-101",
+    "version": os.getenv("S101_CATALOGUE_VERSION", "2.0.0"),
+    "product_specification": os.getenv("S101_PRODUCT_SPECIFICATION", "INT.IHO.S-101.2.0"),
+}
+
+
+def _default_metadata_filter() -> Dict[str, Any]:
+    raw_filter = os.getenv("S101_RAG_METADATA_FILTER")
+    if raw_filter:
+        try:
+            parsed = json.loads(raw_filter)
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            logger.warning("Ignoring invalid S101_RAG_METADATA_FILTER")
+    return DEFAULT_S101_METADATA_FILTER.copy()
+
+
 def _query_embedding(query: str):
     endpoint = os.getenv('OLLAMA_EMBEDDING_URL', ollama_base_url() + '/api/embed')
     body = json.dumps({'model': os.getenv('EMBEDDING_MODEL', 'bge-m3'), 'input': [query]}).encode()
@@ -63,7 +82,7 @@ def search_vdb(query: str, top_k: int = 2, user_id: str = "system", clearance_le
         except Exception:
             db_available = False
             
-    rag_filters = rag_filters or {}
+    rag_filters = {**_default_metadata_filter(), **(rag_filters or {})}
     if db_available and llm_api_enabled():
         try:
             logger.info("Executing real pgvector similarity search")
