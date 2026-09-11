@@ -1,97 +1,139 @@
-# Marine Geospatial Intelligence Platform (An_GeoLLM)
+# An_GeoLLM
 
-해양공간 지능분석 플랫폼은 사용자의 자연어 질의를 분석하여 **해양 공간 분석**, **데이터 카탈로그 탐색**, **표준/법령 RAG 질의**를 수행하는 Multi-Agent 기반 지능형 백엔드 시스템입니다.
+An_GeoLLM is a marine geospatial intelligence platform for S-100/S-101 chart data, PostGIS spatial analysis, and RAG-based standard/catalogue Q&A.
 
-## 🌐 Platform Scope & Boundaries
+The current development baseline is S-101 Edition 2.0. The runtime, spatial projection, accident relation layer, and embedding pipeline should all target S-101 2.0 unless a task explicitly says otherwise.
 
-본 플랫폼(An_GeoLLM)의 핵심 철학은 **"지능형 오케스트레이션과 분석 에이전트에 집중하고, 데이터 서빙 및 단순 시각화는 기존/외부 전문 시스템에 위임한다"** 입니다. 이에 따라 플랫폼 내부 개발 범위와 외부 연동 범위를 명확히 분리합니다.
+## Current Runtime Baseline
 
-### 🏢 플랫폼 내부 범위 (Internal Scope)
-플랫폼 내재화 및 신규 개발이 진행되는 마이크로서비스 및 에이전트 목록입니다.
-- **Core 인프라**: API Gateway, 인증 및 권한(Auth), Task Service, Orchestrator
-- **Registry & Ops**: Agent Registry, Tool Registry, Model Registry, Dataset Registry, Layer Registry, MLOps, LLMOps, Observability
-- **전문 분석 Agents**: Data Discovery Agent, Standard·RAG Agent, Spatial Analysis Agent, AIS Analysis Agent, Vision·EO Agent, Time-Series Agent, Time-Series Forecast Agent, Situation Interpretation Agent, Validation Agent
-- **연계 및 후처리**: Map Agent Adapter, Review Service, Report Service, Notification Service, Audit Service
+| Item | Value |
+|---|---|
+| Database container | `an_geollm_postgis` |
+| Primary database | `gbhd_s101` |
+| Product specification | `INT.IHO.S-101.2.0` |
+| Catalogue version | `2.0.0` |
+| PostGIS port | `localhost:5433 -> container:5432` |
+| Backend port | `localhost:8000` |
+| Tile server ports | `localhost:11000-11002` |
+| Embedding model | Ollama `bge-m3`, 1024 dimensions |
 
-### 🔗 외부/기존 시스템 연동 범위 (External Integration Scope)
-플랫폼 내부에서 데이터를 직접 구축하지 않고, 외부 연동(Multi-DB 커넥션 또는 API)을 통해 참조하는 기존 시스템들입니다.
-- **S-100/S-101 전자해도 (ENC) 시스템**: `gbenc` 데이터베이스 (전자해도 메타데이터, Feature 공간 객체, Portrayal Rule 조회용)
-- **해양관측 시스템**: MDC DB (`ocean_web` Oracle DB, 조위관측소 및 해양관측부이 실시간 데이터 조회용)
-- **Map Agent Web Viewer**: S-100 렌더링에 특화된 기존 프론트엔드 웹 뷰어 (플랫폼은 Adapter를 통해 GeoJSON 및 레이어 제어 메시지만 전달)
+`gbhd_s101` can contain both S-101 1.0 and 2.0 source rows. Production queries, projections, and RAG metadata filters must target:
 
----
-
-## 🏗️ System Architecture
-graph TD
-    Client[Client / Frontend] -->|POST /api/v1/query| API[FastAPI Orchestrator Router]
-    API --> Intent[LangGraph: Intent Parser]
-    
-    Intent -->|SPATIAL_SEARCH| SpatialAgent[Spatial Analysis Agent]
-    Intent -->|DATA_DISCOVERY| DiscoveryAgent[Data Discovery Agent]
-    Intent -->|SEARCH| RAGAgent[Standard RAG Agent]
-    
-    SpatialAgent -->|Execute Tool| DB_Spatial[(PostGIS Database)]
-    DiscoveryAgent -->|Extract Schema| Catalog[(Mock Registry / External APIs)]
-    RAGAgent -->|Cosine Similarity| DB_Vector[(pgvector Database)]
-    
-    DB_Spatial -->|Filter by Clearance| SpatialAgent
-    DB_Vector -->|Filter by Clearance| RAGAgent
-    
-    SpatialAgent --> Validator[LangGraph: Validator & Formatter]
-    DiscoveryAgent --> Validator
-    RAGAgent --> Validator
-    
-    Validator --> API
-    API -->|GeoJSON / Evidence| Client
+```json
+{
+  "product_id": "S-101",
+  "version": "2.0.0",
+  "product_specification": "INT.IHO.S-101.2.0"
+}
 ```
 
-## 🔒 Security Principles (보안 및 거버넌스)
+## Implemented State
 
-- **LLM 환각 차단**: LLM은 직접 SQL이나 Python 코드를 생성하여 실행하지 못합니다. Pydantic으로 정의된 엄격한 스키마(Tool Parameter)만 추출하며, 실제 데이터베이스 조회는 사전에 정의된 `SQLAlchemy text()` 템플릿만이 수행합니다.
-- **Row-level Access Control (행 수준 접근 통제)**: `PUBLIC`, `RESTRICTED`, `SECRET` 계층에 따라 DB 응답 최하단에서 데이터가 필터링됩니다. 권한 밖의 접근 시도는 `shared/observability/audit_logger.py`에 의해 추적됩니다.
-- **이중 Fallback 안전망**: OpenAI API Key 누락이나 데이터베이스(PostgreSQL) 연결 실패 시에도 시스템이 크래시되지 않도록, Rule-based 파서와 내장 Mock 데이터로 Graceful Degradation 되도록 설계되었습니다.
+- Docker Compose runtime has been standardized around the PostGIS container, backend, tile server, and Ollama host settings.
+- The PostGIS image includes `pgvector` support for local vector search.
+- `projection.s101_feature_current` is rebuilt for S-101 2.0 only.
+- `projection.s101_feature_valid` provides repaired valid geometry for serving and spatial joins.
+- `projection.s101_feature_valid_anchor` provides representative anchor points for geometry-safe joins and indexing.
+- `serving.accident_events` contains normalized accident points.
+- `serving.accident_s101_relation_current` stores nearest/containing accident-to-S-101 feature relations.
+- The S-101 2.0 RAG builder covers catalogue XML, product specification PDF, DCEG fallback material, portrayal catalogue, validation checks, DB feature profiles, valid-geometry profile, and accident-relation profile.
 
-## 🚀 Getting Started
+## Verified Data Checkpoint
 
-### 1. Prerequisites
-- Python 3.10+
-- PostgreSQL 15+ (with `PostGIS` and `pgvector` extensions)
-- Poetry 또는 pip (의존성 관리)
+| Object | Count / status |
+|---|---:|
+| `projection.s101_feature_current` | 787,102 rows, invalid geometry 0 |
+| `projection.s101_feature_valid` | 787,102 rows, invalid geometry 0 |
+| `projection.s101_feature_valid_anchor` | 787,102 rows |
+| `serving.accident_events` | 4,636 rows |
+| `serving.accident_s101_relation_current` | 23,180 rows |
 
-### 2. Environment Variables
-프로젝트 루트 경로에 `.env` 파일을 생성하고 아래 값들을 채워넣습니다. (`.env.example` 참조)
+RAG checkpoint:
 
-```env
-# LLM Configuration
-OPENAI_API_KEY="sk-..."
+| Item | Count / status |
+|---|---:|
+| S-101 core chunk target | 1,869 chunks |
+| Partial embedding output | 1,333 rows generated |
+| Loaded rows in `knowledge.document_chunks` | 605 rows |
 
-# Database Configuration (Optional: 미입력 시 내부 Mock 데이터로 동작)
-POSTGRES_URL="postgresql+psycopg2://user:password@localhost:5432/marine_db"
+The embedding job may still be running locally. `knowledge.document_chunks` should be treated as partial until the S-101 core embedding file reaches 1,869 rows and the upsert step completes.
 
-# Observability (OpenTelemetry)
-OTEL_SERVICE_NAME="marine-geollm"
+## Start Runtime
+
+Recommended local startup:
+
+```powershell
+.\start_geollm.bat
 ```
 
-### 3. Installation & Run
-```bash
-# 의존성 설치
-poetry install
+Direct Compose startup:
 
-# FastAPI 서버 실행 (uvicorn)
-poetry run uvicorn main:app --reload --port 8000
+```powershell
+docker compose -f docker\docker-compose.yml up -d db backend tile-server
 ```
 
-### 4. API Endpoints
-- **Swagger UI**: `http://localhost:8000/docs`
-- **Health Check**: `GET http://localhost:8000/health`
-- **지능형 질의 (Main Endpoint)**: `POST http://localhost:8000/api/v1/query`
+Health check:
 
-## 🗂️ Project Structure
+```powershell
+curl.exe -fsS http://localhost:8000/health
+```
 
-- `main.py`: FastAPI 엔트리포인트 및 OpenTelemetry 초기화
-- `services/orchestrator/`: LangGraph 기반 워크플로우 제어, LLM 라우팅, 프론트엔드 포맷 어댑터(GeoJSON)
-- `services/spatial_analysis_agent/`: 해양 공간 연산(ST_DWithin, ST_Intersects) 담당
-- `services/standard_rag_agent/`: pgvector 코사인 유사도 기반 문서 검색 담당
-- `services/data_discovery_agent/`: 데이터 카탈로그 매칭 및 외부 API 파라미터 파싱 담당
-- `shared/`: 공통 스키마(Pydantic), 보안/권한 컨텍스트 제어, Audit/Logger 유틸리티
-- `data/`: SQLAlchemy Connection Pool 및 세션 관리
+## Important Environment Variables
+
+Host-side defaults:
+
+```text
+POSTGIS_URL=postgresql+psycopg2://postgres:postgres@localhost:5433/gbhd_s101
+S101_DB_URL=postgresql+psycopg2://postgres:postgres@localhost:5433/gbhd_s101
+OLLAMA_HOST=http://localhost:11434
+```
+
+Container-side defaults:
+
+```text
+POSTGIS_URL=postgresql+psycopg2://postgres:postgres@db:5432/gbhd_s101
+S101_DB_URL=postgresql+psycopg2://postgres:postgres@db:5432/gbhd_s101
+OLLAMA_HOST=http://host.docker.internal:11434
+```
+
+## Rebuild S-101 Projection And Relations
+
+```powershell
+docker exec -i an_geollm_postgis psql -U postgres -d gbhd_s101 -f /scripts/ensure_gbhd_s101_20_projection.sql
+docker exec -i an_geollm_postgis psql -U postgres -d gbhd_s101 -f /scripts/ensure_s101_valid_geometry_and_accident_relations.sql
+docker exec -i an_geollm_postgis psql -U postgres -d gbhd_s101 -f /scripts/ensure_s101_valid_geometry_anchor.sql
+docker exec -i an_geollm_postgis psql -U postgres -d gbhd_s101 -f /scripts/ensure_accident_s101_relations.sql
+```
+
+## Build S-101 Core RAG
+
+Generate chunks:
+
+```powershell
+docker compose -f docker\docker-compose.yml run --rm backend python /app/scripts/build_s101_catalogue_db_rag.py --output /app/outputs/rag/s101_catalogue_db_chunks.jsonl
+```
+
+Resume embeddings and upsert:
+
+```powershell
+docker compose -f docker\docker-compose.yml run --rm backend python -u /app/scripts/build_document_rag_chunks.py --input /app/outputs/rag/s101_catalogue_db_chunks.jsonl --output /app/outputs/rag/s101_catalogue_db_embeddings.jsonl --upsert --resume
+```
+
+## Key Documentation
+
+| Document | Purpose |
+|---|---|
+| `docs/20-continuation-handoff.md` | Current handoff, runtime state, and next actions |
+| `docs/21-current-architecture-db-embedding.md` | Current architecture, DB, projection, and embedding baseline |
+| `docs/22-s101-spatial-reliability-accident-relations.md` | Valid geometry and accident relation design |
+| `docs/23-rag-embedding-dataset-review.md` | Dataset review and embedding scope |
+| `docs/24-rag-remaining-development-plan.md` | Remaining RAG and GeoLLM development plan |
+
+## Completion Criteria For S-101 2.0 RAG
+
+- `knowledge.document_chunks` contains at least 1,869 S-101 2.0 rows.
+- All S-101 core rows have non-null 1024-dimensional embeddings.
+- A pgvector index exists for vector search.
+- RAG retrieval is filtered to S-101 2.0 metadata.
+- GeoLLM answers include provenance such as `source_file`, `section`, and `source_id`.
+- Accident/S-101 answers include spatial relation evidence from `serving.accident_s101_relation_current`.
