@@ -1,10 +1,13 @@
-version: '3.0'
+version: '3.1'
 layer_class: DynamicTrafficLayer
 static_s101_feature: false
+serving_relation: serving.dynamic_traffic_layer
 layers:
   ais_route_analysis:
     source: AIS
     source_path: Dataset/AIS항로분석.zip
+    execution_status: needs_ingestion
+    expected_physical_table: serving.dynamic_traffic_layer
     data_type: dynamic_traffic_derived
     geometry_type: Polygon
     route_density_line_grid: grid_density
@@ -16,6 +19,8 @@ layers:
   ais_major_route:
     source: AIS
     source_path: Dataset/AIS주요통항로분석.zip
+    execution_status: needs_ingestion
+    expected_physical_table: serving.dynamic_traffic_layer
     data_type: dynamic_traffic_derived
     geometry_type: raster_tile
     route_density_line_grid: major_route_raster_tile
@@ -26,6 +31,8 @@ layers:
   vpass_route_analysis:
     source: V-PASS
     source_path: Dataset/V-PASS항로분석.zip
+    execution_status: needs_ingestion
+    expected_physical_table: serving.dynamic_traffic_layer
     data_type: dynamic_traffic_derived
     geometry_type: Polygon
     route_density_line_grid: grid_density
@@ -37,6 +44,8 @@ layers:
   vpass_major_route:
     source: V-PASS
     source_path: Dataset/V-PASS주요통항로분석.zip
+    execution_status: needs_ingestion
+    expected_physical_table: serving.dynamic_traffic_layer
     data_type: dynamic_traffic_derived
     geometry_type: raster_tile
     route_density_line_grid: major_route_raster_tile

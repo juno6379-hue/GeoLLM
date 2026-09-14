@@ -6,6 +6,12 @@ from shared.observability.logger import get_logger
 
 logger = get_logger("spatial_analysis_agent.geocoding_tool")
 
+def _clean_place_name(place_name: str) -> str:
+    clean_name = place_name or ""
+    for suffix in ("앞바다", "인근", "주변", "근처", "입구", "출구", "해역"):
+        clean_name = clean_name.replace(suffix, " ")
+    return " ".join(clean_name.split()).strip()
+
 @tool
 def get_maritime_coordinates(place_name: str) -> str:
     """
@@ -24,7 +30,7 @@ def get_maritime_coordinates(place_name: str) -> str:
         WKT 형식의 포인트 좌표 (예: "POINT(127.7 34.7)") 또는 실패 시 에러 메시지
     """
     
-    clean_name = place_name.replace("앞바다", "").replace(" 앞바다", "").replace("인근", "").replace(" 인근", "").replace("주변", "").replace(" 주변", "").replace("근처", "").replace(" 근처", "").replace("입구", "").replace(" 입구", "").replace("출구", "").replace(" 출구", "").replace("해역", "").replace(" 해역", "").strip()
+    clean_name = _clean_place_name(place_name)
 
     db = None
     try:
@@ -33,7 +39,7 @@ def get_maritime_coordinates(place_name: str) -> str:
         logger.warning(f"Failed to connect to PostGIS DB: {e}. Will proceed directly to OSM fallback.")
         
     try:
-        clean_name = place_name.replace("앞바다", "").replace(" 앞바다", "").replace("인근", "").replace(" 인근", "").replace("주변", "").replace(" 주변", "").replace("근처", "").replace(" 근처", "").replace("입구", "").replace(" 입구", "").replace("출구", "").replace(" 출구", "").replace("해역", "").replace(" 해역", "").strip()
+        clean_name = _clean_place_name(place_name)
         
         # 방어 로직: 면적(Polygon) 객체나 너무 일반적인 개념은 단일 점(Point) 좌표로 변환(Geocoding)하는 것을 기각함
         reject_list = ["해양보호구역", "정박지", "항로", "위험구역", "제한구역", "선박 충돌 위험구역", "장애물", "침선"]
@@ -133,4 +139,3 @@ def get_maritime_coordinates(place_name: str) -> str:
     finally:
         if db is not None:
             db.close()
-

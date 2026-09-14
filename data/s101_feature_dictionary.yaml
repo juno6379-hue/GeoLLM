@@ -19,6 +19,29 @@ s101_features:
   암초:
     feature_candidates: ["UnderwaterAwashRock"]
     geometry_types: ["Point"]
+  간출암:
+    feature_candidates: ["UnderwaterAwashRock"]
+    geometry_types: ["Point"]
+    attribute_filters:
+      waterLevelEffect: ["Covers and Uncovers", "Awash"]
+    source: "S-101 Feature Catalogue v2.0 UnderwaterAwashRock + waterLevelEffect"
+  노출암:
+    feature_candidates: ["UnderwaterAwashRock"]
+    geometry_types: ["Point"]
+    attribute_filters:
+      waterLevelEffect: ["Always Dry"]
+    source: "S-101 Feature Catalogue v2.0 UnderwaterAwashRock + waterLevelEffect"
+  침석:
+    feature_candidates: ["UnderwaterAwashRock"]
+    geometry_types: ["Point"]
+    attribute_filters:
+      waterLevelEffect: ["Always Under Water/Submerged"]
+    verification_status: "NEEDS_REVIEW"
+    source: "S-101 Feature Catalogue v2.0 UnderwaterAwashRock + waterLevelEffect"
+  해역:
+    feature_candidates: ["SeaAreaNamedWaterArea"]
+    geometry_types: ["Point", "Polygon"]
+    source: "S-101 Feature Catalogue v2.0 SeaAreaNamedWaterArea"
   해저케이블:
     feature_candidates: ["CableSubmarine", "CableArea"]
     geometry_types: ["LineString", "Polygon"]

@@ -1,10 +1,14 @@
 import asyncio
 import json
 import os
+import argparse
+from datetime import datetime, timezone
+from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import uuid
+import yaml
 
 from shared.schemas.agent import AgentStatus
 from services.orchestrator.graph import orchestrator_graph
@@ -12,6 +16,14 @@ from services.orchestrator.state import OrchestratorState
 from services.orchestrator.task_store import PersistentTaskStore
 
 router = APIRouter()
+ROOT = Path(__file__).resolve().parents[2]
+EVIDENCE_REVIEW_DECISIONS = ROOT / "outputs" / "review" / "evidence_candidate_review_decisions.yaml"
+EVIDENCE_REGISTRY = ROOT / "data" / "evidence_registry.yaml"
+EVIDENCE_CANDIDATE_FILES = [
+    ROOT / "outputs" / "evidence" / "kg_provenance_candidates.jsonl",
+    ROOT / "outputs" / "evidence" / "rag_evidence_candidates.jsonl",
+    ROOT / "outputs" / "evidence" / "regulatory_evidence_candidates.jsonl",
+]
 
 # MVP 에서는 DB 대신 인메모리 딕셔너리로 최상위 메타 정보만 들고 있고, 
 # 실제 세부 상태는 LangGraph의 Checkpointer(MemorySaver)가 Thread ID 단위로 관리합니다.
@@ -28,6 +40,213 @@ class TaskResponse(BaseModel):
     task_id: str
     status: str
     history: list = []
+
+
+class EvidenceDecisionRequest(BaseModel):
+    decision: str
+    reviewer: str
+    reason: str
+    review_required_accepted: bool = False
+    verification_status_override: str | None = None
+
+
+class EvidenceApplyRequest(BaseModel):
+    write: bool = False
+    overwrite: bool = False
+
+
+def _load_jsonl(path: Path) -> list[dict]:
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def _load_yaml(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+
+
+def _write_yaml(path: Path, value: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(yaml.safe_dump(value, allow_unicode=True, sort_keys=False), encoding="utf-8")
+
+
+def _load_evidence_candidates() -> dict[str, dict]:
+    candidates: dict[str, dict] = {}
+    for path in EVIDENCE_CANDIDATE_FILES:
+        for row in _load_jsonl(path):
+            evidence_id = row.get("evidence_id")
+            if evidence_id:
+                candidates[evidence_id] = row
+    return candidates
+
+
+def _candidate_summary(row: dict) -> dict:
+    data = row.get("data") if isinstance(row.get("data"), dict) else {}
+    return {
+        "evidence_id": row.get("evidence_id"),
+        "partition": row.get("partition"),
+        "evidence_type": row.get("evidence_type"),
+        "summary": row.get("summary"),
+        "source_ref": row.get("source_ref"),
+        "score": row.get("score"),
+        "review_required": row.get("review_required"),
+        "dataset_id": data.get("dataset_id"),
+        "layer_id": data.get("layer_id"),
+        "feature_code": data.get("feature_code"),
+        "chunk_id": data.get("chunk_id"),
+        "legal_notice_id": data.get("legal_notice_id"),
+        "official_dataset_id": data.get("official_dataset_id"),
+        "authority_id": data.get("authority_id"),
+        "edge_candidates": data.get("edge_candidates") or [],
+        "verification_status": data.get("verification_status"),
+    }
+
+
+def _ensure_evidence_review_doc() -> dict:
+    doc = _load_yaml(EVIDENCE_REVIEW_DECISIONS)
+    if doc.get("decisions"):
+        return doc
+    candidates = _load_evidence_candidates()
+    decisions = {}
+    for evidence_id, row in sorted(candidates.items()):
+        decisions[evidence_id] = {
+            "decision": "hold",
+            "reviewer": None,
+            "reviewed_at": None,
+            "reason": "자동 생성된 evidence 후보입니다. 검토자가 승인/반려/보류 사유를 작성합니다.",
+            "review_required_accepted": False,
+            "verification_status_override": None,
+            "candidate": _candidate_summary(row),
+        }
+    doc = {
+        "version": "0.1",
+        "phase": "8.8",
+        "status": "review_template",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "policy": {
+            "default_decision": "hold",
+            "allowed_decisions": ["approved", "rejected", "hold"],
+            "review_required_candidates_require_acceptance": True,
+            "ui_enabled": True,
+        },
+        "decisions": decisions,
+    }
+    _write_yaml(EVIDENCE_REVIEW_DECISIONS, doc)
+    return doc
+
+
+@router.get("/evidence-candidates")
+def list_evidence_candidates(
+    partition: str | None = None,
+    decision: str | None = None,
+    review_required: bool | None = None,
+    limit: int = 100,
+    offset: int = 0,
+):
+    candidates = _load_evidence_candidates()
+    doc = _ensure_evidence_review_doc()
+    decisions = doc.get("decisions") or {}
+    rows = []
+    for evidence_id, candidate in candidates.items():
+        item = _candidate_summary(candidate)
+        decision_doc = decisions.get(evidence_id, {})
+        item["decision"] = decision_doc.get("decision", "hold")
+        item["reviewer"] = decision_doc.get("reviewer")
+        item["reviewed_at"] = decision_doc.get("reviewed_at")
+        item["reason"] = decision_doc.get("reason")
+        item["review_required_accepted"] = decision_doc.get("review_required_accepted", False)
+        if partition and item.get("partition") != partition:
+            continue
+        if decision and item.get("decision") != decision:
+            continue
+        if review_required is not None and bool(item.get("review_required")) != review_required:
+            continue
+        rows.append(item)
+    rows.sort(key=lambda row: (row.get("decision") != "hold", row.get("partition") or "", -(float(row.get("score") or 0))))
+    safe_limit = max(1, min(limit, 500))
+    safe_offset = max(0, offset)
+    selected = rows[safe_offset:safe_offset + safe_limit]
+    counts = {
+        "total": len(rows),
+        "approved": sum(1 for row in rows if row.get("decision") == "approved"),
+        "rejected": sum(1 for row in rows if row.get("decision") == "rejected"),
+        "hold": sum(1 for row in rows if row.get("decision") == "hold"),
+    }
+    registry = _load_yaml(EVIDENCE_REGISTRY)
+    return {
+        "items": selected,
+        "counts": counts,
+        "limit": safe_limit,
+        "offset": safe_offset,
+        "registry_items": len(registry.get("evidence_items") or {}),
+        "decision_source": str(EVIDENCE_REVIEW_DECISIONS.relative_to(ROOT)).replace("\\", "/"),
+        "registry_source": str(EVIDENCE_REGISTRY.relative_to(ROOT)).replace("\\", "/"),
+    }
+
+
+@router.get("/evidence-candidates/{evidence_id}")
+def get_evidence_candidate(evidence_id: str):
+    candidates = _load_evidence_candidates()
+    candidate = candidates.get(evidence_id)
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Evidence candidate not found")
+    doc = _ensure_evidence_review_doc()
+    decision = (doc.get("decisions") or {}).get(evidence_id, {})
+    return {
+        "candidate": candidate,
+        "decision": decision,
+    }
+
+
+@router.post("/evidence-candidates/{evidence_id}/decision")
+def set_evidence_candidate_decision(evidence_id: str, req: EvidenceDecisionRequest):
+    if req.decision not in {"approved", "rejected", "hold"}:
+        raise HTTPException(status_code=400, detail="decision must be approved, rejected, or hold")
+    if req.decision == "approved":
+        if not req.reviewer.strip() or not req.reason.strip():
+            raise HTTPException(status_code=400, detail="approved decision requires reviewer and reason")
+    candidates = _load_evidence_candidates()
+    candidate = candidates.get(evidence_id)
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Evidence candidate not found")
+    if req.decision == "approved" and candidate.get("review_required") and not req.review_required_accepted:
+        raise HTTPException(status_code=400, detail="review_required candidate requires review_required_accepted=true")
+    doc = _ensure_evidence_review_doc()
+    decisions = doc.setdefault("decisions", {})
+    previous = decisions.get(evidence_id, {})
+    decisions[evidence_id] = {
+        **previous,
+        "decision": req.decision,
+        "reviewer": req.reviewer.strip() or None,
+        "reviewed_at": datetime.now(timezone.utc).isoformat(),
+        "reason": req.reason.strip() or "검토 사유 미입력",
+        "review_required_accepted": req.review_required_accepted,
+        "verification_status_override": req.verification_status_override,
+        "candidate": previous.get("candidate") or _candidate_summary(candidate),
+    }
+    doc["status"] = "review_in_progress"
+    doc["updated_at"] = datetime.now(timezone.utc).isoformat()
+    _write_yaml(EVIDENCE_REVIEW_DECISIONS, doc)
+    return {"status": "PASS", "evidence_id": evidence_id, "decision": decisions[evidence_id]}
+
+
+@router.post("/evidence-candidates/apply")
+def apply_evidence_candidate_decisions(req: EvidenceApplyRequest):
+    from scripts.apply_approved_evidence_candidates import apply_approved
+
+    args = argparse.Namespace(
+        inputs=EVIDENCE_CANDIDATE_FILES,
+        decisions=EVIDENCE_REVIEW_DECISIONS,
+        registry=EVIDENCE_REGISTRY,
+        write=req.write,
+        overwrite=req.overwrite,
+    )
+    result = apply_approved(args)
+    if result.get("status") != "PASS":
+        raise HTTPException(status_code=400, detail=result)
+    return result
 
 
 def _to_jsonable(value):

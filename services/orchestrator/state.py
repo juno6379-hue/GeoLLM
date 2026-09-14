@@ -40,6 +40,7 @@ class OrchestratorState(TypedDict):
     
     final_dict: Optional[Dict[str, Any]]
     task_plan: Optional[Any]
+    query_execution_context: Optional[Dict[str, Any]]
     
     normalization_debug: Optional[List[str]]
     norm_result: Optional[Dict[str, Any]]
@@ -49,6 +50,7 @@ class OrchestratorState(TypedDict):
     uploaded_assets: Optional[List[str]]
     context_result: Optional[Any]
     normalized_query: Optional[str]
+    extracted_slots: Optional[Dict[str, Any]]
     graph_context: Optional[Dict[str, Any]]
     graph_rag_context: Optional[Dict[str, Any]]
     data_discovery_result: Optional[Dict[str, Any]]

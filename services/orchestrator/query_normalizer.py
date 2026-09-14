@@ -9,6 +9,7 @@ logger = get_logger("orchestrator.normalizer")
 class QueryNormalizer:
     def __init__(self):
         self.synonyms = {}
+        self.synonym_meta = {}
         self.marine_terms = {}
         self.derived_concepts = {}
         
@@ -19,17 +20,28 @@ class QueryNormalizer:
         """
         Dynamically load synonyms from the Marine Term Dictionary (YAML).
         """
-        dict_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "marine_term_dictionary.yaml")
-        if os.path.exists(dict_path):
+        root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        dict_paths = [
+            os.path.join(root, "outputs", "dictionaries", "marine_term_dictionary.yaml"),
+            os.path.join(root, "data", "marine_term_dictionary.yaml"),
+        ]
+        for dict_path in dict_paths:
+            if not os.path.exists(dict_path):
+                continue
             try:
                 with open(dict_path, "r", encoding="utf-8") as f:
                     data = yaml.safe_load(f)
-                    if data and "marine_terms" in data:
-                        self.marine_terms = data["marine_terms"]
-                        for canonical_term, term_info in self.marine_terms.items():
+                    if data and ("marine_terms" in data or "terms" in data):
+                        terms = data.get("marine_terms") or data.get("terms") or {}
+                        self.marine_terms.update(terms)
+                        for surface_term, term_info in terms.items():
+                            canonical_term = term_info.get("canonical_id") or term_info.get("canonical_term") or surface_term
+                            self.synonyms[surface_term] = canonical_term
+                            self.synonym_meta[surface_term] = term_info
                             aliases = term_info.get("aliases", [])
                             for alias in aliases:
                                 self.synonyms[alias] = canonical_term
+                                self.synonym_meta[alias] = term_info
                 logger.info(f"Normalizer loaded Marine Term Dictionary from {dict_path}")
             except Exception as e:
                 logger.error("Failed to load Marine Term Dictionary", error=str(e))
@@ -89,8 +101,12 @@ class QueryNormalizer:
         for syn in sorted_syns:
             if syn in q:
                 canonical = self.synonyms[syn]
-                q = q.replace(syn, canonical)
-                matched_rules.append(f"Dictionary 기반 canonical term 변환: '{syn}' -> '{canonical}'")
+                term_meta = self.synonym_meta.get(syn, {})
+                if term_meta.get("replace_in_query", True):
+                    q = q.replace(syn, canonical)
+                    matched_rules.append(f"Dictionary 기반 canonical term 변환: '{syn}' -> '{canonical}'")
+                else:
+                    matched_rules.append(f"Dictionary 기반 canonical term 인식: '{syn}' -> '{canonical}'")
                 canonical_terms_found.add(canonical)
                 
         # Check if derived concepts (like "위험객체") are in the query explicitly

@@ -1,0 +1,372 @@
+version: '0.1'
+contract_id: geollm.kg.ontology.phase5_5
+status: draft_enforced
+
+principles:
+  - id: class_instance_separation
+    description: S-101 feature classes, GBENC feature instances, and executable DB relations are distinct nodes.
+  - id: semantic_candidate_not_execution_authority
+    description: KG may propose concepts, features, tools, and evidence paths, but execution readiness is decided by registry/schema binding and ExecutionValidator.
+  - id: provenance_required
+    description: Every node and edge must preserve source provenance. VERIFIED edges require concrete source evidence.
+  - id: evidence_partitioning
+    description: Spatial, accident, RAG, and KG evidence are returned in separate EvidenceBundle partitions.
+
+verification_statuses:
+  VERIFIED:
+    meaning: Proven by catalogue, registry, DB inspection, spatial predicate, parsed document locator, or audited source.
+    executable: true
+  CANDIDATE:
+    meaning: Plausible semantic relation that still requires deterministic evidence.
+    executable: false
+  DEFERRED:
+    meaning: Relation type is intentionally withheld until geometry/document/accident evidence is available.
+    executable: false
+  NEEDS_REVIEW:
+    meaning: Relation conflicts with schema, duplicate semantics, or source quality and needs human review.
+    executable: false
+
+node_types:
+  Product:
+    meaning: S-100 product family or product edition such as S-101.
+    authority_source: data/s100_product_registry.yaml
+    provenance_required: true
+  KGInventory:
+    meaning: Inventory group describing what kinds of assets currently exist in the KG.
+    authority_source: data/kg_inventory_registry.yaml
+    provenance_required: true
+  UpperClass:
+    meaning: Upper ontology class used to separate hazards, protected areas, regulated areas, observations, traffic, accident, legal authority, and evidence concepts.
+    authority_source: data/upper_ontology_registry.yaml
+    provenance_required: true
+  DomainArea:
+    meaning: Ministry of Oceans and Fisheries domain area such as maritime safety, fisheries policy, port/harbor, shipping logistics, marine environment, and hydrographic survey.
+    authority_source: data/mof_domain_registry.yaml
+    provenance_required: true
+  SemanticMapping:
+    meaning: Mapping profile between GeoLLM concepts, MOF domains, and S-100/S-101 product semantics.
+    authority_source: data/s100_s101_mapping_registry.yaml
+    provenance_required: true
+  FeatureCatalogue:
+    meaning: Standard catalogue defining feature classes and permitted primitives.
+    authority_source: data/s101_feature_catalogue_v2_parsed.json
+    provenance_required: true
+  PortrayalCatalogue:
+    meaning: Standard portrayal catalogue used for display and symbolization.
+    authority_source: outputs/inventories/dataset_inventory.csv
+    provenance_required: true
+  DCEG:
+    meaning: Data Classification and Encoding Guide document for a product.
+    authority_source: outputs/inventories/dataset_inventory.csv
+    provenance_required: true
+  Feature:
+    meaning: Standard S-101 feature class, not an individual object in GBENC DB.
+    authority_source: data/s101_feature_catalogue_v2_parsed.json
+    provenance_required: true
+  FeatureInstance:
+    meaning: Real GBENC object row with geometry and attributes.
+    authority_source: projection.s101_feature_current
+    provenance_required: true
+  Attribute:
+    meaning: Standard feature attribute or catalogue binding.
+    authority_source: data/s101_attribute_dictionary_v2.yaml
+    provenance_required: true
+  GeometryType:
+    meaning: Permitted geometry primitive or observed geometry type.
+    authority_source: feature_catalogue_or_postgis
+    provenance_required: true
+  MarineTerm:
+    meaning: User-facing Korean/English maritime term or alias.
+    authority_source: data/marine_term_dictionary.yaml
+    provenance_required: true
+  TaxonomyClass:
+    meaning: Controlled ontology category used to group marine terms by GeoLLM function.
+    authority_source: scripts/parse_marine_terms_gazetteer.py
+    provenance_required: true
+  DerivedConcept:
+    meaning: Operational concept assembled from terms, feature classes, data, and tools.
+    authority_source: data/derived_concept_registry_v2.yaml
+    provenance_required: true
+  DataLayer:
+    meaning: Approved logical dataset or executable DB relation family.
+    authority_source: data/data_registry.yaml
+    provenance_required: true
+  DynamicTrafficLayer:
+    meaning: AIS/V-PASS or other temporal traffic source.
+    authority_source: data/traffic_layer_registry.yaml
+    provenance_required: true
+  Law:
+    meaning: Statutory law that defines or delegates marine spatial authority.
+    authority_source: data/legal_notice_registry.yaml
+    provenance_required: true
+  LegalNotice:
+    meaning: Gazette, notice, administrative rule, or public announcement authorizing a marine spatial layer.
+    authority_source: data/legal_notice_registry.yaml
+    provenance_required: true
+  Authority:
+    meaning: Public authority publishing laws, notices, hydrographic products, or official datasets.
+    authority_source: data/legal_notice_registry.yaml
+    provenance_required: true
+  OfficialDataset:
+    meaning: Official non-statutory dataset or hydrographic product used as spatial evidence.
+    authority_source: data/legal_notice_registry.yaml
+    provenance_required: true
+  AccidentEvent:
+    meaning: Accident source row or spatialized accident event.
+    authority_source: data/accident_dictionary.yaml
+    provenance_required: true
+  AccidentType:
+    meaning: Accident classification used for risk analysis.
+    authority_source: data/accident_dictionary.yaml
+    provenance_required: true
+  StandardDocument:
+    meaning: S-100/S-101/S-104/S-111/S-124 standard document.
+    authority_source: outputs/inventories/dataset_inventory.csv
+    provenance_required: true
+  LawDocument:
+    meaning: Law, notice, or rule document used by RAG.
+    authority_source: outputs/inventories/dataset_inventory.csv
+    provenance_required: true
+  DocumentChunk:
+    meaning: Addressable chunk from a document/RAG corpus.
+    authority_source: outputs/rag/rag_manifest.json
+    provenance_required: true
+  Agent:
+    meaning: Specialist execution or reasoning component.
+    authority_source: data/agent_capability_registry.yaml
+    provenance_required: true
+  Tool:
+    meaning: Approved executable tool or deterministic function.
+    authority_source: data/tool_registry.yaml
+    provenance_required: true
+  QueryTemplate:
+    meaning: Approved query template selected through registry/schema binding.
+    authority_source: data/query_template_registry.yaml
+    provenance_required: true
+  ValidationRule:
+    meaning: Deterministic guardrail or post-execution validation rule.
+    authority_source: data/validation_rule_registry.yaml
+    provenance_required: true
+  MapLayerStyle:
+    meaning: Display style or symbol layer for map/report rendering.
+    authority_source: data/spatial_layer_registry.yaml
+    provenance_required: true
+  Place:
+    meaning: Gazetteer place or resolved named marine location.
+    authority_source: marine_gazetteer
+    provenance_required: true
+  OntologyIngestionRule:
+    meaning: Deterministic rule that proposes ontology, domain, product, and registry bindings for newly observed datasets.
+    authority_source: data/ontology_ingestion_rules.yaml
+    provenance_required: true
+  OntologyBindingProposal:
+    meaning: Review-only candidate binding generated from dataset profiles. It is not execution authority and cannot make a layer executable.
+    authority_source: outputs/ontology/ontology_binding_proposals.jsonl
+    provenance_required: true
+  EvidenceItem:
+    meaning: Approved evidence registry item promoted from candidate evidence after human review.
+    authority_source: data/evidence_registry.yaml
+    provenance_required: true
+
+edge_types:
+  hasInventoryGroup:
+    subject_types: [KGInventory]
+    object_types: [KGInventory]
+    default_status: VERIFIED
+  specializes:
+    subject_types: [UpperClass]
+    object_types: [UpperClass]
+    default_status: VERIFIED
+  belongsToUpperClass:
+    subject_types: [DataLayer, DynamicTrafficLayer, DerivedConcept, MarineTerm, DomainArea, SemanticMapping]
+    object_types: [UpperClass]
+    default_status: VERIFIED
+  belongsToDomain:
+    subject_types: [DataLayer, DynamicTrafficLayer, DerivedConcept, SemanticMapping]
+    object_types: [DomainArea]
+    default_status: VERIFIED
+  domainUsesUpperClass:
+    subject_types: [DomainArea]
+    object_types: [UpperClass]
+    default_status: VERIFIED
+  mapsToProduct:
+    subject_types: [SemanticMapping, DataLayer, DynamicTrafficLayer]
+    object_types: [Product]
+    default_status: VERIFIED
+  mapsToSemanticMapping:
+    subject_types: [DerivedConcept, DataLayer, DynamicTrafficLayer]
+    object_types: [SemanticMapping]
+    default_status: VERIFIED
+  hasFeatureCatalogue:
+    subject_types: [Product]
+    object_types: [FeatureCatalogue]
+    default_status: VERIFIED
+  hasDCEG:
+    subject_types: [Product]
+    object_types: [DCEG, StandardDocument, DocumentChunk]
+    default_status: VERIFIED
+  portrayedBy:
+    subject_types: [Product, Feature]
+    object_types: [PortrayalCatalogue]
+    default_status: VERIFIED
+  definesFeature:
+    subject_types: [FeatureCatalogue]
+    object_types: [Feature]
+    default_status: VERIFIED
+  hasGeometryType:
+    subject_types: [Feature, FeatureInstance]
+    object_types: [GeometryType]
+    default_status: VERIFIED
+  hasAttribute:
+    subject_types: [Feature, FeatureInstance]
+    object_types: [Attribute]
+    default_status: VERIFIED
+  mapsToFeature:
+    subject_types: [MarineTerm, DataLayer, OntologyBindingProposal]
+    object_types: [Feature]
+    default_status: CANDIDATE
+  classifiesTerm:
+    subject_types: [TaxonomyClass]
+    object_types: [MarineTerm]
+    default_status: VERIFIED
+  aliasOf:
+    subject_types: [MarineTerm]
+    object_types: [MarineTerm]
+    default_status: VERIFIED
+  mapsToConcept:
+    subject_types: [MarineTerm, AccidentType, AccidentEvent, DynamicTrafficLayer]
+    object_types: [DerivedConcept]
+    default_status: CANDIDATE
+  includesFeature:
+    subject_types: [DerivedConcept]
+    object_types: [Feature]
+    default_status: CANDIDATE
+  requiresTool:
+    subject_types: [DerivedConcept]
+    object_types: [Tool]
+    default_status: VERIFIED
+  requiresData:
+    subject_types: [DerivedConcept]
+    object_types: [DataLayer, DynamicTrafficLayer]
+    default_status: VERIFIED
+  requiresAgent:
+    subject_types: [DerivedConcept]
+    object_types: [Agent]
+    default_status: VERIFIED
+  usesLayer:
+    subject_types: [DerivedConcept]
+    object_types: [DataLayer]
+    default_status: VERIFIED
+  usesDynamicLayer:
+    subject_types: [DerivedConcept]
+    object_types: [DynamicTrafficLayer]
+    default_status: VERIFIED
+  authorizedBy:
+    subject_types: [DataLayer, DynamicTrafficLayer, OfficialDataset]
+    object_types: [LegalNotice, OfficialDataset]
+    default_status: VERIFIED
+  definedBy:
+    subject_types: [DataLayer, DynamicTrafficLayer, LegalNotice, OfficialDataset]
+    object_types: [Law]
+    default_status: VERIFIED
+  publishedBy:
+    subject_types: [LegalNotice, OfficialDataset, Law]
+    object_types: [Authority]
+    default_status: VERIFIED
+  derivedFrom:
+    subject_types: [DataLayer, DynamicTrafficLayer]
+    object_types: [OfficialDataset]
+    default_status: VERIFIED
+  storedIn:
+    subject_types: [DataLayer, FeatureInstance]
+    object_types: [DataLayer]
+    default_status: VERIFIED
+  encodedBy:
+    subject_types: [Feature, FeatureInstance]
+    object_types: [DataLayer]
+    default_status: VERIFIED
+  executesQueryTemplate:
+    subject_types: [Tool]
+    object_types: [QueryTemplate]
+    default_status: VERIFIED
+  canExecute:
+    subject_types: [Agent]
+    object_types: [QueryTemplate]
+    default_status: VERIFIED
+  relatedToConcept:
+    subject_types: [DocumentChunk, AccidentEvent, DynamicTrafficLayer]
+    object_types: [DerivedConcept, DocumentChunk]
+    default_status: CANDIDATE
+  hasChunk:
+    subject_types: [StandardDocument, LawDocument, AccidentEvent, DocumentChunk]
+    object_types: [DocumentChunk]
+    default_status: VERIFIED
+  supportsFeature:
+    subject_types: [StandardDocument, DocumentChunk, OntologyBindingProposal]
+    object_types: [Feature, DocumentChunk]
+    default_status: CANDIDATE
+  hasType:
+    subject_types: [AccidentEvent]
+    object_types: [AccidentType]
+    default_status: VERIFIED
+  nearFeature:
+    subject_types: [AccidentEvent, FeatureInstance, Place]
+    object_types: [Feature, FeatureInstance]
+    default_status: DEFERRED
+  occurredIn:
+    subject_types: [AccidentEvent]
+    object_types: [Place, FeatureInstance, DataLayer]
+    default_status: DEFERRED
+  overlapsFeature:
+    subject_types: [FeatureInstance, DynamicTrafficLayer, AccidentEvent]
+    object_types: [FeatureInstance, Feature]
+    default_status: DEFERRED
+  overlapsLayer:
+    subject_types: [DynamicTrafficLayer, AccidentEvent, FeatureInstance]
+    object_types: [DataLayer]
+    default_status: DEFERRED
+  supportsConcept:
+    subject_types: [DocumentChunk, StandardDocument, LawDocument, AccidentEvent]
+    object_types: [DerivedConcept]
+    default_status: DEFERRED
+  proposesBinding:
+    subject_types: [OntologyIngestionRule]
+    object_types: [OntologyBindingProposal]
+    default_status: CANDIDATE
+  proposesUpperClass:
+    subject_types: [OntologyBindingProposal]
+    object_types: [UpperClass]
+    default_status: CANDIDATE
+  proposesDomain:
+    subject_types: [OntologyBindingProposal]
+    object_types: [DomainArea]
+    default_status: CANDIDATE
+  proposesProduct:
+    subject_types: [OntologyBindingProposal]
+    object_types: [Product]
+    default_status: CANDIDATE
+  supportsSubject:
+    subject_types: [EvidenceItem]
+    object_types: [MarineTerm, DerivedConcept, Feature, DataLayer, DynamicTrafficLayer, Law, LegalNotice, OfficialDataset, OntologyBindingProposal]
+    default_status: VERIFIED
+  supportsObject:
+    subject_types: [EvidenceItem]
+    object_types: [MarineTerm, DerivedConcept, Feature, DataLayer, DynamicTrafficLayer, Law, LegalNotice, OfficialDataset, Authority]
+    default_status: VERIFIED
+
+evidence_mapping:
+  spatial_feature_evidence:
+    allowed_sources: [FeatureInstance, DataLayer, QueryTemplate, Tool]
+    required_fields: [evidence_id, evidence_type, source_ref]
+  accident_relation_evidence:
+    allowed_sources: [AccidentEvent, AccidentType, FeatureInstance, DataLayer]
+    required_fields: [evidence_id, evidence_type, source_ref]
+  rag_evidence:
+    allowed_sources: [StandardDocument, LawDocument, DocumentChunk]
+    required_fields: [evidence_id, evidence_type, source_ref]
+  regulatory_evidence:
+    allowed_sources: [Law, LegalNotice, Authority, OfficialDataset]
+    required_fields: [evidence_id, evidence_type, source_ref]
+  kg_provenance:
+    allowed_sources: [MarineTerm, DerivedConcept, Feature, Agent, Tool, QueryTemplate, Law, LegalNotice, OfficialDataset, KGInventory, UpperClass, DomainArea, SemanticMapping, OntologyIngestionRule, OntologyBindingProposal, EvidenceItem]
+    required_fields: [evidence_id, evidence_type, source_ref]

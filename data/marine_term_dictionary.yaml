@@ -11,6 +11,16 @@ terms:
     contexts:
       - navigation_safety
       - grounding_risk
+    source_evidence:
+      dictionaries:
+        - data/derived_concept_registry_v2.yaml#navigation_hazard_object
+      s101_feature_catalogue:
+        - Wreck
+        - Obstruction
+        - UnderwaterAwashRock
+      dceg_chunks:
+        - outputs/rag/s101_dceg_chunks.jsonl#7834e0ff11891c88d241f735
+        - outputs/rag/s101_dceg_chunks.jsonl#8b2f47c8ef7db88124e3648f
     provenance: data/marine_term_dictionary.yaml
   침선:
     canonical_id: Wreck
@@ -25,6 +35,19 @@ terms:
       - navigation_safety
       - grounding_risk
     feature_type_code: 159
+    s101_feature_catalogue:
+      code: Wreck
+      name: Wreck
+      definition: The ruined remains of a stranded or sunken vessel which has been rendered useless.
+      permitted_primitives:
+        - point
+        - surface
+      attributes:
+        - categoryOfWreck
+    dceg_evidence:
+      - outputs/rag/s101_dceg_chunks.jsonl#7834e0ff11891c88d241f735
+      - outputs/rag/s101_dceg_chunks.jsonl#8b2f47c8ef7db88124e3648f
+      - outputs/rag/s124_chunks.jsonl#537cea84c23d6b2efc46d09b
     provenance: data/marine_term_dictionary.yaml
   장애물:
     canonical_id: Obstruction
@@ -37,6 +60,20 @@ terms:
       - navigation_safety
       - grounding_risk
     feature_type_code: 86
+    s101_feature_catalogue:
+      code: Obstruction
+      name: Obstruction
+      definition: In marine navigation, anything that hinders or prevents movement, particularly anything that endangers or prevents passage of a vessel.
+      permitted_primitives:
+        - point
+        - curve
+        - surface
+      attributes:
+        - categoryOfObstruction
+    dceg_evidence:
+      - outputs/rag/s101_dceg_chunks.jsonl#7834e0ff11891c88d241f735
+      - outputs/rag/s101_dceg_chunks.jsonl#3115a6ca55f02916f48495dd
+      - outputs/rag/s124_chunks.jsonl#0381488564383cd16309000f
     provenance: data/marine_term_dictionary.yaml
   배가 못 지나가는 곳:
     canonical_id: navigation_hazard_area
@@ -69,6 +106,160 @@ terms:
       - navigation_safety
       - grounding_risk
     feature_type_code: 153
+    s101_feature_catalogue:
+      code: UnderwaterAwashRock
+      name: Underwater/Awash Rock
+      definition: A concreted mass of stony material or coral which dries, is awash or is below the water surface.
+      permitted_primitives:
+        - point
+      attributes:
+        - waterLevelEffect
+    dceg_evidence:
+      - outputs/rag/s101_dceg_chunks.jsonl#7834e0ff11891c88d241f735
+      - outputs/rag/s101_dceg_chunks.jsonl#bd36562bdd37d4a197e64871
+      - outputs/rag/s101_dceg_chunks.jsonl#d647b3dda488ad2c0a854c29
+    provenance: data/marine_term_dictionary.yaml
+  간출암:
+    canonical_id: UnderwaterAwashRock
+    aliases:
+      - 간출암초
+      - 물때에 드러나는 암초
+      - covers and uncovers rock
+      - awash rock
+    maps_to_features:
+      - UnderwaterAwashRock
+    contexts:
+      - navigation_safety
+      - grounding_risk
+    feature_type_code: 153
+    disambiguation_attributes:
+      waterLevelEffect:
+        - Covers and Uncovers
+        - Awash
+    s101_feature_catalogue:
+      code: UnderwaterAwashRock
+      name: Underwater/Awash Rock
+      definition: A concreted mass of stony material or coral which dries, is awash or is below the water surface.
+      permitted_primitives:
+        - point
+      attributes:
+        - waterLevelEffect
+    dceg_evidence:
+      - outputs/rag/s101_dceg_chunks.jsonl#7834e0ff11891c88d241f735
+      - outputs/rag/s101_dceg_chunks.jsonl#bd36562bdd37d4a197e64871
+    provenance: data/marine_term_dictionary.yaml
+  노출암:
+    canonical_id: UnderwaterAwashRock
+    aliases:
+      - 드러난 암초
+      - 항상 드러나는 암초
+      - exposed rock
+      - always dry rock
+    maps_to_features:
+      - UnderwaterAwashRock
+    contexts:
+      - navigation_safety
+      - grounding_risk
+    feature_type_code: 153
+    disambiguation_attributes:
+      waterLevelEffect:
+        - Always Dry
+    s101_feature_catalogue:
+      code: UnderwaterAwashRock
+      name: Underwater/Awash Rock
+      definition: A concreted mass of stony material or coral which dries, is awash or is below the water surface.
+      permitted_primitives:
+        - point
+      attributes:
+        - waterLevelEffect
+    dceg_evidence:
+      - outputs/rag/s101_dceg_chunks.jsonl#7834e0ff11891c88d241f735
+      - outputs/rag/s101_dceg_chunks.jsonl#3fc10b2537e36b6297b732c2
+    provenance: data/marine_term_dictionary.yaml
+  침석:
+    canonical_id: UnderwaterAwashRock
+    aliases:
+      - 잠긴 암석
+      - 침수 암초
+      - submerged rock
+    maps_to_features:
+      - UnderwaterAwashRock
+    contexts:
+      - navigation_safety
+      - grounding_risk
+    feature_type_code: 153
+    verification_status: NEEDS_REVIEW
+    note: "사용자 용어 '침석'은 S-101 공식 feature명이 아니므로 현재는 UnderwaterAwashRock 후보로 보강하고 운영 검토가 필요하다."
+    disambiguation_attributes:
+      waterLevelEffect:
+        - Always Under Water/Submerged
+    s101_feature_catalogue:
+      code: UnderwaterAwashRock
+      name: Underwater/Awash Rock
+      definition: A concreted mass of stony material or coral which dries, is awash or is below the water surface.
+      permitted_primitives:
+        - point
+      attributes:
+        - waterLevelEffect
+    dceg_evidence:
+      - outputs/rag/s101_dceg_chunks.jsonl#7834e0ff11891c88d241f735
+      - outputs/rag/s101_dceg_chunks.jsonl#d647b3dda488ad2c0a854c29
+    provenance: data/marine_term_dictionary.yaml
+  해역:
+    canonical_id: SeaAreaNamedWaterArea
+    replace_in_query: false
+    aliases:
+      - 바다구역
+      - 수역
+      - 앞바다
+      - sea area
+      - named water area
+    maps_to_features:
+      - SeaAreaNamedWaterArea
+    contexts:
+      - navigation_safety
+      - route_planning
+    s101_feature_catalogue:
+      code: SeaAreaNamedWaterArea
+      name: Sea Area/Named Water Area
+      definition: A geographically defined part of the sea or other navigable waters. It may be specified within its limits by its proper name.
+      permitted_primitives:
+        - point
+        - surface
+    dceg_evidence:
+      - outputs/rag/s101_dceg_chunks.jsonl#70b62f2b79a9f07743a62b93
+      - outputs/rag/s101_dceg_chunks.jsonl#3fc10b2537e36b6297b732c2
+    provenance: data/marine_term_dictionary.yaml
+  해상조난사고:
+    canonical_id: accident_event
+    replace_in_query: false
+    aliases:
+      - 조난사고
+      - 해양사고
+      - 선박사고
+      - 사고다발
+      - 사고다발해역
+      - collision accident
+      - grounding accident
+    maps_to_concepts:
+      - accident_hotspot
+      - navigation_hazard_object
+      - collision_risk
+      - grounding_risk
+      - rescue_vulnerability
+    contexts:
+      - accident_prevention
+      - navigation_safety
+    required_data:
+      - accident_events_coastguard_2025
+      - serving.accident_s101_relation_current
+    source_evidence:
+      datasets:
+        - Dataset/해양경찰청_해상조난사고 상세데이터 현황_20251231 (1).csv
+        - Dataset/해양경찰청_해상조난사고  유형별 사고 척수_20251231.csv
+        - Dataset/해양경찰청_해상조난사고 해역별 사고 척수_20251231.csv
+      relation: serving.accident_s101_relation_current
+    verification_status: CANDIDATE
     provenance: data/marine_term_dictionary.yaml
   항로:
     canonical_id: Fairway

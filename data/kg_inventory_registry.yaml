@@ -1,0 +1,65 @@
+version: '0.1'
+inventory_id: geollm.kg.inventory.phase1
+source_note: 현재 KG 산출물과 registry 파일을 상위 온톨로지에 연결하기 위한 1차 inventory다.
+inventory_groups:
+  standards:
+    description: S-100 계열 표준, Feature Catalogue, DCEG, Portrayal Catalogue.
+    node_types:
+    - Product
+    - FeatureCatalogue
+    - DCEG
+    - PortrayalCatalogue
+    source_refs:
+    - data/s100_product_registry.yaml
+    - data/s101_feature_catalogue_v2_parsed.json
+  semantic_terms:
+    description: 사용자 질의에서 들어오는 해양수산 용어와 파생개념.
+    node_types:
+    - MarineTerm
+    - TaxonomyClass
+    - DerivedConcept
+    source_refs:
+    - data/marine_term_dictionary.yaml
+    - outputs/dictionaries/marine_term_dictionary.yaml
+    - data/derived_concept_registry_v2.yaml
+  data_layers:
+    description: 실제 실행 또는 근거 반환에 사용되는 정적/동적 공간 데이터.
+    node_types:
+    - DataLayer
+    - DynamicTrafficLayer
+    source_refs:
+    - data/data_registry.yaml
+    - data/spatial_layer_registry.yaml
+    - data/traffic_layer_registry.yaml
+  governance:
+    description: 법령, 고시, 공식자료, 기관 provenance.
+    node_types:
+    - Law
+    - LegalNotice
+    - Authority
+    - OfficialDataset
+    source_refs:
+    - data/legal_notice_registry.yaml
+  execution:
+    description: Agent, Tool, QueryTemplate, ValidationRule 실행계약.
+    node_types:
+    - Agent
+    - Tool
+    - QueryTemplate
+    - ValidationRule
+    source_refs:
+    - data/agent_capability_registry.yaml
+    - data/tool_registry.yaml
+    - data/query_template_registry.yaml
+    - data/validation_rule_registry.yaml
+  evidence:
+    description: RAG chunk, 사고 relation, 공간 evidence bundle 원천.
+    node_types:
+    - DocumentChunk
+    - StandardDocument
+    - LawDocument
+    - AccidentEvent
+    - AccidentType
+    source_refs:
+    - outputs/rag/rag_manifest.json
+    - data/accident_dictionary.yaml

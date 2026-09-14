@@ -1,0 +1,63 @@
+version: '0.1'
+mapping_id: geollm.s100_s101.phase1
+products:
+  S-100:
+    label_ko: S-100 범용 수로정보 표준
+    role: framework
+  S-101:
+    label_ko: 전자해도 ENC 제품 사양
+    role: base_electronic_navigational_chart
+  S-104:
+    label_ko: 수위 정보
+    role: water_level_information
+  S-111:
+    label_ko: 표층 해류·조류 정보
+    role: surface_current_information
+  S-124:
+    label_ko: 항행경보
+    role: navigational_warning
+semantic_mappings:
+  navigation_hazard_object:
+    upper_class: navigational_hazard
+    product: S-101
+    feature_candidates:
+    - Wreck
+    - Obstruction
+    - Rock
+    - UnderwaterAwashRock
+    - FoulGround
+  regulated_area:
+    upper_class: regulated_area
+    product: S-101
+    feature_candidates:
+    - RestrictedArea
+    - MilitaryPracticeArea
+    - TrafficSeparationScheme
+    - TrafficSeparationSchemeBoundary
+  protected_area:
+    upper_class: protected_area
+    product: S-101
+    feature_candidates:
+    - MarineProtectedArea
+    - RestrictedArea
+    note: 보호 목적 해역은 항행 위험으로 자동 분류하지 않는다.
+  traffic_activity:
+    upper_class: traffic_activity
+    product: S-101
+    feature_candidates:
+    - Fairway
+    - RecommendedTrack
+    - TrafficSeparationSchemeLanePart
+    - VesselTrafficServiceArea
+  tidal_current_surface:
+    upper_class: hydrographic_observation
+    product: S-111
+    feature_candidates: []
+    note: 현재 Dataset 수치조류도는 metadata_only이며 S-111 grid 해석 adapter가 필요하다.
+layer_product_map:
+  GBENC_S101_feature: S-101
+  eddy_hazard_area: S-101
+  protected_sea_area: S-101
+  vessel_traffic_control_area: S-101
+  tidal_current_surface: S-111
+  sea_parting_prediction: S-104

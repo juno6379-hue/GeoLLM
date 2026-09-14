@@ -55,7 +55,7 @@
         #map { width: 100%; height: 100%; }
         
         /* Results Panel */
-        .results-panel { width: 320px; }
+        .results-panel { width: 420px; min-width: 360px; }
         .results-content { padding: 15px; overflow-y: auto; flex-grow: 1; }
         .section-title { font-size: 12px; font-weight: 600; color: var(--text-muted); margin: 0 0 10px; }
         .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
@@ -65,8 +65,11 @@
         .summary-card.danger .val { color: var(--danger); }
         .summary-card .lbl { font-size: 11px; color: var(--text-muted); }
         
-        .recommendations { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px; font-size: 12px; margin-bottom: 15px; }
-        .recommendations ul { margin: 0; padding-left: 20px; color: #166534; }
+        .answer-card { border: 1px solid var(--border-light); border-radius: 6px; padding: 12px; background: #ffffff; margin-bottom: 15px; }
+        .answer-status { font-size: 11px; font-weight: 700; color: #0369a1; margin-bottom: 6px; }
+        .answer-text { font-size: 13px; line-height: 1.6; color: #0f172a; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow-y: auto; padding-right: 4px; }
+        .evidence-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+        .evidence-item { font-size: 12px; line-height: 1.45; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; overflow-wrap: anywhere; }
         
         .event-logs { border: 1px solid var(--border-light); border-radius: 6px; padding: 10px; font-size: 11px; font-family: monospace; height: 120px; overflow-y: auto; background: #f8fafc; }
         .log-entry { margin-bottom: 5px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 5px; }
@@ -92,25 +95,59 @@
         
         /* Trace Debugger Panel */
         /* Trace Pipeline Container */
-        .trace-pipeline { display: flex; gap: 12px; max-height: 400px; overflow-x: auto; padding: 15px; background: white; color: var(--text-dark); border-top: 1px solid var(--border-light); font-family: 'Noto Sans KR', sans-serif; box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex-grow: 1; }
-        .trace-card { flex: 1 1 20%; min-width: 250px; background: #fff; border: 1px solid var(--border-light); border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.03); }
-        .trace-card-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
-        .trace-card-title { font-weight: 700; font-size: 14px; color: #1e293b; display: flex; align-items: center; gap: 8px; }
+        .trace-pipeline { display: grid; grid-template-columns: repeat(2, minmax(360px, 1fr)); gap: 14px; max-height: none; overflow: visible; padding: 16px; background: white; color: var(--text-dark); border-top: 1px solid var(--border-light); font-family: 'Inter', 'Noto Sans KR', sans-serif; box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex-grow: 1; align-items: stretch; }
+        .trace-card { min-width: 0; background: #fff; border: 1px solid var(--border-light); border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.03); }
+        .trace-card.trace-card-wide { grid-column: span 2; }
+        .trace-card-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 15px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+        .trace-card-title { font-weight: 700; font-size: 14px; color: #1e293b; display: flex; align-items: center; gap: 8px; min-width: 0; line-height: 1.35; }
         .trace-card-icon { width: 24px; height: 24px; background: #3b82f6; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
-        .trace-card-body { padding: 15px; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .trace-data-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; font-size: 13px; color: #334155; word-break: break-all; }
+        .trace-card-body { padding: 15px; flex-grow: 1; overflow: visible; display: flex; flex-direction: column; gap: 10px; }
+        .trace-data-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; font-size: 13px; line-height: 1.5; color: #334155; overflow-wrap: anywhere; word-break: normal; }
+        .trace-json-box { font-family: Consolas, 'Courier New', monospace; white-space: pre-wrap; font-size: 12px; line-height: 1.55; max-height: 320px; overflow-y: auto; }
         .trace-debug-section { margin-top: auto; border-top: 1px dashed var(--border-light); padding: 12px 15px; background: #f0f9ff; }
         .trace-debug-title { font-size: 12px; font-weight: 600; color: #0369a1; margin-bottom: 8px; }
-        .trace-debug-list { list-style: none; padding: 0; margin: 0; font-size: 11px; color: #475569; }
-        .trace-debug-list li { margin-bottom: 4px; display: flex; align-items: flex-start; gap: 4px; }
+        .trace-debug-list { list-style: none; padding: 0; margin: 0; font-size: 12px; line-height: 1.5; color: #475569; }
+        .trace-debug-list li { margin-bottom: 4px; display: flex; align-items: flex-start; gap: 4px; min-width: 0; }
         .trace-debug-list li::before { content: '•'; color: #0ea5e9; }
-        .trace-value-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 4px; }
-        .trace-value-label { color: #64748b; }
-        .trace-value-data { font-weight: 600; color: #0f172a; }
+        .trace-value-row { display: grid; grid-template-columns: minmax(125px, 0.42fr) minmax(0, 1fr); gap: 10px; align-items: start; font-size: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 6px; }
+        .trace-value-label { color: #64748b; line-height: 1.4; }
+        .trace-value-data { font-weight: 600; color: #0f172a; line-height: 1.45; text-align: right; min-width: 0; overflow-wrap: anywhere; word-break: normal; }
         .trace-tag { font-size: 10px; padding: 2px 6px; border-radius: 12px; background: #e0f2fe; color: #0369a1; font-weight: bold; border: 1px solid #bae6fd; }
         
         .toggle-trace-btn { background: #f1f5f9; color: var(--text-muted); border: 1px solid var(--border-light); padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; }
         .toggle-trace-btn:hover { background: #e2e8f0; color: var(--text-dark); }
+        .review-panel { min-height: 420px; }
+        .review-toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 12px 15px; border-bottom: 1px solid var(--border-light); background: #fff; }
+        .review-toolbar select, .review-toolbar input { border: 1px solid var(--border-light); border-radius: 6px; padding: 7px 9px; font-size: 12px; background: white; }
+        .review-toolbar button, .review-action-btn { border: 1px solid var(--border-light); border-radius: 6px; padding: 7px 10px; font-size: 12px; cursor: pointer; background: #f8fafc; color: #0f172a; font-weight: 600; }
+        .review-toolbar button.primary, .review-action-btn.primary { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
+        .review-toolbar button.danger, .review-action-btn.danger { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+        .review-toolbar button.success, .review-action-btn.success { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+        .review-layout { display: grid; grid-template-columns: minmax(320px, 0.9fr) minmax(360px, 1.1fr); gap: 12px; padding: 12px 15px 15px; min-height: 330px; }
+        .review-list { border: 1px solid var(--border-light); border-radius: 8px; overflow-y: auto; max-height: 360px; background: #fff; }
+        .review-row { padding: 10px; border-bottom: 1px solid #e2e8f0; cursor: pointer; display: grid; gap: 5px; }
+        .review-row:hover, .review-row.active { background: #f0f9ff; }
+        .review-row-title { font-size: 12px; font-weight: 700; color: #0f172a; overflow-wrap: anywhere; line-height: 1.35; }
+        .review-row-meta { display: flex; gap: 6px; flex-wrap: wrap; font-size: 10px; color: #64748b; }
+        .review-badge { border-radius: 999px; padding: 2px 7px; background: #f1f5f9; border: 1px solid #e2e8f0; font-weight: 700; }
+        .review-badge.approved { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+        .review-badge.rejected { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+        .review-badge.hold { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+        .review-detail { border: 1px solid var(--border-light); border-radius: 8px; padding: 12px; background: #fff; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+        .review-detail-title { font-size: 14px; font-weight: 800; line-height: 1.4; overflow-wrap: anywhere; }
+        .review-detail-grid { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 7px 10px; font-size: 12px; }
+        .review-detail-grid div:nth-child(odd) { color: #64748b; }
+        .review-detail-grid div:nth-child(even) { font-weight: 600; overflow-wrap: anywhere; }
+        .review-json { font-family: Consolas, 'Courier New', monospace; white-space: pre-wrap; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; font-size: 11px; line-height: 1.45; max-height: 120px; overflow-y: auto; }
+        .review-decision-box { display: grid; grid-template-columns: 120px 1fr; gap: 8px; align-items: start; border-top: 1px dashed #e2e8f0; padding-top: 10px; }
+        .review-decision-box input, .review-decision-box textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--border-light); border-radius: 6px; padding: 8px; font-size: 12px; font-family: inherit; }
+        .review-decision-box textarea { min-height: 64px; resize: vertical; }
+        .review-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+        @media (max-width: 1180px) {
+            .trace-pipeline { grid-template-columns: 1fr; }
+            .trace-card.trace-card-wide { grid-column: auto; }
+            .review-layout { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -179,8 +216,14 @@
                 
                 <!-- Results Panel -->
                 <div class="panel results-panel">
-                    <div class="panel-header">📊 분석 결과 및 의사결정 지원</div>
+                    <div class="panel-header">📊 분석 결과</div>
                     <div class="results-content">
+                        <div class="section-title">질의 응답</div>
+                        <div class="answer-card">
+                            <div class="answer-status" id="answerStatus">대기 중</div>
+                            <div class="answer-text" id="answerText">자연어 질문을 실행하면 분석 결과가 여기에 표시됩니다.</div>
+                        </div>
+
                         <div class="section-title">핵심 결과 요약</div>
                         <div class="summary-grid">
                             <div class="summary-card danger">
@@ -201,6 +244,13 @@
                             </div>
                         </div>
                         
+                        <div class="section-title">분석 근거</div>
+                        <div class="answer-card">
+                            <div class="evidence-list" id="answerEvidence">
+                                <div class="evidence-item">공간 분석, KG/RAG 근거, 실행 쿼리 정보가 완료 후 분리되어 표시됩니다.</div>
+                            </div>
+                        </div>
+
                         <div class="section-title">알림/이벤트 로그</div>
                         <div class="event-logs" id="logArea">
                             <div style="color:#94a3b8;text-align:center;margin-top:20px;">대기 중...</div>
@@ -253,6 +303,49 @@
                 </div>
                 
 
+                <!-- Evidence Candidate Review Panel -->
+                <div class="panel review-panel">
+                    <div class="panel-header">Evidence 후보 검토 및 승인 Gate</div>
+                    <div class="review-toolbar">
+                        <select id="reviewPartition">
+                            <option value="">전체 근거</option>
+                            <option value="kg_provenance">KG 근거</option>
+                            <option value="rag_evidence">RAG 근거</option>
+                            <option value="regulatory_evidence">법령/고시 근거</option>
+                        </select>
+                        <select id="reviewDecision">
+                            <option value="">전체 상태</option>
+                            <option value="hold">보류</option>
+                            <option value="approved">승인</option>
+                            <option value="rejected">반려</option>
+                        </select>
+                        <select id="reviewRequired">
+                            <option value="">전체 검토필요</option>
+                            <option value="true">검토필요</option>
+                            <option value="false">검토불필요</option>
+                        </select>
+                        <button class="primary" onclick="loadEvidenceCandidates()">새로고침</button>
+                        <button onclick="applyEvidenceDecisions(false)">병합 Dry-run</button>
+                        <button class="success" onclick="applyEvidenceDecisions(true)">승인 항목 Registry 병합</button>
+                        <span class="review-badge" id="reviewCounts">대기 중</span>
+                    </div>
+                    <div class="review-layout">
+                        <div class="review-list" id="reviewList">
+                            <div class="review-row">
+                                <div class="review-row-title">Evidence 후보를 불러오는 중입니다.</div>
+                            </div>
+                        </div>
+                        <div class="review-detail" id="reviewDetail">
+                            <div class="review-detail-title">후보를 선택하세요.</div>
+                            <div class="review-detail-grid">
+                                <div>상태</div><div>-</div>
+                                <div>근거 유형</div><div>-</div>
+                                <div>출처</div><div>-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 
                 <!-- Agent Trace Debugger Panel -->
                 <div class="trace-pipeline" id="tracePanel">
@@ -304,7 +397,7 @@
                     </div>
 
                     <!-- 3. 오케스트레이터 의도분석 -->
-                    <div class="trace-card">
+                    <div class="trace-card trace-card-wide">
                         <div class="trace-card-header">
                             <div class="trace-card-title"><div class="trace-card-icon">3</div> 오케스트레이터 의도분석</div>
                         </div>
@@ -362,13 +455,13 @@
                     </div>
 
                     <!-- 4. 작업계획 수립 -->
-                    <div class="trace-card">
+                    <div class="trace-card trace-card-wide">
                         <div class="trace-card-header">
                             <div class="trace-card-title"><div class="trace-card-icon">4</div> 작업계획 수립</div>
                         </div>
                         <div class="trace-card-body">
                             <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">Task Plan (JSON)</div>
-                            <div class="trace-data-box" id="col4-plan" style="font-family: monospace; white-space: pre-wrap; font-size: 11px; max-height: 150px; overflow-y: auto;">
+                            <div class="trace-data-box trace-json-box" id="col4-plan">
                                 N/A
                             </div>
                         </div>
@@ -381,7 +474,7 @@
                     </div>
 
                     <!-- 5. 공간쿼리 실행 -->
-                    <div class="trace-card">
+                    <div class="trace-card trace-card-wide">
                         <div class="trace-card-header">
                             <div class="trace-card-title"><div class="trace-card-icon">5</div> 공간쿼리 실행</div>
                         </div>
@@ -466,6 +559,154 @@
         let activeLayers = [];
         let currentTaskId = null;
         let eventSource = null;
+        let evidenceReviewItems = [];
+        let selectedEvidenceId = null;
+
+        function escapeHtml(value) {
+            return String(value ?? "").replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+        }
+
+        function decisionLabel(value) {
+            if (value === "approved") return "승인";
+            if (value === "rejected") return "반려";
+            return "보류";
+        }
+
+        function formatEvidenceMeta(item) {
+            const parts = [];
+            if (item.layer_id) parts.push(`layer=${item.layer_id}`);
+            if (item.feature_code) parts.push(`feature=${item.feature_code}`);
+            if (item.score !== null && item.score !== undefined) parts.push(`score=${item.score}`);
+            if (item.review_required) parts.push("검토필요");
+            return parts.join(" · ");
+        }
+
+        async function loadEvidenceCandidates() {
+            const partition = document.getElementById("reviewPartition").value;
+            const decision = document.getElementById("reviewDecision").value;
+            const reviewRequired = document.getElementById("reviewRequired").value;
+            const params = new URLSearchParams({ limit: "150" });
+            if (partition) params.set("partition", partition);
+            if (decision) params.set("decision", decision);
+            if (reviewRequired) params.set("review_required", reviewRequired);
+            const list = document.getElementById("reviewList");
+            list.innerHTML = `<div class="review-row"><div class="review-row-title">후보를 불러오는 중입니다.</div></div>`;
+            try {
+                const res = await fetch(`/api/v1/evidence-candidates?${params.toString()}`);
+                if (!res.ok) throw new Error(await res.text());
+                const data = await res.json();
+                evidenceReviewItems = data.items || [];
+                document.getElementById("reviewCounts").innerText = `총 ${data.counts.total}건 · 승인 ${data.counts.approved} · 반려 ${data.counts.rejected} · 보류 ${data.counts.hold} · registry ${data.registry_items}`;
+                if (!evidenceReviewItems.length) {
+                    list.innerHTML = `<div class="review-row"><div class="review-row-title">표시할 후보가 없습니다.</div></div>`;
+                    selectedEvidenceId = null;
+                    renderEvidenceDetail(null);
+                    return;
+                }
+                list.innerHTML = evidenceReviewItems.map(item => `
+                    <div class="review-row ${item.evidence_id === selectedEvidenceId ? "active" : ""}" onclick="selectEvidenceCandidate('${escapeHtml(item.evidence_id)}')">
+                        <div class="review-row-title">${escapeHtml(item.summary || item.evidence_id)}</div>
+                        <div class="review-row-meta">
+                            <span class="review-badge ${escapeHtml(item.decision || "hold")}">${decisionLabel(item.decision)}</span>
+                            <span class="review-badge">${escapeHtml(item.partition)}</span>
+                            <span>${escapeHtml(formatEvidenceMeta(item))}</span>
+                        </div>
+                    </div>
+                `).join("");
+                if (!selectedEvidenceId || !evidenceReviewItems.some(item => item.evidence_id === selectedEvidenceId)) {
+                    selectedEvidenceId = evidenceReviewItems[0].evidence_id;
+                }
+                renderEvidenceDetail(evidenceReviewItems.find(item => item.evidence_id === selectedEvidenceId));
+            } catch (err) {
+                list.innerHTML = `<div class="review-row"><div class="review-row-title">후보 조회 실패: ${escapeHtml(err.message)}</div></div>`;
+            }
+        }
+
+        function selectEvidenceCandidate(evidenceId) {
+            selectedEvidenceId = evidenceId;
+            document.querySelectorAll(".review-row").forEach(el => el.classList.remove("active"));
+            renderEvidenceDetail(evidenceReviewItems.find(item => item.evidence_id === evidenceId));
+            loadEvidenceCandidates();
+        }
+
+        function renderEvidenceDetail(item) {
+            const detail = document.getElementById("reviewDetail");
+            if (!item) {
+                detail.innerHTML = `
+                    <div class="review-detail-title">후보를 선택하세요.</div>
+                    <div class="review-detail-grid"><div>상태</div><div>-</div><div>근거 유형</div><div>-</div><div>출처</div><div>-</div></div>
+                `;
+                return;
+            }
+            detail.innerHTML = `
+                <div class="review-detail-title">${escapeHtml(item.summary || item.evidence_id)}</div>
+                <div class="review-detail-grid">
+                    <div>Evidence ID</div><div>${escapeHtml(item.evidence_id)}</div>
+                    <div>검토 상태</div><div><span class="review-badge ${escapeHtml(item.decision || "hold")}">${decisionLabel(item.decision)}</span></div>
+                    <div>Partition</div><div>${escapeHtml(item.partition)}</div>
+                    <div>Evidence type</div><div>${escapeHtml(item.evidence_type)}</div>
+                    <div>출처</div><div>${escapeHtml(item.source_ref)}</div>
+                    <div>Layer</div><div>${escapeHtml(item.layer_id || "-")}</div>
+                    <div>Feature</div><div>${escapeHtml(item.feature_code || "-")}</div>
+                    <div>검토 필요</div><div>${item.review_required ? "예" : "아니오"}</div>
+                </div>
+                <div>
+                    <div class="section-title">승격 후보 Edge</div>
+                    <div class="review-json">${escapeHtml(JSON.stringify(item.edge_candidates || [], null, 2))}</div>
+                </div>
+                <div class="review-decision-box">
+                    <label for="reviewerName">검토자</label>
+                    <input id="reviewerName" value="${escapeHtml(item.reviewer || "reviewer")}" placeholder="검토자 이름">
+                    <label for="reviewReason">사유</label>
+                    <textarea id="reviewReason" placeholder="승인/반려/보류 사유">${escapeHtml(item.reason || "")}</textarea>
+                    <label>검토필요 수락</label>
+                    <div><input type="checkbox" id="reviewRequiredAccepted" ${item.review_required_accepted ? "checked" : ""}> review_required 후보임을 확인했습니다.</div>
+                </div>
+                <div class="review-actions">
+                    <button class="review-action-btn" onclick="submitEvidenceDecision('hold')">보류 저장</button>
+                    <button class="review-action-btn danger" onclick="submitEvidenceDecision('rejected')">반려</button>
+                    <button class="review-action-btn success" onclick="submitEvidenceDecision('approved')">승인</button>
+                </div>
+            `;
+        }
+
+        async function submitEvidenceDecision(decision) {
+            if (!selectedEvidenceId) return;
+            const reviewer = document.getElementById("reviewerName").value;
+            const reason = document.getElementById("reviewReason").value;
+            const reviewRequiredAccepted = document.getElementById("reviewRequiredAccepted").checked;
+            try {
+                const res = await fetch(`/api/v1/evidence-candidates/${encodeURIComponent(selectedEvidenceId)}/decision`, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({ decision, reviewer, reason, review_required_accepted: reviewRequiredAccepted })
+                });
+                if (!res.ok) throw new Error(await res.text());
+                addLog(`Evidence ${selectedEvidenceId} ${decisionLabel(decision)} 저장`);
+                await loadEvidenceCandidates();
+            } catch (err) {
+                alert(`결정 저장 실패: ${err.message}`);
+            }
+        }
+
+        async function applyEvidenceDecisions(write) {
+            const message = write ? "승인된 evidence를 registry에 병합할까요?" : "승인 병합 dry-run을 실행할까요?";
+            if (write && !confirm(message)) return;
+            try {
+                const res = await fetch("/api/v1/evidence-candidates/apply", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({ write, overwrite: true })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(JSON.stringify(data));
+                addLog(`Evidence registry ${write ? "병합" : "dry-run"} 완료: 승인 ${data.approved_count}건, actions ${data.actions.length}건`);
+                alert(`${write ? "병합" : "Dry-run"} 완료\n승인 ${data.approved_count}건\n작업 ${data.actions.length}건`);
+                await loadEvidenceCandidates();
+            } catch (err) {
+                alert(`registry 적용 실패: ${err.message}`);
+            }
+        }
 
         function addLog(text) {
             const logArea = document.getElementById("logArea");
@@ -475,6 +716,58 @@
             div.innerHTML = `> ${text}`;
             logArea.appendChild(div);
             logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        function setAnalysisPanel(status, message, evidenceItems = []) {
+            document.getElementById("answerStatus").innerText = status;
+            document.getElementById("answerText").innerText = message || "-";
+
+            const evidence = document.getElementById("answerEvidence");
+            evidence.innerHTML = "";
+            const safeEvidence = evidenceItems.length ? evidenceItems : ["표시할 근거가 아직 없습니다."];
+            safeEvidence.forEach(item => {
+                const div = document.createElement("div");
+                div.className = "evidence-item";
+                div.innerText = item;
+                evidence.appendChild(div);
+            });
+        }
+
+        function getActualFeatures(geojsonData) {
+            if (!geojsonData || !Array.isArray(geojsonData.features)) return [];
+            return geojsonData.features.filter(f => !(f.properties && (f.properties.is_buffer || f.properties.role === 'search_buffer')));
+        }
+
+        function renderAnalysisResult(data, geojsonData) {
+            const finalResult = data.final_result || {};
+            const actualFeatures = getActualFeatures(geojsonData);
+            const count = actualFeatures.length;
+            const summary = finalResult.answer_text || finalResult.summary || (count > 0
+                ? `요청 조건에 해당하는 공간 객체 ${count}건을 식별했습니다. 지도에서 위치와 분포를 확인할 수 있습니다.`
+                : "요청 조건에 해당하는 공간 객체를 찾지 못했습니다.");
+
+            const provenance = finalResult.provenance || {};
+            const evidenceBundle = finalResult.evidence_bundle || {};
+            const spatialProv = provenance.spatial_provenance || provenance || {};
+            const kgProv = provenance.kg_provenance || {};
+            const ragProv = provenance.rag_provenance || {};
+            const warnings = finalResult.warnings || [];
+
+            const evidenceItems = [];
+            if (evidenceBundle.spatial_layer_evidence && evidenceBundle.spatial_layer_evidence.length) evidenceItems.push(`공간 레이어 근거 ${evidenceBundle.spatial_layer_evidence.length}건`);
+            if (evidenceBundle.regulatory_evidence && evidenceBundle.regulatory_evidence.length) evidenceItems.push(`법령/고시 근거 ${evidenceBundle.regulatory_evidence.length}건`);
+            evidenceItems.push(`공간분석: ${count}건 식별`);
+            if (data.task_plan && data.task_plan.intent) evidenceItems.push(`의도: ${data.task_plan.intent}`);
+            if (spatialProv.query_template || spatialProv.executed_query) evidenceItems.push("공간 DB 조회 결과를 사용했습니다.");
+            if (evidenceBundle.spatial_feature_evidence && evidenceBundle.spatial_feature_evidence.length) evidenceItems.push(`공간 근거 ${evidenceBundle.spatial_feature_evidence.length}건`);
+            if (evidenceBundle.accident_relation_evidence && evidenceBundle.accident_relation_evidence.length) evidenceItems.push(`사고 관계 근거 ${evidenceBundle.accident_relation_evidence.length}건`);
+            if (evidenceBundle.rag_evidence && evidenceBundle.rag_evidence.length) evidenceItems.push(`문서/RAG 근거 ${evidenceBundle.rag_evidence.length}건`);
+            if (evidenceBundle.kg_provenance && evidenceBundle.kg_provenance.length) evidenceItems.push(`지식그래프 근거 ${evidenceBundle.kg_provenance.length}건`);
+            if (kgProv.graph_paths && kgProv.graph_paths.length !== undefined) evidenceItems.push(`지식그래프 근거 ${kgProv.graph_paths.length}건을 함께 확인했습니다.`);
+            if (ragProv.filters) evidenceItems.push("문서/RAG 검색 조건을 함께 반영했습니다.");
+            warnings.forEach(w => evidenceItems.push(`경고: ${w}`));
+
+            setAnalysisPanel("분석 완료", summary, evidenceItems);
         }
 
         const stepsArray = ['routing', 'discovery', 'spatial', 'ais', 'knowledge', 'reasoning', 'validation', 'report'];
@@ -499,7 +792,7 @@
                 if (res.ok) {
                     const data = await res.json();
                     
-                    document.getElementById('tracePanel').style.display = 'flex';
+                    document.getElementById('tracePanel').style.display = 'grid';
                     
                     // 1 & 2. Query
                     if (data.debug_trace) {
@@ -665,7 +958,7 @@
             const query = queryInput.value.trim();
             if (!query) return;
 
-            document.getElementById('tracePanel').style.display = 'flex';
+            document.getElementById('tracePanel').style.display = 'grid';
             document.getElementById('col1-query').textContent = query;
             
             
@@ -682,6 +975,7 @@
             document.getElementById("intentResult").innerText = "-";
             document.getElementById("similarityScore").innerText = "-";
             document.getElementById("accuracyScore").innerText = "-";
+            setAnalysisPanel("분석 중", "질의를 해석하고 공간분석 실행 계획을 수립하는 중입니다.", ["오케스트레이터 trace가 아래에 갱신됩니다."]);
             
             // 디버그 트레이스 초기화
             document.getElementById('col1-traceid').textContent = "-";
@@ -786,6 +1080,7 @@
                                     document.getElementById("intentResult").innerText = "에러";
                                     document.getElementById("similarityScore").innerText = "에러";
                                     document.getElementById("accuracyScore").innerText = "에러";
+                                    setAnalysisPanel("분석 실패", data.error_message || (data.final_result && data.final_result.summary) || "분석 실행 중 오류가 발생했습니다.", ["실패 상태가 반환되었습니다.", "오류 메시지와 trace의 공간쿼리 실행 단계를 확인하세요."]);
                                     btn.disabled = false;
                                     currentTaskId = null;
                                     break;
@@ -797,6 +1092,7 @@
                                     document.getElementById("intentResult").innerText = "-";
                                     document.getElementById("similarityScore").innerText = "-";
                                     document.getElementById("accuracyScore").innerText = "-";
+                                    setAnalysisPanel("추가 정보 필요", qText, ["질의가 실행 가능한 공간 조건으로 확정되지 않았습니다.", "아래 선택지 또는 입력창에서 기준 위치, 반경, 대상 객체를 더 구체화하세요."]);
                                     setStep('routing', 'error');
                                     setStep('discovery', 'error');
                                     btn.disabled = false;
@@ -842,6 +1138,7 @@
                                         document.getElementById("intentResult").innerText = "에러";
                                         document.getElementById("similarityScore").innerText = "에러";
                                         document.getElementById("accuracyScore").innerText = "에러";
+                                        setAnalysisPanel("공간 분석 실패", data.final_result.summary || "공간 분석 실행에 실패했습니다.", (data.final_result.warnings || ["공간 분석 결과가 실패 상태입니다."]).concat(["위치해석과 target feature 매핑 상태를 확인하세요."]));
                                     } else {
                                         if (data.final_result.map_layers && data.final_result.map_layers.length) {
                                             const allFeatures = [];
@@ -1069,6 +1366,9 @@
                                         document.getElementById("accuracyScore").innerText = accScore;
                                     }
                                 }
+                                if (!(data.final_result && data.final_result.status === 'FAILED')) {
+                                    renderAnalysisResult(data, geojsonData);
+                                }
                                 
                                 // Add bot bubble in history
                                 const bBubble = document.createElement("div");
@@ -1080,6 +1380,7 @@
                                 btn.disabled = false;
                             } else if (data.event === 'error') {
                                 addLog(`[Error] ${data.message}`);
+                                setAnalysisPanel("통신 오류", data.message || "서버 이벤트 처리 중 오류가 발생했습니다.", ["SSE error 이벤트가 반환되었습니다.", "백엔드 로그와 네트워크 상태를 확인하세요."]);
                                 btn.disabled = false;
                             }
                         }
@@ -1090,6 +1391,7 @@
                 btn.disabled = false;
             }
         }
+        window.addEventListener("DOMContentLoaded", () => loadEvidenceCandidates());
     </script>
 </body>
 </html>

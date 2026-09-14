@@ -13,7 +13,7 @@ marine_objects:
     aliases: ["통제구역", "금지구역", "restricted area"]
   위험객체:
     canonical_term: "위험객체"
-    aliases: ["위험한 것", "hazard"]
+    aliases: ["위험한 것", "위험물", "항해 위험 객체", "hazard"]
   침선:
     canonical_term: "침선"
     aliases: ["가라앉은 배", "난파선", "wreck"]
@@ -22,7 +22,19 @@ marine_objects:
     aliases: ["방해물", "obstruction"]
   암초:
     canonical_term: "암초"
-    aliases: ["rock", "숨은 바위", "수중 암초"]
+    aliases: ["rock", "숨은 바위", "수중 암초", "수중암초"]
+  간출암:
+    canonical_term: "간출암"
+    aliases: ["간출암초", "물때에 드러나는 암초", "awash rock", "covers and uncovers rock"]
+  노출암:
+    canonical_term: "노출암"
+    aliases: ["드러난 암초", "항상 드러나는 암초", "exposed rock", "always dry rock"]
+  침석:
+    canonical_term: "침석"
+    aliases: ["잠긴 암석", "침수 암초", "submerged rock"]
+  해역:
+    canonical_term: "해역"
+    aliases: ["바다구역", "수역", "앞바다", "sea area", "named water area"]
   저수심 위험구역:
     canonical_term: "저수심 위험구역"
     aliases: ["얕은 곳", "수심이 낮은 곳", "shallow water"]

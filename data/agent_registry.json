@@ -130,9 +130,16 @@
       {
         "intent": "accident_feature_relation",
         "description": "사고 이벤트, 사고 유형, 사고 공간 레이어를 위험객체와 연결한다.",
-        "required_slots": ["target_feature"],
-        "tools": ["postgis.dwithin", "postgis.intersection"],
-        "outputs": ["geojson", "map_layer", "relation_status", "summary"]
+        "required_slots": ["feature_instance_id"],
+        "tools": ["accident.s101_relation_lookup"],
+        "outputs": ["geojson", "map_layer", "accident_relation_evidence", "summary"]
+      },
+      {
+        "intent": "accident_relation_lookup",
+        "description": "검증된 전자해도 객체 식별자로 사고-S101 relation 테이블을 조회한다.",
+        "required_slots": ["feature_instance_id"],
+        "tools": ["accident.s101_relation_lookup"],
+        "outputs": ["geojson", "accident_relation_evidence", "summary"]
       }
     ]
   },

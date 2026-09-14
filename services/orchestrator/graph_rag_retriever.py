@@ -10,6 +10,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 NODES_PATH = ROOT / "outputs/graph/kg_nodes_v2.jsonl"
 EDGES_PATH = ROOT / "outputs/graph/kg_edges_v2.jsonl"
+EVIDENCE_DIR = ROOT / "outputs/evidence"
 MAX_DEPTH = 3
 
 
@@ -45,6 +46,125 @@ def _load_graph() -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
                 if edge.get("subject_id") and edge.get("object_id"):
                     edges.append(edge)
     return nodes, edges
+
+
+def _load_jsonl(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    rows = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            rows.append(json.loads(line))
+    return rows
+
+
+def _candidate_sources() -> dict[str, Path]:
+    return {
+        "kg_provenance": EVIDENCE_DIR / "kg_provenance_candidates.jsonl",
+        "rag_evidence": EVIDENCE_DIR / "rag_evidence_candidates.jsonl",
+        "regulatory_evidence": EVIDENCE_DIR / "regulatory_evidence_candidates.jsonl",
+    }
+
+
+def _candidate_text(row: dict[str, Any]) -> str:
+    data = row.get("data") if isinstance(row.get("data"), dict) else {}
+    values = [
+        row.get("summary"),
+        row.get("source_ref"),
+        row.get("evidence_type"),
+        data.get("dataset_id"),
+        data.get("layer_id"),
+        data.get("feature_code"),
+        data.get("feature_name"),
+        data.get("legal_notice_id"),
+        data.get("official_dataset_id"),
+        data.get("authority_id"),
+        data.get("basis_laws"),
+        data.get("matched_proposals"),
+        data.get("suggested_binding"),
+    ]
+    return _text(values).lower()
+
+
+def _score_candidate(row: dict[str, Any], query_tokens: set[str], context_tokens: set[str]) -> float:
+    candidate_tokens = _tokens(_candidate_text(row))
+    if not candidate_tokens:
+        return 0.0
+    overlap = query_tokens & candidate_tokens
+    context_overlap = context_tokens & candidate_tokens
+    lexical = len(overlap) / max(1, min(len(query_tokens), 12))
+    contextual = len(context_overlap) / max(1, min(len(context_tokens), 10))
+    base_score = float(row.get("score") or 0.0)
+    return min(1.0, base_score * 0.5 + lexical * 0.35 + contextual * 0.15)
+
+
+def _compact_candidate(row: dict[str, Any], match_score: float) -> dict[str, Any]:
+    data = row.get("data") if isinstance(row.get("data"), dict) else {}
+    return {
+        "evidence_id": row.get("evidence_id"),
+        "partition": row.get("partition"),
+        "evidence_type": row.get("evidence_type"),
+        "summary": row.get("summary"),
+        "source_ref": row.get("source_ref"),
+        "score": row.get("score"),
+        "match_score": round(match_score, 4),
+        "review_required": row.get("review_required"),
+        "data": {
+            key: data.get(key)
+            for key in (
+                "dataset_id",
+                "layer_id",
+                "feature_code",
+                "feature_name",
+                "chunk_id",
+                "page_no",
+                "section",
+                "legal_notice_id",
+                "official_dataset_id",
+                "authority_id",
+                "basis_laws",
+                "edge_candidates",
+                "verification_status",
+            )
+            if key in data
+        },
+    }
+
+
+def _phase85_candidates(query: str, context: dict[str, Any], *, limit_per_partition: int = 12) -> dict[str, list[dict[str, Any]]]:
+    query_tokens = _tokens(query)
+    context_tokens = _tokens([
+        context.get("target_features"),
+        context.get("target_layers"),
+        context.get("target_dynamic_layers"),
+        context.get("derived_concepts"),
+        context.get("product_id"),
+        context.get("candidate_documents"),
+    ])
+    result: dict[str, list[dict[str, Any]]] = {}
+    for partition, path in _candidate_sources().items():
+        scored = []
+        for row in _load_jsonl(path):
+            score = _score_candidate(row, query_tokens, context_tokens)
+            if score <= 0:
+                continue
+            scored.append((score, row))
+        scored.sort(key=lambda item: item[0], reverse=True)
+        result[partition] = [_compact_candidate(row, score) for score, row in scored[:limit_per_partition]]
+    return result
+
+
+def _candidate_values(candidates: dict[str, list[dict[str, Any]]], field: str) -> list[str]:
+    values = []
+    for rows in candidates.values():
+        for row in rows:
+            data = row.get("data") if isinstance(row.get("data"), dict) else {}
+            value = data.get(field)
+            if isinstance(value, list):
+                values.extend(_text(item) for item in value if item)
+            elif value:
+                values.append(_text(value))
+    return list(dict.fromkeys(values))
 
 
 def _search_text(node: dict[str, Any]) -> str:
@@ -166,6 +286,7 @@ class GraphRAGRetriever:
     def retrieve(self, query: str, graph_context: dict[str, Any] | None = None) -> dict[str, Any]:
         context = graph_context or {}
         nodes, edges = _load_graph()
+        evidence_candidates = _phase85_candidates(query, context)
         seed_ids = _seed_ids(nodes, context, query)
         distances, paths = _walk(nodes, edges, seed_ids)
         related_ids = list(distances)
@@ -173,8 +294,11 @@ class GraphRAGRetriever:
         layer_ids = _related_ids(nodes, edges, set(related_ids), {"usesLayer", "requiresData", "overlapsLayer"}, {"DataLayer"})
         dynamic_ids = _related_ids(nodes, edges, set(related_ids), {"usesDynamicLayer", "overlapsLayer"}, {"DynamicTrafficLayer"})
         requested_feature_ids = _related_ids(nodes, edges, set(seed_ids), {"mapsToFeature", "includesFeature"}, {"Feature"})
-        target_features = _names(nodes, list(dict.fromkeys(requested_feature_ids + feature_ids)), "Feature")
-        target_layers = _names(nodes, list(dict.fromkeys(layer_ids)), "DataLayer")
+        candidate_features = _candidate_values(evidence_candidates, "feature_code")
+        candidate_layers = _candidate_values(evidence_candidates, "layer_id")
+        candidate_chunk_ids = _candidate_values(evidence_candidates, "chunk_id")
+        target_features = list(dict.fromkeys(_names(nodes, list(dict.fromkeys(requested_feature_ids + feature_ids)), "Feature") + candidate_features))
+        target_layers = list(dict.fromkeys(_names(nodes, list(dict.fromkeys(layer_ids)), "DataLayer") + candidate_layers))
         dynamic_layers = _names(nodes, list(dict.fromkeys(dynamic_ids)), "DynamicTrafficLayer")
         documents = _names(nodes, related_ids, "StandardDocument") + _names(nodes, related_ids, "LawDocument") + _names(nodes, related_ids, "DocumentChunk")
         filters = {
@@ -182,6 +306,7 @@ class GraphRAGRetriever:
             "related_features": list(dict.fromkeys(_text(x) for x in _list(context.get("target_features")))) or target_features,
             "related_concepts": list(dict.fromkeys(_text(x) for x in _list(context.get("derived_concepts")))) or _names(nodes, related_ids, "DerivedConcept"),
             "document_type": list(dict.fromkeys(_text(x) for x in _list(context.get("document_type")))),
+            "candidate_document_ids": candidate_chunk_ids,
         }
         lowered = query.lower()
         spatial = bool(target_features or target_layers or context.get("target_features")) or any(x in lowered for x in ("km", "반경", "거리", "이내", "near", "overlap", "dwithin"))
@@ -195,6 +320,7 @@ class GraphRAGRetriever:
             "target_layers": target_layers or [_text(x) for x in _list(context.get("target_layers"))],
             "target_dynamic_layers": dynamic_layers or [_text(x) for x in _list(context.get("target_dynamic_layers"))],
             "candidate_documents": documents,
+            "evidence_candidates": evidence_candidates,
             "candidate_agents": _names(nodes, related_ids, "Agent"),
             "candidate_tools": _names(nodes, related_ids, "Tool"),
             "candidate_query_templates": _names(nodes, related_ids, "QueryTemplate"),
@@ -203,5 +329,11 @@ class GraphRAGRetriever:
             "graph_paths": graph_paths,
             "explanation": "질의를 KG seed로 해석하고 bounded BFS로 Feature, Concept, Layer, Agent, Tool, 문서 후보를 제한했습니다.",
             "graph_supported": bool(nodes),
-            "provenance": {**discover_graph_context(context, query)["provenance"], "query": query, "candidate_document_ids": [item for item in distances if nodes[item].get("node_type") in {"StandardDocument", "LawDocument", "DocumentChunk"}]},
+            "provenance": {
+                **discover_graph_context(context, query)["provenance"],
+                "query": query,
+                "candidate_document_ids": [item for item in distances if nodes[item].get("node_type") in {"StandardDocument", "LawDocument", "DocumentChunk"}],
+                "evidence_candidate_sources": {key: str(path.relative_to(ROOT)).replace("\\", "/") for key, path in _candidate_sources().items()},
+                "evidence_candidate_counts": {key: len(value) for key, value in evidence_candidates.items()},
+            },
         }

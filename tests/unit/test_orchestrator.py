@@ -39,6 +39,39 @@ def test_create_task_and_get_status():
     assert status_response.status_code == 200
     assert status_response.json()["status"] == AgentStatus.RECEIVED
 
+def test_query_execution_context_contract_fields():
+    from services.orchestrator.graph import _build_query_execution_context
+
+    state = {
+        "task_id": "task-contract-1",
+        "query": "부산항 입구 3km 이내 위험객체",
+        "user_id": "u1",
+        "organization_id": "org1",
+        "normalized_query": "부산항 입구 3000m 이내 위험객체",
+        "spatial_context": {"base_location": "부산항 입구"},
+        "graph_context": {"graph_paths": [{"id": "path1"}], "rag_filters": {"product_id": "S-101"}},
+        "data_discovery_result": {"can_execute_spatial_query": True},
+    }
+    route_plan = {
+        "task_id": "task-contract-1",
+        "execution_ready": True,
+        "warnings": ["check"],
+    }
+
+    qec = _build_query_execution_context(
+        state,
+        {"location_text": "부산항 입구", "distance_m": 3000, "target_features": ["Wreck"]},
+        ctx_res={"selected_context": "항해안전", "analysis_type": "radius_feature_search", "status": "RESOLVED"},
+        route_plan=route_plan,
+    )
+
+    assert qec.contract_version == "geollm.execution.v1"
+    assert qec.request_id == "task-contract-1"
+    assert qec.plan_hash
+    assert qec.readiness == "EXECUTION_READY"
+    assert qec.slots.resolved_target_set == ["Wreck"]
+    assert qec.rag["filters"] == {"product_id": "S-101"}
+
 @pytest.mark.asyncio
 async def test_state_machine_flow():
     from services.orchestrator.state_machine import run_orchestration_workflow

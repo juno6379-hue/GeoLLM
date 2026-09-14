@@ -1,0 +1,174 @@
+version: '0.1'
+registries:
+  laws:
+    new_port_construction_promotion_act:
+      title_ko: 신항만건설 촉진법
+      jurisdiction: KR
+      source_url: https://www.law.go.kr
+      verification_status: VERIFIED
+    framework_act_on_land_use_regulation:
+      title_ko: 토지이용규제 기본법
+      jurisdiction: KR
+      source_url: https://www.law.go.kr
+      verification_status: VERIFIED
+    vessel_traffic_services_act:
+      title_ko: 선박교통관제에 관한 법률
+      jurisdiction: KR
+      source_url: https://www.law.go.kr/lsInfoP.do?lsId=013617
+      verification_status: VERIFIED
+    fishing_vessels_act:
+      title_ko: 어선법
+      jurisdiction: KR
+      source_url: https://www.law.go.kr
+      verification_status: VERIFIED
+    intelligent_maritime_transport_service_act:
+      title_ko: 지능형 해상교통정보서비스의 제공 및 이용 활성화에 관한 법률
+      jurisdiction: KR
+      source_url: https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=243149
+      verification_status: VERIFIED
+    hydrographic_survey_act:
+      title_ko: 해양조사와 해양정보 활용에 관한 법률
+      jurisdiction: KR
+      source_url: https://www.law.go.kr
+      verification_status: CANDIDATE
+    marine_ecosystem_conservation_act:
+      title_ko: 해양생태계의 보전 및 관리에 관한 법률
+      jurisdiction: KR
+      source_url: https://www.law.go.kr/LSW/lsInfoP.do?lsId=010298
+      verification_status: VERIFIED
+  authorities:
+    mof:
+      name_ko: 해양수산부
+      name_en: Ministry of Oceans and Fisheries
+      jurisdiction: KR
+      source_url: https://www.mof.go.kr
+      verification_status: VERIFIED
+    kcg:
+      name_ko: 해양경찰청
+      name_en: Korea Coast Guard
+      jurisdiction: KR
+      source_url: https://www.kcg.go.kr
+      verification_status: VERIFIED
+    khoa:
+      name_ko: 국립해양조사원
+      name_en: Korea Hydrographic and Oceanographic Agency
+      jurisdiction: KR
+      source_url: https://www.khoa.go.kr
+      verification_status: VERIFIED
+  legal_notices:
+    new_port_planned_area_map_notice_2025_205:
+      title_ko: 신항만건설 예정지역(인천북항) 지형도면 고시
+      notice_no: 해양수산부 고시 제2025-205호
+      notice_date: '2025-12-12'
+      notice_type: 고시
+      authority_id: mof
+      source_url: https://www.mof.go.kr/doc/ko/selectDoc.do?bbsSeq=9&docSeq=64153&menuSeq=375
+      basis_laws:
+        - new_port_construction_promotion_act
+        - framework_act_on_land_use_regulation
+      governs_layers:
+        - planned_port_area
+      verification_status: VERIFIED
+    new_port_planned_area_map_notice_2020_76:
+      title_ko: 신항만건설 예정지역 지형도면고시
+      notice_no: 해양수산부 고시 제2020-76호
+      notice_date: '2020-06-02'
+      notice_type: 고시
+      authority_id: mof
+      source_url: https://www.mof.go.kr/doc/ko/selectDoc.do?bbsSeq=9&docSeq=32601&menuSeq=375
+      basis_laws:
+        - new_port_construction_promotion_act
+        - framework_act_on_land_use_regulation
+      governs_layers:
+        - planned_port_area
+      verification_status: VERIFIED
+    vessel_traffic_services_rule_2024_5:
+      title_ko: 선박교통관제에 관한 규정
+      notice_no: 해양경찰청고시 제2024-5호
+      notice_date: '2024-08-29'
+      effective_date: '2024-09-01'
+      notice_type: 행정규칙
+      authority_id: kcg
+      source_url: https://www.law.go.kr/LSW/admRulInfoP.do?admRulSeq=2100000246366&chrClsCd=010201
+      basis_laws:
+        - vessel_traffic_services_act
+      governs_layers:
+        - vessel_traffic_control_area
+      verification_status: VERIFIED
+    vessel_vpass_device_notice_2017_1:
+      title_ko: 선박패스(V-Pass) 장치의 설치기준 및 운영 등에 관한 고시
+      notice_no: 해양경찰청고시 제2017-1호
+      notice_date: '2017-07-26'
+      effective_date: '2017-07-26'
+      notice_type: 고시
+      authority_id: kcg
+      source_url: https://law.go.kr/admRulLsInfoP.do?admRulSeq=2100000096468
+      basis_laws:
+        - fishing_vessels_act
+      governs_layers:
+        - vpass_route_analysis
+        - vpass_major_route
+      verification_status: VERIFIED
+  official_datasets:
+    island_gazetteer_dataset:
+      title_ko: 도서지명
+      dataset_type: marine_gazetteer
+      authority_id: khoa
+      source_asset: Dataset/도서지명.zip
+      governs_layers:
+        - island_gazetteer
+      basis_laws:
+        - hydrographic_survey_act
+      verification_status: CANDIDATE
+    sea_parting_prediction_dataset:
+      title_ko: 바다갈라짐 예측정보
+      dataset_type: prediction_dataset
+      authority_id: khoa
+      source_asset: Dataset/바다갈라짐예측정보_*.ZIP
+      governs_layers:
+        - sea_parting_prediction
+      basis_laws:
+        - hydrographic_survey_act
+      verification_status: CANDIDATE
+    tidal_current_surface_dataset:
+      title_ko: 수치조류도 국내연안 2025
+      dataset_type: hydrographic_survey_product
+      authority_id: khoa
+      source_asset: Dataset/수치조류도_국내연안2025.zip
+      governs_layers:
+        - tidal_current_surface
+      basis_laws:
+        - hydrographic_survey_act
+      verification_status: CANDIDATE
+    eddy_hazard_dataset:
+      title_ko: 와류
+      dataset_type: hydrographic_survey_product
+      authority_id: khoa
+      source_asset: Dataset/와류.zip
+      governs_layers:
+        - eddy_hazard_area
+      basis_laws:
+        - hydrographic_survey_act
+      verification_status: CANDIDATE
+    protected_sea_area_dataset:
+      title_ko: 보호수역
+      dataset_type: protected_area_dataset
+      authority_id: khoa
+      source_asset: Dataset/보호수역.zip
+      governs_layers:
+        - protected_sea_area
+      basis_laws:
+        - marine_ecosystem_conservation_act
+      verification_status: CANDIDATE
+    ais_route_analysis_dataset:
+      title_ko: AIS 항로분석
+      dataset_type: dynamic_traffic_derived
+      authority_id: mof
+      source_asset: Dataset/AIS항로분석.zip
+      governs_layers:
+        - ais_route_analysis
+        - ais_major_route
+      basis_laws:
+        - intelligent_maritime_transport_service_act
+        - vessel_traffic_services_act
+      verification_status: CANDIDATE

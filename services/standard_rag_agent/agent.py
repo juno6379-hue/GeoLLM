@@ -4,6 +4,7 @@ from typing import Dict, Any
 from shared.schemas.agent import AgentRequest, AgentResult, AgentStatus
 from services.standard_rag_agent.vdb import search_vdb
 from services.orchestrator.graph_rag_retriever import GraphRAGRetriever
+from services.orchestrator.evidence_builder import build_evidence_bundle
 from shared.observability.logger import get_logger
 from services.llm_config import llm_api_enabled
 
@@ -104,13 +105,33 @@ async def execute_rag_search(request: AgentRequest) -> AgentResult:
     structured_result["citations"] = [
         {"document_id": doc.get("doc_id", doc.get("document_id", "N/A")),
          "source": doc.get("source", doc.get("title", "N/A")),
+         "source_id": doc.get("source_id"),
+         "source_file": (doc.get("metadata") or {}).get("source_file") or (doc.get("metadata") or {}).get("source_path"),
+         "section": doc.get("section"),
+         "document_type": (doc.get("metadata") or {}).get("document_type"),
+         "chunk_id": doc.get("doc_id", doc.get("chunk_id")),
+         "similarity": doc.get("similarity"),
          "provenance": graph_result["provenance"]}
         for doc in retrieved_docs
     ]
+    structured_result["rag_evidence"] = structured_result["citations"]
+    structured_result["kg_provenance"] = graph_result["provenance"]
+    evidence_candidates = graph_result.get("evidence_candidates") or {}
+    structured_result["kg_provenance_candidates"] = evidence_candidates.get("kg_provenance", [])
+    structured_result["rag_evidence_candidates"] = evidence_candidates.get("rag_evidence", [])
+    structured_result["regulatory_evidence_candidates"] = evidence_candidates.get("regulatory_evidence", [])
+    structured_result["evidence_candidate_summary"] = {
+        key: len(value) for key, value in evidence_candidates.items() if isinstance(value, list)
+    }
     structured_result["graph_supported"] = graph_result["graph_supported"]
     structured_result["graph_paths"] = graph_result["graph_paths"]
     structured_result["provenance"] = graph_result["provenance"]
     structured_result["rag_filters"] = graph_result["rag_filters"]
+    evidence_bundle = build_evidence_bundle(
+        graph_context=graph_result,
+        structured_result=structured_result,
+        task_id=request.task_id,
+    )
 
     return AgentResult(
         task_id=request.task_id,
@@ -119,8 +140,10 @@ async def execute_rag_search(request: AgentRequest) -> AgentResult:
         agent_version="2.0.0-structured",
         status=AgentStatus.COMPLETED,
         summary=summary,
+        answer_text=summary,
         structured_result=structured_result,
         evidence=evidences,
+        evidence_bundle=evidence_bundle,
         provenance={"search_method": "graph_scoped_vector_search", "top_k": 2, **graph_result["provenance"], "rag_filters": graph_result["rag_filters"]},
         created_at=datetime.utcnow()
     )

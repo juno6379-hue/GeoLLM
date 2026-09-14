@@ -38,6 +38,9 @@ def execute_spatial_tool(dsl: Any, trace_id: str, task_id: str, user_id: str = "
     DSL을 입력받아 검증된 Tool Registry 쿼리를 실행하고 대용량 파일 기반 응답을 생성합니다.
     """
     start_time = time.time()
+    qec_payload = {}
+    if hasattr(dsl, "conditions") and isinstance(getattr(dsl, "conditions", None), dict):
+        qec_payload = dsl.conditions.get("_query_execution_context") or {}
     
     # 보안 등급 매핑
     clearance_map = {"PUBLIC": 1, "RESTRICTED": 2, "SECRET": 3}
@@ -144,7 +147,7 @@ def execute_spatial_tool(dsl: Any, trace_id: str, task_id: str, user_id: str = "
                 )
             sql = text(compile_result["sql"])
             params = compile_result["params"]
-            db_route = "gbenc" # 강제 gbenc 라우팅
+            db_route = compile_result.get("db_route", "gbenc")
             logger.info("Compiled QueryPlan SQL", sql=str(sql))
         else:
             sql_template = get_query_template(tool_name, target_layer, dsl.target_nftc_codes, has_bounds)
@@ -211,7 +214,8 @@ def execute_spatial_tool(dsl: Any, trace_id: str, task_id: str, user_id: str = "
                         target_values = dsl.target.feature_names
                     target_text = json.dumps(target_values, ensure_ascii=False).lower()
                     hazard_markers = ("wreck", "obstruction", "hazard", "danger", "foul", "rock", "위험", "침선", "난파", "장애물")
-                    feature["properties"]["role"] = "hazard_objects" if any(marker in target_text for marker in hazard_markers) else "objects"
+                    layer_text = str(feature["properties"].get("layer_id") or "").lower()
+                    feature["properties"]["role"] = "hazard_objects" if any(marker in target_text or marker in layer_text for marker in hazard_markers) else "objects"
 
                     
                     # 정책 메타데이터(Policy) 주입
@@ -399,6 +403,22 @@ def execute_spatial_tool(dsl: Any, trace_id: str, task_id: str, user_id: str = "
     
     # 실행된 SQL 쿼리를 구조화된 결과에 담아 전달
     executed_query = str(sql) if 'sql' in locals() else ""
+    spatial_layer_evidence = []
+    for binding in qec_payload.get("data_bindings", []) if isinstance(qec_payload, dict) else []:
+        if binding.get("layer_type") and binding.get("dataset_id") != "GBENC_S101_feature":
+            spatial_layer_evidence.append({
+                "evidence_type": binding.get("layer_type") or "spatial_layer",
+                "summary": f"{binding.get('dataset_id')} 공간 레이어 조회",
+                "source_ref": binding.get("source_asset") or binding.get("relation"),
+                "data": {
+                    "dataset_id": binding.get("dataset_id"),
+                    "relation": binding.get("relation"),
+                    "geometry_column": binding.get("geometry_column"),
+                    "source_asset": binding.get("source_asset"),
+                    "execution_status": binding.get("execution_status"),
+                    "query_template": tool_name,
+                },
+            })
 
     # Map Layer Specification 생성
     map_spec = MapLayerSpecification(
@@ -422,7 +442,8 @@ def execute_spatial_tool(dsl: Any, trace_id: str, task_id: str, user_id: str = "
         structured_result={
             "count": feature_count, 
             "map_spec": map_spec.model_dump(),
-            "executed_query": executed_query
+            "executed_query": executed_query,
+            "spatial_layer_evidence": spatial_layer_evidence,
         },
         output_references=output_references,
         execution_time=(time.time() - start_time) * 1000

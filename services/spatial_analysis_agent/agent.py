@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from shared.schemas.agent import AgentRequest, AgentResult, AgentStatus, ToolCallLog
+from shared.schemas.agent import AgentRequest, AgentResult, AgentStatus, ToolCallLog, PlanStatus, QueryExecutionContext
 from services.spatial_analysis_agent.schemas import SpatialDSL, SpatialFunctionName, QueryPlan, TargetInfo, LocationInfo, SpatialInfo, OutputInfo
 from services.spatial_analysis_agent.validator import validate_dsl, validate_query_plan
 from services.spatial_analysis_agent.tool_executor import execute_spatial_tool
@@ -18,6 +18,90 @@ from services.orchestrator.specialist_kg_context import build_specialist_kg_cont
 
 logger = get_logger("spatial_analysis_agent")
 
+def _readiness_value(qec: QueryExecutionContext | None) -> str:
+    if not qec:
+        return ""
+    return qec.readiness.value if hasattr(qec.readiness, "value") else str(qec.readiness)
+
+def _contract_blocked_result(request: AgentRequest, status: AgentStatus, reason: str, blockers: list[str] | None = None) -> AgentResult:
+    blockers = blockers or [reason]
+    return AgentResult(
+        task_id=request.task_id,
+        trace_id=request.trace_id,
+        agent_name="spatial-analysis-agent",
+        agent_version="2.0.0-contract",
+        status=status,
+        error_code="EXECUTION_CONTRACT_NOT_READY",
+        summary="검증된 실행계약이 없어 공간분석을 실행하지 않았습니다.",
+        answer_text="공간분석 실행에 필요한 위치, 대상, 도구 또는 데이터 연결 정보가 아직 확정되지 않았습니다.",
+        structured_result={
+            "blockers": blockers,
+            "query_execution_context": request.query_execution_context.model_dump(mode="json") if request.query_execution_context else None,
+        },
+        warnings=blockers,
+        provenance={"contract_required": True},
+        created_at=datetime.utcnow(),
+    )
+
+def _spatial_context_geometry(qec: QueryExecutionContext) -> Optional[str]:
+    spatial_context = qec.spatial.get("spatial_context") if isinstance(qec.spatial, dict) else None
+    if isinstance(spatial_context, dict):
+        return spatial_context.get("geometry")
+    return None
+
+def _query_plan_from_contract(request: AgentRequest, qec: QueryExecutionContext) -> QueryPlan:
+    slots = qec.slots
+    route_plan = qec.route_plan or {}
+    analysis_type = route_plan.get("analysis_type") or slots.analysis_type or slots.operation
+    if analysis_type in ("feature_search_by_radius", "feature_dwithin"):
+        qp_analysis_type = "feature_dwithin"
+        relation = "dwithin"
+    elif analysis_type in ("feature_within_area", "spatial_feature_search"):
+        qp_analysis_type = "feature_within_area"
+        relation = "intersects"
+    elif analysis_type in ("nearest_feature", "nearest_feature_search"):
+        qp_analysis_type = "nearest_feature"
+        relation = "nearest"
+    else:
+        qp_analysis_type = analysis_type or "feature_within_area"
+        relation = slots.spatial_relation or "intersects"
+
+    feature_names = slots.resolved_target_set or slots.target_features
+    target_layers = slots.target_layers or [binding.dataset_id for binding in qec.data_bindings] or ["GBENC_S101_feature"]
+    base_geometry = slots.reference_geometry or _spatial_context_geometry(qec)
+    limit = slots.filters.get("limit") or slots.filters.get("k") or 100
+
+    return QueryPlan(
+        query_id=request.task_id,
+        intent=route_plan.get("intent") or (request.parsed_intent.intent_type if request.parsed_intent else "spatial_search"),
+        analysis_type=qp_analysis_type,
+        target=TargetInfo(
+            original_term=slots.target_term,
+            concept_id=slots.concept_id or slots.derived_concept,
+            nftc_codes=slots.nftc_codes,
+            feature_names=feature_names,
+            resolution_status="RESOLVED",
+        ),
+        location=LocationInfo(
+            original_text=slots.location_text or slots.location,
+            geometry_source="EXECUTION_CONTRACT",
+            resolution_status=slots.resolution_status or "RESOLVED",
+        ),
+        spatial=SpatialInfo(
+            relation=relation,
+            distance_m=slots.distance_m,
+        ),
+        output=OutputInfo(limit=int(limit)),
+        required_tools=[binding.tool_id for binding in qec.tool_bindings],
+        execution_status="READY",
+        conditions={
+            "target_layers": target_layers,
+            "_query_execution_context": qec.model_dump(mode="json"),
+            "_contract_enforced": True,
+        },
+        base_geometry=base_geometry,
+    )
+
 async def execute_spatial_analysis(request: AgentRequest) -> AgentResult:
     """
     Spatial Analysis Agent Core Logic.
@@ -25,58 +109,93 @@ async def execute_spatial_analysis(request: AgentRequest) -> AgentResult:
     """
     logger.info("Starting spatial analysis", task_id=request.task_id)
     
+    qec = request.query_execution_context
+    readiness = _readiness_value(qec)
+    if not qec:
+        return _contract_blocked_result(request, AgentStatus.FAILED, "BLOCKED_CONFIG: query_execution_context is required")
+    if readiness != PlanStatus.EXECUTION_READY.value:
+        blockers = qec.blockers or [f"Execution readiness is {readiness or 'UNKNOWN'}"]
+        status = AgentStatus.NEEDS_CLARIFICATION if any(str(b).startswith("NEEDS_USER_INPUT") for b in blockers) else AgentStatus.BLOCKED
+        return _contract_blocked_result(request, status, "Execution contract is not ready", blockers)
+    contract_enforced = True
     query = request.original_query
-    kg_context = build_specialist_kg_context("spatial", request)
+    exec_slots = qec.slots
+    try:
+        kg_context = build_specialist_kg_context("spatial", request)
+    except Exception as exc:
+        logger.warning("Specialist KG context unavailable; continuing with execution contract", error=str(exc))
+        kg_context = {
+            "target_layers": exec_slots.target_layers or [binding.dataset_id for binding in qec.data_bindings],
+            "target_features": exec_slots.resolved_target_set or exec_slots.target_features,
+            "graph_paths": qec.rag.get("graph_paths", {}),
+            "provenance": qec.kg.get("provenance", {}) if isinstance(qec.kg, dict) else {},
+            "source": "query_execution_context",
+        }
     
     # 기본 Fallback DSL 세팅 (geometry가 없으면 None으로 두고 나중에 지오코딩으로 채움)
     fallback_target_layers = kg_context["target_layers"]
     fallback_features = kg_context["target_features"]
+    if exec_slots and exec_slots.target_layers:
+        fallback_target_layers = exec_slots.target_layers
+    if exec_slots and exec_slots.target_features:
+        fallback_features = exec_slots.target_features
     if request.task_plan and request.task_plan.slots:
         if request.task_plan.slots.get("target_features"):
             fallback_target_layers = ["gbenc_feature"]  # S-101 features usually go to GBENC
             fallback_features = request.task_plan.slots.get("target_features")
 
-    requested_location = (
-        request.spatial_context.base_location
-        if request.spatial_context and request.spatial_context.base_location
-        else (request.task_plan.slots.get("location") if request.task_plan and request.task_plan.slots else None)
-    )
+    requested_location = None
+    if exec_slots and exec_slots.location:
+        requested_location = exec_slots.location
+    elif request.spatial_context and request.spatial_context.base_location:
+        requested_location = request.spatial_context.base_location
+    elif request.task_plan and request.task_plan.slots:
+        requested_location = request.task_plan.slots.get("location")
+
     requested_geometry = (
         request.spatial_context.geometry
         if request.spatial_context and request.spatial_context.geometry
         else None
     )
+    requested_distance_m = None
+    if exec_slots and exec_slots.distance_m is not None:
+        requested_distance_m = exec_slots.distance_m
+    elif request.task_plan and request.task_plan.slots:
+        requested_distance_m = request.task_plan.slots.get("distance_m")
+    elif request.spatial_context:
+        requested_distance_m = request.spatial_context.buffer_distance
 
     dsl = QueryPlan(
         query_id=request.task_id,
         intent=request.parsed_intent.intent_type if request.parsed_intent else "spatial_search",
-        analysis_type="feature_dwithin" if (request.spatial_context and request.spatial_context.buffer_distance is not None) else "feature_within_area",
+        analysis_type="feature_dwithin" if requested_distance_m is not None else "feature_within_area",
         target=TargetInfo(
             feature_names=fallback_features,
-            nftc_codes=[]
+            nftc_codes=exec_slots.nftc_codes if exec_slots else []
         ),
         location=LocationInfo(
             original_text=requested_location
         ),
         spatial=SpatialInfo(
             relation="intersects",
-            distance_m=(
-                request.task_plan.slots.get("distance_m")
-                if request.task_plan and request.task_plan.slots
-                else (request.spatial_context.buffer_distance if request.spatial_context else None)
-            )
+            distance_m=requested_distance_m
         ),
         output=OutputInfo(limit=100),
         base_geometry=requested_geometry
     )
-    dsl.conditions["target_layers"] = fallback_target_layers
+    if contract_enforced:
+        dsl = _query_plan_from_contract(request, qec)
+    if not contract_enforced:
+        dsl.conditions["target_layers"] = fallback_target_layers
     dsl.conditions["source"] = kg_context.get("source", "S100_dev_postgis v2")
+    if qec:
+        dsl.conditions["_query_execution_context"] = qec.model_dump(mode="json")
     
     tool_calls = []
     validation_payload = {"status": "SUCCESS", "errors": []}
     
     # 메타데이터를 기반으로 DSL 초기 속성 세팅 (LLM 스킵 안 함)
-    resolved_metadata = request.previous_agent_outputs.get("resolved_metadata")
+    resolved_metadata = None if contract_enforced else request.previous_agent_outputs.get("resolved_metadata")
     if resolved_metadata:
         logger.info("Injecting resolved_metadata into DSL conditions and LLM context.")
         
@@ -105,11 +224,11 @@ async def execute_spatial_analysis(request: AgentRequest) -> AgentResult:
         resolved_features = resolved_metadata.get("resolved_features", [])
         dsl.target.feature_names = [f["feature_name"] for f in resolved_features if "feature_name" in f]
             
-    elif request.previous_agent_outputs and request.previous_agent_outputs.get("resolved_nftc_codes"):
+    elif not contract_enforced and request.previous_agent_outputs and request.previous_agent_outputs.get("resolved_nftc_codes"):
         dsl.target.nftc_codes = request.previous_agent_outputs.get("resolved_nftc_codes")
 
     # 1. LLM Spatial DSL Extraction
-    if llm_api_enabled():
+    if (not contract_enforced) and llm_api_enabled():
         try:
             from services.spatial_analysis_agent.spatial_catalog_tool import lookup_spatial_catalog
             from services.spatial_analysis_agent.geocoding_tool import get_maritime_coordinates
@@ -265,14 +384,14 @@ async def execute_spatial_analysis(request: AgentRequest) -> AgentResult:
                 logger.info("Using resolved_metadata for fallback DSL due to LLM failure")
             
     # LLM이 없는 환경이거나 LLM이 실패하여 location 정보가 없는 경우 룰베이스 보정
-    if not dsl.location.place_id and not dsl.location.original_text:
+    if (not contract_enforced) and not dsl.location.place_id and not dsl.location.original_text:
         if request.spatial_context and request.spatial_context.base_location:
             dsl.location.original_text = request.spatial_context.base_location
             logger.info("Rule-based location fallback", location=dsl.location.original_text)
 
     # Resolve named places before SQL compilation. The compiler requires a
     # place_id or a concrete WKT base geometry for spatial operations.
-    if not dsl.base_geometry and dsl.location.original_text:
+    if (not contract_enforced) and not dsl.base_geometry and dsl.location.original_text:
         try:
             from services.spatial_analysis_agent.geocoding_tool import get_maritime_coordinates
 
@@ -292,7 +411,7 @@ async def execute_spatial_analysis(request: AgentRequest) -> AgentResult:
             logger.warning("Location geocoding failed", location=dsl.location.original_text, error=str(e))
                 
     # Fallback 시 buffer_distance가 없다면 orchestrator가 파싱한 텍스트에서 추출
-    if dsl.spatial.distance_m is None and request.parsed_intent and request.parsed_intent.spatial_conditions:
+    if (not contract_enforced) and dsl.spatial.distance_m is None and request.parsed_intent and request.parsed_intent.spatial_conditions:
         cond_str = " ".join(request.parsed_intent.spatial_conditions)
         import re
         m = re.search(r'(\d+)(km|m)', cond_str)
@@ -306,7 +425,7 @@ async def execute_spatial_analysis(request: AgentRequest) -> AgentResult:
             logger.info(f"Rule-based extracted distance_m: {dsl.spatial.distance_m}")
                 
     # Orchestrator(Feature Resolver)에서 분석된 NFTC 코드가 있다면 무조건 강제로 덮어쓰기 (LLM Fallback 상황 포함)
-    if request.previous_agent_outputs and request.previous_agent_outputs.get("resolved_nftc_codes"):
+    if (not contract_enforced) and request.previous_agent_outputs and request.previous_agent_outputs.get("resolved_nftc_codes"):
         dsl.target.nftc_codes = request.previous_agent_outputs["resolved_nftc_codes"]
         # target_feature_names 도 덮어쓰기 (쿼리 템플릿 호환용)
         resolved_md = request.previous_agent_outputs.get("resolved_metadata", {})
@@ -314,7 +433,7 @@ async def execute_spatial_analysis(request: AgentRequest) -> AgentResult:
             if not dsl.target.feature_names:
                 dsl.target.feature_names = [resolved_md["selected_feature"]]
 
-    if not dsl.target.nftc_codes:
+    if (not contract_enforced) and not dsl.target.nftc_codes:
         dsl.target.nftc_codes = [0]
     if dsl.spatial.distance_m is not None:
         dsl.analysis_type = "feature_dwithin"
@@ -380,6 +499,7 @@ async def execute_spatial_analysis(request: AgentRequest) -> AgentResult:
     res_dict = tool_result.structured_result or {}
     count = res_dict.get("count", 0)
     map_spec_dict = res_dict.get("map_spec")
+    qec_payload = qec.model_dump(mode="json") if qec else {}
     
     # [MOCK INJECTION REMOVED] DB에 데이터가 없으면 즉시 에러(실패) 반환
     if count == 0:
@@ -407,12 +527,26 @@ async def execute_spatial_analysis(request: AgentRequest) -> AgentResult:
             status=AgentStatus.COMPLETED,
             error_code=getattr(tool_result, "error_code", "EMPTY_RESULT"),
             summary="해당 조건(범위) 내에서 일치하는 객체를 찾을 수 없습니다.",
+            answer_text="해당 조건(범위) 내에서 일치하는 객체를 찾을 수 없습니다.",
+            spatial_result_summary={"feature_count": 0, "distance_m": distance_val, "crs": crs_val},
             warnings=["조회된 데이터가 없습니다."],
-            structured_result={"count": count, "crs": crs_val, "distance": distance_val, "map_spec": map_spec_dict, "kg_context": kg_context},
+            structured_result={
+                "count": count,
+                "crs": crs_val,
+                "distance": distance_val,
+                "map_spec": map_spec_dict,
+                "kg_context": kg_context,
+                "query_execution_context": qec_payload,
+                "spatial_provenance": {"query_template": "postgis.intersection" if "intersection" in tool_name_val else "", "executed_query": res_dict.get("executed_query", ""), "dsl_query": query_dump},
+                "kg_provenance": kg_context,
+            },
             output_layers=[{"layer_id": map_spec_dict["layer_id"], "type": "GEOMETRY"}] if map_spec_dict else [],
             tool_calls=tool_calls,
             validation_payload=validation_payload,
             provenance={
+                "spatial": {"query_template": "postgis.intersection" if "intersection" in tool_name_val else "", "executed_query": res_dict.get("executed_query", ""), "dsl_query": query_dump},
+                "kg": kg_context,
+                "rag": qec_payload.get("rag", {}),
                 "kg_context": kg_context,
                 "dsl_query": query_dump, 
                 "query_template": "postgis.intersection" if "intersection" in tool_name_val else "",
@@ -456,12 +590,26 @@ async def execute_spatial_analysis(request: AgentRequest) -> AgentResult:
         agent_version="2.0.0-dsl",
         status=AgentStatus.COMPLETED,
         summary=final_summary,
-        structured_result={"count": count, "crs": crs_val, "distance": distance_val, "map_spec": map_spec_dict, "kg_context": kg_context},
+        answer_text=final_summary,
+        spatial_result_summary={"feature_count": count, "distance_m": distance_val, "crs": crs_val},
+        structured_result={
+            "count": count,
+            "crs": crs_val,
+            "distance": distance_val,
+            "map_spec": map_spec_dict,
+            "kg_context": kg_context,
+            "query_execution_context": qec_payload,
+            "spatial_provenance": {"query_template": "postgis.intersection" if "intersection" in tool_name_val else "", "executed_query": res_dict.get("executed_query", ""), "dsl_query": query_dump},
+            "kg_provenance": kg_context,
+        },
         output_layers=[{"layer_id": map_spec_dict["layer_id"], "type": "GEOMETRY"}] if map_spec_dict else [],
         tool_calls=tool_calls,
         validation_payload=validation_payload,
         features=json.dumps(tool_result.output_references[0], ensure_ascii=False) if tool_result.output_references else None,
         provenance={
+            "spatial": {"query_template": "postgis.intersection" if "intersection" in tool_name_val else "", "executed_query": res_dict.get("executed_query", ""), "dsl_query": query_dump},
+            "kg": kg_context,
+            "rag": qec_payload.get("rag", {}),
             "kg_context": kg_context,
             "dsl_query": query_dump, 
             "query_template": "postgis.intersection" if "intersection" in tool_name_val else "",

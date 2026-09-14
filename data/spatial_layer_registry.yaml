@@ -2,13 +2,219 @@ version: '2.0'
 layers:
   GBENC_S101_feature:
     zone: serving
+    layer_type: s101_feature
+    execution_status: executable
     physical_table: projection.s101_feature_current
     geometry_column: geometry
     code_column: feature_type_code
     srid: 4326
     database: S100_dev_postgis
+    supported_operations:
+    - dwithin
+    - intersects
+    - nearest
   marine_gazetteer:
     zone: serving
+    layer_type: place_gazetteer
+    execution_status: registered
     physical_table: public.maritime_gazetteer
     geometry_column: geom
     srid: 4326
+  accident_s101_relation:
+    zone: serving
+    layer_type: accident_relation
+    execution_status: executable
+    physical_table: serving.accident_s101_relation_current
+    geometry_column: accident_geometry
+    anchor_geometry_column: anchor_geometry
+    distance_column: distance_meters
+    feature_instance_column: feature_instance_id
+    event_id_column: event_id
+    srid: 4326
+    database: S100_dev_postgis
+    supported_operations:
+    - relation_lookup
+    - dwithin
+  tidal_current_surface:
+    zone: standardized
+    layer_type: tidal_current
+    execution_status: metadata_only
+    source_asset: Dataset/수치조류도_국내연안2025.zip
+    expected_physical_table: serving.tidal_current_surface_current
+    geometry_column: geometry
+    speed_column: current_speed
+    direction_column: current_direction
+    time_column: observed_at
+    srid: 4326
+    supported_operations:
+    - intersects
+    - dwithin
+    - time_space_lookup
+    metadata_table: serving.tidal_current_surface_metadata
+    metadata_geometry_column: coverage_geometry
+    parser_status: NEEDS_BINARY_GRID_SPEC
+  eddy_hazard_area:
+    zone: standardized
+    layer_type: eddy_hazard
+    execution_status: executable
+    source_asset: Dataset/와류.zip
+    geometry_column: geometry
+    srid: 4326
+    supported_operations:
+    - intersects
+    - dwithin
+    physical_table: serving.eddy_hazard_area_current
+  planned_port_area:
+    zone: standardized
+    layer_type: planned_port_area
+    execution_status: executable
+    source_asset: Dataset/신항만예정지역.zip
+    geometry_column: geometry
+    srid: 4326
+    supported_operations:
+    - intersects
+    - dwithin
+    physical_table: serving.planned_port_area_current
+  island_gazetteer:
+    zone: standardized
+    layer_type: island_place_gazetteer
+    execution_status: executable
+    source_asset: Dataset/도서지명.zip
+    geometry_column: geometry
+    name_column: place_name
+    srid: 4326
+    supported_operations:
+    - intersects
+    - dwithin
+    - geocode
+    physical_table: serving.island_gazetteer_current
+  sea_parting_prediction:
+    zone: standardized
+    layer_type: sea_parting_prediction
+    execution_status: needs_ingestion
+    source_assets:
+    - Dataset/바다갈라짐예측정보_하섬.ZIP
+    - Dataset/바다갈라짐예측정보_진도.ZIP
+    - Dataset/바다갈라짐예측정보_제부도.ZIP
+    - Dataset/바다갈라짐예측정보_웅도.ZIP
+    - Dataset/바다갈라짐예측정보_우도.ZIP
+    - Dataset/바다갈라짐예측정보_실미도.ZIP
+    - Dataset/바다갈라짐예측정보_소야도.ZIP
+    - Dataset/바다갈라짐예측정보_서건도.ZIP
+    - Dataset/바다갈라짐예측정보_무창포.ZIP
+    - Dataset/바다갈라짐예측정보_동섬.ZIP
+    expected_physical_table: serving.sea_parting_prediction_current
+    geometry_column: geometry
+    time_column: predicted_at
+    srid: 4326
+    supported_operations:
+    - intersects
+    - dwithin
+    - time_space_lookup
+  vessel_traffic_control_area:
+    zone: standardized
+    layer_type: vessel_traffic_control_area
+    execution_status: executable
+    source_asset: Dataset/선박안전교통관제구역.zip
+    geometry_column: geometry
+    srid: 4326
+    supported_operations:
+    - intersects
+    - dwithin
+    physical_table: serving.vessel_traffic_control_area_current
+  caution_warning_area:
+    zone: standardized
+    layer_type: hazard_area
+    hazard_category: caution_warning
+    execution_status: executable
+    source_asset: Dataset/주의경계해역.zip
+    geometry_column: geometry
+    srid: 4326
+    supported_operations:
+    - intersects
+    - dwithin
+    physical_table: serving.hazard_area_current
+  speed_restriction_area:
+    zone: standardized
+    layer_type: hazard_area
+    hazard_category: speed_restriction
+    execution_status: executable
+    source_asset: Dataset/속도제한구역.zip
+    geometry_column: geometry
+    srid: 4326
+    supported_operations:
+    - intersects
+    - dwithin
+    physical_table: serving.hazard_area_current
+  entry_restricted_area:
+    zone: standardized
+    layer_type: hazard_area
+    hazard_category: entry_restricted
+    execution_status: executable
+    source_asset: Dataset/진입제한.zip
+    geometry_column: geometry
+    srid: 4326
+    supported_operations:
+    - intersects
+    - dwithin
+    physical_table: serving.hazard_area_current
+  anchoring_prohibited_area:
+    zone: standardized
+    layer_type: hazard_area
+    hazard_category: anchoring_prohibited
+    execution_status: executable
+    source_asset: Dataset/정박금지(투묘금지).zip
+    geometry_column: geometry
+    srid: 4326
+    supported_operations:
+    - intersects
+    - dwithin
+    physical_table: serving.hazard_area_current
+  fishing_prohibited_area:
+    zone: standardized
+    layer_type: hazard_area
+    hazard_category: fishing_prohibited
+    execution_status: executable
+    source_asset: Dataset/낚시금지구역.zip
+    geometry_column: geometry
+    srid: 4326
+    supported_operations:
+    - intersects
+    - dwithin
+    physical_table: serving.hazard_area_current
+  fishing_restricted_area:
+    zone: standardized
+    layer_type: hazard_area
+    hazard_category: fishing_restricted
+    execution_status: executable
+    source_asset: Dataset/낚시제한구역.zip
+    geometry_column: geometry
+    srid: 4326
+    supported_operations:
+    - intersects
+    - dwithin
+    physical_table: serving.hazard_area_current
+  dumping_ground_area:
+    zone: standardized
+    layer_type: hazard_area
+    hazard_category: dumping_ground
+    execution_status: executable
+    source_asset: Dataset/투기장.zip
+    geometry_column: geometry
+    srid: 4326
+    supported_operations:
+    - intersects
+    - dwithin
+    physical_table: serving.hazard_area_current
+  protected_sea_area:
+    zone: standardized
+    layer_type: protected_area
+    protected_category: protected_sea
+    execution_status: executable
+    source_asset: Dataset/보호수역.zip
+    geometry_column: geometry
+    srid: 4326
+    supported_operations:
+    - intersects
+    - dwithin
+    physical_table: serving.protected_area_current

@@ -1,0 +1,87 @@
+version: '0.1'
+domain_id: mof.marine_fisheries.phase1
+source_refs:
+  - title: 해양수산 용어사전 발간 보도자료
+    source_url: https://www.mof.go.kr/iframe/doc/ko/selectDoc.do?bbsSeq=10&docSeq=1102&menuSeq=971
+    note: 해양정책, 수산정책, 해운물류, 해사안전, 항만 등 5개 분야를 용어사전 분류로 제시한다.
+domains:
+  ocean_policy:
+    label_ko: 해양정책
+    description: 해양공간, 해양과학기술, 해양자원, 해양문화, 해양환경 정책을 포괄하는 정책 도메인.
+    upper_classes:
+    - hydrographic_observation
+    - protected_area
+    - legal_authority
+  fisheries_policy:
+    label_ko: 수산정책
+    description: 어업, 양식, 수산자원, 조업 제한·보호, 어선 안전을 다루는 도메인.
+    upper_classes:
+    - regulated_area
+    - protected_area
+    - accident_risk
+  shipping_logistics:
+    label_ko: 해운물류
+    description: 선박 운항, 해운, 항로, 물류 흐름과 선박교통 활동을 다루는 도메인.
+    upper_classes:
+    - traffic_activity
+    - regulated_area
+  maritime_safety:
+    label_ko: 해사안전
+    description: 항행 안전, 사고 예방, 관제, 통항 제한, 위험객체 대응을 다루는 도메인.
+    upper_classes:
+    - navigational_hazard
+    - traffic_activity
+    - accident_risk
+    - regulated_area
+  port_harbor:
+    label_ko: 항만
+    description: 항만, 신항만, 정박·접안·항만운영·항만구역을 다루는 도메인.
+    upper_classes:
+    - regulated_area
+    - traffic_activity
+  marine_environment:
+    label_ko: 해양환경
+    description: 해양생태계 보전, 보호수역, 오염 대응, 투기장 등 환경 관리 도메인.
+    upper_classes:
+    - protected_area
+    - regulated_area
+    - hydrographic_observation
+  hydrographic_survey:
+    label_ko: 수로조사·해양정보
+    description: S-100/S-101/S-104/S-111/S-124, 수치조류도, 조석, 해양지명 등 해양공간정보 도메인.
+    upper_classes:
+    - hydrographic_observation
+    - navigational_hazard
+    - traffic_activity
+layer_domain_map:
+  GBENC_S101_feature:
+  - hydrographic_survey
+  - maritime_safety
+  eddy_hazard_area:
+  - maritime_safety
+  - hydrographic_survey
+  planned_port_area:
+  - port_harbor
+  vessel_traffic_control_area:
+  - maritime_safety
+  - shipping_logistics
+  protected_sea_area:
+  - marine_environment
+  - ocean_policy
+  tidal_current_surface:
+  - hydrographic_survey
+  - maritime_safety
+  caution_warning_area:
+  - maritime_safety
+  speed_restriction_area:
+  - maritime_safety
+  entry_restricted_area:
+  - maritime_safety
+  anchoring_prohibited_area:
+  - maritime_safety
+  fishing_prohibited_area:
+  - fisheries_policy
+  fishing_restricted_area:
+  - fisheries_policy
+  dumping_ground_area:
+  - marine_environment

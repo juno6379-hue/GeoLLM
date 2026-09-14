@@ -21,3 +21,90 @@ templates:
     - entity_ids
     - query
     executor: rag.graph_scoped_retrieve
+  accident_s101_relation_lookup:
+    allowed_layers:
+    - accident_s101_relation
+    required_parameters:
+    - feature_instance_id
+    executor: accident.s101_relation_lookup
+  spatial_layer_overlay_lookup:
+    allowed_layers:
+    - tidal_current_surface
+    - eddy_hazard_area
+    - planned_port_area
+    required_parameters:
+    - base_geometry
+    executor: spatial.layer_overlay_lookup
+  current_tidal_lookup:
+    allowed_layers:
+    - tidal_current_surface
+    required_parameters:
+    - base_geometry
+    executor: ocean.current_tidal_lookup
+    optional_parameters:
+    - time_range
+    - distance_m
+  eddy_hazard_lookup:
+    allowed_layers:
+    - eddy_hazard_area
+    required_parameters:
+    - base_geometry
+    executor: hazard.eddy_lookup
+    optional_parameters:
+    - distance_m
+  hazard_area_lookup:
+    allowed_layers:
+    - eddy_hazard_area
+    - caution_warning_area
+    - speed_restriction_area
+    - entry_restricted_area
+    - anchoring_prohibited_area
+    - fishing_prohibited_area
+    - fishing_restricted_area
+    - dumping_ground_area
+    required_parameters:
+    - base_geometry
+    executor: hazard.area_lookup
+    optional_parameters:
+    - distance_m
+  protected_area_lookup:
+    allowed_layers:
+    - protected_sea_area
+    required_parameters:
+    - base_geometry
+    executor: protected.area_lookup
+    optional_parameters:
+    - distance_m
+  planned_port_overlay:
+    allowed_layers:
+    - planned_port_area
+    required_parameters:
+    - base_geometry
+    executor: development.planned_port_overlay
+    optional_parameters:
+    - distance_m
+  island_gazetteer_lookup:
+    allowed_layers:
+    - island_gazetteer
+    required_parameters:
+    - base_geometry
+    executor: place.island_gazetteer_lookup
+    optional_parameters:
+    - distance_m
+  sea_parting_prediction_lookup:
+    allowed_layers:
+    - sea_parting_prediction
+    required_parameters:
+    - base_geometry
+    executor: tide.sea_parting_lookup
+    optional_parameters:
+    - time_range
+    - distance_m
+  vessel_traffic_control_area_overlay:
+    allowed_layers:
+    - vessel_traffic_control_area
+    required_parameters:
+    - base_geometry
+    executor: traffic.control_area_overlay
+    optional_parameters:
+    - distance_m

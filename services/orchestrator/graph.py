@@ -1,11 +1,12 @@
 import os
 import json
+import hashlib
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from shared.schemas.agent import AgentRequest, AgentStatus, AgentResult, Intent, SpatialContext, SecurityContext, TaskPlan
+from shared.schemas.agent import AgentRequest, AgentStatus, AgentResult, Intent, SpatialContext, SecurityContext, TaskPlan, ExecutionSlots, QueryExecutionContext, PlanStatus
 from services.orchestrator.state import OrchestratorState, log_transition
 from services.orchestrator.map_adapter import convert_to_map_layer
 from shared.observability.logger import get_logger
@@ -23,6 +24,8 @@ from services.orchestrator.feature_resolver import feature_resolver
 from services.orchestrator.context_resolver import ContextResolver
 from services.orchestrator.route_planner import RoutePlanner
 from services.orchestrator.graph_rag_retriever import GraphRAGRetriever
+from services.orchestrator.execution_validator import validate_execution_context
+from services.orchestrator.evidence_builder import build_evidence_bundle
 from services.data_discovery_agent.agent import execute_data_discovery
 from services.llm_config import llm_api_enabled
 from services.validation_agent.agent import validate_orchestration
@@ -38,6 +41,132 @@ def get_s101_dictionary():
             return json.load(f)
     except Exception:
         return {}
+
+def _as_float(value):
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+def _enrich_extracted_slots(slots: dict | None, norm_result: dict | None) -> dict:
+    """Keep normalized terms and executable spatial slots in one payload."""
+    enriched = dict(slots or {})
+    norm_result = norm_result or {}
+    canonical_terms = norm_result.get("canonical_terms") or []
+    candidate_contexts = norm_result.get("candidate_contexts") or []
+    if canonical_terms:
+        enriched.setdefault("canonical_terms", canonical_terms)
+        enriched.setdefault("derived_concepts", canonical_terms)
+        if not enriched.get("derived_concept"):
+            enriched["derived_concept"] = canonical_terms[0]
+    if candidate_contexts:
+        enriched.setdefault("candidate_contexts", candidate_contexts)
+        if not enriched.get("context"):
+            enriched["context"] = candidate_contexts[0]
+    if enriched.get("distance_m") is not None:
+        enriched["distance_m"] = _as_float(enriched.get("distance_m"))
+    return enriched
+
+def _context_value(ctx, key, default=None):
+    if isinstance(ctx, dict):
+        return ctx.get(key, default)
+    return getattr(ctx, key, default) if ctx is not None else default
+
+def _merge_plan_slots(req: AgentRequest, state: OrchestratorState, ctx_res) -> dict:
+    extracted = dict(state.get("extracted_slots") or req.previous_agent_outputs.get("extracted_slots", {}) or {})
+    resolved_metadata = req.previous_agent_outputs.get("resolved_metadata", {})
+    target_term = (
+        extracted.get("target_term")
+        or resolved_metadata.get("input_term")
+        or (req.parsed_intent.target_objects[0] if req.parsed_intent and req.parsed_intent.target_objects else None)
+    )
+    slots = {
+        **extracted,
+        "location": extracted.get("location") or (req.spatial_context.base_location if req.spatial_context else None),
+        "location_text": extracted.get("location_text") or extracted.get("location") or (req.spatial_context.base_location if req.spatial_context else None),
+        "distance_m": extracted.get("distance_m") if extracted.get("distance_m") is not None else (req.spatial_context.buffer_distance if req.spatial_context else None),
+        "target_term": target_term,
+    }
+    if _context_value(ctx_res, "selected_context") and not slots.get("context"):
+        slots["context"] = _context_value(ctx_res, "selected_context")
+    if _context_value(ctx_res, "analysis_type") and not slots.get("analysis_type"):
+        slots["analysis_type"] = _context_value(ctx_res, "analysis_type")
+    resolved_codes = req.previous_agent_outputs.get("resolved_nftc_codes") or resolved_metadata.get("nftc_codes")
+    if resolved_codes and not slots.get("nftc_codes"):
+        slots["nftc_codes"] = resolved_codes
+    return slots
+
+def _build_query_execution_context(
+    state: OrchestratorState,
+    slots: dict,
+    ctx_res=None,
+    route_plan: dict | None = None,
+) -> QueryExecutionContext:
+    """Single contract carried from orchestration into specialist agents."""
+    graph_context = state.get("graph_context") or {}
+    data_discovery = state.get("data_discovery_result") or {}
+    context_payload = {}
+    if ctx_res:
+        context_payload = ctx_res if isinstance(ctx_res, dict) else getattr(ctx_res, "__dict__", {})
+    route_plan = route_plan or {}
+    plan_hash = hashlib.sha256(
+        json.dumps(route_plan, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
+    ).hexdigest() if route_plan else None
+    readiness = PlanStatus.EXECUTION_READY if route_plan.get("execution_ready") else (
+        PlanStatus.NEEDS_USER_INPUT if route_plan.get("clarification_required") else PlanStatus.PLAN_READY
+    )
+    qec = QueryExecutionContext(
+        request_id=state.get("task_id"),
+        task_id=state.get("task_id"),
+        conversation_id=state.get("task_id"),
+        plan_hash=plan_hash,
+        original_query=state.get("query"),
+        slots=ExecutionSlots.from_payload(slots),
+        normalized_query=state.get("normalized_query"),
+        security_context_ref=f"user:{state.get('user_id')}@org:{state.get('organization_id')}",
+        semantic_resolution={
+            "context": _context_value(ctx_res, "selected_context"),
+            "analysis_type": _context_value(ctx_res, "analysis_type"),
+            "status": _context_value(ctx_res, "status"),
+            "confidence": _context_value(ctx_res, "confidence"),
+        },
+        kg=graph_context,
+        context=context_payload,
+        route_plan=route_plan,
+        data_discovery=data_discovery,
+        spatial={
+            "spatial_context": state.get("spatial_context"),
+            "can_execute_spatial_query": data_discovery.get("can_execute_spatial_query"),
+        },
+        rag={
+            "filters": graph_context.get("rag_filters", {}),
+            "graph_paths": graph_context.get("graph_paths", []),
+        },
+        readiness=readiness,
+        blockers=list(route_plan.get("missing_slots", []) or []),
+        warnings=list(route_plan.get("warnings", []) or []),
+        snapshot_versions={
+            "s101_product_specification": os.environ.get("S101_PRODUCT_SPECIFICATION"),
+            "s101_catalogue_version": os.environ.get("S101_CATALOGUE_VERSION"),
+            "embedding_model": os.environ.get("EMBEDDING_MODEL"),
+        },
+        provenance={
+            "normalizer": "services.orchestrator.query_normalizer",
+            "slot_extractor": "services.orchestrator.semantic_router.DynamicSlotExtractor",
+            "context_resolver": "services.orchestrator.context_resolver",
+            "graph_retriever": graph_context.get("provenance", {}),
+        },
+    )
+    if qec.slots.target_features and not qec.slots.resolved_target_set:
+        qec = qec.merge_slot_patch(
+            {"resolved_target_set": qec.slots.target_features},
+            producer="services.orchestrator.graph._build_query_execution_context",
+            source_ref="target_features",
+            reason_code="RESOLVED_TARGET_SET_DEFAULT",
+        )
+    return qec
 
 async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
     logger.info("LangGraph: Parsing intent", task_id=state["task_id"])
@@ -117,7 +246,7 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
                     # 슬롯 추출 시도 (예: spatial_proximity_search 룰 적용)
                     extracted = slot_extractor.extract(query, "spatial_proximity_search")
                     
-                    # --- Disambiguation & Missing Slot Validation ---
+                    # 모호성 및 누락 slot 검증
                     clarification_questions = []
                     
                     if not extracted:
@@ -126,7 +255,7 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
                         base_location = extracted.get("location", "")
                         radius_m = extracted.get("distance_m", "")
                         target = extracted.get("target_term", "")
-                        # 1. Missing Slot Check
+                        # 1. 누락 slot 확인
                         if not target:
                             clarification_questions.append("어떤 객체를 찾으시는지 명확하지 않습니다. 무엇을 찾을까요?")
                         elif target in {"위험한 것", "위험요소", "위험물", "주의할 것"} and not any(ch.isdigit() for ch in query):
@@ -318,16 +447,24 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
     )
     req_spatial_ctx = state.get("spatial_context") or {}
     map_bounds = req_spatial_ctx.get("map_bounds")
+    extracted_payload = None
+    if 'extracted' in locals() and extracted:
+        extracted_payload = extracted
+    elif intent_type in ("SPATIAL_SEARCH", "spatial_proximity_search", "marine_hazard_feature_search"):
+        extracted_payload = slot_extractor.extract(query, "spatial_proximity_search")
+    extracted_payload = _enrich_extracted_slots(extracted_payload, norm_result)
     
     # extracted가 있는지 확인
     radius_m = None
-    if 'extracted' in locals() and extracted:
-        radius_val = extracted.get("distance_m")
+    if extracted_payload:
+        radius_val = extracted_payload.get("distance_m")
         if radius_val:
             try:
                 radius_m = float(radius_val)
-            except ValueError:
+            except (TypeError, ValueError):
                 pass
+        if not base_location and extracted_payload.get("location"):
+            base_location = extracted_payload.get("location")
 
     if base_location or map_bounds:
         spatial_context = SpatialContext(
@@ -349,6 +486,12 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         spatial_context=spatial_context,
         security_context=SecurityContext(clearance_level="PUBLIC")
     )
+    req.previous_agent_outputs["extracted_slots"] = extracted_payload
+    req.query_execution_context = _build_query_execution_context(
+        {**state, "normalized_query": query, "spatial_context": spatial_context.model_dump() if spatial_context else state.get("spatial_context")},
+        extracted_payload,
+        state.get("context_result"),
+    )
     
     # RECEIVED -> INTENT_PARSED 로깅
     return {
@@ -363,7 +506,8 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         "normalization_debug": debug_logs,
         "norm_result": norm_result,
         "context_result": state.get("context_result"),
-        "spatial_context": state.get("spatial_context")
+        "spatial_context": spatial_context.model_dump() if spatial_context else state.get("spatial_context"),
+        "extracted_slots": extracted_payload
     }
 
 from services.orchestrator.feature_resolver import feature_resolver
@@ -375,7 +519,7 @@ async def graph_rag_node(state: OrchestratorState) -> OrchestratorState:
     norm = state.get("norm_result") or {}
     seed_context = {
         "target_features": list(intent.target_objects) if intent else [],
-        "derived_concepts": norm.get("derived_concepts", []),
+        "derived_concepts": norm.get("derived_concepts", []) or norm.get("canonical_terms", []),
         "document_type": norm.get("document_type", []),
     }
     context = graph_rag_retriever.retrieve(query, seed_context)
@@ -420,6 +564,24 @@ async def resolve_context_node(state: OrchestratorState) -> OrchestratorState:
         }
         
     req.security_context.clearance_level = "SECRET" if state["user_id"] == "admin" else "PUBLIC"
+    extracted_slots = _enrich_extracted_slots(
+        state.get("extracted_slots") or req.previous_agent_outputs.get("extracted_slots"),
+        state.get("norm_result"),
+    )
+    req.previous_agent_outputs["extracted_slots"] = extracted_slots
+
+    context_result = state.get("context_result")
+    if not context_result or not _context_value(context_result, "analysis_type"):
+        context_result = context_resolver.resolve(
+            query=state.get("query", ""),
+            normalized_query=state.get("normalized_query", ""),
+            active_workspace=state.get("workspace_context"),
+            available_layers=state.get("available_layers"),
+            uploaded_assets=state.get("uploaded_assets"),
+            extracted_slots=extracted_slots,
+        )
+        state["context_result"] = context_result
+    req.query_execution_context = _build_query_execution_context(state, extracted_slots, context_result)
     
     # Feature Resolver 연동 (2단계: Target Term -> Feature Metadata)
     if req.parsed_intent and req.parsed_intent.target_objects:
@@ -486,10 +648,11 @@ async def resolve_context_node(state: OrchestratorState) -> OrchestratorState:
         "agent_request": req, 
         "status": AgentStatus.CONTEXT_RESOLVED,
         "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.CONTEXT_RESOLVED),
-        "context_result": state.get("context_result"),
+        "context_result": context_result,
         "norm_result": state.get("norm_result"),
         "normalization_debug": state.get("normalization_debug"),
-        "spatial_context": state.get("spatial_context")
+        "spatial_context": state.get("spatial_context"),
+        "extracted_slots": extracted_slots
     }
 
 async def create_plan_node(state: OrchestratorState) -> OrchestratorState:
@@ -501,23 +664,14 @@ async def create_plan_node(state: OrchestratorState) -> OrchestratorState:
     target_features = []
     target_area_features = []
     
-    if ctx_res and hasattr(ctx_res, "target_features") and isinstance(ctx_res.target_features, dict):
-        target_features = ctx_res.target_features.get("hazard_objects", [])
-        target_area_features = ctx_res.target_features.get("hazard_areas", [])
-    elif ctx_res and hasattr(ctx_res, "target_features"):
-        target_features = ctx_res.target_features if isinstance(ctx_res.target_features, list) else []
+    ctx_target_features = _context_value(ctx_res, "target_features", [])
+    if isinstance(ctx_target_features, dict):
+        target_features = ctx_target_features.get("hazard_objects", [])
+        target_area_features = ctx_target_features.get("hazard_areas", [])
+    elif isinstance(ctx_target_features, list):
+        target_features = ctx_target_features
         
-    resolved_metadata = req.previous_agent_outputs.get("resolved_metadata", {})
-    target_term = (
-        resolved_metadata.get("input_term")
-        or (req.parsed_intent.target_objects[0] if req.parsed_intent and req.parsed_intent.target_objects else None)
-    )
-
-    slots = {
-        "location": req.spatial_context.base_location if req.spatial_context else None,
-        "distance_m": req.spatial_context.buffer_distance if req.spatial_context else None,
-        "target_term": target_term,
-    }
+    slots = _merge_plan_slots(req, state, ctx_res)
     
     if target_features:
         slots["target_features"] = target_features
@@ -528,13 +682,16 @@ async def create_plan_node(state: OrchestratorState) -> OrchestratorState:
     discovery = state.get("data_discovery_result") or {}
     derived_concept = None
     intent_val = req.parsed_intent.intent_type if req.parsed_intent else "clarification_required"
-    if ctx_res and ctx_res.derived_concepts:
-        derived_concept = ctx_res.derived_concepts[0]
-        intent_val = ctx_res.intent or intent_val
+    ctx_derived = _context_value(ctx_res, "derived_concepts", [])
+    if ctx_derived:
+        derived_concept = ctx_derived[0]
+        intent_val = _context_value(ctx_res, "intent") or intent_val
     elif graph_context.get("derived_concepts"):
         derived_concept = graph_context["derived_concepts"][0]
+    elif slots.get("derived_concept"):
+        derived_concept = slots.get("derived_concept")
 
-    analysis_type = ctx_res.analysis_type if ctx_res else None
+    analysis_type = _context_value(ctx_res, "analysis_type")
     if not analysis_type and graph_context.get("execution_hints", {}).get("requires_spatial_analysis"):
         analysis_type = "feature_search_by_radius" if slots.get("distance_m") is not None else "spatial_feature_search"
 
@@ -543,7 +700,7 @@ async def create_plan_node(state: OrchestratorState) -> OrchestratorState:
         normalized_query=state.get("normalized_query", ""),
         slots=slots,
         derived_concept=derived_concept,
-        context=ctx_res.selected_context if ctx_res else "clarification_required",
+        context=_context_value(ctx_res, "selected_context", "clarification_required"),
         analysis_type=analysis_type or "clarification_required",
         intent=intent_val,
         graph_context=state.get("graph_context", {}),
@@ -564,14 +721,11 @@ async def create_plan_node(state: OrchestratorState) -> OrchestratorState:
         data=plan_dict["required_data"],
         outputs=plan_dict.get("outputs", ["GeoJSON", "MapLayer", "FeatureTable", "Summary"]),
         clarification_required=False,
-        confidence=ctx_res.confidence if ctx_res else 0.0,
+        confidence=_context_value(ctx_res, "confidence", 0.0),
         execution_ready=plan_dict["execution_ready"],
         route_plan_status=plan_dict["route_plan_status"]
     )
     
-    req.task_plan = task_plan
-    req.agent_name = task_plan.primary_agent
-
     # Resolve the named place before dispatch so every Agent implementation
     # receives a concrete spatial reference, not only a display label.
     if req.spatial_context and not req.spatial_context.geometry and req.spatial_context.base_location:
@@ -584,15 +738,39 @@ async def create_plan_node(state: OrchestratorState) -> OrchestratorState:
             resolved_wkt = get_maritime_coordinates.invoke(" ".join(place_name.split()))
             if isinstance(resolved_wkt, str) and resolved_wkt.upper().startswith("POINT"):
                 req.spatial_context.geometry = resolved_wkt
+                slots["reference_geometry"] = resolved_wkt
+                slots["resolution_status"] = "RESOLVED"
+                slots["crs"] = "EPSG:4326"
                 logger.info("Plan location resolved", location=place_name.strip(), geometry=resolved_wkt)
         except Exception as e:
             logger.warning("Plan location resolution failed", location=req.spatial_context.base_location, error=str(e))
+
+    state_spatial_context = req.spatial_context.model_dump() if req.spatial_context else state.get("spatial_context")
+    context_state = dict(state)
+    context_state["spatial_context"] = state_spatial_context
+    req.query_execution_context = _build_query_execution_context(context_state, slots, ctx_res, plan_dict)
+    req.query_execution_context = validate_execution_context(req.query_execution_context)
+
+    if req.query_execution_context.readiness == PlanStatus.EXECUTION_READY:
+        task_plan.execution_ready = True
+        task_plan.route_plan_status = "EXECUTION_READY"
+        task_plan.status = "EXECUTION_READY"
+    else:
+        task_plan.execution_ready = False
+        task_plan.route_plan_status = req.query_execution_context.readiness.value
+        task_plan.status = req.query_execution_context.readiness.value
+
+    req.task_plan = task_plan
+    req.agent_name = task_plan.primary_agent
     
     return {
         "agent_request": req, 
         "task_plan": task_plan.model_dump(),
+        "query_execution_context": req.query_execution_context.model_dump(mode="json"),
         "status": AgentStatus.PLAN_CREATED,
-        "state_history": log_transition(AgentStatus.CONTEXT_RESOLVED, AgentStatus.PLAN_CREATED)
+        "state_history": log_transition(AgentStatus.CONTEXT_RESOLVED, AgentStatus.PLAN_CREATED),
+        "extracted_slots": slots,
+        "spatial_context": state_spatial_context
     }
 
 async def execute_agent_node(state: OrchestratorState) -> OrchestratorState:
@@ -601,8 +779,58 @@ async def execute_agent_node(state: OrchestratorState) -> OrchestratorState:
     req.previous_agent_outputs["graph_context"] = state.get("graph_context", {})
     req.previous_agent_outputs["data_discovery_result"] = state.get("data_discovery_result", {})
 
-    # Enforce the spatial execution contract at the dispatch boundary. Some
-    # resumed or older graph states contain the location only in TaskPlan.
+    contract_required_agents = {"Spatial Analysis Agent", "Accident/Risk Agent", "AIS Analysis Agent"}
+    if req.agent_name in contract_required_agents and not req.query_execution_context:
+        agent_result = AgentResult(
+            task_id=req.task_id,
+            trace_id=req.trace_id,
+            agent_name=req.agent_name,
+            agent_version="orchestrator-execution-validator",
+            status=AgentStatus.BLOCKED,
+            error_code=PlanStatus.BLOCKED_CONFIG.value,
+            summary="실행계약이 없어 agent 실행을 차단했습니다.",
+            answer_text="이 agent는 QueryExecutionContext 검증을 통과한 뒤에만 실행할 수 있습니다.",
+            structured_result={"blockers": ["BLOCKED_CONFIG: query_execution_context is required"]},
+            warnings=["BLOCKED_CONFIG: query_execution_context is required"],
+            provenance={"validator": "services.orchestrator.execution_validator.validate_execution_context"},
+        )
+        return {
+            "agent_result": agent_result,
+            "status": AgentStatus.BLOCKED,
+            "state_history": log_transition(AgentStatus.PLAN_CREATED, AgentStatus.BLOCKED, reason="Execution contract missing")
+        }
+
+    if req.agent_name in contract_required_agents and req.query_execution_context:
+        qec = validate_execution_context(req.query_execution_context)
+        req.query_execution_context = qec
+        if qec.readiness != PlanStatus.EXECUTION_READY:
+            blockers = qec.blockers or ["Execution contract is not ready"]
+            status = AgentStatus.NEEDS_CLARIFICATION if any(b.startswith("NEEDS_USER_INPUT") for b in blockers) else AgentStatus.BLOCKED
+            agent_result = AgentResult(
+                task_id=req.task_id,
+                trace_id=req.trace_id,
+                agent_name=req.agent_name,
+                agent_version="orchestrator-execution-validator",
+                status=status,
+                error_code=qec.readiness.value,
+                summary="실행계약 검증을 통과하지 못해 공간분석을 실행하지 않았습니다.",
+                answer_text="실행에 필요한 위치, 거리, 대상 또는 데이터 연결 정보가 아직 확정되지 않았습니다.",
+                structured_result={
+                    "blockers": blockers,
+                    "query_execution_context": qec.model_dump(mode="json"),
+                },
+                warnings=qec.warnings,
+                provenance={"validator": "services.orchestrator.execution_validator.validate_execution_context"},
+            )
+            return {
+                "agent_result": agent_result,
+                "status": status,
+                "query_execution_context": qec.model_dump(mode="json"),
+                "state_history": log_transition(AgentStatus.PLAN_CREATED, status, reason="Execution contract blocked")
+            }
+
+    # dispatch 경계에서 공간 실행계약을 다시 강제한다.
+    # 재개된 state나 예전 graph state는 위치가 TaskPlan에만 남아 있을 수 있다.
     if req.task_plan and req.task_plan.slots:
         location_name = req.task_plan.slots.get("location")
         if location_name and (not req.spatial_context or not req.spatial_context.geometry):
@@ -699,10 +927,10 @@ async def validate_node(state: OrchestratorState) -> OrchestratorState:
     # 에이전트가 돌려준 메타데이터 확인
     
     if not is_valid:
-        logger.warning("Validation failed", reasons=reasons)
+        logger.warning("결과 검증 실패", reasons=reasons)
         return {
             "status": AgentStatus.WAITING_FOR_REVIEW,
-            "error_message": "Validation Failed: " + " | ".join(reasons),
+            "error_message": "결과 검증 실패: " + " | ".join(reasons),
             "state_history": log_transition(AgentStatus.RESULTS_AGGREGATED, AgentStatus.WAITING_FOR_REVIEW, reason=" | ".join(reasons))
         }
         
@@ -717,6 +945,9 @@ async def map_report_node(state: OrchestratorState) -> OrchestratorState:
     result = state["agent_result"]
     
     final_dict = result.model_dump(mode="json")
+    final_dict["contract_version"] = final_dict.get("contract_version") or "geollm.execution.v1"
+    final_dict["request_id"] = final_dict.get("request_id") or state.get("task_id")
+    final_dict["answer_text"] = final_dict.get("answer_text") or result.answer_text or result.summary or "분석 결과를 생성하지 못했습니다."
     
     req = state.get("agent_request")
     if req and hasattr(req, "parsed_intent") and req.parsed_intent:
@@ -730,8 +961,32 @@ async def map_report_node(state: OrchestratorState) -> OrchestratorState:
             final_dict["map_layers"].extend(layer_spec.metadata.get("overlay_layers", []))
             final_dict["features"] = layer_spec.inline_geojson
 
-    # Dynamic traffic and accident specialists return evidence-backed GeoJSON
-    # directly; expose them as map layers without mixing them into S-101.
+            object_features = [
+                f for f in (layer_spec.inline_geojson or {}).get("features", [])
+                if not (f.get("properties", {}) or {}).get("is_buffer")
+            ]
+            if not final_dict.get("spatial_result_summary"):
+                final_dict["spatial_result_summary"] = {
+                "feature_count": len(object_features),
+                "display_feature_count": layer_spec.feature_count,
+                "result_reference": layer_spec.layer_id,
+                }
+            final_dict.setdefault("spatial_feature_evidence", [
+                {
+                    "evidence_id": f"spatial:{result.task_id}:{idx}",
+                    "evidence_type": "spatial_feature",
+                    "summary": (feature.get("properties", {}) or {}).get("name") or (feature.get("properties", {}) or {}).get("feature_name") or "spatial feature",
+                    "source_ref": layer_spec.layer_id,
+                    "data": {
+                        "properties": feature.get("properties", {}),
+                        "geometry_type": (feature.get("geometry") or {}).get("type"),
+                    },
+                }
+                for idx, feature in enumerate(object_features[:100])
+            ])
+
+    # 동적 교통 및 사고 전문 agent는 근거 기반 GeoJSON을 직접 반환한다.
+    # S-101 결과와 섞지 않고 별도 map layer로 노출한다.
     structured = result.structured_result or {}
     if structured.get("dynamic_traffic_geojson"):
         traffic_geojson = structured["dynamic_traffic_geojson"]
@@ -780,8 +1035,41 @@ async def map_report_node(state: OrchestratorState) -> OrchestratorState:
         "graph_context": state.get("graph_context", {}),
         "data_discovery_result": state.get("data_discovery_result", {}),
         "route_plan": state.get("task_plan", {}),
+        "query_execution_context": state.get("query_execution_context", {}),
         "embedding_independent": True,
     }
+    provenance = result.provenance or {}
+    evidence_bundle = build_evidence_bundle(
+        graph_context=state.get("graph_context") or structured.get("kg_context") or {},
+        structured_result=structured if isinstance(structured, dict) else {},
+        spatial_feature_evidence=final_dict.get("spatial_feature_evidence", []),
+        task_id=result.task_id,
+    )
+    final_dict["evidence_bundle"] = evidence_bundle.model_dump(mode="json")
+    final_dict["spatial_feature_evidence"] = final_dict["evidence_bundle"]["spatial_feature_evidence"]
+    final_dict["spatial_layer_evidence"] = final_dict["evidence_bundle"]["spatial_layer_evidence"]
+    final_dict["accident_relation_evidence"] = final_dict["evidence_bundle"]["accident_relation_evidence"]
+    final_dict["regulatory_evidence"] = final_dict["evidence_bundle"]["regulatory_evidence"]
+    final_dict["rag_evidence"] = final_dict["evidence_bundle"]["rag_evidence"]
+    final_dict["kg_provenance"] = final_dict["evidence_bundle"]["kg_provenance"]
+    final_dict.setdefault("claims", [
+        {
+            "claim_id": f"claim:{result.task_id}:summary",
+            "text": final_dict["answer_text"],
+            "evidence_ids": [
+                item.get("evidence_id")
+                for item in final_dict.get("spatial_feature_evidence", [])[:10]
+                if isinstance(item, dict) and item.get("evidence_id")
+            ],
+        }
+    ])
+    final_dict.setdefault("task_results", [{
+        "task_id": result.task_id,
+        "agent_name": result.agent_name,
+        "status": result.status,
+        "summary": result.summary,
+        "provenance_keys": sorted(provenance.keys()),
+    }])
     
     return {
         "final_dict": final_dict,
@@ -866,6 +1154,8 @@ def check_context_resolved(state: OrchestratorState) -> str:
 def check_execution_status(state: OrchestratorState) -> str:
     if state["status"] == AgentStatus.FAILED:
         return "failed"
+    if state["status"] == AgentStatus.BLOCKED:
+        return "blocked"
     if state["status"] == AgentStatus.NEEDS_CLARIFICATION:
         return "needs_clarification"
     return "validate"
@@ -914,9 +1204,9 @@ def build_orchestrator_graph():
         "create_plan": "create_plan"
     })
     workflow.add_edge("create_plan", "execute_agent")
-    workflow.add_conditional_edges("execute_agent", check_execution_status, {"failed": "audit_log", "needs_clarification": "audit_log", "validate": "validate_results"})
+    workflow.add_conditional_edges("execute_agent", check_execution_status, {"failed": "audit_log", "blocked": "audit_log", "needs_clarification": "audit_log", "validate": "validate_results"})
     
-    # Validation -> Review (Interrupt) or Map Report
+    # 검증 결과에 따라 검토 대기 또는 지도 보고서 생성으로 분기
     workflow.add_conditional_edges("validate_results", check_validation_status, {
         "review": "audit_log", # 일단 그래프 실행 종료 (상태 유지). 재호출 시 Resume 됨
         "map_report": "map_report"

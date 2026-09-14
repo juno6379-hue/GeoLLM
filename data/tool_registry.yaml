@@ -13,3 +13,33 @@ tools:
     kind: graph_rag
   traffic.dynamic_layer_search:
     kind: temporal_spatial_query
+  accident.s101_relation_lookup:
+    kind: relation_lookup
+    template: accident_s101_relation_lookup
+  spatial.layer_overlay_lookup:
+    kind: spatial_layer_query
+    template: spatial_layer_overlay_lookup
+  ocean.current_tidal_lookup:
+    kind: temporal_spatial_query
+    template: current_tidal_lookup
+  hazard.eddy_lookup:
+    kind: spatial_layer_query
+    template: eddy_hazard_lookup
+  hazard.area_lookup:
+    kind: spatial_layer_query
+    template: hazard_area_lookup
+  protected.area_lookup:
+    kind: spatial_layer_query
+    template: protected_area_lookup
+  development.planned_port_overlay:
+    kind: spatial_layer_query
+    template: planned_port_overlay
+  place.island_gazetteer_lookup:
+    kind: gazetteer_spatial_query
+    template: island_gazetteer_lookup
+  tide.sea_parting_lookup:
+    kind: temporal_spatial_query
+    template: sea_parting_prediction_lookup
+  traffic.control_area_overlay:
+    kind: spatial_layer_query
+    template: vessel_traffic_control_area_overlay

@@ -1,0 +1,164 @@
+version: '0.1'
+rule_set_id: geollm.ontology.auto_ingestion.phase8_2
+status: draft_review_required
+
+principles:
+  - id: proposal_is_not_authority
+    description: 자동 분류 결과는 온톨로지 후보일 뿐이며 KG VERIFIED 관계나 실행 가능 레이어로 즉시 승격하지 않는다.
+  - id: execution_requires_registry_and_schema
+    description: Tool 실행은 spatial/data/tool/query registry와 DB 스키마 검증을 통과한 경우에만 허용한다.
+  - id: provenance_first
+    description: 모든 후보는 원천 파일, 파일 크기, 수정시각, 공간 필드, 분류 규칙 근거를 보존한다.
+
+execution_status_policy:
+  shapefile_with_geometry: needs_ingestion
+  tabular_accident_or_law: rag_or_table_review
+  binary_or_grid_archive: metadata_only
+  standard_document: rag_ready_after_chunking
+  unknown: NEEDS_REVIEW
+
+classification_rules:
+  - rule_id: navigation_hazard_object
+    label_ko: 항행 위험 객체
+    upper_class: navigational_hazard
+    semantic_mapping: navigation_hazard_object
+    domain_candidates: [maritime_safety, hydrographic_survey]
+    product_candidates: [S-101]
+    layer_type: hazard_object
+    keywords:
+      - 침선
+      - 장애물
+      - 암초
+      - 간출암
+      - 세암
+      - 어초
+      - 와류
+      - 위험
+    exclude_keywords:
+      - 보호
+      - 보전
+
+  - rule_id: regulated_area
+    label_ko: 규제·제한 해역
+    upper_class: regulated_area
+    semantic_mapping: regulated_area
+    domain_candidates: [maritime_safety, fisheries_policy, port_harbor, marine_environment]
+    product_candidates: [S-101, S-124]
+    layer_type: regulated_area
+    keywords:
+      - 금지
+      - 제한
+      - 진입제한
+      - 속도제한
+      - 정박금지
+      - 투묘금지
+      - 조업
+      - 투기장
+      - 통항분리
+      - 관제구역
+
+  - rule_id: protected_area
+    label_ko: 보호·보전 해역
+    upper_class: protected_area
+    semantic_mapping: protected_area
+    domain_candidates: [marine_environment, ocean_policy, fisheries_policy]
+    product_candidates: [S-101]
+    layer_type: protected_area
+    keywords:
+      - 보호수역
+      - 보호구역
+      - 해양보호
+      - 습지보호
+      - 수산자원보호
+      - 바다목장
+    exclude_keywords:
+      - 위험
+      - 사고
+
+  - rule_id: hydrographic_observation
+    label_ko: 해양관측·수로조사 정보
+    upper_class: hydrographic_observation
+    semantic_mapping: tidal_current_surface
+    domain_candidates: [hydrographic_survey, ocean_policy, maritime_safety]
+    product_candidates: [S-104, S-111, S-101]
+    layer_type: hydrographic_observation
+    keywords:
+      - 수치조류도
+      - 조류
+      - 조석
+      - 조위
+      - 예측조위
+      - 바다갈라짐
+      - 갯골
+      - 수심
+      - 영해기선
+
+  - rule_id: traffic_activity
+    label_ko: 선박교통·항로 활동
+    upper_class: traffic_activity
+    semantic_mapping: traffic_activity
+    domain_candidates: [shipping_logistics, maritime_safety, hydrographic_survey]
+    product_candidates: [S-101]
+    layer_type: traffic_activity
+    keywords:
+      - AIS
+      - V-PASS
+      - 항로
+      - 통항
+      - 주요통항로
+      - 선박안전교통
+      - 관제
+      - 계선부표
+      - 정박지
+
+  - rule_id: accident_risk
+    label_ko: 해양사고·위험 이력
+    upper_class: accident_risk
+    domain_candidates: [maritime_safety, fisheries_policy]
+    product_candidates: [S-101]
+    layer_type: accident_event
+    keywords:
+      - 사고
+      - 조난
+      - 충돌
+      - 좌초
+      - 인명사고
+      - 해양안전심판원
+      - 해양경찰
+
+  - rule_id: place_gazetteer
+    label_ko: 해양 지명·장소 기준점
+    upper_class: spatial_entity
+    domain_candidates: [hydrographic_survey, ocean_policy]
+    product_candidates: [S-101]
+    layer_type: place_gazetteer
+    keywords:
+      - 지명
+      - 도서지명
+      - 해양지명
+      - 어항구
+      - 항만
+      - 신항만
+
+  - rule_id: law_or_standard_document
+    label_ko: 법령·표준 문서
+    upper_class: legal_authority
+    domain_candidates: [ocean_policy, maritime_safety, port_harbor, hydrographic_survey]
+    product_candidates: [S-100, S-101, S-104, S-111, S-124]
+    layer_type: document_reference
+    keywords:
+      - 법령
+      - 행정규칙
+      - 고시
+      - S-100
+      - S-101
+      - S-104
+      - S-111
+      - S-124
+      - DCEG
+      - Product Specification
+
+review_thresholds:
+  auto_candidate_min_score: 2
+  high_confidence_min_score: 4
+  large_archive_bytes: 250000000

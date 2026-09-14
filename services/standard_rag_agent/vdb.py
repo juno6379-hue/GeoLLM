@@ -2,7 +2,7 @@ import os
 import json
 import urllib.request
 from typing import List, Dict, Any
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 
 import data.database as db_module
 from shared.observability.logger import get_logger
@@ -37,6 +37,12 @@ def _query_embedding(query: str):
     with urllib.request.urlopen(request, timeout=int(os.getenv('EMBEDDING_TIMEOUT_SEC', '600'))) as response:
         result = json.load(response)
     return result['embeddings'][0]
+
+def _mock_fallback_enabled() -> bool:
+    return (
+        os.getenv("ALLOW_MOCK_FALLBACK", "").lower() in {"1", "true", "yes", "on"}
+        or bool(os.getenv("PYTEST_CURRENT_TEST"))
+    )
 
 # Fallback Mock Data
 MOCK_DOCUMENTS = [
@@ -90,7 +96,9 @@ def search_vdb(query: str, top_k: int = 2, user_id: str = "system", clearance_le
 
             with session_factory() as db:
                 # <=> 는 코사인 거리 연산자 (pgvector)
-                sql = text("""
+                candidate_ids = [str(item) for item in (rag_filters.get("candidate_document_ids") or []) if item]
+                candidate_filter_sql = "AND chunk_id IN :candidate_document_ids" if candidate_ids else ""
+                sql = text(f"""
                     SELECT chunk_id AS doc_id,
                            COALESCE(metadata->>'title', metadata->>'source_path', source_id) AS title,
                            COALESCE(metadata->>'version', 'v2') AS version,
@@ -102,13 +110,18 @@ def search_vdb(query: str, top_k: int = 2, user_id: str = "system", clearance_le
                            1 - (embedding <=> CAST(:vector AS vector)) AS similarity
                     FROM knowledge.document_chunks
                     WHERE embedding IS NOT NULL
-                      AND (:metadata_filter = '{}' OR metadata @> CAST(:metadata_filter AS jsonb))
+                      AND (:metadata_filter = '{{}}' OR metadata @> CAST(:metadata_filter AS jsonb))
+                      {candidate_filter_sql}
                     ORDER BY embedding <=> :vector 
                     LIMIT :top_k
                 """)
+                if candidate_ids:
+                    sql = sql.bindparams(bindparam("candidate_document_ids", expanding=True))
                 # 벡터를 JSON string 변환하여 바인딩
                 metadata_filter = {key: value for key, value in rag_filters.items() if key != "candidate_document_ids"}
                 params = {"vector": str(query_vector), "top_k": top_k, "metadata_filter": json.dumps(metadata_filter)}
+                if candidate_ids:
+                    params["candidate_document_ids"] = candidate_ids
                 result = db.execute(sql, params).mappings().all()
                 
                 if result:
@@ -117,6 +130,10 @@ def search_vdb(query: str, top_k: int = 2, user_id: str = "system", clearance_le
             logger.error("pgvector search failed, falling back to mock", error=str(e))
     
     # Fallback 로직 (보안 필터 적용)
+    if not _mock_fallback_enabled():
+        logger.error("Real pgvector search unavailable and mock fallback is disabled")
+        return []
+
     logger.warning("Falling back to Mock Vector DB Search")
     results = []
     query_lower = query.lower()

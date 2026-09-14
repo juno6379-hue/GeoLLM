@@ -110,10 +110,7 @@ class ContextResolver:
         """
         다단계 컨텍스트 해석 파이프라인
         """
-        derived_concepts = []
-        for concept in self.derived_concepts.keys():
-            if concept in query or concept in normalized_query:
-                derived_concepts.append(concept)
+        derived_concepts = self._extract_derived_concepts(query, normalized_query, extracted_slots or {})
                 
         target = derived_concepts[0] if derived_concepts else ""
 
@@ -455,5 +452,28 @@ class ContextResolver:
         if analysis_type == "feature_search_by_radius":
             return "gbenc.s101_feature_search_by_radius"
         return fallback
+
+    def _extract_derived_concepts(self, query: str, normalized_query: str, extracted_slots: dict) -> List[str]:
+        """Resolve concept keys from raw text, normalized text, aliases, or canonical IDs."""
+        haystack = f"{query or ''} {normalized_query or ''}"
+        supplied = []
+        for key in ("derived_concept", "derived_concepts", "canonical_terms"):
+            value = extracted_slots.get(key)
+            if not value:
+                continue
+            supplied.extend(value if isinstance(value, list) else [value])
+
+        result = []
+        for concept_key, concept_data in self.derived_concepts.items():
+            concept_id = concept_data.get("concept_id", concept_key)
+            aliases = concept_data.get("aliases", [])
+            candidates = [concept_key, concept_id, *aliases]
+            if any(candidate and candidate in haystack for candidate in candidates):
+                result.append(concept_key)
+                continue
+            if any(item == concept_key or item == concept_id or item in aliases for item in supplied):
+                result.append(concept_key)
+
+        return list(dict.fromkeys(result))
 
 context_resolver = ContextResolver()

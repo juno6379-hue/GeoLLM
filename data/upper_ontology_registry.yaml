@@ -1,0 +1,47 @@
+version: '0.1'
+ontology_id: geollm.upper.phase1
+classes:
+  spatial_entity:
+    label_ko: 공간 엔티티
+    description: geometry 또는 위치 범위를 갖는 모든 객체·구역·레이어의 최상위 개념.
+  navigational_hazard:
+    label_ko: 항행 위험
+    parent: spatial_entity
+    description: 선박 항행에 직접적인 충돌, 좌초, 저수심, 장애 위험을 만들 수 있는 객체나 해역.
+  regulated_area:
+    label_ko: 규제·제한 해역
+    parent: spatial_entity
+    description: 법령, 고시, 행정규칙 또는 운영 규칙에 따라 진입·통항·정박·조업·투기 등이 제한되는 해역.
+  protected_area:
+    label_ko: 보호·보전 해역
+    parent: spatial_entity
+    description: 생태계, 경관, 수산자원, 환경 보전 등을 목적으로 지정·관리되는 해역. 항행 위험 자체로 분류하지 않는다.
+  hydrographic_observation:
+    label_ko: 해양관측·수로조사 정보
+    parent: spatial_entity
+    description: 조류, 조석, 수심, 해저지형, 해양예측 등 수로조사·해양관측 기반 정보.
+  traffic_activity:
+    label_ko: 선박교통 활동
+    parent: spatial_entity
+    description: AIS, V-PASS, 항로, 통항량, 관제구역 등 선박 이동과 교통 관리 정보.
+  accident_risk:
+    label_ko: 사고·위험 이력
+    parent: spatial_entity
+    description: 해양사고, 조난, 충돌, 좌초, 인명사고와 공간 관계를 갖는 위험 이력 정보.
+  legal_authority:
+    label_ko: 법령·공식 근거
+    description: 법률, 시행령, 고시, 행정규칙, 공식 데이터셋과 발행기관.
+layer_classification_rules:
+  eddy_hazard_area: navigational_hazard
+  caution_warning_area: regulated_area
+  speed_restriction_area: regulated_area
+  entry_restricted_area: regulated_area
+  anchoring_prohibited_area: regulated_area
+  fishing_prohibited_area: regulated_area
+  fishing_restricted_area: regulated_area
+  dumping_ground_area: regulated_area
+  protected_sea_area: protected_area
+  tidal_current_surface: hydrographic_observation
+  vessel_traffic_control_area: traffic_activity
+  ais_route_analysis: traffic_activity
+  vpass_route_analysis: traffic_activity

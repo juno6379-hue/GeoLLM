@@ -27,3 +27,111 @@ datasets:
   accident_data:
     zone: standardized
     dictionary: data/accident_dictionary.yaml
+  accident_s101_relation:
+    zone: serving
+    source: gbhd_s101.serving.accident_s101_relation_current
+    distance_column: distance_meters
+    status: current
+  tidal_current_surface:
+    zone: standardized
+    source: Dataset/수치조류도_국내연안2025.zip
+    registry: data/spatial_layer_registry.yaml
+    metadata_table: serving.tidal_current_surface_metadata
+    status: metadata_only
+  eddy_hazard_area:
+    zone: standardized
+    source: Dataset/와류.zip
+    registry: data/spatial_layer_registry.yaml
+    serving_table: serving.eddy_hazard_area_current
+    status: ingested
+  planned_port_area:
+    zone: standardized
+    source: Dataset/신항만예정지역.zip
+    registry: data/spatial_layer_registry.yaml
+    serving_table: serving.planned_port_area_current
+    status: ingested
+  island_gazetteer:
+    zone: standardized
+    source: Dataset/도서지명.zip
+    registry: data/spatial_layer_registry.yaml
+    serving_table: serving.island_gazetteer_current
+    status: ingested
+  sea_parting_prediction:
+    zone: standardized
+    source: Dataset/바다갈라짐예측정보_*.ZIP
+    registry: data/spatial_layer_registry.yaml
+    status: needs_ingestion
+  vessel_traffic_control_area:
+    zone: standardized
+    source: Dataset/선박안전교통관제구역.zip
+    registry: data/spatial_layer_registry.yaml
+    serving_table: serving.vessel_traffic_control_area_current
+    status: ingested
+  caution_warning_area:
+    zone: standardized
+    source: Dataset/주의경계해역.zip
+    registry: data/spatial_layer_registry.yaml
+    serving_table: serving.hazard_area_current
+    status: ingested
+  speed_restriction_area:
+    zone: standardized
+    source: Dataset/속도제한구역.zip
+    registry: data/spatial_layer_registry.yaml
+    serving_table: serving.hazard_area_current
+    status: ingested
+  entry_restricted_area:
+    zone: standardized
+    source: Dataset/진입제한.zip
+    registry: data/spatial_layer_registry.yaml
+    serving_table: serving.hazard_area_current
+    status: ingested
+  anchoring_prohibited_area:
+    zone: standardized
+    source: Dataset/정박금지(투묘금지).zip
+    registry: data/spatial_layer_registry.yaml
+    serving_table: serving.hazard_area_current
+    status: ingested
+  fishing_prohibited_area:
+    zone: standardized
+    source: Dataset/낚시금지구역.zip
+    registry: data/spatial_layer_registry.yaml
+    serving_table: serving.hazard_area_current
+    status: ingested
+  fishing_restricted_area:
+    zone: standardized
+    source: Dataset/낚시제한구역.zip
+    registry: data/spatial_layer_registry.yaml
+    serving_table: serving.hazard_area_current
+    status: ingested
+  dumping_ground_area:
+    zone: standardized
+    source: Dataset/투기장.zip
+    registry: data/spatial_layer_registry.yaml
+    serving_table: serving.hazard_area_current
+    status: ingested
+  protected_sea_area:
+    zone: standardized
+    source: Dataset/보호수역.zip
+    registry: data/spatial_layer_registry.yaml
+    serving_table: serving.protected_area_current
+    status: ingested
+  AIS_route_analysis:
+    zone: standardized
+    source: Dataset/AIS항로분석.zip
+    registry: data/traffic_layer_registry.yaml
+    status: needs_ingestion
+  AIS_major_route:
+    zone: standardized
+    source: Dataset/AIS주요통항로분석.zip
+    registry: data/traffic_layer_registry.yaml
+    status: needs_ingestion
+  V_PASS_route_analysis:
+    zone: standardized
+    source: Dataset/V-PASS항로분석.zip
+    registry: data/traffic_layer_registry.yaml
+    status: needs_ingestion
+  V_PASS_major_route:
+    zone: standardized
+    source: Dataset/V-PASS주요통항로분석.zip
+    registry: data/traffic_layer_registry.yaml
+    status: needs_ingestion

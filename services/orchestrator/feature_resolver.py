@@ -50,20 +50,25 @@ class FeatureResolver:
 
     def _load_nftc_from_db(self):
         loaded_from_db = False
-        try:
-            import psycopg2
-            postgis_url = os.environ.get("POSTGIS_URL", "")
-            conn = psycopg2.connect(postgis_url)
-            cur = conn.cursor()
-            cur.execute("SELECT name, code FROM public.codeinformation WHERE type = 0")
-            rows = cur.fetchall()
-            for name, code in rows:
-                self.feature_to_nftc_map[name] = code
-            loaded_from_db = bool(rows)
-            conn.close()
-            logger.info("FeatureResolver loaded NFTC mappings from Database")
-        except Exception as e:
-            logger.error("Failed to load NFTC mapping from Database", error=str(e))
+        urls = [os.environ.get("S101_DB_URL", ""), os.environ.get("POSTGIS_URL", "")]
+        for db_url in [url for url in urls if url]:
+            try:
+                import psycopg2
+                conn = psycopg2.connect(db_url)
+                cur = conn.cursor()
+                cur.execute("SELECT name, code FROM public.codeinformation WHERE type = 0")
+                rows = cur.fetchall()
+                for name, code in rows:
+                    self.feature_to_nftc_map[name] = code
+                loaded_from_db = loaded_from_db or bool(rows)
+                conn.close()
+                if rows:
+                    logger.info("FeatureResolver loaded NFTC mappings from Database", extra={"url": db_url.split("@")[-1]})
+                    break
+            except Exception as e:
+                logger.error("Failed to load NFTC mapping from Database", error=str(e))
+
+        if not loaded_from_db:
             logger.warning("Falling back to local S-101 catalogue for NFTC mappings")
 
         # Development databases can have an empty codeinformation table. Keep

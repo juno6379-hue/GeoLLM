@@ -20,3 +20,122 @@ analysis_types:
       - MapLayer
       - FeatureTable
       - Summary
+  accident_relation_lookup:
+    primary_agent: Accident/Risk Agent
+    secondary_agents:
+      - Validation Agent
+      - Map Report Agent
+    required_tools:
+      - accident.s101_relation_lookup
+    required_data:
+      - accident_s101_relation
+      - GBENC_S101_feature
+    outputs:
+      - AccidentRelationEvidence
+      - GeoJSON
+      - Summary
+  current_tidal_lookup:
+    primary_agent: Spatial Analysis Agent
+    secondary_agents:
+      - Validation Agent
+      - Map Report Agent
+    required_tools:
+      - ocean.current_tidal_lookup
+    required_data:
+      - tidal_current_surface
+    outputs:
+      - SpatialLayerEvidence
+      - GeoJSON
+      - Summary
+  eddy_hazard_lookup:
+    primary_agent: Spatial Analysis Agent
+    secondary_agents:
+      - Validation Agent
+      - Map Report Agent
+    required_tools:
+      - hazard.eddy_lookup
+    required_data:
+      - eddy_hazard_area
+    outputs:
+      - SpatialLayerEvidence
+      - GeoJSON
+      - Summary
+  planned_port_overlay:
+    primary_agent: Spatial Analysis Agent
+    secondary_agents:
+      - Validation Agent
+      - Map Report Agent
+    required_tools:
+      - development.planned_port_overlay
+    required_data:
+      - planned_port_area
+    outputs:
+      - SpatialLayerEvidence
+      - GeoJSON
+      - Summary
+  island_gazetteer_lookup:
+    primary_agent: Spatial Analysis Agent
+    secondary_agents:
+      - Validation Agent
+      - Map Report Agent
+    required_tools:
+      - place.island_gazetteer_lookup
+    required_data:
+      - island_gazetteer
+    outputs:
+      - SpatialLayerEvidence
+      - GeoJSON
+      - Summary
+  sea_parting_prediction_lookup:
+    primary_agent: Spatial Analysis Agent
+    secondary_agents:
+      - Validation Agent
+      - Map Report Agent
+    required_tools:
+      - tide.sea_parting_lookup
+    required_data:
+      - sea_parting_prediction
+    outputs:
+      - SpatialLayerEvidence
+      - GeoJSON
+      - Summary
+  vessel_traffic_control_area_overlay:
+    primary_agent: Spatial Analysis Agent
+    secondary_agents:
+      - Validation Agent
+      - Map Report Agent
+    required_tools:
+      - traffic.control_area_overlay
+    required_data:
+      - vessel_traffic_control_area
+    outputs:
+      - SpatialLayerEvidence
+      - GeoJSON
+      - Summary
+  protected_area_lookup:
+    primary_agent: Spatial Analysis Agent
+    secondary_agents:
+      - Validation Agent
+      - Map Report Agent
+    required_tools:
+      - protected.area_lookup
+    required_data:
+      - protected_sea_area
+    outputs:
+      - SpatialLayerEvidence
+      - GeoJSON
+      - Summary
+  traffic_search_by_time_space:
+    primary_agent: AIS Analysis Agent
+    secondary_agents:
+      - Validation Agent
+      - Map Report Agent
+    required_tools:
+      - traffic.dynamic_layer_search
+    required_data:
+      - DynamicTrafficLayer
+      - traffic_data_dictionary
+    outputs:
+      - SpatialLayerEvidence
+      - GeoJSON
+      - Summary
