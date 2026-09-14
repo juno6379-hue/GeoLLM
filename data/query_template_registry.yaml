@@ -108,3 +108,31 @@ templates:
     executor: traffic.control_area_overlay
     optional_parameters:
     - distance_m
+  observed_time_series_analysis:
+    allowed_layers:
+    - tidal_current_surface
+    - sample_observation_timeseries
+    required_parameters:
+    - source_path
+    - timestamp_column
+    - value_column
+    executor: timeseries.observation_analyze
+    optional_parameters:
+    - station_id
+    - time_range
+    - z_threshold
+  observed_time_series_forecast:
+    allowed_layers:
+    - tidal_current_surface
+    - sample_observation_timeseries
+    required_parameters:
+    - source_path
+    - timestamp_column
+    - value_column
+    - horizon_steps
+    executor: timeseries.forecast
+    optional_parameters:
+    - station_id
+    - time_range
+    - confidence_level
+    - model_endpoint

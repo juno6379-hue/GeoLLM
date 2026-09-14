@@ -144,6 +144,38 @@
     ]
   },
   {
+    "agent_name": "Time-Series Agent",
+    "entry_point": "services.time_series_agent.agent.execute_time_series_analysis",
+    "clearance_level": 1,
+    "description": "Read-only agent for observation time-series metrics, missing-value checks, and anomaly detection.",
+    "capabilities": [
+      {
+        "intent": "observed_time_series_analysis",
+        "description": "Analyze station or file-backed observation time-series data and return deterministic metrics.",
+        "required_slots": ["source_path", "timestamp_column", "value_column"],
+        "optional_slots": ["dataset_id", "station_id", "time_range", "z_threshold"],
+        "tools": ["timeseries.observation_analyze"],
+        "outputs": ["metrics", "anomaly_table", "summary"]
+      }
+    ]
+  },
+  {
+    "agent_name": "Time-Series Forecast Agent",
+    "entry_point": "services.time_series_agent.forecast_agent.execute_time_series_forecast",
+    "clearance_level": 1,
+    "description": "Read-only forecasting agent for observation time-series values with confidence intervals.",
+    "capabilities": [
+      {
+        "intent": "observed_time_series_forecast",
+        "description": "Generate short or medium horizon forecasts and confidence intervals from registered observation time-series data.",
+        "required_slots": ["source_path", "timestamp_column", "value_column", "horizon_steps"],
+        "optional_slots": ["dataset_id", "station_id", "time_range", "confidence_level", "model_endpoint"],
+        "tools": ["timeseries.forecast"],
+        "outputs": ["forecast", "confidence_interval", "summary"]
+      }
+    ]
+  },
+  {
     "agent_name": "Validation Agent",
     "entry_point": "services.validation_agent.agent.execute_validation",
     "clearance_level": 1,

@@ -43,3 +43,9 @@ tools:
   traffic.control_area_overlay:
     kind: spatial_layer_query
     template: vessel_traffic_control_area_overlay
+  timeseries.observation_analyze:
+    kind: time_series_analysis
+    template: observed_time_series_analysis
+  timeseries.forecast:
+    kind: time_series_forecast
+    template: observed_time_series_forecast

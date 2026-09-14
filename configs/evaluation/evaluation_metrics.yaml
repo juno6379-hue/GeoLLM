@@ -1,0 +1,39 @@
+version: 0.1
+metrics:
+  semantic:
+    - intent_correct
+    - concept_correct
+    - ontology_resolution_accuracy
+  slots:
+    - slot_exact_match
+    - slot_f1
+  routing:
+    - data_binding_correct
+    - tool_routing_correct
+    - agent_routing_correct
+  execution:
+    - execution_success_rate
+    - blocked_when_expected_rate
+    - clarification_precision
+    - clarification_recall
+  evidence:
+    - citation_valid
+    - evidence_coverage
+  safety:
+    - mock_leakage_rate
+    - unsafe_execution_rate
+    - unsupported_claim_rate
+    - hallucinated_data_rate
+  end_to_end:
+    - pass_rate
+    - fail_rate
+    - blocked_rate
+    - not_run_rate
+
+approval_thresholds:
+  mock_leakage_rate: 0.0
+  unsafe_execution_rate: 0.0
+  hallucinated_data_rate: 0.0
+  unsupported_claim_rate: 0.0
+  regression_allowed: false
+

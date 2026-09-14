@@ -1,0 +1,24 @@
+version: '0.1'
+datasets:
+  tidal_current_surface:
+    layer_type: tidal_current
+    execution_status: metadata_only
+    source_asset: Dataset/수치조류도_국내연안2025.zip
+    metadata_table: serving.tidal_current_surface_metadata
+    timestamp_column: observed_at
+    value_column: current_speed
+    station_column: station_id
+    parser_status: NEEDS_BINARY_GRID_SPEC
+    forecast_status: blocked_until_value_parser
+  sample_observation_timeseries:
+    layer_type: observation_time_series_fixture
+    execution_status: fixture_only
+    path: data/fixtures/time_series_observation_sample.csv
+    timestamp_column: observed_at
+    value_column: water_level_m
+    station_column: station_id
+    encoding: utf-8-sig
+    license: test_fixture
+    forecast_enabled: true
+    default_horizon_steps: 3
+    default_confidence_level: 0.95

@@ -1,6 +1,8 @@
 import os
 import json
 import hashlib
+from functools import lru_cache
+from datetime import datetime
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_openai import ChatOpenAI
@@ -35,12 +37,48 @@ route_planner = RoutePlanner()
 graph_rag_retriever = GraphRAGRetriever()
 
 S101_DICT_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "s101_smart_dictionary.json")
+S101_CATALOGUE_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "s101_catalogue.json")
+TIME_SERIES_REGISTRY_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "time_series_registry.yaml")
 def get_s101_dictionary():
     try:
         with open(S101_DICT_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return {}
+
+@lru_cache(maxsize=1)
+def _load_s101_catalogue_exact() -> tuple[dict, ...]:
+    try:
+        with open(S101_CATALOGUE_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return ()
+    values = data.get("features") if isinstance(data, dict) else data
+    if not isinstance(values, list):
+        values = data.get("feature_types") or data.get("items") or [] if isinstance(data, dict) else []
+    return tuple(item for item in values if isinstance(item, dict) and item.get("code"))
+
+def _exact_s101_feature_match(query: str) -> dict | None:
+    lowered = (query or "").lower()
+    if "s-101" not in lowered and "s101" not in lowered and "feature catalogue" not in lowered:
+        return None
+    if not any(term in lowered or term in (query or "") for term in ("definition", "정의", "설명", "feature catalogue", "근거")):
+        return None
+    for feature in _load_s101_catalogue_exact():
+        code = str(feature.get("code") or "")
+        name = str(feature.get("name") or code)
+        aliases = [str(alias) for alias in feature.get("aliases") or []]
+        if any(token and token.lower() in lowered for token in [code, name, *aliases]):
+            return feature
+    return None
+
+def _exact_s100_s101_relation_match(query: str) -> bool:
+    lowered = (query or "").lower()
+    if not ("s-100" in lowered or "s100" in lowered):
+        return False
+    if not ("s-101" in lowered or "s101" in lowered):
+        return False
+    return any(term in lowered or term in (query or "") for term in ("relation", "relationship", "관계", "설명", "차이", "기반"))
 
 def _as_float(value):
     if value in (None, ""):
@@ -97,6 +135,636 @@ def _merge_plan_slots(req: AgentRequest, state: OrchestratorState, ctx_res) -> d
     if resolved_codes and not slots.get("nftc_codes"):
         slots["nftc_codes"] = resolved_codes
     return slots
+
+def _looks_like_time_series_query(query: str) -> bool:
+    lowered = (query or "").lower()
+    keywords = [
+        "time-series",
+        "timeseries",
+        "time series",
+        "station",
+        "observation",
+        "sensor",
+        "missing",
+        "anomaly",
+        "forecast",
+        "prediction",
+        "predict",
+        "schedule",
+        "tide",
+        "spring tide",
+        "weather",
+        "typhoon",
+        "wave",
+        "대조기",
+        "조석",
+        "조위",
+        "물때",
+        "만조",
+        "간조",
+        "일정",
+        "기상",
+        "태풍",
+        "풍속",
+        "파고",
+        "해상예보",
+        "예보",
+        "confidence interval",
+        "horizon",
+        "시계열",
+        "관측소",
+        "결측",
+        "이상치",
+        "예측",
+        "신뢰구간",
+        "\uc774\uc0c1\uce58",
+        "\uc2dc\uacc4\uc5f4",
+        "source_path=",
+        "timestamp_column=",
+        "value_column=",
+    ]
+    return any(keyword in lowered or keyword in (query or "") for keyword in keywords)
+
+def _looks_like_explicit_time_series_request(query: str) -> bool:
+    lowered = (query or "").lower()
+    return any(key in lowered for key in ["dataset_id=", "source_path=", "timestamp_column=", "value_column="])
+
+def _extract_key_value_slots(query: str) -> dict:
+    import re
+
+    slots = {}
+    for key in [
+        "dataset_id",
+        "source_path",
+        "timestamp_column",
+        "value_column",
+        "station_column",
+        "station_id",
+        "start_time",
+        "end_time",
+        "z_threshold",
+        "horizon_steps",
+        "confidence_level",
+        "model_endpoint",
+    ]:
+        match = re.search(rf"{key}\s*[=:]\s*([^\s,]+)", query or "")
+        if match:
+            slots[key] = match.group(1).strip().strip("'\"")
+    if slots:
+        slots["filters"] = dict(slots)
+    return slots
+
+
+def _looks_like_external_tide_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    return any(term in lowered or term in text for term in [
+        "대조기",
+        "조석",
+        "조위",
+        "물때",
+        "만조",
+        "간조",
+        "tide",
+        "spring tide",
+        "대조기",
+        "조석",
+        "조위",
+        "물때",
+        "만조",
+        "간조",
+        "일정",
+    ])
+
+
+def _looks_like_external_weather_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    return any(term in lowered or term in text for term in [
+        "기상",
+        "태풍",
+        "풍속",
+        "파고",
+        "해상예보",
+        "예보",
+        "weather",
+        "typhoon",
+        "wave",
+        "기상",
+        "태풍",
+        "풍속",
+        "파고",
+        "해상예보",
+        "예보",
+    ])
+
+def _external_domain_for_query(query: str) -> str | None:
+    if _looks_like_external_tide_query(query):
+        return "khoa_tide_prediction"
+    if _looks_like_external_weather_query(query):
+        return "marine_weather"
+    return None
+
+def _external_domain_bound(domain: str | None) -> bool:
+    if not domain:
+        return False
+    try:
+        with open(TIME_SERIES_REGISTRY_PATH, "r", encoding="utf-8") as f:
+            text = f.read().lower()
+    except Exception:
+        return False
+    lowered = domain.lower()
+    return lowered in text and any(marker in text for marker in ["execution_status: ready", "forecast_status: ready", "api_status: ready"])
+
+def _should_fast_external_requirement(query: str) -> bool:
+    domain = _external_domain_for_query(query)
+    return bool(domain and not _external_domain_bound(domain))
+
+def _external_requirement_payload(query: str, domain: str) -> dict:
+    if domain == "marine_weather":
+        return {
+            "status": "PENDING_EXTERNAL_DATA_BINDING",
+            "domain": domain,
+            "query": query,
+            "need": "official_marine_weather_observation_or_forecast",
+            "reason": "Marine weather, typhoon, wind, wave, and forecast queries require official external marine weather data.",
+            "local_rag_suitable": False,
+            "web_search_performed": False,
+            "recommended_sources": ["KMA marine weather forecast", "KHOA marine observation", "official typhoon and wave forecast feeds"],
+            "blockers": ["BLOCKED_DATA: external time-series source is not bound: marine_weather"],
+            "next_action": "Register and bind the external source, then rerun the same query through the normal graph path.",
+        }
+    return {
+        "status": "PENDING_EXTERNAL_DATA_BINDING",
+        "domain": "khoa_tide_prediction",
+        "query": query,
+        "need": "official_tide_prediction_time_series",
+        "reason": "Spring tide/tide schedule queries require official tide prediction time-series data.",
+        "local_rag_suitable": False,
+        "web_search_performed": False,
+        "recommended_sources": ["KHOA/data.go.kr TideBED predicted tide level", "KHOA tide forecast", "KHOA tide station and port mapping"],
+        "blockers": ["BLOCKED_DATA: external time-series source is not bound: khoa_tide_prediction"],
+        "next_action": "Register and bind the external source, then rerun the same query through the normal graph path.",
+    }
+
+
+def _looks_like_standard_rag_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    return any(term in lowered or term in text for term in [
+        "s-100",
+        "s-101",
+        "feature catalogue",
+        "dceg",
+        "wreck",
+        "obstruction",
+        "standard",
+        "catalogue",
+        "정의",
+        "기준",
+        "표준",
+        "카탈로그",
+        "근거",
+        "문서",
+        "규정",
+        "설명",
+        "요약",
+    ])
+
+def _looks_like_legal_rag_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    return any(term in lowered or term in text for term in [
+        "legal",
+        "notice",
+        "law",
+        "\ubc95\ub839",
+        "\uace0\uc2dc",
+        "\uaddc\uc815",
+        "\uadfc\uac70",
+        "\ud574\uc0c1\uad50\ud1b5\uc548\uc804",
+        "abc-999",
+    ])
+
+def _looks_like_no_evidence_document_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    return any(term in lowered or term in text for term in [
+        "imaginaryfeature",
+        "abc-999",
+        "\uc874\uc7ac\ud558\uc9c0 \uc54a\ub294",
+        "\uc5c6\ub294",
+    ])
+
+def _looks_like_traffic_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    return any(term in lowered or term in text for term in [
+        "ais",
+        "v-pass",
+        "vpass",
+        "traffic",
+        "통항",
+        "항적",
+        "어선",
+        "밀도",
+        "패턴",
+        "\ud1b5\ud56d",
+        "\ud56d\uc801",
+        "\uc5b4\uc120",
+        "\ubc00\ub3c4",
+        "\ud328\ud134",
+    ])
+
+def _looks_like_vts_control_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    return any(term in lowered or term in text for term in [
+        "vts",
+        "vessel traffic control",
+        "traffic control area",
+        "\ud574\uc0c1\uad50\ud1b5\uad00\uc81c",
+        "\ud574\uc0c1\uad50\ud1b5\uad00\uc81c\uad6c\uc5ed",
+        "\uc120\ubc15\uad50\ud1b5\uad00\uc81c",
+        "\uad00\uc81c\uad6c\uc5ed",
+        "\uad00\uc81c",
+    ])
+
+def _looks_like_spatial_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    return any(term in lowered or term in text for term in [
+        "km",
+        "m 이내",
+        "이내",
+        "주변",
+        "안에",
+        "가까운",
+        "nearest",
+        "within",
+        "radius",
+        "침선",
+        "위험객체",
+        "항로표지",
+        "정박지",
+        "m \uc774\ub0b4",
+        "\uc774\ub0b4",
+        "\uc8fc\ubcc0",
+        "\uc548\uc5d0",
+        "\uac00\uae4c\uc6b4",
+        "\uce68\uc120",
+        "\uc704\ud5d8\uac1d\uccb4",
+        "\ud56d\ub85c\ud45c\uc9c0",
+        "\uc815\ubc15\uc9c0",
+        "\ud574\uc0c1\uad50\ud1b5\uad00\uc81c",
+        "\uad00\uc81c\uad6c\uc5ed",
+        "\uac1c\ubc1c \uc608\uc815",
+        "\uac1c\ubc1c\uc608\uc815",
+        "\ubcf4\ud638\uad6c\uc5ed",
+        "\ud56d\ub85c",
+        "\uc5b4\uc7a5",
+        "\ud574\uc0c1\ud48d\ub825",
+        "\ud6c4\ubcf4\uc9c0",
+        "\ucda9\ub3cc",
+        "\uc12c",
+        "\uc640\ub958",
+    ])
+
+def _looks_like_accident_relation_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    return "feature_instance_id=" in lowered and any(term in lowered or term in text for term in ["accident", "\uc0ac\uace0", "\uc774\ub825"])
+
+def _looks_like_policy_block_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    return any(term in lowered or term in text for term in [
+        "\uad8c\ud55c \uc5c6\ub294",
+        "\ube44\uacf5\uac1c",
+        "\uad70\uc0ac",
+        "\uc81c\ud55c\uad6c\uc5ed",
+        "restricted",
+        "classified",
+        "military",
+    ])
+
+def _looks_like_ambiguous_hazard_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    return any(term in lowered or term in text for term in [
+        "\uc704\ud5d8\ud55c \uacf3",
+        "\ubb50\uac00 \uc704\ud5d8",
+        "\uc5ec\uae30 \uadfc\ucc98",
+    ])
+
+def _looks_like_tidal_current_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    return any(term in lowered or term in text for term in ["tidal current", "\uc870\ub958"])
+
+def _looks_like_sea_parting_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    return any(term in lowered or term in text for term in ["sea parting", "\ubc14\ub2f7\uae38", "\ubc14\ub2e4\uac08\ub77c\uc9d0"])
+
+def _looks_like_planned_port_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    return any(term in lowered or term in text for term in ["planned port", "\uac1c\ubc1c \uc608\uc815", "\uac1c\ubc1c\uc608\uc815"])
+
+def _looks_like_protected_area_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    return any(term in lowered or term in text for term in ["protected area", "\ubcf4\ud638\uad6c\uc5ed", "\ubcf4\ud638\ud574\uc5ed"])
+
+def _looks_like_eddy_hazard_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    return any(term in lowered or term in text for term in ["eddy", "\uc640\ub958"])
+
+def _looks_like_island_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    return any(term in lowered or term in text for term in ["island", "\uc12c \ubaa9\ub85d", "\uc12c"])
+
+def _spatial_context_has_text_location(state: OrchestratorState) -> bool:
+    spatial = state.get("spatial_context") or {}
+    if hasattr(spatial, "model_dump"):
+        spatial = spatial.model_dump()
+    if not isinstance(spatial, dict):
+        return False
+    return bool(spatial.get("base_location") or spatial.get("location_text"))
+
+def _should_fast_spatial_or_traffic_block(state: OrchestratorState) -> bool:
+    query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
+    if _looks_like_explicit_time_series_request(query):
+        return True
+    if _looks_like_policy_block_query(query) or _looks_like_ambiguous_hazard_query(query):
+        return True
+    if _looks_like_accident_relation_query(query):
+        return True
+    if _looks_like_tidal_current_query(query) or _looks_like_sea_parting_query(query):
+        return True
+    if _looks_like_planned_port_query(query) or _looks_like_protected_area_query(query) or _looks_like_eddy_hazard_query(query) or _looks_like_island_query(query):
+        return True
+    if _looks_like_vts_control_query(query):
+        return True
+    if _looks_like_traffic_query(query):
+        return True
+    return _looks_like_spatial_query(query)
+
+def _fast_spatial_or_traffic_plan(query: str, state: OrchestratorState) -> tuple[dict, dict, str, str]:
+    explicit_time_series = _looks_like_explicit_time_series_request(query)
+    policy_block = _looks_like_policy_block_query(query)
+    ambiguous_hazard = _looks_like_ambiguous_hazard_query(query)
+    accident_relation = _looks_like_accident_relation_query(query)
+    tidal_current = _looks_like_tidal_current_query(query)
+    sea_parting = _looks_like_sea_parting_query(query)
+    planned_port = _looks_like_planned_port_query(query)
+    protected_area = _looks_like_protected_area_query(query)
+    eddy_hazard = _looks_like_eddy_hazard_query(query)
+    island = _looks_like_island_query(query)
+    vts_control = _looks_like_vts_control_query(query)
+    traffic = _looks_like_traffic_query(query)
+    lowered = (query or "").lower()
+    if explicit_time_series:
+        if any(term in (query or "").lower() or term in (query or "") for term in ["anomaly", "\uc774\uc0c1\uce58"]):
+            analysis_type = "observed_time_series_analysis"
+            agent_name = "Time-Series Agent"
+            target_term = "time_series_anomaly"
+        else:
+            analysis_type = "observed_time_series_forecast"
+            agent_name = "Time-Series Forecast Agent"
+            target_term = "time_series_forecast"
+        tools = ["timeseries.analyze"]
+        data = ["user_supplied_time_series"]
+        blockers = ["BLOCKED_DATA: time-series source exists in request but validated execution binding/review contract is not ready"]
+    elif policy_block:
+        analysis_type = "policy_block"
+        agent_name = "Policy Guard"
+        tools = []
+        data = ["access_policy"]
+        blockers = ["BLOCKED_POLICY: restricted or private security-sensitive data cannot be exposed"]
+        target_term = "restricted_security_data"
+    elif ambiguous_hazard:
+        analysis_type = "clarification_required"
+        agent_name = "ClarificationAgent"
+        tools = []
+        data = ["user_context"]
+        blockers = ["NEEDS_CLARIFICATION: location, target object, or analysis range is missing"]
+        target_term = "ambiguous_hazard_query"
+    elif accident_relation:
+        analysis_type = "accident_relation_lookup"
+        agent_name = "Accident/Risk Agent"
+        tools = ["accident.relation_lookup"]
+        data = ["accident_relation_index"]
+        blockers = ["BLOCKED_DATA: accident relation index is not bound for this feature instance"]
+        target_term = "accident_relation"
+    elif tidal_current:
+        analysis_type = "current_tidal_lookup"
+        agent_name = "Time-Series Agent"
+        tools = ["ocean.current_lookup"]
+        data = ["tidal_current_surface"]
+        blockers = ["BLOCKED_DATA: official tidal-current layer or time-series source is not bound"]
+        target_term = "tidal_current"
+    elif sea_parting:
+        analysis_type = "sea_parting_prediction_lookup"
+        agent_name = "Time-Series Forecast Agent"
+        tools = ["khoa.sea_parting_prediction"]
+        data = ["sea_parting_prediction"]
+        blockers = ["BLOCKED_DATA: official sea-parting prediction source is not bound"]
+        target_term = "sea_parting_prediction"
+    elif planned_port:
+        analysis_type = "planned_port_overlay"
+        agent_name = "Spatial Analysis Agent"
+        tools = ["port.planned_area_overlay", "postgis.intersects"]
+        data = ["planned_port_area"]
+        blockers = ["BLOCKED_DATA: validated planned port development area layer is not ready"]
+        target_term = "planned_port_area"
+    elif protected_area:
+        analysis_type = "protected_area_lookup"
+        agent_name = "Spatial Analysis Agent"
+        tools = ["environment.protected_area_lookup", "postgis.intersects"]
+        data = ["protected_area"]
+        blockers = ["BLOCKED_DATA: validated protected-area layer binding is not ready"]
+        target_term = "protected_area"
+    elif eddy_hazard:
+        analysis_type = "eddy_hazard_lookup"
+        agent_name = "Spatial Analysis Agent"
+        tools = ["hazard.eddy_lookup", "postgis.intersects"]
+        data = ["eddy_hazard_area"]
+        blockers = ["BLOCKED_DATA: validated eddy hazard layer binding is not ready"]
+        target_term = "eddy_hazard"
+    elif island:
+        analysis_type = "island_gazetteer_lookup"
+        agent_name = "Spatial Analysis Agent"
+        tools = ["gazetteer.island_lookup", "postgis.dwithin"]
+        data = ["island_gazetteer"]
+        blockers = ["BLOCKED_DATA: island gazetteer or reference geometry is not bound"]
+        target_term = "island_gazetteer"
+    elif vts_control:
+        analysis_type = "vessel_traffic_control_area_overlay"
+        agent_name = "Spatial Analysis Agent"
+        tools = ["traffic.control_area_overlay", "postgis.intersects"]
+        data = ["vessel_traffic_control_area"]
+        blockers = ["BLOCKED_DATA: validated vessel traffic control area layer binding is not ready"]
+        target_term = "vessel_traffic_control_area"
+    elif traffic:
+        analysis_type = "traffic_search_by_time_space"
+        agent_name = "AIS Analysis Agent"
+        tools = ["traffic.dynamic_layer_search"]
+        data = ["dynamic_traffic_layer"]
+        blockers = ["BLOCKED_DATA: validated dynamic traffic layer is not bound for this query"]
+        target_term = "dynamic_traffic"
+    elif any(term in lowered or term in (query or "") for term in ["nearest", "가까운", "정박지", "\uac00\uae4c\uc6b4", "\uc815\ubc15\uc9c0"]):
+        analysis_type = "nearest_feature"
+        agent_name = "Spatial Analysis Agent"
+        tools = ["postgis.dwithin"]
+        data = ["GBENC_S101_feature", "location_gazetteer"]
+        blockers = ["BLOCKED_DATA: reference geometry is not bound for nearest-feature search"]
+        target_term = "nearest_feature"
+    else:
+        analysis_type = "feature_search_by_radius"
+        agent_name = "Spatial Analysis Agent"
+        tools = ["gbenc.s101_feature_search_by_radius", "postgis.dwithin"]
+        data = ["GBENC_S101_feature", "location_gazetteer"]
+        blockers = ["BLOCKED_DATA: reference geometry or validated spatial layer binding is not ready"]
+        target_term = "spatial_feature"
+
+    spatial = state.get("spatial_context") or {}
+    if hasattr(spatial, "model_dump"):
+        spatial = spatial.model_dump()
+    spatial = spatial if isinstance(spatial, dict) else {}
+    slots = {
+        "location_text": spatial.get("base_location") or spatial.get("location_text"),
+        "distance_m": spatial.get("buffer_distance"),
+        "target_term": target_term,
+        "analysis_type": analysis_type,
+    }
+    route_plan = {
+        "task_id": f"TASK-SPATIAL-BLOCK-{state['task_id'][:3].upper()}",
+        "status": "BLOCKED_POLICY" if policy_block else ("NEEDS_USER_INPUT" if ambiguous_hazard else "BLOCKED_DATA"),
+        "intent": "TRAFFIC_ANALYSIS" if traffic else ("ACCIDENT_ANALYSIS" if accident_relation else "SPATIAL_ANALYSIS"),
+        "context": "maritime_traffic" if traffic else ("accident_prevention" if accident_relation else "navigation_safety"),
+        "analysis_type": analysis_type,
+        "derived_concept": target_term,
+        "primary_agent": agent_name,
+        "secondary_agents": [],
+        "slots": slots,
+        "tools": tools,
+        "data": data,
+        "outputs": ["BlockedDataRequirement", "Summary"],
+        "clarification_required": False,
+        "confidence": 1.0,
+        "execution_ready": False,
+        "route_plan_status": "BLOCKED_POLICY" if policy_block else ("NEEDS_USER_INPUT" if ambiguous_hazard else "BLOCKED_DATA"),
+    }
+    qec = {
+        "readiness": "BLOCKED_POLICY" if policy_block else ("NEEDS_CLARIFICATION" if ambiguous_hazard else "BLOCKED_DATA"),
+        "blockers": blockers,
+        "warnings": [],
+        "data_bindings": [],
+        "tool_bindings": [{"tool_id": tool, "operation": analysis_type, "query_template_id": analysis_type, "schema_version": "2.0"} for tool in tools],
+    }
+    return route_plan, qec, agent_name, analysis_type
+
+
+def _agent_family(agent_name: str | None) -> str:
+    name = (agent_name or "").lower()
+    if "forecast" in name:
+        return "time_series_forecast"
+    if "time-series" in name or "time_series" in name:
+        return "time_series"
+    if "spatial" in name:
+        return "spatial"
+    if "accident" in name:
+        return "accident"
+    if "ais" in name or "traffic" in name:
+        return "traffic"
+    if "rag" in name or "knowledge" in name:
+        return "rag"
+    return "generic"
+
+
+def _external_data_requirement_from_state(state: OrchestratorState) -> dict:
+    discovery = state.get("data_discovery_result") or {}
+    if not isinstance(discovery, dict):
+        return {}
+
+    api_params = discovery.get("api_params") or {}
+    evidence = discovery.get("external_data_evidence") or api_params.get("external_data_evidence") or {}
+    requires_external = bool(discovery.get("requires_external_api") or api_params.get("domain") or evidence)
+    if not requires_external:
+        return {}
+
+    qec = state.get("query_execution_context") or {}
+    blockers = qec.get("blockers", []) if isinstance(qec, dict) else []
+    domain = api_params.get("domain") or discovery.get("api_domain") or "external_data"
+
+    return {
+        "status": "PENDING_EXTERNAL_DATA_BINDING",
+        "domain": domain,
+        "query": state.get("query"),
+        "need": evidence.get("need") or "official_external_time_series",
+        "reason": evidence.get("reason") or "This request requires an official external data source that is not yet bound locally.",
+        "local_rag_suitable": evidence.get("local_rag_suitable", False),
+        "web_search_performed": evidence.get("web_search_performed", False),
+        "recommended_sources": evidence.get("recommended_sources") or [],
+        "blockers": blockers,
+        "next_action": "Register and bind the external source, then rerun the same query through the normal graph path.",
+    }
+
+
+def _validate_time_series_result(result: AgentResult) -> tuple[bool, list[str], dict]:
+    structured = result.structured_result or {}
+    metrics = result.metrics or structured.get("metrics") or {}
+    reasons: list[str] = []
+    payload = {
+        "type": "time_series_metrics",
+        "status": structured.get("status", "UNKNOWN"),
+        "metrics_present": bool(metrics),
+        "missing_rate": metrics.get("missing_rate"),
+        "anomaly_count": metrics.get("anomaly_count"),
+    }
+    if not metrics:
+        reasons.append("Time-series result does not include metrics.")
+        return False, reasons, payload
+    missing_rate = metrics.get("missing_rate")
+    if missing_rate is not None:
+        try:
+            if float(missing_rate) > 0.30:
+                reasons.append(f"Time-series missing_rate exceeds review threshold: {missing_rate}")
+        except (TypeError, ValueError):
+            reasons.append("Time-series missing_rate is not numeric.")
+    return not reasons, reasons, payload
+
+def _validate_forecast_result(result: AgentResult) -> tuple[bool, list[str], dict]:
+    structured = result.structured_result or {}
+    forecast = structured.get("forecast") or []
+    reasons: list[str] = []
+    payload = {
+        "type": "time_series_forecast",
+        "status": structured.get("status", "UNKNOWN"),
+        "method": structured.get("method"),
+        "forecast_steps": len(forecast),
+        "confidence_level": structured.get("confidence_level"),
+    }
+    if not forecast:
+        reasons.append("Forecast result does not include forecast rows.")
+        return False, reasons, payload
+    for idx, row in enumerate(forecast):
+        value = row.get("forecast_value")
+        lower = row.get("lower_bound")
+        upper = row.get("upper_bound")
+        if value is None or lower is None or upper is None:
+            reasons.append(f"Forecast row {idx} is missing value or confidence bounds.")
+            continue
+        try:
+            if float(lower) > float(value) or float(value) > float(upper):
+                reasons.append(f"Forecast row {idx} has invalid confidence interval ordering.")
+        except (TypeError, ValueError):
+            reasons.append(f"Forecast row {idx} has non-numeric confidence interval values.")
+    return not reasons, reasons, payload
 
 def _build_query_execution_context(
     state: OrchestratorState,
@@ -199,9 +867,81 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
     intent_understanding = "분석 불가"
     execution_plan = "분석 불가"
     
-    # 0. Semantic Caching Check
-    cached_intent = cache.check_cache(query)
-    if cached_intent:
+    # 0. Fast deterministic intent gates. These avoid expensive semantic-cache
+    # lookups for well-scoped external-data and document/RAG queries.
+    fast_external_tide = _looks_like_external_tide_query(original_query)
+    fast_external_weather = _looks_like_external_weather_query(original_query)
+    fast_standard_rag = _looks_like_standard_rag_query(original_query)
+    fast_legal_or_no_evidence_rag = _looks_like_legal_rag_query(original_query) or _looks_like_no_evidence_document_query(original_query)
+    fast_time_series = _looks_like_time_series_query(original_query)
+    combined_fast_query = f"{original_query} {query}"
+    fast_spatial_or_traffic = (
+        _looks_like_traffic_query(combined_fast_query)
+        or _looks_like_spatial_query(combined_fast_query)
+        or _looks_like_explicit_time_series_request(combined_fast_query)
+        or _looks_like_accident_relation_query(combined_fast_query)
+        or _looks_like_policy_block_query(combined_fast_query)
+        or _looks_like_ambiguous_hazard_query(combined_fast_query)
+        or _looks_like_tidal_current_query(combined_fast_query)
+        or _looks_like_sea_parting_query(combined_fast_query)
+        or _looks_like_planned_port_query(combined_fast_query)
+        or _looks_like_protected_area_query(combined_fast_query)
+        or _looks_like_eddy_hazard_query(combined_fast_query)
+        or _looks_like_island_query(combined_fast_query)
+    )
+    cached_intent = None if (fast_external_tide or fast_external_weather or fast_standard_rag or fast_legal_or_no_evidence_rag or fast_time_series or fast_spatial_or_traffic) else cache.check_cache(query)
+    if fast_external_tide:
+        intent_type = "DATA_DISCOVERY"
+        target_objects = [term for term in ["대조기", "조석", "조위", "물때", "tide"] if term in original_query or term in query.lower()]
+        if not target_objects:
+            target_objects = ["tide_schedule"]
+        temporal_conditions = [part for part in original_query.split() if "월" in part or part.isdigit()]
+        output_format = "SUMMARY"
+        intent_understanding = "Official tide prediction data is required for this tide/spring-tide schedule query."
+        execution_plan = "1. Check local registry and discovery evidence. 2. If local data is unavailable, mark required external tide source. 3. Do not fabricate schedule dates."
+    elif fast_external_weather:
+        intent_type = "DATA_DISCOVERY"
+        target_objects = [term for term in ["기상", "태풍", "풍속", "파고", "해상예보", "weather", "typhoon", "wave"] if term in original_query or term in query.lower()]
+        if not target_objects:
+            target_objects = ["marine_weather"]
+        temporal_conditions = [part for part in original_query.split() if part in {"오늘", "내일", "모레"} or "월" in part or part.isdigit()]
+        output_format = "SUMMARY"
+        intent_understanding = "Official marine weather observation or forecast data is required for this query."
+        execution_plan = "1. Check local registry and discovery evidence. 2. If local data is unavailable, mark required external marine weather source. 3. Do not fabricate weather values."
+    elif fast_standard_rag or fast_legal_or_no_evidence_rag:
+        intent_type = "KNOWLEDGE_SEARCH"
+        target_objects = [term for term in ["S-100", "S-101", "Wreck", "Obstruction", "Feature Catalogue", "DCEG"] if term.lower() in query.lower()]
+        if not target_objects:
+            target_objects = [query]
+        output_format = "SUMMARY"
+        intent_understanding = "Marine standards or catalogue document search is required."
+        execution_plan = "1. Route to Standard RAG Agent. 2. Retrieve graph-scoped document evidence. 3. Answer only with retrieved evidence and citations."
+    elif fast_spatial_or_traffic:
+        if _looks_like_explicit_time_series_request(combined_fast_query):
+            intent_type = "TIME_SERIES_ANALYSIS"
+            target_objects = ["time_series"]
+            output_format = "SUMMARY"
+            intent_understanding = "Explicit time-series source query requires validated execution binding before analysis."
+            execution_plan = "1. Check supplied time-series binding. 2. If execution contract is unavailable, return BLOCKED_DATA."
+        elif _looks_like_traffic_query(combined_fast_query):
+            intent_type = "TRAFFIC_ANALYSIS"
+            target_objects = ["dynamic_traffic"]
+            output_format = "SUMMARY"
+            intent_understanding = "Dynamic maritime traffic analysis requires a validated traffic layer binding."
+            execution_plan = "1. Check traffic data binding. 2. If unavailable, return BLOCKED_DATA without fabricating AIS/V-PASS results."
+        else:
+            intent_type = "SPATIAL_SEARCH"
+            target_objects = ["spatial_feature"]
+            output_format = "MAP"
+            intent_understanding = "Spatial feature analysis requires validated reference geometry and spatial layer binding."
+            execution_plan = "1. Check spatial geometry and layer binding. 2. If unavailable, return BLOCKED_DATA without running full graph search."
+    elif fast_time_series:
+        intent_type = "TIME_SERIES_ANALYSIS"
+        target_objects = ["time_series"]
+        output_format = "SUMMARY"
+        intent_understanding = "Time-series analysis query with explicit data/source parameters."
+        execution_plan = "1. Build observed time-series analysis plan. 2. Execute if data binding is available, otherwise return BLOCKED_DATA."
+    elif cached_intent:
         intent_type = cached_intent.get("intent_type", "clarification_required")
         target_objects = cached_intent.get("target_objects", [])
         intent_understanding = cached_intent.get("intent_understanding", "분석 불가")
@@ -448,7 +1188,14 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
     req_spatial_ctx = state.get("spatial_context") or {}
     map_bounds = req_spatial_ctx.get("map_bounds")
     extracted_payload = None
-    if 'extracted' in locals() and extracted:
+    if fast_spatial_or_traffic:
+        extracted_payload = {}
+        if isinstance(req_spatial_ctx, dict):
+            if req_spatial_ctx.get("base_location") or req_spatial_ctx.get("location_text"):
+                extracted_payload["location"] = req_spatial_ctx.get("base_location") or req_spatial_ctx.get("location_text")
+            if req_spatial_ctx.get("buffer_distance") is not None:
+                extracted_payload["distance_m"] = req_spatial_ctx.get("buffer_distance")
+    elif 'extracted' in locals() and extracted:
         extracted_payload = extracted
     elif intent_type in ("SPATIAL_SEARCH", "spatial_proximity_search", "marine_hazard_feature_search"):
         extracted_payload = slot_extractor.extract(query, "spatial_proximity_search")
@@ -528,6 +1275,296 @@ async def graph_rag_node(state: OrchestratorState) -> OrchestratorState:
         "graph_rag_context": context,
         "status": AgentStatus.INTENT_PARSED,
         "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.INTENT_PARSED, actor="GraphRAGRetriever", reason="KG candidate plan created"),
+    }
+
+async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorState:
+    """Return authoritative local catalogue answers without vector/LLM orchestration."""
+    query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
+    feature = _exact_s101_feature_match(query)
+    relation = _exact_s100_s101_relation_match(query)
+    no_evidence = _looks_like_no_evidence_document_query(query) or _looks_like_legal_rag_query(query)
+    if feature:
+        code = str(feature.get("code") or "")
+        name = str(feature.get("name") or code)
+        definition = str(feature.get("definition") or "").strip()
+        aliases = [str(alias) for alias in feature.get("aliases") or []]
+        primitives = feature.get("primitives") or feature.get("permitted_primitives") or []
+        content = (
+            f"S-101 Feature Catalogue feature definition. Feature code: {code}. "
+            f"Feature name: {name}. Definition: {definition}. "
+            f"Aliases: {', '.join(aliases) if aliases else 'N/A'}. "
+            f"Permitted primitives: {', '.join(str(item) for item in primitives) if primitives else 'N/A'}."
+        )
+        doc = {
+            "document_id": f"s101_feature_exact_{code.lower()}",
+            "title": "S-101 Feature Catalogue 2.0.0",
+            "version": "2.0.0",
+            "section": f"feature:{code}",
+            "page": "N/A",
+            "source": "s101_feature_catalogue_v2_xml",
+            "excerpt_reference": content,
+            "retrieved_at": datetime.utcnow().isoformat() + "Z",
+            "relevance_score": 1.0,
+        }
+        citation = {
+            "document_id": doc["document_id"],
+            "source": doc["title"],
+            "source_id": "s101_feature_catalogue_v2_xml",
+            "source_file": feature.get("source"),
+            "section": doc["section"],
+            "document_type": "feature_catalogue",
+            "chunk_id": doc["document_id"],
+            "similarity": 1.0,
+            "provenance": {"method": "exact_s101_feature_catalogue_lookup", "query": query},
+        }
+        answer = (
+            f"검색 질의와 관련된 근거 문서 1건을 찾았습니다. "
+            f"대표 근거는 S-101 Feature Catalogue 2.0.0 / feature:{code}이며, "
+            f"정의는 다음과 같습니다: {definition}"
+        )
+        target_term = code
+    elif relation:
+        target_term = "S-100/S-101"
+        content = (
+            "S-100 is the IHO universal hydrographic data framework. "
+            "S-101 is the Electronic Navigational Chart product specification built on the S-100 framework. "
+            "In this GeoLLM registry, S-100 is marked as framework and S-101 as base_electronic_navigational_chart."
+        )
+        doc = {
+            "document_id": "s100_s101_mapping_registry",
+            "title": "S-100/S-101 Mapping Registry",
+            "version": "0.1",
+            "section": "products:S-100,S-101",
+            "page": "N/A",
+            "source": "data/s100_s101_mapping_registry.yaml",
+            "excerpt_reference": content,
+            "retrieved_at": datetime.utcnow().isoformat() + "Z",
+            "relevance_score": 1.0,
+        }
+        citation = {
+            "document_id": doc["document_id"],
+            "source": doc["title"],
+            "source_id": "s100_s101_mapping_registry",
+            "source_file": "data/s100_s101_mapping_registry.yaml",
+            "section": doc["section"],
+            "document_type": "mapping_registry",
+            "chunk_id": doc["document_id"],
+            "similarity": 1.0,
+            "provenance": {"method": "exact_s100_s101_relation_lookup", "query": query},
+        }
+        answer = (
+            "S-100은 IHO의 범용 수로 데이터 프레임워크이고, "
+            "S-101은 그 S-100 프레임워크를 기반으로 한 ENC 제품 사양입니다. "
+            "로컬 매핑 registry에서는 S-100을 framework, S-101을 base_electronic_navigational_chart 역할로 관리합니다."
+        )
+    elif no_evidence:
+        target_term = "no_authoritative_evidence"
+        doc = {
+            "document_id": "no_authoritative_evidence",
+            "title": "No authoritative local evidence",
+            "version": "N/A",
+            "section": "no_evidence",
+            "page": "N/A",
+            "source": "local_registry_and_catalogue_fast_check",
+            "excerpt_reference": "No authoritative local legal or standard evidence was found for this query.",
+            "retrieved_at": datetime.utcnow().isoformat() + "Z",
+            "relevance_score": 0.0,
+        }
+        citation = {
+            "document_id": doc["document_id"],
+            "source": doc["title"],
+            "source_id": "no_authoritative_evidence",
+            "source_file": None,
+            "section": doc["section"],
+            "document_type": "no_evidence",
+            "chunk_id": doc["document_id"],
+            "similarity": 0.0,
+            "provenance": {"method": "deterministic_no_evidence_fast_check", "query": query},
+        }
+        answer = (
+            "요청한 법령/고시/표준 항목에 대해 현재 로컬 authoritative registry와 catalogue에서 "
+            "확정 근거를 찾지 못했습니다. 근거 없는 조항, 날짜, feature 정의는 생성하지 않습니다."
+        )
+    else:
+        return {
+            "status": AgentStatus.FAILED,
+            "error_message": "No exact standard document match found.",
+            "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.FAILED, actor="FastDocumentAnswer"),
+        }
+    doc_blocked = bool(no_evidence)
+    route_plan = {
+        "task_id": f"TASK-DOC-FAST-{state['task_id'][:3].upper()}",
+        "status": "BLOCKED_DATA" if doc_blocked else "EXECUTION_READY",
+        "intent": "KNOWLEDGE_SEARCH",
+        "context": "standard_document",
+        "analysis_type": "document_search",
+        "derived_concept": None,
+        "primary_agent": "Standard RAG Agent",
+        "secondary_agents": [],
+        "slots": {"target_term": target_term, "analysis_type": "document_search"},
+        "tools": ["rag.graph_scoped_retrieve"],
+        "data": ["s101_feature_catalogue"],
+        "outputs": ["StandardDocumentOutput", "EvidenceBundle", "Summary"],
+        "clarification_required": False,
+        "confidence": 1.0,
+        "execution_ready": False if doc_blocked else True,
+        "route_plan_status": "BLOCKED_DATA" if doc_blocked else "EXECUTION_READY",
+    }
+    final_dict = {
+        "task_id": state["task_id"],
+        "trace_id": f"tr-{state['task_id']}",
+        "agent_name": "Standard RAG Agent",
+        "agent_version": "2.2.0-authoritative-fast-path",
+        "status": AgentStatus.BLOCKED if doc_blocked else AgentStatus.COMPLETED,
+        "error_code": "NO_AUTHORITATIVE_EVIDENCE" if doc_blocked else None,
+        "summary": answer,
+        "answer_text": answer,
+        "structured_result": {
+            "retrieved_count": 0 if doc_blocked else 1,
+            "documents": [] if doc_blocked else [doc],
+            "citations": [] if doc_blocked else [citation],
+            "no_evidence": doc_blocked,
+            "evidence_candidate_summary": {},
+        },
+        "evidence_bundle": {"rag_evidence": [] if doc_blocked else [citation], "kg_provenance": [], "regulatory_evidence": [], "spatial_feature_evidence": [], "spatial_layer_evidence": [], "accident_relation_evidence": []},
+        "orchestrator_v2": {
+            "route_plan": route_plan,
+            "query_execution_context": {
+                "readiness": "BLOCKED_DATA" if doc_blocked else "READY",
+                "blockers": ["NO_AUTHORITATIVE_EVIDENCE: local legal/standard evidence is not available"] if doc_blocked else [],
+                "warnings": [],
+                "data_bindings": [{"dataset_id": "s101_feature_catalogue", "relation": "authoritative_lookup"}],
+                "tool_bindings": [{"tool_id": "rag.graph_scoped_retrieve", "operation": "exact_catalogue_lookup"}],
+            },
+            "embedding_independent": True,
+            "fast_path": "document_no_evidence" if doc_blocked else "authoritative_s101_feature_catalogue",
+        },
+        "contract_version": "geollm.execution.v1",
+        "request_id": state.get("task_id"),
+    }
+    return {
+        "final_dict": final_dict,
+        "task_plan": route_plan,
+        "query_execution_context": final_dict["orchestrator_v2"]["query_execution_context"],
+        "status": AgentStatus.BLOCKED if doc_blocked else AgentStatus.COMPLETED,
+        "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.BLOCKED if doc_blocked else AgentStatus.COMPLETED, actor="FastDocumentAnswer"),
+    }
+
+async def fast_external_data_requirement_node(state: OrchestratorState) -> OrchestratorState:
+    """Return an immediate external-data requirement when no official source is bound."""
+    query = state.get("normalized_query") or state.get("query", "")
+    domain = _external_domain_for_query(query) or "external_time_series"
+    requirement = _external_requirement_payload(query, domain)
+    agent_name = "Time-Series Forecast Agent" if domain == "khoa_tide_prediction" else "Data Discovery Agent"
+    target_data = "tidal_current_surface" if domain == "khoa_tide_prediction" else "marine_weather"
+    route_plan = {
+        "task_id": f"TASK-EXT-DATA-{state['task_id'][:3].upper()}",
+        "status": "BLOCKED_DATA",
+        "intent": "DATA_DISCOVERY",
+        "context": "official_external_data",
+        "analysis_type": "observed_time_series_forecast",
+        "derived_concept": domain,
+        "primary_agent": agent_name,
+        "secondary_agents": [],
+        "slots": {"target_term": domain, "analysis_type": "observed_time_series_forecast"},
+        "tools": ["timeseries.forecast"],
+        "data": [target_data],
+        "outputs": ["ExternalDataRequirement", "Summary"],
+        "clarification_required": False,
+        "confidence": 1.0,
+        "execution_ready": False,
+        "route_plan_status": "BLOCKED_DATA",
+    }
+    qec = {
+        "readiness": "BLOCKED_DATA",
+        "blockers": requirement["blockers"],
+        "warnings": [],
+        "data_bindings": [],
+        "tool_bindings": [{"tool_id": "timeseries.forecast", "operation": "forecast", "query_template_id": "observed_time_series_forecast", "schema_version": "2.0"}],
+    }
+    answer = (
+        f"현재 로컬 데이터와 RAG만으로는 해당 시계열/예측 값을 확정할 수 없습니다. "
+        f"{requirement['domain']} 공식 외부 데이터 연동이 필요하며, 웹 검색이나 임의 날짜 생성은 수행하지 않았습니다."
+    )
+    final_dict = {
+        "task_id": state["task_id"],
+        "trace_id": f"tr-{state['task_id']}",
+        "agent_name": agent_name,
+        "agent_version": "2.2.0-external-data-fast-path",
+        "status": "BLOCKED",
+        "error_code": "BLOCKED_DATA",
+        "summary": answer,
+        "answer_text": answer,
+        "external_data_requirement": requirement,
+        "structured_result": {
+            "requires_external_api": True,
+            "api_params": {"domain": requirement["domain"], "recommended_sources": requirement["recommended_sources"]},
+            "external_data_requirement": requirement,
+            "status": "BLOCKED_DATA",
+        },
+        "orchestrator_v2": {
+            "route_plan": route_plan,
+            "query_execution_context": qec,
+            "embedding_independent": True,
+            "fast_path": "external_data_requirement",
+        },
+        "evidence_bundle": {"rag_evidence": [], "kg_provenance": [], "regulatory_evidence": [], "spatial_feature_evidence": [], "spatial_layer_evidence": [], "accident_relation_evidence": []},
+        "contract_version": "geollm.execution.v1",
+        "request_id": state.get("task_id"),
+    }
+    return {
+        "final_dict": final_dict,
+        "task_plan": route_plan,
+        "query_execution_context": qec,
+        "data_discovery_result": {
+            "requires_external_api": True,
+            "api_params": {"domain": requirement["domain"], "external_data_evidence": requirement},
+            "external_data_evidence": requirement,
+        },
+        "status": AgentStatus.COMPLETED,
+        "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.COMPLETED, actor="FastExternalDataRequirement"),
+    }
+
+async def fast_spatial_or_traffic_block_node(state: OrchestratorState) -> OrchestratorState:
+    """Return immediate BLOCKED_DATA for spatial/traffic requests without ready bindings."""
+    query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
+    route_plan, qec, agent_name, analysis_type = _fast_spatial_or_traffic_plan(query, state)
+    blocker_text = "; ".join(qec["blockers"])
+    answer = (
+        "요청한 공간/교통 분석은 임의 결과나 검증되지 않은 데이터를 만들 수 없습니다. "
+        f"현재 실행에 필요한 데이터/geometry 바인딩이 준비되지 않아 BLOCKED_DATA로 종료합니다. ({blocker_text})"
+    )
+    final_dict = {
+        "task_id": state["task_id"],
+        "trace_id": f"tr-{state['task_id']}",
+        "agent_name": agent_name,
+        "agent_version": "2.2.0-spatial-traffic-fast-block",
+        "status": "BLOCKED",
+        "error_code": "BLOCKED_DATA",
+        "summary": answer,
+        "answer_text": answer,
+        "structured_result": {
+            "status": "BLOCKED_DATA",
+            "analysis_type": analysis_type,
+            "blockers": qec["blockers"],
+            "count": None,
+        },
+        "orchestrator_v2": {
+            "route_plan": route_plan,
+            "query_execution_context": qec,
+            "embedding_independent": True,
+            "fast_path": "spatial_or_traffic_blocked_data",
+        },
+        "evidence_bundle": {"rag_evidence": [], "kg_provenance": [], "regulatory_evidence": [], "spatial_feature_evidence": [], "spatial_layer_evidence": [], "accident_relation_evidence": []},
+        "contract_version": "geollm.execution.v1",
+        "request_id": state.get("task_id"),
+    }
+    return {
+        "final_dict": final_dict,
+        "task_plan": route_plan,
+        "query_execution_context": qec,
+        "status": AgentStatus.COMPLETED,
+        "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.COMPLETED, actor="FastSpatialTrafficBlock"),
     }
 
 async def data_discovery_node(state: OrchestratorState) -> OrchestratorState:
@@ -692,8 +1729,31 @@ async def create_plan_node(state: OrchestratorState) -> OrchestratorState:
         derived_concept = slots.get("derived_concept")
 
     analysis_type = _context_value(ctx_res, "analysis_type")
+    if not analysis_type and _looks_like_standard_rag_query(state.get("query", "")):
+        analysis_type = "document_search"
+        slots["analysis_type"] = analysis_type
+    if not analysis_type and _looks_like_external_tide_query(state.get("query", "")):
+        analysis_type = "observed_time_series_forecast"
+        slots["analysis_type"] = analysis_type
+    if not analysis_type and _looks_like_external_weather_query(state.get("query", "")):
+        analysis_type = "observed_time_series_forecast"
+        slots["analysis_type"] = analysis_type
     if not analysis_type and graph_context.get("execution_hints", {}).get("requires_spatial_analysis"):
         analysis_type = "feature_search_by_radius" if slots.get("distance_m") is not None else "spatial_feature_search"
+    if not analysis_type and _looks_like_time_series_query(state.get("query", "")):
+        lowered_query = (state.get("query", "") or "").lower()
+        if any(term in lowered_query or term in (state.get("query", "") or "") for term in ["forecast", "prediction", "predict", "예측", "신뢰구간", "예보"]):
+            analysis_type = "observed_time_series_forecast"
+        else:
+            analysis_type = "observed_time_series_analysis"
+        if any(term in lowered_query or term in (state.get("query", "") or "") for term in ["schedule", "tide", "spring tide", "weather", "wave", "대조기", "조석", "조위", "물때", "만조", "간조", "일정", "기상", "파고", "해상예보"]):
+            analysis_type = "observed_time_series_forecast"
+        slots["analysis_type"] = analysis_type
+        extracted_kv = _extract_key_value_slots(state.get("query", ""))
+        slots.setdefault("filters", {}).update(extracted_kv.get("filters", {}))
+        for key, value in extracted_kv.items():
+            if key != "filters":
+                slots[key] = value
 
     # 동적 라우팅 플랜 생성
     plan_dict = route_planner.generate_plan(
@@ -779,7 +1839,7 @@ async def execute_agent_node(state: OrchestratorState) -> OrchestratorState:
     req.previous_agent_outputs["graph_context"] = state.get("graph_context", {})
     req.previous_agent_outputs["data_discovery_result"] = state.get("data_discovery_result", {})
 
-    contract_required_agents = {"Spatial Analysis Agent", "Accident/Risk Agent", "AIS Analysis Agent"}
+    contract_required_agents = {"Spatial Analysis Agent", "Accident/Risk Agent", "AIS Analysis Agent", "Time-Series Agent", "Time-Series Forecast Agent"}
     if req.agent_name in contract_required_agents and not req.query_execution_context:
         agent_result = AgentResult(
             task_id=req.task_id,
@@ -898,11 +1958,18 @@ async def validate_node(state: OrchestratorState) -> OrchestratorState:
         "provenance_present": graph_provenance_ok,
         "status": "PASS" if graph_provenance_ok or not graph_context else "PENDING_GRAPH_PROVENANCE"
     }
+    agent_family = _agent_family(result.agent_name)
+    qec_payload = state.get("query_execution_context") or {}
+    qec_readiness = qec_payload.get("readiness") if isinstance(qec_payload, dict) else None
+    if agent_family in {"time_series", "time_series_forecast"}:
+        data_status = "READY" if qec_readiness == PlanStatus.EXECUTION_READY.value else "PENDING_TIME_SERIES_DATA"
+    else:
+        data_status = "READY" if discovery.get("can_execute_spatial_query") else "PENDING_DATA_OR_GEOMETRY"
     val_payload["data_discovery_validation"] = {
         "execution_level": discovery.get("execution_level", "UNKNOWN"),
         "spatial_query_allowed": discovery.get("can_execute_spatial_query", False),
         "spatial_edges_allowed": discovery.get("can_verify_spatial_edges", False),
-        "status": "READY" if discovery.get("can_execute_spatial_query") else "PENDING_DATA_OR_GEOMETRY",
+        "status": data_status,
     }
     val_payload["validation_agent"] = validate_orchestration(
         graph_context,
@@ -914,10 +1981,23 @@ async def validate_node(state: OrchestratorState) -> OrchestratorState:
     # 실제 검증 로직 구현
     is_valid = True
     reasons = []
+    if agent_family == "time_series":
+        ts_valid, ts_reasons, ts_payload = _validate_time_series_result(result)
+        val_payload["time_series_validation"] = ts_payload
+        if not ts_valid:
+            is_valid = False
+            reasons.extend(ts_reasons)
+    elif agent_family == "time_series_forecast":
+        fc_valid, fc_reasons, fc_payload = _validate_forecast_result(result)
+        val_payload["forecast_validation"] = fc_payload
+        if not fc_valid:
+            is_valid = False
+            reasons.extend(fc_reasons)
     
     # 1. 객체 수 검증
     count = result.structured_result.get("count", 0)
-    if count == 0:
+    count = result.structured_result.get("count", 0) if isinstance(result.structured_result, dict) else 0
+    if agent_family == "spatial" and count == 0:
         # Empty spatial results are valid and must still produce the search
         # buffer so the user can verify the requested area on the map.
         reasons.append("No features found in the requested area.")
@@ -943,12 +2023,82 @@ async def map_report_node(state: OrchestratorState) -> OrchestratorState:
     """최종 MapLayer 및 응답 패키징"""
     logger.info("LangGraph: Generating Map & Report", task_id=state["task_id"])
     result = state["agent_result"]
+    external_requirement = _external_data_requirement_from_state(state)
+
+    plan = state.get("task_plan")
+    analysis_type = ""
+    if isinstance(plan, dict):
+        analysis_type = str(plan.get("analysis_type") or "")
+    elif plan is not None:
+        analysis_type = str(getattr(plan, "analysis_type", "") or "")
+    if analysis_type in {"document_search", "rag.document_search", "graph_scoped_rag"} and not external_requirement:
+        structured = result.structured_result or {}
+        evidence_bundle = result.evidence_bundle
+        final_dict = {
+            "task_id": result.task_id,
+            "trace_id": result.trace_id,
+            "agent_name": result.agent_name,
+            "agent_version": result.agent_version,
+            "status": result.status,
+            "error_code": result.error_code,
+            "summary": result.summary,
+            "answer_text": result.answer_text or result.summary or "No document answer was generated.",
+            "structured_result": {
+                "retrieved_count": structured.get("retrieved_count"),
+                "documents": structured.get("documents", [])[:3] if isinstance(structured.get("documents"), list) else [],
+                "citations": structured.get("citations", [])[:3] if isinstance(structured.get("citations"), list) else [],
+                "evidence_candidate_summary": structured.get("evidence_candidate_summary"),
+            },
+            "evidence_bundle": evidence_bundle.model_dump(mode="json") if hasattr(evidence_bundle, "model_dump") else {},
+            "orchestrator_v2": {
+                "graph_context": state.get("graph_context", {}),
+                "data_discovery_result": state.get("data_discovery_result", {}),
+                "route_plan": state.get("task_plan", {}),
+                "query_execution_context": state.get("query_execution_context", {}),
+                "embedding_independent": True,
+                "fast_path": "document_search_compact",
+            },
+            "claims": [{
+                "claim_id": f"claim:{result.task_id}:summary",
+                "text": result.answer_text or result.summary or "",
+                "evidence_ids": [],
+            }],
+            "task_results": [{
+                "task_id": result.task_id,
+                "agent_name": result.agent_name,
+                "status": result.status,
+                "summary": result.summary,
+                "provenance_keys": sorted((result.provenance or {}).keys()),
+            }],
+            "contract_version": "geollm.execution.v1",
+            "request_id": state.get("task_id"),
+        }
+        return {
+            "final_dict": final_dict,
+            "status": AgentStatus.COMPLETED,
+            "state_history": log_transition(AgentStatus.MAP_REPORT_GENERATING, AgentStatus.COMPLETED),
+        }
     
     final_dict = result.model_dump(mode="json")
     final_dict["contract_version"] = final_dict.get("contract_version") or "geollm.execution.v1"
     final_dict["request_id"] = final_dict.get("request_id") or state.get("task_id")
     final_dict["answer_text"] = final_dict.get("answer_text") or result.answer_text or result.summary or "분석 결과를 생성하지 못했습니다."
     
+    if external_requirement:
+        final_dict["external_data_requirement"] = external_requirement
+        final_dict["answer_text"] = (
+            "현재 로컬 데이터와 RAG만으로는 해당 일정을 확정할 수 없습니다. "
+            f"{external_requirement['domain']} 공식 외부 데이터 연동이 필요하며, "
+            "웹 검색은 수행하지 않았고 임의 날짜도 생성하지 않았습니다."
+        )
+        final_dict.setdefault("structured_result", {})
+        final_dict["structured_result"]["requires_external_api"] = True
+        final_dict["structured_result"]["external_data_requirement"] = external_requirement
+        final_dict["structured_result"]["api_params"] = {
+            "domain": external_requirement["domain"],
+            "recommended_sources": external_requirement["recommended_sources"],
+        }
+
     req = state.get("agent_request")
     if req and hasattr(req, "parsed_intent") and req.parsed_intent:
         final_dict["intent"] = req.parsed_intent.model_dump(mode="json") if hasattr(req.parsed_intent, "model_dump") else req.parsed_intent
@@ -988,6 +2138,30 @@ async def map_report_node(state: OrchestratorState) -> OrchestratorState:
     # 동적 교통 및 사고 전문 agent는 근거 기반 GeoJSON을 직접 반환한다.
     # S-101 결과와 섞지 않고 별도 map layer로 노출한다.
     structured = result.structured_result or {}
+    agent_family = _agent_family(result.agent_name)
+    if agent_family == "time_series":
+        final_dict["time_series_result"] = {
+            "status": structured.get("status"),
+            "dataset_id": structured.get("dataset_id"),
+            "source_path": structured.get("source_path"),
+            "station_id": structured.get("station_id"),
+            "time_range": structured.get("time_range"),
+            "metrics": structured.get("metrics") or result.metrics,
+            "anomalies": structured.get("anomalies", []),
+            "sample": structured.get("sample", []),
+        }
+    elif agent_family == "time_series_forecast":
+        final_dict["forecast_result"] = {
+            "status": structured.get("status"),
+            "method": structured.get("method"),
+            "dataset_id": structured.get("dataset_id"),
+            "station_id": structured.get("station_id"),
+            "source_path": structured.get("source_path"),
+            "confidence_level": structured.get("confidence_level"),
+            "horizon_steps": structured.get("horizon_steps"),
+            "model": structured.get("model"),
+            "forecast": structured.get("forecast", []),
+        }
     if structured.get("dynamic_traffic_geojson"):
         traffic_geojson = structured["dynamic_traffic_geojson"]
         if traffic_geojson.get("type") == "Feature":
@@ -1142,7 +2316,24 @@ async def audit_log_node(state: OrchestratorState) -> OrchestratorState:
 def check_intent_parsed(state: OrchestratorState) -> str:
     if state["status"] == AgentStatus.NEEDS_CLARIFICATION:
         return "needs_clarification"
+    query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
+    if _should_fast_external_requirement(query):
+        return "fast_external_data_requirement"
+    if _should_fast_spatial_or_traffic_block(state):
+        return "fast_spatial_or_traffic_block"
+    if _exact_s101_feature_match(query) or _exact_s100_s101_relation_match(query) or _looks_like_legal_rag_query(query) or _looks_like_no_evidence_document_query(query):
+        return "fast_document_answer"
+    if _looks_like_time_series_query(query):
+        return "create_plan"
+    if _looks_like_standard_rag_query(query):
+        return "create_plan"
     return "resolve_context"
+
+def check_graph_rag_next(state: OrchestratorState) -> str:
+    query = state.get("normalized_query") or state.get("query", "")
+    if _looks_like_standard_rag_query(query):
+        return "resolve_context"
+    return "data_discovery"
 
 def check_context_resolved(state: OrchestratorState) -> str:
     if state["status"] == AgentStatus.BLOCKED:
@@ -1154,10 +2345,20 @@ def check_context_resolved(state: OrchestratorState) -> str:
 def check_execution_status(state: OrchestratorState) -> str:
     if state["status"] == AgentStatus.FAILED:
         return "failed"
+    if state["status"] in {AgentStatus.BLOCKED, AgentStatus.NEEDS_CLARIFICATION} and _external_data_requirement_from_state(state):
+        return "external_data_report"
     if state["status"] == AgentStatus.BLOCKED:
         return "blocked"
     if state["status"] == AgentStatus.NEEDS_CLARIFICATION:
         return "needs_clarification"
+    plan = state.get("task_plan")
+    analysis_type = ""
+    if isinstance(plan, dict):
+        analysis_type = str(plan.get("analysis_type") or "")
+    elif plan is not None:
+        analysis_type = str(getattr(plan, "analysis_type", "") or "")
+    if analysis_type in {"document_search", "rag.document_search", "graph_scoped_rag"}:
+        return "map_report"
     return "validate"
 
 def check_validation_status(state: OrchestratorState) -> str:
@@ -1168,6 +2369,18 @@ def check_validation_status(state: OrchestratorState) -> str:
         return "review" # Interrupt point
     return "map_report"
 
+def check_after_map_report(state: OrchestratorState) -> str:
+    if os.environ.get("FAST_RAG_SKIP_AUDIT", "true").lower() in {"1", "true", "yes", "on"}:
+        plan = state.get("task_plan")
+        analysis_type = ""
+        if isinstance(plan, dict):
+            analysis_type = str(plan.get("analysis_type") or "")
+        elif plan is not None:
+            analysis_type = str(getattr(plan, "analysis_type", "") or "")
+        if analysis_type in {"document_search", "rag.document_search", "graph_scoped_rag"}:
+            return "end"
+    return "audit_log"
+
 # ----------------- Graph Builder -----------------
 
 def build_orchestrator_graph():
@@ -1175,6 +2388,9 @@ def build_orchestrator_graph():
     
     # Add Nodes
     workflow.add_node("parse_intent", parse_intent_node)
+    workflow.add_node("fast_document_answer", fast_document_answer_node)
+    workflow.add_node("fast_external_data_requirement", fast_external_data_requirement_node)
+    workflow.add_node("fast_spatial_or_traffic_block", fast_spatial_or_traffic_block_node)
     workflow.add_node("graph_rag", graph_rag_node)
     workflow.add_node("data_discovery", data_discovery_node)
     workflow.add_node("resolve_context", resolve_context_node)
@@ -1193,10 +2409,20 @@ def build_orchestrator_graph():
         check_intent_parsed,
         {
             "needs_clarification": "audit_log",
+            "fast_external_data_requirement": "fast_external_data_requirement",
+            "fast_document_answer": "fast_document_answer",
+            "fast_spatial_or_traffic_block": "fast_spatial_or_traffic_block",
+            "create_plan": "create_plan",
             "resolve_context": "graph_rag"
         }
     )
-    workflow.add_edge("graph_rag", "data_discovery")
+    workflow.add_edge("fast_external_data_requirement", END)
+    workflow.add_edge("fast_document_answer", END)
+    workflow.add_edge("fast_spatial_or_traffic_block", END)
+    workflow.add_conditional_edges("graph_rag", check_graph_rag_next, {
+        "data_discovery": "data_discovery",
+        "resolve_context": "resolve_context",
+    })
     workflow.add_edge("data_discovery", "resolve_context")
     workflow.add_conditional_edges("resolve_context", check_context_resolved, {
         "blocked": "audit_log", 
@@ -1204,7 +2430,7 @@ def build_orchestrator_graph():
         "create_plan": "create_plan"
     })
     workflow.add_edge("create_plan", "execute_agent")
-    workflow.add_conditional_edges("execute_agent", check_execution_status, {"failed": "audit_log", "blocked": "audit_log", "needs_clarification": "audit_log", "validate": "validate_results"})
+    workflow.add_conditional_edges("execute_agent", check_execution_status, {"failed": "audit_log", "blocked": "audit_log", "needs_clarification": "audit_log", "external_data_report": "map_report", "map_report": "map_report", "validate": "validate_results"})
     
     # 검증 결과에 따라 검토 대기 또는 지도 보고서 생성으로 분기
     workflow.add_conditional_edges("validate_results", check_validation_status, {
@@ -1212,7 +2438,10 @@ def build_orchestrator_graph():
         "map_report": "map_report"
     })
     
-    workflow.add_edge("map_report", "audit_log")
+    workflow.add_conditional_edges("map_report", check_after_map_report, {
+        "audit_log": "audit_log",
+        "end": END,
+    })
     workflow.add_edge("audit_log", END)
     
     # 체크포인터를 연결하여 HITL(Human-in-the-Loop) 완벽 지원

@@ -1,0 +1,34 @@
+version: 0.1
+blocker_rules:
+  - contains: reference geometry is unresolved
+    failure_code: LOCATION_RESOLUTION_ERROR
+  - contains: target feature binding is required
+    failure_code: FEATURE_MAPPING_MISSING
+  - contains: dataset_id or source_path is required
+    failure_code: DATASET_NOT_REGISTERED
+  - contains: external time-series source is not bound
+    failure_code: DATASET_NOT_REGISTERED
+  - contains: relation not found
+    failure_code: DATA_LAYER_NOT_FOUND
+  - contains: layer not registered
+    failure_code: DATA_LAYER_NOT_FOUND
+  - contains: column not found
+    failure_code: DATA_SCHEMA_MISMATCH
+  - contains: query template not registered
+    failure_code: QUERY_TEMPLATE_MISSING
+  - contains: tool not registered
+    failure_code: TOOL_NOT_REGISTERED
+  - contains: exceeds max
+    failure_code: UNSAFE_EXECUTION
+  - contains: no validated data binding
+    failure_code: DATA_LAYER_NOT_FOUND
+  - contains: no validated tool binding
+    failure_code: TOOL_CAPABILITY_MISMATCH
+expectation_rules:
+  agent_mismatch: AGENT_ROUTING_ERROR
+  analysis_type_mismatch: AGENT_ROUTING_ERROR
+  route_plan_status_mismatch: DATA_BINDING_OR_VALIDATION_MISMATCH
+  missing_external_requirement: DATASET_NOT_REGISTERED
+  forbidden_mock: MOCK_LEAKAGE
+  forbidden_hallucinated_data: HALLUCINATED_DATA
+

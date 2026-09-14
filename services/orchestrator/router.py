@@ -1,12 +1,13 @@
-import asyncio
+﻿import asyncio
 import json
 import os
 import argparse
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 import uuid
 import yaml
 
@@ -51,8 +52,11 @@ class EvidenceDecisionRequest(BaseModel):
 
 
 class EvidenceApplyRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     write: bool = False
     overwrite: bool = False
+    validate_decisions: bool = Field(default=True, alias="validate")
 
 
 def _load_jsonl(path: Path) -> list[dict]:
@@ -235,6 +239,7 @@ def set_evidence_candidate_decision(evidence_id: str, req: EvidenceDecisionReque
 @router.post("/evidence-candidates/apply")
 def apply_evidence_candidate_decisions(req: EvidenceApplyRequest):
     from scripts.apply_approved_evidence_candidates import apply_approved
+    from scripts.validate_approved_evidence_candidates import validate_approved
 
     args = argparse.Namespace(
         inputs=EVIDENCE_CANDIDATE_FILES,
@@ -242,11 +247,39 @@ def apply_evidence_candidate_decisions(req: EvidenceApplyRequest):
         registry=EVIDENCE_REGISTRY,
         write=req.write,
         overwrite=req.overwrite,
+        nodes=ROOT / "outputs" / "graph" / "kg_nodes_v2.jsonl",
+        edges=ROOT / "outputs" / "graph" / "kg_edges_v2.jsonl",
+        report=ROOT / "outputs" / "review" / "approved_evidence_validation_report.json",
+        write_report=req.write,
     )
+    validation = validate_approved(args)
+    if req.validate_decisions and validation.get("status") != "PASS":
+        raise HTTPException(status_code=400, detail=validation)
     result = apply_approved(args)
     if result.get("status") != "PASS":
         raise HTTPException(status_code=400, detail=result)
+    result["validation"] = {
+        "status": validation.get("status"),
+        "counts": validation.get("counts"),
+        "report": validation.get("report"),
+    }
     return result
+
+
+@router.post("/evidence-candidates/validate")
+def validate_evidence_candidate_decisions():
+    from scripts.validate_approved_evidence_candidates import validate_approved
+
+    args = argparse.Namespace(
+        inputs=EVIDENCE_CANDIDATE_FILES,
+        decisions=EVIDENCE_REVIEW_DECISIONS,
+        registry=EVIDENCE_REGISTRY,
+        nodes=ROOT / "outputs" / "graph" / "kg_nodes_v2.jsonl",
+        edges=ROOT / "outputs" / "graph" / "kg_edges_v2.jsonl",
+        report=ROOT / "outputs" / "review" / "approved_evidence_validation_report.json",
+        write_report=True,
+    )
+    return validate_approved(args)
 
 
 def _to_jsonable(value):
@@ -257,6 +290,82 @@ def _to_jsonable(value):
     if isinstance(value, list):
         return [_to_jsonable(v) for v in value]
     return value
+
+
+def _compact_agent_result_for_stream(agent_result):
+    result = _to_jsonable(agent_result) or {}
+    structured = result.get("structured_result") if isinstance(result.get("structured_result"), dict) else {}
+    evidence_bundle = result.get("evidence_bundle") if isinstance(result.get("evidence_bundle"), dict) else {}
+    evidence_counts = {
+        key: len(value)
+        for key, value in evidence_bundle.items()
+        if isinstance(value, list)
+    }
+    return {
+        "task_id": result.get("task_id"),
+        "agent_name": result.get("agent_name"),
+        "agent_version": result.get("agent_version"),
+        "status": result.get("status"),
+        "error_code": result.get("error_code"),
+        "summary": result.get("summary"),
+        "answer_text": result.get("answer_text"),
+        "structured_result": {
+            "retrieved_count": structured.get("retrieved_count"),
+            "documents": structured.get("documents", [])[:3] if isinstance(structured.get("documents"), list) else [],
+            "citations": structured.get("citations", [])[:3] if isinstance(structured.get("citations"), list) else [],
+            "external_data_requirement": structured.get("external_data_requirement"),
+            "requires_external_api": structured.get("requires_external_api"),
+            "api_params": structured.get("api_params"),
+            "count": structured.get("count"),
+            "status": structured.get("status"),
+            "evidence_candidate_summary": structured.get("evidence_candidate_summary"),
+        },
+        "evidence_counts": evidence_counts,
+        "provenance": result.get("provenance", {}),
+    }
+
+
+def _compact_final_result_for_stream(final_result):
+    result = _to_jsonable(final_result) or {}
+    structured = result.get("structured_result") if isinstance(result.get("structured_result"), dict) else {}
+    orch = result.get("orchestrator_v2") if isinstance(result.get("orchestrator_v2"), dict) else {}
+    qec = orch.get("query_execution_context") if isinstance(orch.get("query_execution_context"), dict) else {}
+    evidence_bundle = result.get("evidence_bundle") if isinstance(result.get("evidence_bundle"), dict) else {}
+    evidence_counts = {
+        key: len(value)
+        for key, value in evidence_bundle.items()
+        if isinstance(value, list)
+    }
+    return {
+        "status": result.get("status"),
+        "error_code": result.get("error_code"),
+        "agent_name": result.get("agent_name"),
+        "summary": result.get("summary"),
+        "answer_text": result.get("answer_text"),
+        "external_data_requirement": result.get("external_data_requirement"),
+        "structured_result": {
+            "retrieved_count": structured.get("retrieved_count"),
+            "documents": structured.get("documents", [])[:3] if isinstance(structured.get("documents"), list) else [],
+            "citations": structured.get("citations", [])[:3] if isinstance(structured.get("citations"), list) else [],
+            "requires_external_api": structured.get("requires_external_api"),
+            "api_params": structured.get("api_params"),
+            "external_data_requirement": structured.get("external_data_requirement"),
+            "count": structured.get("count"),
+            "status": structured.get("status"),
+            "evidence_candidate_summary": structured.get("evidence_candidate_summary"),
+        },
+        "orchestrator_v2": {
+            "route_plan": orch.get("route_plan") or {},
+            "query_execution_context": {
+                "readiness": qec.get("readiness"),
+                "blockers": qec.get("blockers"),
+                "warnings": qec.get("warnings"),
+                "data_bindings": qec.get("data_bindings"),
+                "tool_bindings": qec.get("tool_bindings"),
+            },
+        },
+        "evidence_counts": evidence_counts,
+    }
 
 
 def _persist_state(task_id: str, state_vals: dict) -> None:
@@ -417,7 +526,7 @@ async def stream_task(req: TaskCreateRequest):
                     if "normalized_query" in state_update and state_update["normalized_query"]:
                         safe_update["normalized_query"] = state_update["normalized_query"]
                     if "agent_result" in state_update and state_update["agent_result"] and current_status == AgentStatus.RESULTS_AGGREGATED:
-                        safe_update["agent_result"] = state_update["agent_result"].model_dump(mode='json') if hasattr(state_update["agent_result"], "model_dump") else state_update["agent_result"]
+                        safe_update["agent_result"] = _compact_agent_result_for_stream(state_update["agent_result"])
                     
                     TASK_STORE.update(
                         task_id,
@@ -439,7 +548,11 @@ async def stream_task(req: TaskCreateRequest):
             
             safe_final = {"event": "completed", "status": final_status, "debug_trace": debug_trace}
             if final_status == AgentStatus.COMPLETED:
-                safe_final["final_result"] = state_vals.get("final_dict")
+                final_result = state_vals.get("final_dict")
+                if os.environ.get("GEOLLM_STREAM_FULL_RESULT", "").lower() in {"1", "true", "yes", "on"}:
+                    safe_final["final_result"] = final_result
+                else:
+                    safe_final["final_result"] = _compact_final_result_for_stream(final_result)
                 
             yield f"data: {json.dumps(safe_final, default=str)}\n\n"
             

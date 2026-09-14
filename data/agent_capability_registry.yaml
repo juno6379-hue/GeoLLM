@@ -1,4 +1,19 @@
 analysis_types:
+  document_search:
+    primary_agent: Standard RAG Agent
+    secondary_agents:
+      - Validation Agent
+      - Map Report Agent
+    required_tools:
+      - rag.graph_scoped_retrieve
+    required_data:
+      - knowledge_document_chunks
+      - marine_kg
+      - evidence_registry
+    outputs:
+      - StandardDocumentOutput
+      - EvidenceBundle
+      - Summary
   feature_search_by_radius:
     primary_agent: Spatial Analysis Agent
     secondary_agents:
@@ -138,4 +153,30 @@ analysis_types:
     outputs:
       - SpatialLayerEvidence
       - GeoJSON
+      - Summary
+  observed_time_series_analysis:
+    primary_agent: Time-Series Agent
+    secondary_agents:
+      - Validation Agent
+      - Map Report Agent
+    required_tools:
+      - timeseries.observation_analyze
+    required_data:
+      - tidal_current_surface
+    outputs:
+      - TimeSeriesMetrics
+      - AnomalyTable
+      - Summary
+  observed_time_series_forecast:
+    primary_agent: Time-Series Forecast Agent
+    secondary_agents:
+      - Validation Agent
+      - Map Report Agent
+    required_tools:
+      - timeseries.forecast
+    required_data:
+      - tidal_current_surface
+    outputs:
+      - TimeSeriesForecast
+      - ConfidenceInterval
       - Summary

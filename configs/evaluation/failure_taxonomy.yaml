@@ -1,0 +1,197 @@
+version: 0.1
+policy:
+  classifier: deterministic_trace_first
+  llm_usage: optional_judge_only
+  no_mock_as_success: true
+  no_auto_registry_merge: true
+  no_auto_agent_activation: true
+
+failure_codes:
+  QUERY_NORMALIZATION_ERROR:
+    layer: query_normalization
+    severity: medium
+    signals:
+      - normalized_query_missing
+      - canonical_terms_missing
+  TERM_RESOLUTION_ERROR:
+    layer: semantic_resolution
+    severity: medium
+    signals:
+      - surface_term_not_canonicalized
+  SLOT_EXTRACTION_ERROR:
+    layer: slot_extraction
+    severity: high
+    signals:
+      - expected_slot_missing
+      - expected_slot_value_mismatch
+  LOCATION_RESOLUTION_ERROR:
+    layer: location_resolution
+    severity: high
+    signals:
+      - reference_geometry_unresolved
+      - location_not_found
+  CONCEPT_RESOLUTION_ERROR:
+    layer: ontology
+    severity: high
+    signals:
+      - expected_concept_missing
+  ONTOLOGY_MAPPING_MISSING:
+    layer: ontology
+    severity: high
+    signals:
+      - feature_binding_missing
+  ONTOLOGY_MAPPING_WRONG:
+    layer: ontology
+    severity: high
+    signals:
+      - wrong_feature_class
+  KG_EDGE_MISSING:
+    layer: kg
+    severity: medium
+    signals:
+      - required_kg_path_missing
+  KG_EDGE_UNVERIFIED:
+    layer: kg
+    severity: medium
+    signals:
+      - candidate_only_relation
+  KG_OVER_EXPANSION:
+    layer: kg
+    severity: medium
+    signals:
+      - irrelevant_graph_paths
+  FEATURE_MAPPING_MISSING:
+    layer: feature_mapping
+    severity: high
+    signals:
+      - target_features_empty
+  FEATURE_CODE_MISMATCH:
+    layer: feature_mapping
+    severity: high
+    signals:
+      - nftc_code_mismatch
+  DATASET_NOT_REGISTERED:
+    layer: data_registry
+    severity: high
+    signals:
+      - dataset_id_required
+      - external_source_not_registered
+  DATA_LAYER_NOT_FOUND:
+    layer: data_binding
+    severity: high
+    signals:
+      - relation_not_found
+      - layer_not_registered
+  DATA_SCHEMA_MISMATCH:
+    layer: data_binding
+    severity: high
+    signals:
+      - column_not_found
+      - geometry_column_not_found
+  DATA_VERSION_MISMATCH:
+    layer: data_binding
+    severity: medium
+    signals:
+      - snapshot_version_mismatch
+  QUERY_TEMPLATE_MISSING:
+    layer: query_template
+    severity: high
+    signals:
+      - query_template_not_registered
+  QUERY_TEMPLATE_ERROR:
+    layer: query_template
+    severity: high
+    signals:
+      - executed_query_failed
+  TOOL_NOT_REGISTERED:
+    layer: tool_registry
+    severity: high
+    signals:
+      - tool_not_registered
+  TOOL_CAPABILITY_MISMATCH:
+    layer: tool_capability
+    severity: high
+    signals:
+      - wrong_tool_operation
+  TOOL_EXECUTION_FAILED:
+    layer: tool_execution
+    severity: high
+    signals:
+      - tool_call_failed
+  AGENT_ROUTING_ERROR:
+    layer: agent_routing
+    severity: high
+    signals:
+      - expected_agent_mismatch
+  AGENT_CAPABILITY_GAP:
+    layer: agent_capability
+    severity: medium
+    signals:
+      - repeated_agent_blocker
+  RAG_RETRIEVAL_ERROR:
+    layer: rag
+    severity: medium
+    signals:
+      - rag_expected_but_empty
+  RAG_NO_EVIDENCE:
+    layer: rag
+    severity: medium
+    signals:
+      - no_citations
+  RAG_CITATION_ERROR:
+    layer: evidence
+    severity: high
+    signals:
+      - citation_invalid
+  EVIDENCE_MISSING:
+    layer: evidence
+    severity: high
+    signals:
+      - evidence_bundle_empty
+  EVIDENCE_CONTRADICTION:
+    layer: evidence
+    severity: high
+    signals:
+      - contradictory_claims
+  UNNECESSARY_CLARIFICATION:
+    layer: response_ux
+    severity: medium
+    signals:
+      - clarified_when_expected_execute_or_block
+  MISSING_CLARIFICATION:
+    layer: response_ux
+    severity: medium
+    signals:
+      - executed_when_clarification_required
+  UNSAFE_EXECUTION:
+    layer: safety
+    severity: critical
+    signals:
+      - policy_block_expected_but_executed
+  MOCK_LEAKAGE:
+    layer: safety
+    severity: critical
+    signals:
+      - mock_result_returned_as_fact
+  HALLUCINATED_DATA:
+    layer: safety
+    severity: critical
+    signals:
+      - invented_feature
+      - invented_date
+      - unsupported_count
+  UNSUPPORTED_CLAIM:
+    layer: safety
+    severity: critical
+    signals:
+      - claim_without_evidence
+  CONVERSATION_CONTEXT_LOSS:
+    layer: conversation
+    severity: high
+    signals:
+      - prior_slot_lost
+  UNKNOWN_FAILURE:
+    layer: unknown
+    severity: medium
+    signals: []
+

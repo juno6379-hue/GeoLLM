@@ -177,6 +177,71 @@ class ExternalApiQuery(BaseModel):
     api_domain: str = Field(description="외부 API 도메인 (예: 기상청_해양관측, 해양조사원_조석)")
     search_keywords: List[str] = Field(description="검색을 위한 핵심 키워드 리스트 (예: 파고, 수온)")
 
+def _uses_local_ollama() -> bool:
+    endpoints = " ".join([
+        os.environ.get("OPENAI_BASE_URL", ""),
+        os.environ.get("OLLAMA_BASE_URL", ""),
+        os.environ.get("OLLAMA_CHAT_URL", ""),
+    ]).lower()
+    return "11434" in endpoints or "ollama" in endpoints
+
+
+def _detect_external_data_need(query_text: str, target_objects: list[str]) -> dict:
+    text = query_text or ""
+    lowered = text.lower()
+    keywords = set(target_objects or [])
+
+    tide_terms = ["대조기", "조석", "조위", "물때", "만조", "간조", "tide", "spring tide"]
+    if any(term in lowered or term in text for term in tide_terms):
+        for term in tide_terms:
+            if term in lowered or term in text:
+                keywords.add(term)
+        for location in ["인천", "부산", "목포", "여수", "군산", "제주", "울산", "평택", "포항"]:
+            if location in text:
+                keywords.add(location)
+        return {
+            "requires_external_api": True,
+            "api_domain": "khoa_tide_prediction",
+            "search_keywords": sorted(keywords),
+            "evidence": {
+                "need": "official_tide_prediction_time_series",
+                "reason": "Spring tide/tide schedule queries require official tide prediction time-series data.",
+                "local_rag_suitable": False,
+                "web_search_performed": False,
+                "recommended_sources": [
+                    "KHOA/data.go.kr TideBED predicted tide level",
+                    "KHOA tide forecast",
+                    "KHOA tide station and port mapping",
+                ],
+            },
+        }
+
+    weather_terms = ["태풍", "기상", "풍속", "파고", "해상예보", "weather", "typhoon", "wave"]
+    if any(term in lowered or term in text for term in weather_terms):
+        for term in weather_terms:
+            if term in lowered or term in text:
+                keywords.add(term)
+        return {
+            "requires_external_api": True,
+            "api_domain": "marine_weather",
+            "search_keywords": sorted(keywords),
+            "evidence": {
+                "need": "official_marine_weather_observation_or_forecast",
+                "reason": "Marine weather queries require current observation or forecast data.",
+                "local_rag_suitable": False,
+                "web_search_performed": False,
+                "recommended_sources": ["KMA APIHub marine weather", "KHOA marine observations"],
+            },
+        }
+
+    return {
+        "requires_external_api": False,
+        "api_domain": "",
+        "search_keywords": sorted(keywords),
+        "evidence": {},
+    }
+
+
 async def execute_data_discovery(request: AgentRequest) -> AgentResult:
     """
     Data Discovery Agent Core Logic.
@@ -199,12 +264,13 @@ async def execute_data_discovery(request: AgentRequest) -> AgentResult:
     target_objects = request.parsed_intent.target_objects if request.parsed_intent else []
     query_text = request.original_query
     
-    requires_external = False
-    api_domain = ""
-    extracted_keywords = target_objects.copy()
+    external_hint = _detect_external_data_need(query_text, target_objects)
+    requires_external = external_hint["requires_external_api"]
+    api_domain = external_hint["api_domain"]
+    extracted_keywords = list(dict.fromkeys(target_objects + external_hint["search_keywords"]))
     
     try:
-        if llm_api_enabled():
+        if llm_api_enabled() and not requires_external and not _uses_local_ollama():
             model_name = os.environ.get("LLM_MODEL", "gpt-4o-mini")
             llm = ChatOpenAI(model=model_name, temperature=0)
             structured_llm = llm.with_structured_output(ExternalApiQuery)
@@ -226,7 +292,11 @@ async def execute_data_discovery(request: AgentRequest) -> AgentResult:
             
     api_params = {}
     if requires_external:
-        api_params = {"domain": api_domain, "extracted_keywords": extracted_keywords}
+        api_params = {
+            "domain": api_domain,
+            "extracted_keywords": extracted_keywords,
+            "external_data_evidence": external_hint.get("evidence", {}),
+        }
     
     for ds in all_datasets:
         # 1. Security Check
@@ -282,6 +352,10 @@ async def execute_data_discovery(request: AgentRequest) -> AgentResult:
     (graph_dir / "candidate_edges_from_discovery.jsonl").write_text("".join(json.dumps(item, ensure_ascii=False) + "\n" for item in discovery["candidate_data"]), encoding="utf-8")
     (graph_dir / "verified_edges_from_discovery.jsonl").write_text("", encoding="utf-8")
     summary = f"Total {len(available_datasets)} datasets discovered. Discovery level: {discovery['execution_level']}. Spatial execution: {discovery['can_execute_spatial_query']}."
+    next_actions = list(discovery["required_next_actions"])
+    external_sources = external_hint.get("evidence", {}).get("recommended_sources") or []
+    if requires_external and external_sources:
+        next_actions.insert(0, f"Register external data source: {', '.join(external_sources)}")
     
     return AgentResult(
         task_id=request.task_id,
@@ -294,11 +368,12 @@ async def execute_data_discovery(request: AgentRequest) -> AgentResult:
             "discovered_count": len(available_datasets),
             "requires_external_api": requires_external,
             "api_params": api_params,
+            "external_data_evidence": external_hint.get("evidence", {}),
             "fetched_data": fetched_data,
             **discovery
         },
         source_dataset_versions=available_datasets,
         created_at=datetime.utcnow(),
         provenance=discovery["provenance"],
-        recommended_next_actions=discovery["required_next_actions"]
+        recommended_next_actions=next_actions
     )

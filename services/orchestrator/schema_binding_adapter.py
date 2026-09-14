@@ -42,6 +42,7 @@ class SchemaBindingAdapter:
     def __init__(self) -> None:
         self.layer_registry = _load_yaml(DATA_DIR / "spatial_layer_registry.yaml")
         self.traffic_layer_registry = _load_yaml(DATA_DIR / "traffic_layer_registry.yaml")
+        self.time_series_registry = _load_yaml(DATA_DIR / "time_series_registry.yaml")
         self.tool_registry = _load_yaml(DATA_DIR / "tool_registry.yaml")
         self.template_registry = _load_yaml(DATA_DIR / "query_template_registry.yaml")
 
@@ -60,6 +61,12 @@ class SchemaBindingAdapter:
         elif analysis_type in {"traffic_search_by_time_space", "dynamic_traffic_lookup"}:
             self._bind_dynamic_traffic(slots, result)
             self._bind_tool("traffic.dynamic_layer_search", "time_space_lookup", "traffic_search_by_time_space", result)
+        elif analysis_type in {"observed_time_series_analysis", "time_series_observation_analysis"}:
+            self._bind_time_series(slots, result)
+            self._bind_tool("timeseries.observation_analyze", "time_series_metrics", "observed_time_series_analysis", result)
+        elif analysis_type in {"observed_time_series_forecast", "time_series_forecast"}:
+            self._bind_time_series(slots, result)
+            self._bind_tool("timeseries.forecast", "forecast", "observed_time_series_forecast", result)
         elif analysis_type in {"accident_feature_relation", "accident_relation_lookup", "occurred_in_lookup"}:
             accident_binding = self.bind_accident_relation()
             result.data_bindings.extend(accident_binding.data_bindings)
@@ -83,6 +90,46 @@ class SchemaBindingAdapter:
             result.warnings.append(f"No deterministic binding rule for analysis_type={analysis_type}")
 
         return result
+
+    def _bind_time_series(self, slots: Dict[str, Any], result: BindingResult) -> None:
+        datasets = self.time_series_registry.get("datasets") or {}
+        filters = slots.get("filters") if isinstance(slots.get("filters"), dict) else {}
+        dataset_id = slots.get("dataset_id") or filters.get("dataset_id") or slots.get("target_dataset") or slots.get("target_term")
+        source_path = slots.get("source_path") or filters.get("source_path")
+        dataset = datasets.get(dataset_id) if dataset_id else None
+        if not dataset and not source_path and len(datasets) == 1:
+            dataset_id, dataset = next(iter(datasets.items()))
+        if not dataset and not source_path:
+            result.blockers.append("BLOCKED_DATA: time-series dataset_id or source_path is required")
+            return
+        if dataset and dataset.get("execution_status") in {"metadata_only", "needs_ingestion"} and not dataset.get("path"):
+            result.blockers.append(
+                f"BLOCKED_DATA: time-series dataset {dataset_id} is {dataset.get('execution_status')} and has no executable path"
+            )
+            return
+
+        relation = source_path or (dataset or {}).get("path")
+        if not relation:
+            result.blockers.append(f"BLOCKED_CONFIG: invalid time-series source for dataset {dataset_id}")
+            return
+
+        result.inspected_relations[relation] = {
+            "exists": os.path.exists(os.path.join(PROJECT_ROOT, relation)) if not os.path.isabs(relation) else os.path.exists(relation),
+            "kind": "file_time_series",
+        }
+        result.data_bindings.append(
+            DataBinding(
+                dataset_id=dataset_id or "ad_hoc_time_series",
+                relation=relation,
+                geometry_column=(dataset or {}).get("geometry_column", ""),
+                srid=(dataset or {}).get("srid"),
+                snapshot_version=str(self.time_series_registry.get("version", "")) or None,
+                layer_type=(dataset or {}).get("layer_type", "time_series"),
+                source_asset=(dataset or {}).get("source_asset") or relation,
+                execution_status=(dataset or {}).get("execution_status", "executable"),
+                read_only=True,
+            )
+        )
 
     def _bind_spatial_layer_analysis(self, analysis_type: str, slots: Dict[str, Any], result: BindingResult) -> None:
         default_layers = {

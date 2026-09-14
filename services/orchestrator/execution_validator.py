@@ -7,6 +7,7 @@ from services.orchestrator.schema_binding_adapter import schema_binding_adapter
 
 MAX_RADIUS_M = 50000.0
 MAX_NEAREST_K = 100
+MAX_FORECAST_HORIZON_STEPS = 168
 
 
 def _has_reference_geometry(qec: QueryExecutionContext) -> bool:
@@ -48,6 +49,12 @@ def _has_feature_instance_ref(qec: QueryExecutionContext) -> bool:
 
 def _has_document_query(qec: QueryExecutionContext) -> bool:
     return bool((qec.normalized_query or qec.original_query or "").strip())
+
+
+def _has_time_series_source(qec: QueryExecutionContext) -> bool:
+    if qec.slots.filters.get("source_path") or qec.slots.filters.get("dataset_id"):
+        return True
+    return bool(qec.data_bindings)
 
 
 def _rag_profile_available(qec: QueryExecutionContext) -> bool:
@@ -142,6 +149,36 @@ def validate_execution_context(qec: QueryExecutionContext) -> QueryExecutionCont
             blockers.append("BLOCKED_CONFIG: no validated dynamic traffic binding")
         if not current.tool_bindings:
             blockers.append("BLOCKED_CONFIG: no validated dynamic traffic tool binding")
+
+    elif analysis_type in {"observed_time_series_analysis", "time_series_observation_analysis", "observed_time_series_forecast", "time_series_forecast"}:
+        filters = current.slots.filters or {}
+        data_discovery = current.data_discovery if isinstance(current.data_discovery, dict) else {}
+        api_params = data_discovery.get("api_params") if isinstance(data_discovery.get("api_params"), dict) else {}
+        external_evidence = data_discovery.get("external_data_evidence") or api_params.get("external_data_evidence") or {}
+        external_required = bool(data_discovery.get("requires_external_api") or api_params.get("domain") or external_evidence)
+        if external_required:
+            domain = api_params.get("domain") or "external_time_series"
+            blockers.append(f"BLOCKED_DATA: external time-series source is not bound: {domain}")
+        else:
+            if not _has_time_series_source(current):
+                blockers.append("BLOCKED_DATA: no executable time-series source is bound")
+            has_time_series_binding = any(binding.relation for binding in current.data_bindings)
+            if not (filters.get("timestamp_column") or filters.get("time_column") or has_time_series_binding):
+                blockers.append("NEEDS_USER_INPUT: timestamp_column is required")
+            if not (filters.get("value_column") or filters.get("metric") or filters.get("observed_property") or has_time_series_binding):
+                blockers.append("NEEDS_USER_INPUT: value_column is required")
+        if analysis_type in {"observed_time_series_forecast", "time_series_forecast"}:
+            raw_horizon = filters.get("horizon_steps") or filters.get("horizon") or 3
+            try:
+                horizon_steps = int(raw_horizon)
+                if horizon_steps <= 0:
+                    blockers.append("NEEDS_USER_INPUT: horizon_steps must be positive")
+                elif horizon_steps > MAX_FORECAST_HORIZON_STEPS:
+                    blockers.append(f"BLOCKED_POLICY: horizon_steps exceeds max {MAX_FORECAST_HORIZON_STEPS}")
+            except (TypeError, ValueError):
+                blockers.append("NEEDS_USER_INPUT: horizon_steps must be an integer")
+        if not current.tool_bindings:
+            blockers.append("BLOCKED_CONFIG: no validated time-series tool binding")
 
     elif analysis_type in {
         "spatial_layer_overlay",

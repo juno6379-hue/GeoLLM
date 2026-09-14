@@ -1,4 +1,20 @@
 rules:
+  - rule_id: time_series_analysis_rule
+    priority: 160
+    conditions:
+      any_keywords: ["time-series", "timeseries", "station", "observation", "sensor", "CSV", "결측", "이상치", "시계열", "관측소"]
+      any_actions: ["analyze", "analysis", "metrics", "detect", "분석", "탐지", "조회"]
+    route:
+      primary_agent: "Time-Series Agent"
+
+  - rule_id: time_series_forecast_rule
+    priority: 170
+    conditions:
+      any_keywords: ["forecast", "prediction", "predict", "confidence interval", "horizon", "예측", "신뢰구간"]
+      any_actions: ["forecast", "predict", "generate", "예측", "산출"]
+    route:
+      primary_agent: "Time-Series Forecast Agent"
+
   - rule_id: spatial_distance_rule
     priority: 100
     conditions:

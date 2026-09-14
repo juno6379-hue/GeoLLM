@@ -1,0 +1,17 @@
+version: 0.1
+minimum_supporting_cases: 5
+required_conditions:
+  - existing_agents_insufficient
+  - independent_input_output_contract
+  - repeated_across_distinct_queries
+  - independent_data_or_tool_combination
+  - benchmark_cases_exist
+  - higher_cohesion_than_existing_agent_extension
+  - query_execution_context_contract_supported
+proposal_only_without_human_approval: true
+proposal_path: outputs/agent_learning/agent_capability_proposals.jsonl
+forbidden_without_approval:
+  - executable_agent_registration
+  - production_activation
+  - mock_fallback_as_fact
+

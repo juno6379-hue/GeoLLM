@@ -108,6 +108,11 @@ class RoutePlanner:
         route_plan["required_tools"] = list(tools)
         for tool in graph_context.get("candidate_tools", []):
             if tool not in route_plan["required_tools"]: route_plan["required_tools"].append(tool)
+        if analysis_type in {"document_search", "rag.document_search", "graph_scoped_rag"}:
+            route_plan["required_tools"] = [
+                tool for tool in route_plan["required_tools"]
+                if str(tool).startswith("rag.")
+            ] or ["rag.graph_scoped_retrieve"]
 
         # Merge Data
         datasets = set(agent_cap.get("required_data", []))

@@ -1,0 +1,42 @@
+version: 0.1
+stream_endpoint: /api/v1/tasks/stream
+method: POST
+request_body:
+  query: string
+  organization_id: string
+  user_id: string
+  task_id: optional_string
+  spatial_context:
+    base_location: optional_string
+    geometry: optional_wkt
+    buffer_distance: optional_number
+    map_bounds: optional_number_array
+    crs: optional_string
+response_events:
+  node_finished:
+    required:
+      - event
+      - node
+      - status
+    optional:
+      - task_plan
+      - context_result
+      - normalized_query
+      - normalization_debug
+      - agent_result
+  completed:
+    required:
+      - event
+      - status
+      - debug_trace
+    optional:
+      - final_result
+expected_data_flow:
+  request.query: OrchestratorState.query
+  request.organization_id: OrchestratorState.organization_id
+  request.user_id: OrchestratorState.user_id
+  request.spatial_context: OrchestratorState.spatial_context
+  final_result.orchestrator_v2.route_plan: TaskPlan
+  final_result.orchestrator_v2.query_execution_context: QueryExecutionContext
+  final_result.external_data_requirement: external source binding evidence
+

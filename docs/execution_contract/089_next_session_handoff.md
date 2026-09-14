@@ -64,3 +64,68 @@ Invoke-RestMethod -Uri "http://localhost:8000/api/v1/evidence-candidates/apply" 
 - 실행 루트는 계속 `QueryExecutionContext -> ExecutionValidator PASS -> Tool 실행 -> EvidenceBundle 반환`을 강제한다.
 - 승인 evidence는 실행 권한이 아니라 KG/RAG/법령 근거 승격이다.
 - UI 일부 기존 한글 문자열은 과거 인코딩 문제로 깨져 있으므로 다음 단계에서 정리한다.
+## Phase 8.9 update
+
+- Added approved evidence collision validator.
+- New script: `scripts/validate_approved_evidence_candidates.py`
+- New API: `POST /api/v1/evidence-candidates/validate`
+- `POST /api/v1/evidence-candidates/apply` now runs validation by default before registry promotion.
+- Latest validation baseline:
+  - status: `PASS`
+  - approved candidates: `0`
+  - KG nodes: `8846`
+  - KG edges: `9642`
+  - report: `outputs/review/approved_evidence_validation_report.json`
+- Full notes: `docs/execution_contract/090_approved_evidence_collision_validator.md`
+
+## Phase 9 update
+
+- Added deterministic read-only `Time-Series Agent`.
+- New files:
+  - `services/time_series_agent/tools.py`
+  - `services/time_series_agent/agent.py`
+  - `data/time_series_registry.yaml`
+  - `data/fixtures/time_series_observation_sample.csv`
+- Registry updates:
+  - `Time-Series Agent`
+  - `timeseries.observation_analyze`
+  - `observed_time_series_analysis`
+- Latest container validation:
+  - execution contract: `EXECUTION_READY`
+  - agent status: `COMPLETED`
+  - fixture rows analyzed: `6`
+  - missing rate: `0.166667`
+  - anomaly count: `1`
+- Full notes: `docs/execution_contract/091_time_series_agent.md`
+
+## Phase 10 update
+
+- Added read-only `Time-Series Forecast Agent`.
+- New file:
+  - `services/time_series_agent/forecast_agent.py`
+- Registry updates:
+  - `Time-Series Forecast Agent`
+  - `timeseries.forecast`
+  - `observed_time_series_forecast`
+- Forecast policy:
+  - uses configured `FORECAST_MODEL_ENDPOINT` or request `model_endpoint` when present
+  - otherwise uses deterministic linear baseline over observed rows
+  - horizon capped at `168` steps
+- Latest container validation:
+  - execution contract: `EXECUTION_READY`
+  - agent status: `COMPLETED`
+  - forecast steps: `3`
+  - first forecast time: `2026-01-01T06:00:00`
+  - confidence level: `0.95`
+- Full notes: `docs/execution_contract/092_time_series_forecast_agent.md`
+
+## Orchestrator hardening update
+
+- Added result-family validation for time-series and forecast outputs.
+- Added final payload fields:
+  - `time_series_result`
+  - `forecast_result`
+- Direct container checks passed for:
+  - `validate_node` + `map_report_node` with `Time-Series Agent`
+  - `validate_node` + `map_report_node` with `Time-Series Forecast Agent`
+- Full notes: `docs/execution_contract/093_orchestrator_time_series_hardening.md`

@@ -16,6 +16,7 @@ DEFAULT_S101_METADATA_FILTER = {
     "version": os.getenv("S101_CATALOGUE_VERSION", "2.0.0"),
     "product_specification": os.getenv("S101_PRODUCT_SPECIFICATION", "INT.IHO.S-101.2.0"),
 }
+METADATA_FILTER_KEYS = {"product_id", "version", "product_specification", "document_type", "source_id", "source_file", "source_path"}
 
 
 def _default_metadata_filter() -> Dict[str, Any]:
@@ -28,6 +29,21 @@ def _default_metadata_filter() -> Dict[str, Any]:
         except json.JSONDecodeError:
             logger.warning("Ignoring invalid S101_RAG_METADATA_FILTER")
     return DEFAULT_S101_METADATA_FILTER.copy()
+
+
+def _normalize_metadata_filter(rag_filters: Dict[str, Any]) -> Dict[str, Any]:
+    normalized = {}
+    for key, value in rag_filters.items():
+        if key not in METADATA_FILTER_KEYS:
+            continue
+        if value in (None, "", []):
+            continue
+        if isinstance(value, list):
+            if len(value) != 1:
+                continue
+            value = value[0]
+        normalized[key] = value
+    return normalized
 
 
 def _query_embedding(query: str):
@@ -118,14 +134,45 @@ def search_vdb(query: str, top_k: int = 2, user_id: str = "system", clearance_le
                 if candidate_ids:
                     sql = sql.bindparams(bindparam("candidate_document_ids", expanding=True))
                 # 벡터를 JSON string 변환하여 바인딩
-                metadata_filter = {key: value for key, value in rag_filters.items() if key != "candidate_document_ids"}
+                metadata_filter = _normalize_metadata_filter(rag_filters)
                 params = {"vector": str(query_vector), "top_k": top_k, "metadata_filter": json.dumps(metadata_filter)}
                 if candidate_ids:
                     params["candidate_document_ids"] = candidate_ids
                 result = db.execute(sql, params).mappings().all()
-                
+
                 if result:
-                    return [dict(r) for r in result]
+                    rows = [dict(r) for r in result]
+                    best_similarity = max(float(row.get("similarity") or 0.0) for row in rows)
+                    min_graph_similarity = float(os.getenv("RAG_GRAPH_MIN_SIMILARITY", "0.60"))
+                    if not candidate_ids or best_similarity >= min_graph_similarity:
+                        return rows
+                    logger.warning(
+                        "Graph-scoped candidate filter returned low-similarity rows; retrying metadata-scoped vector search",
+                        best_similarity=best_similarity,
+                        threshold=min_graph_similarity,
+                    )
+                if candidate_ids:
+                    logger.warning("Graph-scoped candidate filter returned no usable rows; retrying metadata-scoped vector search")
+                    sql = text("""
+                        SELECT chunk_id AS doc_id,
+                               COALESCE(metadata->>'title', metadata->>'source_path', source_id) AS title,
+                               COALESCE(metadata->>'version', 'v2') AS version,
+                               content,
+                               COALESCE(metadata->>'section', '') AS section,
+                               source_id,
+                               source_sha256,
+                               metadata,
+                               1 - (embedding <=> CAST(:vector AS vector)) AS similarity
+                        FROM knowledge.document_chunks
+                        WHERE embedding IS NOT NULL
+                          AND (:metadata_filter = '{}' OR metadata @> CAST(:metadata_filter AS jsonb))
+                        ORDER BY embedding <=> :vector
+                        LIMIT :top_k
+                    """)
+                    params = {"vector": str(query_vector), "top_k": top_k, "metadata_filter": json.dumps(metadata_filter)}
+                    result = db.execute(sql, params).mappings().all()
+                    if result:
+                        return [dict(r) for r in result]
         except Exception as e:
             logger.error("pgvector search failed, falling back to mock", error=str(e))
     

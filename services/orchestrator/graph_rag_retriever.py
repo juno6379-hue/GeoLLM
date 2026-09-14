@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import re
 from collections import deque
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,7 @@ def _tokens(value: Any) -> set[str]:
     return {part for part in re.split(r"\s+|[,/_()\[\]{}:.-]+", _text(value).lower()) if part}
 
 
+@lru_cache(maxsize=1)
 def _load_graph() -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
     nodes: dict[str, dict[str, Any]] = {}
     edges: list[dict[str, Any]] = []
@@ -48,14 +50,20 @@ def _load_graph() -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
     return nodes, edges
 
 
-def _load_jsonl(path: Path) -> list[dict[str, Any]]:
+@lru_cache(maxsize=16)
+def _load_jsonl_cached(path_text: str) -> tuple[dict[str, Any], ...]:
+    path = Path(path_text)
     if not path.exists():
-        return []
+        return ()
     rows = []
     for line in path.read_text(encoding="utf-8").splitlines():
         if line.strip():
             rows.append(json.loads(line))
-    return rows
+    return tuple(rows)
+
+
+def _load_jsonl(path: Path) -> list[dict[str, Any]]:
+    return list(_load_jsonl_cached(str(path)))
 
 
 def _candidate_sources() -> dict[str, Path]:
