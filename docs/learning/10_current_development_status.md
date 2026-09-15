@@ -6,6 +6,8 @@ Generated: 2026-09-15
 
 The Marine GeoLLM learning and validation loop has reached a stable second-loop benchmark state.
 
+The first high-priority blocked spatial case has now been converted into a real execution path: `부산항 입구 3km 이내 위험객체를 찾아줘` executes against the local S-101/GBENC PostGIS layer and returns actual hazard features instead of a blocked-data response.
+
 The orchestrator now avoids full graph execution for queries that cannot yet be answered from trusted local data, official external data, or validated spatial/traffic bindings. Instead, it returns fast, explicit, auditable states such as `BLOCKED_DATA`, `NO_AUTHORITATIVE_EVIDENCE`, `BLOCKED_POLICY`, or deterministic clarification requirements.
 
 ## Latest Full Benchmark
@@ -29,6 +31,36 @@ Result:
 
 This means the previous 30-40 second bottlenecks and benchmark failures have been removed for the current benchmark suite.
 
+## Latest Targeted Execution Upgrade
+
+Artifact:
+
+- `outputs/learning/benchmark_results_spatial_radius_001_real_s101_final.jsonl`
+- `outputs/learning/baseline_metrics_spatial_radius_001_real_s101_final.json`
+- `outputs/learning/benchmark_results_evidence_real_s101_final.jsonl`
+- `outputs/learning/baseline_metrics_evidence_real_s101_final.json`
+- `outputs/learning/benchmark_results_metamorphic_real_s101_final.jsonl`
+- `outputs/learning/baseline_metrics_metamorphic_real_s101_final.json`
+- `outputs/learning/benchmark_results_invalid_real_s101_final.jsonl`
+- `outputs/learning/baseline_metrics_invalid_real_s101_final.json`
+
+Result:
+
+- `SPATIAL_RADIUS_001`: `PASS`, `COMPLETED`, 891ms.
+- `EVIDENCE_001`: `PASS`, `COMPLETED`, 1196ms.
+- Metamorphic radius cases: 3/3 `PASS`, max 1358ms.
+- Invalid input category: 0 `FAIL`; unsafe or invalid requests remained blocked within 1234ms.
+- Actual 부산항 입구 3km result: 119 S-101 hazard features found, nearest 30 returned.
+
+Execution binding:
+
+- Reference geometry: `부산항 입구` -> `POINT(129.075 35.075)`.
+- Layer: `projection.s101_feature_current`.
+- Dataset contract: `GBENC_S101_feature`.
+- Hazard mapping: `UnderwaterAwashRock`/`Wreck`/`Obstruction`.
+- Tool/template: `postgis.dwithin`.
+- Route: `parse_intent -> fast_s101_hazard_radius_execute`.
+
 ## Completed Development
 
 ### Benchmark and Learning Loop
@@ -44,6 +76,7 @@ This means the previous 30-40 second bottlenecks and benchmark failures have bee
 - Authoritative S-101/S-100 document answer fast path.
 - Legal/no-evidence document fast block.
 - Spatial/traffic blocked-data fast path.
+- S-101 hazard-object radius execution path for 부산항 입구.
 - VTS control-area specific routing.
 - Accident relation lookup routing.
 - Protected-area, eddy-hazard, planned-port, island-gazetteer layer routing.
@@ -68,7 +101,7 @@ This means the previous 30-40 second bottlenecks and benchmark failures have bee
 
 ## Current Meaning of BLOCKED
 
-The current benchmark has 40 `BLOCKED` cases. These are not benchmark failures.
+The previous full benchmark had 40 `BLOCKED` cases. These are not benchmark failures.
 
 They indicate that the query was understood and safely routed, but the required real source is not yet bound or execution-ready. Examples:
 
@@ -84,16 +117,28 @@ They indicate that the query was understood and safely routed, but the required 
 - Accident relation index
 - Authoritative legal notice corpus
 
+One important spatial blocked case has now moved to `COMPLETED`: S-101 hazard-object radius search near 부산항 입구.
+
 ## Remaining Work
 
-### 1. Convert BLOCKED Cases to COMPLETED
+### 1. Promote S-101 Spatial Execution From Local Fast Path to Registry-Driven Template
+
+Move the current code constants into registry/ontology-backed configuration:
+
+- known marine place/gazetteer binding
+- hazard feature code mapping
+- `projection.s101_feature_current` relation metadata
+- `postgis.dwithin` query template
+- response schema and evidence contract
+
+### 2. Convert More BLOCKED Cases to COMPLETED
 
 Bind official datasets and validated layers, then make the existing fast-block routing readiness-aware:
 
 - If source is not ready: return `BLOCKED_DATA`.
 - If source is ready: execute the correct agent/tool/query template.
 
-### 2. External Data Integration
+### 3. External Data Integration
 
 Prioritized sources:
 
@@ -103,7 +148,7 @@ Prioritized sources:
 - KMA/KHOA marine weather and wave forecasts
 - AIS/V-PASS traffic feeds or approved local archives
 
-### 3. Spatial Layer Binding
+### 4. Spatial Layer Binding
 
 Prioritized layers:
 
@@ -114,19 +159,19 @@ Prioritized layers:
 - `eddy_hazard_area`
 - accident relation overlays
 
-### 4. Legal and Standard Evidence Corpus
+### 5. Legal and Standard Evidence Corpus
 
 - Build authoritative legal/notice corpus.
 - Add metadata filters for law, notice, section, date, issuer, and source.
 - Keep no-evidence behavior when no authoritative source is found.
 
-### 5. Production Runtime
+### 6. Production Runtime
 
 - Add warm-ready health checks beyond simple `/health`.
 - Tune backend concurrency and worker/resource isolation.
 - Keep benchmark latency target below 3 seconds for interactive responses.
 
-### 6. UI/API UX
+### 7. UI/API UX
 
 Expose blocked-data details clearly:
 
@@ -149,4 +194,3 @@ Expose blocked-data details clearly:
 - `data/query_template_registry.yaml`
 - `data/tool_registry.yaml`
 - `data/agent_capability_registry.yaml`
-

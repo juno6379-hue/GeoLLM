@@ -1,0 +1,21 @@
+{
+  "generated_at": "2026-09-15T00:04:45.800753+00:00",
+  "total": 1,
+  "counts": {
+    "PASS": 1,
+    "FAIL": 0,
+    "BLOCKED": 0,
+    "NOT_RUN": 0
+  },
+  "pass_rate": 1.0,
+  "category_distribution": {
+    "spatial_derived_concept": 1
+  },
+  "failure_distribution": {},
+  "latency_ms": {
+    "min": 891,
+    "p50": 891,
+    "p95": 891,
+    "max": 891
+  }
+}

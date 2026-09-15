@@ -598,3 +598,81 @@ Remaining risk:
 - Many cases are intentionally `BLOCKED_DATA` because official datasets, geometry bindings, or execution contracts are not ready. This is safer than fabricated or mock results, but the next product-quality milestone is to bind real sources and convert selected `BLOCKED` cases into `COMPLETED`.
 - The failure analyzer still counts `BLOCKED` items as improvement opportunities. That is useful for the learning loop, but should not be confused with benchmark `FAIL`.
 - Parallel request contention was observed in earlier ad hoc multi-process checks. Single runner sequential benchmark is now fast, but production concurrency still needs worker/resource tuning.
+
+## 2026-09-15 - Issue 012: S-101 Hazard Radius Execution Binding
+
+Cases:
+
+- `SPATIAL_RADIUS_001`
+- `METAMORPHIC_RADIUS_001A`
+- `METAMORPHIC_RADIUS_001B`
+- `METAMORPHIC_RADIUS_001C`
+- `EVIDENCE_001`
+
+Symptom:
+
+- The query `부산항 입구 3km 이내 위험객체를 찾아줘` was previously understood as `feature_search_by_radius`, but ended at `BLOCKED_DATA`.
+- The four required execution links were not connected end-to-end:
+  - 부산항 입구 reference geometry
+  - S-101/GBENC feature layer
+  - hazard feature mapping: `UnderwaterAwashRock`, `Wreck`, `Obstruction`
+  - executable `postgis.dwithin` spatial query template
+- Evidence-style wording such as `결과의 근거까지 포함해서 부산항 입구 위험객체를 찾아줘` also stayed blocked even when API `spatial_context.buffer_distance=3000` was present.
+
+Root cause:
+
+- The previous spatial fast path intentionally stopped at an auditable blocked-data response.
+- It did not yet have a readiness-aware branch that could execute real S-101 data when the geometry, feature mapping, layer, and query template were all available.
+- The first implementation used a direct geography query and returned up to 100 features, which was correct but too close to the latency budget.
+- API-server benchmark runs used the already-running container process, so code changes were not visible until `geollm_backend` was restarted.
+
+Fix:
+
+- Added `fast_s101_hazard_radius_execute_node` in `services/orchestrator/graph.py`.
+- Bound `부산항 입구` to `POINT(129.075 35.075)` and preserved API-provided geometry override behavior.
+- Mapped `navigation_hazard_object` to S-101 feature type codes:
+  - `100`: `UnderwaterAwashRock`
+  - `101`: `Wreck`
+  - `102`: `Obstruction`
+- Executed against `projection.s101_feature_current` using `postgis.dwithin`.
+- Added a bounding-box prefilter using `geometry && ST_Expand(...)` before the exact geography `ST_DWithin` check.
+- Limited returned feature details to the nearest 30 records while keeping the authoritative total count.
+- Broadened route detection so API `spatial_context.buffer_distance` can provide radius even when the user wording omits `3km`.
+- Included `route_plan`, `query_execution_context`, inline GeoJSON, table rows, and spatial evidence in the final response.
+
+Verification:
+
+- API server was restarted with `docker restart geollm_backend`.
+- `SPATIAL_RADIUS_001`: `PASS`, `COMPLETED`, 891ms.
+- `EVIDENCE_001`: `PASS`, `COMPLETED`, 1196ms.
+- Metamorphic radius cases:
+  - `METAMORPHIC_RADIUS_001A`: `PASS`, `COMPLETED`, 1228ms.
+  - `METAMORPHIC_RADIUS_001B`: `PASS`, `COMPLETED`, 1132ms.
+  - `METAMORPHIC_RADIUS_001C`: `PASS`, `COMPLETED`, 1358ms.
+- Invalid input category:
+  - 0 `FAIL`
+  - invalid/unsafe inputs stayed `BLOCKED` within 752-1234ms.
+- Actual result for 부산항 입구 3km:
+  - total hazard features: 119
+  - returned feature details: nearest 30
+  - route: `parse_intent -> fast_s101_hazard_radius_execute`
+  - data: `GBENC_S101_feature`
+  - relation: `projection.s101_feature_current`
+  - tool: `postgis.dwithin`
+
+Artifacts:
+
+- `outputs/learning/benchmark_results_spatial_radius_001_real_s101_final.jsonl`
+- `outputs/learning/baseline_metrics_spatial_radius_001_real_s101_final.json`
+- `outputs/learning/benchmark_results_evidence_real_s101_final.jsonl`
+- `outputs/learning/baseline_metrics_evidence_real_s101_final.json`
+- `outputs/learning/benchmark_results_metamorphic_real_s101_final.jsonl`
+- `outputs/learning/baseline_metrics_metamorphic_real_s101_final.json`
+- `outputs/learning/benchmark_results_invalid_real_s101_final.jsonl`
+- `outputs/learning/baseline_metrics_invalid_real_s101_final.json`
+
+Remaining risk:
+
+- The 부산항 입구 geometry is currently a curated local gazetteer binding, not yet an authoritative external gazetteer lookup.
+- Feature mapping is limited to the three high-priority hazard classes and should later be moved into the ontology/registry instead of staying as code constants.
+- The current path is optimized for the known S-101 current-feature relation; additional regions/layers should use the same readiness-aware template pattern.

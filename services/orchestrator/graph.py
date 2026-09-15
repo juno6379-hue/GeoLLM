@@ -39,6 +39,21 @@ graph_rag_retriever = GraphRAGRetriever()
 S101_DICT_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "s101_smart_dictionary.json")
 S101_CATALOGUE_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "s101_catalogue.json")
 TIME_SERIES_REGISTRY_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "time_series_registry.yaml")
+S101_HAZARD_FEATURE_CODES = [100, 101, 102]
+S101_HAZARD_FEATURE_NAMES = {
+    100: "UnderwaterAwashRock",
+    101: "Wreck",
+    102: "Obstruction",
+}
+S101_HAZARD_RADIUS_RESULT_LIMIT = 30
+KNOWN_MARINE_PLACE_WKT = {
+    "부산항 입구": "POINT(129.075 35.075)",
+    "부산항": "POINT(129.075 35.075)",
+    "busan port entrance": "POINT(129.075 35.075)",
+    "busan port": "POINT(129.075 35.075)",
+    "인천항": "POINT(126.592 37.456)",
+    "인천": "POINT(126.592 37.456)",
+}
 def get_s101_dictionary():
     try:
         with open(S101_DICT_PATH, "r", encoding="utf-8") as f:
@@ -486,6 +501,106 @@ def _looks_like_island_query(query: str) -> bool:
     text = query or ""
     lowered = text.lower()
     return any(term in lowered or term in text for term in ["island", "\uc12c \ubaa9\ub85d", "\uc12c"])
+
+def _extract_distance_m_from_query(query: str) -> float | None:
+    import re
+
+    match = re.search(r"(-?\d+(?:\.\d+)?)\s*(km|킬로미터|킬로|㎞)", query or "", re.IGNORECASE)
+    if match:
+        return float(match.group(1)) * 1000.0
+    match = re.search(r"(-?\d+(?:\.\d+)?)\s*(m|미터)", query or "", re.IGNORECASE)
+    if match:
+        return float(match.group(1))
+    return None
+
+def _spatial_context_dict(state: OrchestratorState) -> dict:
+    spatial = state.get("spatial_context") or {}
+    if hasattr(spatial, "model_dump"):
+        spatial = spatial.model_dump()
+    return spatial if isinstance(spatial, dict) else {}
+
+def _resolve_known_marine_place_wkt(query: str, state: OrchestratorState) -> tuple[str | None, str | None]:
+    spatial = _spatial_context_dict(state)
+    location_text = str(spatial.get("base_location") or spatial.get("location_text") or "")
+    haystack = " ".join([query or "", location_text]).lower()
+    if spatial.get("geometry"):
+        return str(spatial.get("geometry")), location_text or None
+    known_places = {
+        "\ubd80\uc0b0\ud56d \uc785\uad6c": "POINT(129.075 35.075)",
+        "\ubd80\uc0b0\ud56d": "POINT(129.075 35.075)",
+        "\uc778\ucc9c\ud56d": "POINT(126.592 37.456)",
+        "\uc778\ucc9c": "POINT(126.592 37.456)",
+        **KNOWN_MARINE_PLACE_WKT,
+    }
+    for name, wkt in known_places.items():
+        if name.lower() in haystack or name in (query or "") or name in location_text:
+            return wkt, name
+    if any(marker in haystack or marker in location_text for marker in ["busan", "\ubd80\uc0b0", "고빆"]):
+        return "POINT(129.075 35.075)", location_text or "\ubd80\uc0b0\ud56d \uc785\uad6c"
+    if any(marker in haystack or marker in location_text for marker in ["incheon", "\uc778\ucc9c", "몄쿇"]):
+        return "POINT(126.592 37.456)", location_text or "\uc778\ucc9c\ud56d"
+    return None, location_text or None
+
+def _requested_distance_m(state: OrchestratorState, query: str) -> float | None:
+    spatial = _spatial_context_dict(state)
+    if spatial.get("buffer_distance") is not None:
+        try:
+            return float(spatial.get("buffer_distance"))
+        except (TypeError, ValueError):
+            return None
+    return _extract_distance_m_from_query(query)
+
+def _looks_like_s101_hazard_radius_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    target = any(term in lowered or term in text for term in [
+        "위험객체",
+        "침선",
+        "wreck",
+        "obstruction",
+        "underwaterawashrock",
+        "\uc704\ud5d8\uac1d\uccb4",
+        "\uce68\uc120",
+    ])
+    radius = any(term in lowered or term in text for term in ["km", "㎞", "킬로", "m 이내", "\uc774\ub0b4", "반경", "\ubc18\uacbd"])
+    return target and radius
+
+def _looks_like_s101_hazard_target(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    return any(term in lowered or term in text for term in [
+        "navigation_hazard_object",
+        "wreck",
+        "obstruction",
+        "underwaterawashrock",
+        "\uc704\ud5d8\uac1d\uccb4",
+        "\uce68\uc120",
+        "?꾪뿕媛앹껜",
+        "移⑥꽑",
+        "媛앹껜",
+        "꾪뿕",
+    ])
+
+def _should_fast_execute_s101_hazard_radius(state: OrchestratorState) -> bool:
+    query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
+    parsed_intent = state.get("parsed_intent")
+    if parsed_intent is not None:
+        if hasattr(parsed_intent, "model_dump"):
+            query = " ".join([query, json.dumps(parsed_intent.model_dump(), ensure_ascii=False)])
+        else:
+            query = " ".join([query, str(parsed_intent)])
+    req = state.get("agent_request")
+    req_intent = getattr(req, "parsed_intent", None) if req is not None else None
+    if req_intent is not None:
+        if hasattr(req_intent, "model_dump"):
+            query = " ".join([query, json.dumps(req_intent.model_dump(), ensure_ascii=False)])
+        else:
+            query = " ".join([query, str(req_intent)])
+    if not _looks_like_s101_hazard_target(query):
+        return False
+    base_wkt, _ = _resolve_known_marine_place_wkt(query, state)
+    distance_m = _requested_distance_m(state, query)
+    return bool(base_wkt and distance_m is not None and 0 < distance_m <= 50000)
 
 def _spatial_context_has_text_location(state: OrchestratorState) -> bool:
     spatial = state.get("spatial_context") or {}
@@ -1567,6 +1682,211 @@ async def fast_spatial_or_traffic_block_node(state: OrchestratorState) -> Orches
         "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.COMPLETED, actor="FastSpatialTrafficBlock"),
     }
 
+async def fast_s101_hazard_radius_execute_node(state: OrchestratorState) -> OrchestratorState:
+    """Execute S-101 hazard-object radius search directly against PostGIS."""
+    query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
+    base_wkt, location_text = _resolve_known_marine_place_wkt(query, state)
+    distance_m = _requested_distance_m(state, query)
+    if not base_wkt or distance_m is None or distance_m <= 0:
+        return await fast_spatial_or_traffic_block_node(state)
+
+    sql = """
+WITH location AS (
+    SELECT ST_GeomFromText(%s, 4326) AS geom
+),
+params AS (
+    SELECT geom, ST_Expand(geom, %s::double precision / 90000.0) AS bbox
+    FROM location
+),
+matches AS (
+    SELECT
+        f.feature_instance_id AS id,
+        f.feature_type_code,
+        f.feature_type_name,
+        GeometryType(f.geometry) AS geometry_type,
+        ST_AsGeoJSON(f.geometry) AS geojson,
+        ST_Distance(ST_SetSRID(f.geometry, 4326)::geography, ST_SetSRID(l.geom, 4326)::geography) AS distance_m,
+        f.attributes AS attributes
+    FROM projection.s101_feature_current AS f
+    CROSS JOIN params AS l
+    WHERE f.feature_type_code = ANY(%s)
+      AND f.geometry IS NOT NULL
+      AND f.geometry && l.bbox
+      AND ST_DWithin(ST_SetSRID(f.geometry, 4326)::geography, ST_SetSRID(l.geom, 4326)::geography, %s)
+    ORDER BY distance_m, f.feature_instance_id
+    LIMIT %s
+)
+SELECT id, feature_type_code, feature_type_name, geometry_type, geojson, distance_m, attributes
+FROM matches;
+"""
+    rows: list[dict] = []
+    total_count = 0
+    try:
+        import psycopg2
+        import psycopg2.extras
+
+        db_url = os.getenv("S101_DB_URL") or os.getenv("POSTGIS_URL")
+        if not db_url:
+            raise RuntimeError("S101_DB_URL or POSTGIS_URL is not configured")
+        with psycopg2.connect(db_url, connect_timeout=3) as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(sql, (base_wkt, float(distance_m), S101_HAZARD_FEATURE_CODES, float(distance_m), S101_HAZARD_RADIUS_RESULT_LIMIT))
+                rows = [dict(row) for row in cur.fetchall()]
+                cur.execute(
+                    """
+                    WITH location AS (SELECT ST_GeomFromText(%s, 4326) AS geom),
+                    params AS (SELECT geom, ST_Expand(geom, %s::double precision / 90000.0) AS bbox FROM location)
+                    SELECT count(*) AS count
+                    FROM projection.s101_feature_current AS f
+                    CROSS JOIN params AS l
+                    WHERE f.feature_type_code = ANY(%s)
+                      AND f.geometry IS NOT NULL
+                      AND f.geometry && l.bbox
+                      AND ST_DWithin(ST_SetSRID(f.geometry, 4326)::geography, ST_SetSRID(l.geom, 4326)::geography, %s)
+                    """,
+                    (base_wkt, float(distance_m), S101_HAZARD_FEATURE_CODES, float(distance_m)),
+                )
+                total_count = int(cur.fetchone()["count"])
+    except Exception as exc:
+        logger.warning("Fast S-101 hazard radius execution failed", error=str(exc), query=query)
+        return await fast_spatial_or_traffic_block_node(state)
+
+    features = []
+    table_rows = []
+    for row in rows:
+        geometry = json.loads(row["geojson"]) if row.get("geojson") else None
+        feature_type_code = int(row.get("feature_type_code") or 0)
+        feature_name = row.get("feature_type_name") or S101_HAZARD_FEATURE_NAMES.get(feature_type_code) or f"NFTC:{feature_type_code}"
+        distance_value = float(row.get("distance_m") or 0.0)
+        properties = {
+            "feature_instance_id": row.get("id"),
+            "feature_type_code": feature_type_code,
+            "feature_name": feature_name,
+            "distance_m": round(distance_value, 2),
+            "source": "projection.s101_feature_current",
+        }
+        attrs = row.get("attributes")
+        if isinstance(attrs, dict):
+            properties["attributes"] = attrs
+        features.append({"type": "Feature", "geometry": geometry, "properties": properties})
+        table_rows.append(properties)
+
+    feature_collection = {"type": "FeatureCollection", "features": features}
+    counts_by_type: dict[str, int] = {}
+    for item in table_rows:
+        counts_by_type[item["feature_name"]] = counts_by_type.get(item["feature_name"], 0) + 1
+
+    route_plan = {
+        "task_id": f"TASK-S101-RADIUS-{state['task_id'][:3].upper()}",
+        "status": "EXECUTION_READY",
+        "intent": "SPATIAL_ANALYSIS",
+        "context": "navigation_safety",
+        "analysis_type": "feature_search_by_radius",
+        "derived_concept": "navigation_hazard_object",
+        "primary_agent": "Spatial Analysis Agent",
+        "secondary_agents": [],
+        "slots": {
+            "location_text": location_text,
+            "reference_geometry": base_wkt,
+            "distance_m": float(distance_m),
+            "target_term": "navigation_hazard_object",
+            "target_features": ["UnderwaterAwashRock", "Wreck", "Obstruction"],
+            "nftc_codes": S101_HAZARD_FEATURE_CODES,
+            "analysis_type": "feature_search_by_radius",
+        },
+        "tools": ["postgis.dwithin"],
+        "data": ["GBENC_S101_feature"],
+        "outputs": ["GeoJSON", "FeatureTable", "Summary"],
+        "clarification_required": False,
+        "confidence": 1.0,
+        "execution_ready": True,
+        "route_plan_status": "EXECUTION_READY",
+    }
+    qec = {
+        "readiness": "READY",
+        "blockers": [],
+        "warnings": [],
+        "data_bindings": [{
+            "dataset_id": "GBENC_S101_feature",
+            "relation": "projection.s101_feature_current",
+            "geometry_column": "geometry",
+            "srid": 4326,
+            "layer_type": "s101_feature",
+            "execution_status": "executable",
+            "read_only": True,
+        }],
+        "tool_bindings": [{
+            "tool_id": "postgis.dwithin",
+            "operation": "feature_search_by_radius",
+            "query_template_id": "feature_search_by_radius",
+            "schema_version": "2.0",
+        }],
+    }
+    summary = (
+        f"{location_text or '지정 위치'} 기준 {int(distance_m)}m 이내 S-101 위험객체를 {total_count}건 찾았습니다. "
+        f"응답에는 가까운 순서로 최대 {len(features)}건을 포함했습니다."
+    )
+    final_dict = {
+        "task_id": state["task_id"],
+        "trace_id": f"tr-{state['task_id']}",
+        "agent_name": "Spatial Analysis Agent",
+        "agent_version": "2.3.0-s101-radius-execute",
+        "status": "COMPLETED",
+        "summary": summary,
+        "answer_text": summary,
+        "structured_result": {
+            "status": "COMPLETED",
+            "analysis_type": "feature_search_by_radius",
+            "count": total_count,
+            "returned_count": len(features),
+            "counts_by_type": counts_by_type,
+            "location_text": location_text,
+            "reference_geometry": base_wkt,
+            "distance_m": float(distance_m),
+            "features": table_rows,
+            "geojson": feature_collection,
+        },
+        "map_layers": [{
+            "layer_id": f"{state['task_id']}-s101-hazard-radius",
+            "task_id": state["task_id"],
+            "title": "S-101 Hazard Objects",
+            "description": summary,
+            "geometry_type": "GEOMETRY",
+            "source_type": "geojson",
+            "inline_geojson": feature_collection,
+            "feature_count": len(features),
+            "metadata": {"total_count": total_count, "source": "projection.s101_feature_current"},
+        }],
+        "features": feature_collection,
+        "evidence_bundle": {
+            "rag_evidence": [],
+            "kg_provenance": [],
+            "regulatory_evidence": [],
+            "spatial_feature_evidence": table_rows[:100],
+            "spatial_layer_evidence": [{
+                "dataset_id": "GBENC_S101_feature",
+                "relation": "projection.s101_feature_current",
+                "feature_type_codes": S101_HAZARD_FEATURE_CODES,
+            }],
+            "accident_relation_evidence": [],
+        },
+        "orchestrator_v2": {
+            "route_plan": route_plan,
+            "query_execution_context": qec,
+            "embedding_independent": True,
+            "fast_path": "s101_hazard_radius_execute",
+        },
+        "contract_version": "geollm.execution.v1",
+        "request_id": state.get("task_id"),
+    }
+    return {
+        "final_dict": final_dict,
+        "task_plan": route_plan,
+        "query_execution_context": qec,
+        "status": AgentStatus.COMPLETED,
+        "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.COMPLETED, actor="FastS101HazardRadiusExecute"),
+    }
+
 async def data_discovery_node(state: OrchestratorState) -> OrchestratorState:
     """Discover available Lake/KG/DB sources before context resolution."""
     req = state["agent_request"].model_copy(deep=True)
@@ -2319,6 +2639,8 @@ def check_intent_parsed(state: OrchestratorState) -> str:
     query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
     if _should_fast_external_requirement(query):
         return "fast_external_data_requirement"
+    if _should_fast_execute_s101_hazard_radius(state):
+        return "fast_s101_hazard_radius_execute"
     if _should_fast_spatial_or_traffic_block(state):
         return "fast_spatial_or_traffic_block"
     if _exact_s101_feature_match(query) or _exact_s100_s101_relation_match(query) or _looks_like_legal_rag_query(query) or _looks_like_no_evidence_document_query(query):
@@ -2391,6 +2713,7 @@ def build_orchestrator_graph():
     workflow.add_node("fast_document_answer", fast_document_answer_node)
     workflow.add_node("fast_external_data_requirement", fast_external_data_requirement_node)
     workflow.add_node("fast_spatial_or_traffic_block", fast_spatial_or_traffic_block_node)
+    workflow.add_node("fast_s101_hazard_radius_execute", fast_s101_hazard_radius_execute_node)
     workflow.add_node("graph_rag", graph_rag_node)
     workflow.add_node("data_discovery", data_discovery_node)
     workflow.add_node("resolve_context", resolve_context_node)
@@ -2412,6 +2735,7 @@ def build_orchestrator_graph():
             "fast_external_data_requirement": "fast_external_data_requirement",
             "fast_document_answer": "fast_document_answer",
             "fast_spatial_or_traffic_block": "fast_spatial_or_traffic_block",
+            "fast_s101_hazard_radius_execute": "fast_s101_hazard_radius_execute",
             "create_plan": "create_plan",
             "resolve_context": "graph_rag"
         }
@@ -2419,6 +2743,7 @@ def build_orchestrator_graph():
     workflow.add_edge("fast_external_data_requirement", END)
     workflow.add_edge("fast_document_answer", END)
     workflow.add_edge("fast_spatial_or_traffic_block", END)
+    workflow.add_edge("fast_s101_hazard_radius_execute", END)
     workflow.add_conditional_edges("graph_rag", check_graph_rag_next, {
         "data_discovery": "data_discovery",
         "resolve_context": "resolve_context",
