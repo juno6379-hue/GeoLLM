@@ -33,6 +33,8 @@ app.add_middleware(
 )
 
 app.include_router(orchestrator_router, prefix="/api/v1")
+from services.orchestrator.place_router import router as place_router
+app.include_router(place_router, prefix="/api/v1")
 
 from services.orchestrator.lidar_router import router as lidar_router
 app.include_router(lidar_router, prefix="/api/v1")

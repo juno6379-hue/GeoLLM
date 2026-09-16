@@ -1,0 +1,71 @@
+.layout {
+  display: none;
+}
+
+.fCHBLK,
+.sCHBLK {
+  fill: #111827;
+  stroke: #111827;
+}
+
+.fCHWHT,
+.sCHWHT {
+  fill: #ffffff;
+  stroke: #ffffff;
+}
+
+.fDEPVS {
+  fill: #ffffff;
+  stroke: #111827;
+}
+
+.fCHGRD,
+.sCHGRD {
+  fill: #a3a3a3;
+  stroke: #111827;
+}
+
+.fCHMGD,
+.sCHMGD {
+  fill: #d946ef;
+  stroke: #d946ef;
+}
+
+.fCHRED,
+.sCHRED {
+  fill: #dc2626;
+  stroke: #dc2626;
+}
+
+.fCHGRN,
+.sCHGRN {
+  fill: #16a34a;
+  stroke: #16a34a;
+}
+
+.fCHYLW,
+.sCHYLW {
+  fill: #facc15;
+  stroke: #92400e;
+}
+
+.fCHBRN,
+.sCHBRN {
+  fill: #92400e;
+  stroke: #92400e;
+}
+
+.fCHBLU,
+.sCHBLU {
+  fill: #2563eb;
+  stroke: #2563eb;
+}
+
+path,
+circle,
+rect,
+polygon,
+polyline,
+line {
+  vector-effect: non-scaling-stroke;
+}

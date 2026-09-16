@@ -3,7 +3,8 @@ import json
 import os
 import argparse
 import re
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import StreamingResponse
@@ -285,6 +286,10 @@ def validate_evidence_candidate_decisions():
 def _to_jsonable(value):
     if hasattr(value, "model_dump"):
         return value.model_dump(mode="json")
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    if isinstance(value, Decimal):
+        return float(value)
     if isinstance(value, dict):
         return {k: _to_jsonable(v) for k, v in value.items()}
     if isinstance(value, list):
@@ -301,7 +306,7 @@ def _compact_agent_result_for_stream(agent_result):
         for key, value in evidence_bundle.items()
         if isinstance(value, list)
     }
-    return {
+    compact = {
         "task_id": result.get("task_id"),
         "agent_name": result.get("agent_name"),
         "agent_version": result.get("agent_version"),
@@ -323,6 +328,49 @@ def _compact_agent_result_for_stream(agent_result):
         "evidence_counts": evidence_counts,
         "provenance": result.get("provenance", {}),
     }
+    _preserve_spatial_stream_payload(result, compact)
+    return compact
+
+
+def _preserve_spatial_stream_payload(result: dict, compact: dict) -> None:
+    structured = result.get("structured_result") if isinstance(result.get("structured_result"), dict) else {}
+    orch = result.get("orchestrator_v2") if isinstance(result.get("orchestrator_v2"), dict) else {}
+    route = orch.get("route_plan") if isinstance(orch.get("route_plan"), dict) else {}
+    is_radius = (
+        structured.get("analysis_type") in {"feature_search_by_radius", "place_lookup", "nearest_feature", "traffic_search_by_time_space"}
+        or route.get("analysis_type") in {"feature_search_by_radius", "place_lookup", "nearest_feature", "traffic_search_by_time_space"}
+        or "location_candidates" in structured
+    )
+    for key in ("task_id", "clarification_questions", "clarification_options", "warnings"):
+        if key in result:
+            compact[key] = result[key]
+    if not is_radius:
+        return
+    qec = orch.get("query_execution_context")
+    if isinstance(qec, dict) and "orchestrator_v2" in compact:
+        compact_qec = compact["orchestrator_v2"]["query_execution_context"]
+        for key in ("request_id", "task_id", "revision", "plan_hash", "slots", "semantic_resolution", "snapshot_versions", "route_plan", "provenance"):
+            if key in qec:
+                compact_qec[key] = qec[key]
+    # The executor bounds this result. Keep every returned surface together.
+    for key in (
+        "analysis_type", "count", "total_count", "returned_count", "result_limit", "truncated",
+        "nearest_returned_count", "feature_ids", "features", "geojson", "result_id", "query_execution_id",
+        "returned_counts_by_type", "total_counts_by_type", "location_candidates",
+        "feature_type_breakdown", "location_text", "distance_m", "original_query",
+        "reference_geometry", "reference_crs", "geometry", "crs", "source_layer", "blockers",
+        "offset", "target_features", "exclusions", "spatial_context",
+        "place_id", "place_version", "location_resolution",
+        "geojson_feature_count", "map_layer_count", "evidence_bundle_counts",
+        "web_rag_usage", "result_surface",
+        "total_traffic_count", "grid_count", "source_breakdown", "monthly_breakdown",
+        "tile_layer_summary", "temporal_window", "effective_temporal_window",
+    ):
+        if key in structured:
+            compact["structured_result"][key] = structured[key]
+    for key in ("map_layers", "features", "evidence_bundle", "spatial_result_summary", "claims", "task_results"):
+        if key in result:
+            compact[key] = result[key]
 
 
 def _compact_final_result_for_stream(final_result):
@@ -336,7 +384,7 @@ def _compact_final_result_for_stream(final_result):
         for key, value in evidence_bundle.items()
         if isinstance(value, list)
     }
-    return {
+    compact = {
         "status": result.get("status"),
         "error_code": result.get("error_code"),
         "agent_name": result.get("agent_name"),
@@ -366,6 +414,82 @@ def _compact_final_result_for_stream(final_result):
         },
         "evidence_counts": evidence_counts,
     }
+    _preserve_spatial_stream_payload(result, compact)
+    return compact
+
+
+def _terminal_result_for_stream(state_vals: dict) -> dict:
+    final_result = _to_jsonable(state_vals.get("final_dict") or state_vals.get("agent_result"))
+    payload = {"error_message": state_vals.get("error_message")}
+    if final_result:
+        if os.environ.get("GEOLLM_STREAM_FULL_RESULT", "").lower() in {"1", "true", "yes", "on"}:
+            payload["final_result"] = final_result
+        else:
+            payload["final_result"] = _compact_final_result_for_stream(final_result)
+        for key in ("clarification_questions", "clarification_options"):
+            payload[key] = final_result.get(key) or []
+    return payload
+
+
+def _is_radius_state(state: dict) -> bool:
+    final = _to_jsonable(state.get("final_dict")) or {}
+    qec = _to_jsonable(state.get("query_execution_context")) or {}
+    plan = _to_jsonable(state.get("task_plan")) or {}
+    sources = [plan, qec.get("route_plan") or {}, final.get("structured_result") or {}]
+    return any(isinstance(source, dict) and source.get("analysis_type") == "feature_search_by_radius" for source in sources)
+
+
+def _is_place_clarification_state(state: dict) -> bool:
+    final = _to_jsonable(state.get("final_dict")) or {}
+    structured = final.get("structured_result") or {}
+    status = final.get("status") or _to_jsonable(state.get("status"))
+    return (
+        isinstance(structured, dict)
+        and structured.get("analysis_type") in {"place_lookup", "nearest_feature"}
+        and status in {"NEEDS_CLARIFICATION", "NEEDS_USER_INPUT", "BLOCKED", "COMPLETED"}
+    )
+
+
+def _radius_restart_state(current_state: dict, req) -> dict:
+    restarted = dict(current_state)
+    restarted["task_id"] = restarted.get("task_id") or req.task_id or str(uuid.uuid4())
+    restarted["organization_id"] = restarted.get("organization_id") or req.organization_id or "default_org"
+    restarted["user_id"] = restarted.get("user_id") or req.user_id or "default_user"
+    previous_query = current_state.get("query") or ""
+    incoming_query = req.query.strip()
+    query = incoming_query if not previous_query or previous_query in incoming_query else f"{previous_query} {incoming_query}".strip()
+    spatial = dict(_to_jsonable(current_state.get("spatial_context")) or {})
+    supplied = req.spatial_context or {}
+    changed_generic_query = _is_place_clarification_state(current_state) and incoming_query and incoming_query != previous_query
+    if changed_generic_query:
+        query = incoming_query
+        if "buffer_distance" not in supplied:
+            spatial.pop("buffer_distance", None)
+    selection_fields = ("place_id", "place_version", "location_resolution")
+    selection_changed = any(key in supplied and supplied[key] != spatial.get(key) for key in ("place_id", "place_version"))
+    manual_geometry = "geometry" in supplied and not supplied.get("place_id")
+    location_changed = supplied.get("base_location") and supplied.get("base_location") != spatial.get("base_location") and "geometry" not in supplied
+    if selection_changed or location_changed:
+        spatial.pop("geometry", None)
+        spatial.pop("crs", None)
+    if selection_changed or location_changed or manual_geometry:
+        for key in selection_fields:
+            spatial.pop(key, None)
+    spatial.update(supplied)
+    if manual_geometry:
+        for key in selection_fields:
+            spatial.pop(key, None)
+    previous_qec = _to_jsonable(current_state.get("query_execution_context")) or {}
+    revision = int(current_state.get("execution_revision") or previous_qec.get("revision") or 1) + 1
+    restarted.update(query=query, spatial_context=spatial, execution_revision=revision, status=AgentStatus.RECEIVED)
+    for field in (
+        "final_dict", "agent_request", "agent_result", "task_plan", "query_execution_context",
+        "context_result", "extracted_slots", "norm_result", "normalized_query", "normalization_debug",
+        "graph_context", "graph_rag_context", "data_discovery_result", "clarification_questions", "error_message",
+    ):
+        restarted[field] = None
+    restarted.update(approval_granted=None, retry_count=0)
+    return restarted
 
 
 def _persist_state(task_id: str, state_vals: dict) -> None:
@@ -376,8 +500,8 @@ def _persist_state(task_id: str, state_vals: dict) -> None:
         task_id,
         query=state_vals.get("query", ""),
         status=state_vals.get("status", "FAILED"),
-        organization_id=state_vals.get("organization_id"),
-        user_id=state_vals.get("user_id"),
+        organization_id=state_vals.get("organization_id") or "default_org",
+        user_id=state_vals.get("user_id") or "default_user",
         spatial_context=_to_jsonable(state_vals.get("spatial_context")),
         state_history=_to_jsonable(state_vals.get("state_history", [])),
         agent_result=_to_jsonable(state_vals.get("agent_result")),
@@ -393,8 +517,8 @@ async def run_langgraph_workflow(task_id: str, req: TaskCreateRequest):
     initial_state = {
         "task_id": task_id,
         "query": req.query,
-        "organization_id": req.organization_id,
-        "user_id": req.user_id,
+        "organization_id": req.organization_id or "default_org",
+        "user_id": req.user_id or "default_user",
         "status": AgentStatus.RECEIVED,
         "spatial_context": req.spatial_context,
         "state_history": []
@@ -420,8 +544,8 @@ def create_task(req: TaskCreateRequest, background_tasks: BackgroundTasks):
         TASK_STORE[task_id] = {
             "query": req.query,
             "status": AgentStatus.RECEIVED,
-            "organization_id": req.organization_id,
-            "user_id": req.user_id,
+            "organization_id": req.organization_id or "default_org",
+            "user_id": req.user_id or "default_user",
             "spatial_context": req.spatial_context,
             "state_history": []
         }
@@ -438,6 +562,9 @@ def create_task(req: TaskCreateRequest, background_tasks: BackgroundTasks):
 async def stream_task(req: TaskCreateRequest):
     """실시간 SSE 스트리밍 엔드포인트"""
     task_id = req.task_id if req.task_id else str(uuid.uuid4())
+    req.task_id = task_id
+    req.organization_id = req.organization_id or "default_org"
+    req.user_id = req.user_id or "default_user"
     
     # 세션 재진입 여부 파악
     is_resume = task_id in TASK_STORE
@@ -484,20 +611,25 @@ async def stream_task(req: TaskCreateRequest):
             if is_resume:
                 # 상태 머신의 현재 상태(NEEDS_CLARIFICATION 등)를 가져와서 최신 쿼리를 반영합니다.
                 state_snapshot = orchestrator_graph.get_state(config)
+                restart_state = None
                 if state_snapshot and state_snapshot.values:
                     current_state = state_snapshot.values
-                    old_query = current_state.get("query", "")
-                    # 이전 쿼리와 합침 (예: "주변 1km 양식장" + "죽도")
-                    new_query = f"{old_query} {req.query}"
+                    if (_is_radius_state(current_state) or _is_place_clarification_state(current_state)) and (req.spatial_context is not None or not state_snapshot.next):
+                        restart_state = _radius_restart_state(current_state, req)
+                        TASK_STORE.update(
+                            task_id, query=restart_state["query"], spatial_context=restart_state["spatial_context"],
+                            final_result=None, agent_result=None, snapshot=_to_jsonable(restart_state),
+                        )
+                    else:
+                        current_state = dict(current_state)
+                        current_state["task_id"] = current_state.get("task_id") or task_id
+                        current_state["organization_id"] = current_state.get("organization_id") or req.organization_id or "default_org"
+                        current_state["user_id"] = current_state.get("user_id") or req.user_id or "default_user"
+                        current_state["query"] = f"{current_state.get('query', '')} {req.query}"
+                        current_state["status"] = AgentStatus.RECEIVED
+                        orchestrator_graph.update_state(config, current_state)
                     
-                    # 현재 멈춰있는 노드가 끝나게 하거나 다시 라우팅되도록 상태 업데이트
-                    # LangGraph Checkpointer의 update_state 사용
-                    # 하지만 astream을 호출할 때 None을 주입하여 이어서 실행
-                    current_state["query"] = new_query
-                    current_state["status"] = AgentStatus.RECEIVED
-                    orchestrator_graph.update_state(config, current_state)
-                    
-                stream_iter = orchestrator_graph.astream(None, config=config, stream_mode="updates")
+                stream_iter = orchestrator_graph.astream(restart_state, config=config, stream_mode="updates")
             else:
                 stream_iter = orchestrator_graph.astream(initial_state, config=config, stream_mode="updates")
                 
@@ -547,12 +679,7 @@ async def stream_task(req: TaskCreateRequest):
             _persist_state(task_id, state_vals)
             
             safe_final = {"event": "completed", "status": final_status, "debug_trace": debug_trace}
-            if final_status == AgentStatus.COMPLETED:
-                final_result = state_vals.get("final_dict")
-                if os.environ.get("GEOLLM_STREAM_FULL_RESULT", "").lower() in {"1", "true", "yes", "on"}:
-                    safe_final["final_result"] = final_result
-                else:
-                    safe_final["final_result"] = _compact_final_result_for_stream(final_result)
+            safe_final.update(_terminal_result_for_stream(state_vals))
                 
             yield f"data: {json.dumps(safe_final, default=str)}\n\n"
             
@@ -777,7 +904,7 @@ async def get_task_status(task_id: str):
         "history": current_state.get("state_history", []),
         "parsed_intent": parsed_intent,
         "agent_result": current_state.get("agent_result").model_dump() if current_state.get("agent_result") and hasattr(current_state.get("agent_result"), "model_dump") else current_state.get("agent_result"),
-        "final_result": current_state.get("final_dict") if current_state.get("status") == AgentStatus.COMPLETED else None,
+        "final_result": current_state.get("final_dict"),
         "normalization_debug": current_state.get("normalization_debug", []),
         "normalized_query": current_state.get("normalized_query"),
         "context_result": current_state.get("context_result").__dict__ if current_state.get("context_result") else None,

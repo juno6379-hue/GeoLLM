@@ -21,6 +21,7 @@ def merge_logs(old_logs: List[StateTransitionLog], new_logs: List[StateTransitio
 
 class OrchestratorState(TypedDict):
     task_id: str
+    execution_revision: int
     query: str
     organization_id: str
     user_id: str

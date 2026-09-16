@@ -15,6 +15,10 @@ from services.llm_config import llm_api_enabled, ollama_base_url
 
 logger = get_logger("standard_rag_agent")
 ROOT = Path(__file__).resolve().parents[2]
+S101_DCEG_CHUNKS_PATH = ROOT / "outputs" / "rag" / "s101_dceg_chunks.jsonl"
+S101_FEATURE_QUERY_ALIASES = {
+    "AnchorageArea": ["정박지", "정박구역", "투묘지", "anchorage"],
+}
 
 
 def _ollama_fast_response_enabled() -> bool:
@@ -59,11 +63,121 @@ def _load_s101_catalogue_features() -> tuple[dict[str, Any], ...]:
     return tuple(item for item in values if isinstance(item, dict) and item.get("code"))
 
 
+@lru_cache(maxsize=1)
+def _load_s101_dceg_chunks() -> tuple[dict[str, Any], ...]:
+    if not S101_DCEG_CHUNKS_PATH.exists():
+        return ()
+    rows: list[dict[str, Any]] = []
+    try:
+        with S101_DCEG_CHUNKS_PATH.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                if line.strip():
+                    rows.append(json.loads(line))
+    except Exception as exc:
+        logger.warning("Failed to load S-101 DCEG chunks", error=str(exc))
+        return ()
+    return tuple(rows)
+
+
+def _is_s101_dceg_2_0_chunk(row: dict[str, Any]) -> bool:
+    metadata = row.get("metadata") or {}
+    title = str(metadata.get("title") or "")
+    source_file = str(metadata.get("source_file") or "")
+    return (
+        metadata.get("product_id") == "S-101"
+        and metadata.get("document_type") == "dceg"
+        and metadata.get("version") == "2.0.0"
+        and ("DCEG" in title or "DCEG" in source_file)
+    )
+
+
+def _score_s101_dceg_chunk(row: dict[str, Any], feature: dict[str, Any]) -> int:
+    metadata = row.get("metadata") or {}
+    text = str(row.get("text") or "")
+    lowered = text.lower()
+    code = str(feature.get("code") or "")
+    name = str(feature.get("name") or code)
+    aliases = [str(alias) for alias in feature.get("aliases") or []]
+    score = 0
+    target_feature_phrase = f"s-101 geo feature: {name.lower()}"
+    has_any_geo_feature_table = "s-101 geo feature:" in lowered
+    has_target_instruction = (
+        "if it is required to encode an anchorage" in lowered
+        or f"using the feature {name.lower()}" in lowered
+        or f"using an {name.lower()} feature" in lowered
+    )
+    for term in [code, name, *aliases]:
+        if term and term.lower() in lowered:
+            score += 20
+    related = {str(item).lower() for item in metadata.get("related_features") or []}
+    if name.lower() in related or code.lower() in related:
+        score += 30
+    if target_feature_phrase in lowered:
+        score += 200
+    elif has_any_geo_feature_table:
+        score -= 120
+    if "iho definition:" in lowered and target_feature_phrase in lowered:
+        score += 60
+    if "allowable encoding value" in lowered:
+        score += 25
+    if "if it is required to encode" in lowered or "remarks:" in lowered:
+        score += 60
+    if not target_feature_phrase in lowered and not has_target_instruction:
+        score -= 80
+    if "associated to:" in lowered or "role type role associated with" in lowered:
+        score -= 100
+    if "................................" in text:
+        score -= 40
+    return score
+
+
+def _s101_dceg_docs_for_feature(feature: dict[str, Any], limit: int = 2) -> list[dict[str, Any]]:
+    candidates: list[tuple[int, dict[str, Any]]] = []
+    for row in _load_s101_dceg_chunks():
+        if not _is_s101_dceg_2_0_chunk(row):
+            continue
+        score = _score_s101_dceg_chunk(row, feature)
+        if score > 0:
+            candidates.append((score, row))
+
+    selected: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for _, row in sorted(candidates, key=lambda item: item[0], reverse=True):
+        chunk_id = str(row.get("chunk_id") or "")
+        if not chunk_id or chunk_id in seen:
+            continue
+        seen.add(chunk_id)
+        metadata = row.get("metadata") or {}
+        selected.append({
+            "doc_id": chunk_id,
+            "chunk_id": chunk_id,
+            "title": metadata.get("title") or "S-101 Annex A DCEG Ed. 2.0.0",
+            "version": metadata.get("version") or "2.0.0",
+            "content": str(row.get("text") or ""),
+            "section": metadata.get("section"),
+            "page": metadata.get("page_no"),
+            "source": metadata.get("source_id") or "s101_dceg_2_0_0",
+            "source_id": metadata.get("source_id"),
+            "source_sha256": metadata.get("source_sha256"),
+            "similarity": 1.0,
+            "metadata": {
+                **metadata,
+                "document_type": "dceg",
+                "standard_type": "S-101",
+                "product_id": "S-101",
+                "retrieval_method": "exact_dceg_lookup",
+            },
+        })
+        if len(selected) >= limit:
+            break
+    return selected
+
+
 def _exact_s101_feature_docs(search_query: str) -> list[dict[str, Any]]:
     query_lower = search_query.lower()
     if "s-101" not in query_lower and "s101" not in query_lower and "feature catalogue" not in query_lower:
         return []
-    if not any(term in query_lower for term in ("definition", "정의", "설명", "feature catalogue", "근거")):
+    if not any(term in query_lower for term in ("definition", "encoding", "dceg", "instruction", "guidance", "정의", "설명", "인코딩", "지침", "근거", "feature catalogue")):
         return []
 
     docs: list[dict[str, Any]] = []
@@ -71,7 +185,9 @@ def _exact_s101_feature_docs(search_query: str) -> list[dict[str, Any]]:
         code = str(feature.get("code") or "")
         name = str(feature.get("name") or code)
         aliases = [str(alias) for alias in feature.get("aliases") or []]
+        query_aliases = S101_FEATURE_QUERY_ALIASES.get(code, [])
         needles = [code.lower(), name.lower(), *[alias.lower() for alias in aliases]]
+        needles.extend(str(alias).lower() for alias in query_aliases)
         if not any(needle and needle in query_lower for needle in needles):
             continue
 
@@ -110,12 +226,45 @@ def _exact_s101_feature_docs(search_query: str) -> list[dict[str, Any]]:
                 "retrieval_method": "exact_catalogue_lookup",
             },
         })
-    return docs[: int(os.environ.get("RAG_EXACT_LOOKUP_TOP_K", "2"))]
+        docs.extend(_s101_dceg_docs_for_feature(feature))
+    return docs[: int(os.environ.get("RAG_EXACT_LOOKUP_TOP_K", "3"))]
+
+
+def _deterministic_s101_feature_summary(search_query: str, retrieved_docs) -> str | None:
+    feature_doc = next((doc for doc in retrieved_docs if (doc.get("metadata") or {}).get("document_type") == "feature_catalogue"), None)
+    dceg_docs = [doc for doc in retrieved_docs if (doc.get("metadata") or {}).get("document_type") == "dceg"]
+    if not feature_doc:
+        return None
+    metadata = feature_doc.get("metadata") or {}
+    content = str(feature_doc.get("content") or "")
+    definition = ""
+    if "Definition: " in content:
+        definition = content.split("Definition: ", 1)[1].split(". Aliases:", 1)[0].strip()
+    feature_name = metadata.get("feature_name") or metadata.get("feature_code") or "해당 객체"
+    summary = (
+        f"S-101 Feature Catalogue 2.0.0 기준 {feature_name}의 정의는 \"{definition}\"입니다. "
+        f"근거는 Feature Catalogue의 {feature_doc.get('section')} 항목입니다."
+    )
+    if dceg_docs:
+        refs = ", ".join(
+            f"{doc.get('title')} / {doc.get('section')}"
+            for doc in dceg_docs
+            if doc.get("title") and doc.get("section")
+        )
+        summary += (
+            f" 인코딩 지침 근거는 S-101 Annex A DCEG Ed. 2.0.0의 객체별 본문 청크이며, "
+            f"참조 위치는 {refs}입니다."
+        )
+    return summary
 
 
 def _deterministic_rag_summary(search_query: str, retrieved_docs) -> str:
     if not retrieved_docs:
         return "관련 표준 문서 근거를 찾지 못했습니다. 임의의 정의나 기준은 생성하지 않았습니다."
+
+    exact_summary = _deterministic_s101_feature_summary(search_query, retrieved_docs)
+    if exact_summary:
+        return exact_summary
 
     doc = retrieved_docs[0]
     title = doc.get("title") or doc.get("source") or "검색 문서"

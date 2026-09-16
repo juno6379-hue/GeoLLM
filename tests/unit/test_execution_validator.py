@@ -50,6 +50,38 @@ def _fake_relation_info(relation):
                 {"name": "geometry", "type": "geometry(Geometry,4326)"},
             ],
         }
+    if relation == "serving.dynamic_traffic_layer":
+        return {
+            "exists": True,
+            "count": 17472,
+            "columns": [
+                {"name": "source_id", "type": "text"},
+                {"name": "observed_at", "type": "timestamp with time zone"},
+                {"name": "observed_month", "type": "date"},
+                {"name": "layer_id", "type": "text"},
+                {"name": "layer_source", "type": "text"},
+                {"name": "grid_id", "type": "text"},
+                {"name": "grid_level", "type": "integer"},
+                {"name": "vessel_count_total", "type": "integer"},
+                {"name": "geom", "type": "geometry(Geometry,4326)"},
+            ],
+        }
+    if relation == "serving.dynamic_traffic_tile_layer":
+        return {
+            "exists": True,
+            "count": 720174,
+            "columns": [
+                {"name": "source_id", "type": "text"},
+                {"name": "observed_at", "type": "timestamp with time zone"},
+                {"name": "observed_month", "type": "date"},
+                {"name": "layer_id", "type": "text"},
+                {"name": "layer_source", "type": "text"},
+                {"name": "zoom_level", "type": "integer"},
+                {"name": "tile_x", "type": "integer"},
+                {"name": "tile_y", "type": "integer"},
+                {"name": "tile_path", "type": "text"},
+            ],
+        }
     return {"exists": False, "columns": [], "count": None}
 
 
@@ -413,7 +445,7 @@ def test_sea_parting_blocks_until_ingested(monkeypatch):
     assert validated.tool_bindings[0].tool_id == "tide.sea_parting_lookup"
 
 
-def test_dynamic_traffic_blocks_until_ingested(monkeypatch):
+def test_dynamic_traffic_ready_after_ingestion(monkeypatch):
     from services.orchestrator import execution_validator
 
     adapter = SchemaBindingAdapter()
@@ -431,6 +463,7 @@ def test_dynamic_traffic_blocks_until_ingested(monkeypatch):
 
     validated = validate_execution_context(qec)
 
-    assert validated.readiness == PlanStatus.BLOCKED_DATA
-    assert any("ais_route_analysis" in blocker for blocker in validated.blockers)
+    assert validated.readiness == PlanStatus.EXECUTION_READY
+    assert not validated.blockers
+    assert validated.data_bindings[0].relation == "serving.dynamic_traffic_layer"
     assert validated.tool_bindings[0].tool_id == "traffic.dynamic_layer_search"

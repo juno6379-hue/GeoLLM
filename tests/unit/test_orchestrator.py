@@ -72,6 +72,29 @@ def test_query_execution_context_contract_fields():
     assert qec.slots.resolved_target_set == ["Wreck"]
     assert qec.rag["filters"] == {"product_id": "S-101"}
 
+
+def test_s101_hazard_radius_fast_path_is_registry_backed():
+    from services.orchestrator.graph import (
+        _resolve_known_marine_place_wkt,
+        _s101_hazard_radius_registry_config,
+    )
+
+    config = _s101_hazard_radius_registry_config()
+
+    assert config["template_id"] == "feature_search_by_radius"
+    assert config["layer_id"] == "GBENC_S101_feature"
+    assert set(config["feature_codes"]) >= {100, 101, 102}
+    assert set(config["target_features"]) >= {"UnderwaterAwashRock", "Wreck", "Obstruction"}
+    assert config["layer"]["physical_table"] == "projection.s101_feature_current"
+    assert config["template"]["executor"] == "postgis.dwithin"
+
+    wkt, name = _resolve_known_marine_place_wkt(
+        "Busan Port Entrance 3km Wreck",
+        {"spatial_context": {}},
+    )
+    assert wkt == "POINT(129.075 35.075)"
+    assert name == "부산항 입구"
+
 @pytest.mark.asyncio
 async def test_state_machine_flow():
     from services.orchestrator.state_machine import run_orchestration_workflow

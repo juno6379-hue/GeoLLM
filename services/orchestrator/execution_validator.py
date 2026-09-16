@@ -1,5 +1,9 @@
+import math
 import os
 from typing import Any, Dict, List
+
+from shapely import wkt
+from shapely.errors import ShapelyError
 
 from shared.schemas.agent import PlanStatus, QueryExecutionContext
 from services.orchestrator.schema_binding_adapter import schema_binding_adapter
@@ -11,12 +15,19 @@ MAX_FORECAST_HORIZON_STEPS = 168
 
 
 def _has_reference_geometry(qec: QueryExecutionContext) -> bool:
-    if qec.slots.reference_geometry or qec.slots.geometry_ref:
-        return True
-    spatial_context = qec.spatial.get("spatial_context") if isinstance(qec.spatial, dict) else None
-    if isinstance(spatial_context, dict) and spatial_context.get("geometry"):
-        return True
-    return False
+    geometry = qec.slots.reference_geometry
+    if geometry is None:
+        spatial_context = qec.spatial.get("spatial_context") if isinstance(qec.spatial, dict) else None
+        if isinstance(spatial_context, dict):
+            geometry = spatial_context.get("geometry")
+    # A geometry reference must be resolved to actual geometry before execution.
+    if not isinstance(geometry, str) or not geometry.strip():
+        return False
+    try:
+        parsed = wkt.loads(geometry)
+        return not parsed.is_empty and parsed.is_valid and all(math.isfinite(v) for v in parsed.bounds)
+    except (ShapelyError, TypeError, ValueError):
+        return False
 
 
 def _has_target_binding(qec: QueryExecutionContext) -> bool:
@@ -24,12 +35,21 @@ def _has_target_binding(qec: QueryExecutionContext) -> bool:
     return bool(slots.target_features or slots.nftc_codes or slots.resolved_target_set)
 
 
-def _requested_k(qec: QueryExecutionContext) -> int:
-    raw = qec.slots.filters.get("k") or qec.slots.filters.get("limit") or 1
-    try:
-        return int(raw)
-    except (TypeError, ValueError):
+def _requested_integer(filters: Dict[str, Any], *keys: str, default: int) -> int:
+    raw = next((filters[key] for key in keys if filters.get(key) is not None), default)
+    if isinstance(raw, bool):
         return -1
+    try:
+        value = int(raw)
+        if not isinstance(raw, str) and raw != value:
+            return -1
+        return value
+    except (TypeError, ValueError, OverflowError):
+        return -1
+
+
+def _requested_k(qec: QueryExecutionContext) -> int:
+    return _requested_integer(qec.slots.filters, "k", "limit", default=1)
 
 
 def _has_feature_instance_ref(qec: QueryExecutionContext) -> bool:
@@ -64,7 +84,7 @@ def _rag_profile_available(qec: QueryExecutionContext) -> bool:
     )
 
 
-def validate_execution_context(qec: QueryExecutionContext) -> QueryExecutionContext:
+def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=None) -> QueryExecutionContext:
     """공유 실행계약을 검증하는 결정론적 실행 gate."""
     current = qec.model_copy(deep=True)
     blockers: List[str] = list(current.blockers or [])
@@ -73,7 +93,7 @@ def validate_execution_context(qec: QueryExecutionContext) -> QueryExecutionCont
     route_plan: Dict[str, Any] = current.route_plan or {}
     analysis_type = route_plan.get("analysis_type") or slots.analysis_type or slots.operation
 
-    binding_result = schema_binding_adapter.build_bindings(route_plan, slots.model_dump())
+    binding_result = (binding_adapter or schema_binding_adapter).build_bindings(route_plan, slots.model_dump())
     current.data_bindings = binding_result.data_bindings
     current.tool_bindings = binding_result.tool_bindings
     blockers.extend(binding_result.blockers)
@@ -88,9 +108,11 @@ def validate_execution_context(qec: QueryExecutionContext) -> QueryExecutionCont
         else:
             try:
                 distance = float(slots.distance_m)
-                if distance <= 0:
+                if not math.isfinite(distance):
+                    blockers.append("NEEDS_USER_INPUT: distance_m must be finite")
+                elif distance <= 0:
                     blockers.append("NEEDS_USER_INPUT: distance_m must be positive")
-                if distance > MAX_RADIUS_M:
+                elif distance > MAX_RADIUS_M:
                     blockers.append(f"BLOCKED_POLICY: distance_m exceeds max radius {MAX_RADIUS_M:g}")
             except (TypeError, ValueError):
                 blockers.append("NEEDS_USER_INPUT: distance_m must be numeric")
@@ -168,15 +190,11 @@ def validate_execution_context(qec: QueryExecutionContext) -> QueryExecutionCont
             if not (filters.get("value_column") or filters.get("metric") or filters.get("observed_property") or has_time_series_binding):
                 blockers.append("NEEDS_USER_INPUT: value_column is required")
         if analysis_type in {"observed_time_series_forecast", "time_series_forecast"}:
-            raw_horizon = filters.get("horizon_steps") or filters.get("horizon") or 3
-            try:
-                horizon_steps = int(raw_horizon)
-                if horizon_steps <= 0:
-                    blockers.append("NEEDS_USER_INPUT: horizon_steps must be positive")
-                elif horizon_steps > MAX_FORECAST_HORIZON_STEPS:
-                    blockers.append(f"BLOCKED_POLICY: horizon_steps exceeds max {MAX_FORECAST_HORIZON_STEPS}")
-            except (TypeError, ValueError):
-                blockers.append("NEEDS_USER_INPUT: horizon_steps must be an integer")
+            horizon_steps = _requested_integer(filters, "horizon_steps", "horizon", default=3)
+            if horizon_steps <= 0:
+                blockers.append("NEEDS_USER_INPUT: horizon_steps must be a positive integer")
+            elif horizon_steps > MAX_FORECAST_HORIZON_STEPS:
+                blockers.append(f"BLOCKED_POLICY: horizon_steps exceeds max {MAX_FORECAST_HORIZON_STEPS}")
         if not current.tool_bindings:
             blockers.append("BLOCKED_CONFIG: no validated time-series tool binding")
 
@@ -197,18 +215,22 @@ def validate_execution_context(qec: QueryExecutionContext) -> QueryExecutionCont
             blockers.append("BLOCKED_CONFIG: no validated spatial layer binding")
         if not current.tool_bindings:
             blockers.append("BLOCKED_CONFIG: no validated spatial layer tool binding")
+    else:
+        blockers.append(f"BLOCKED_CONFIG: unsupported operation: {analysis_type}")
 
     # Deduplicate while preserving order.
     current.blockers = list(dict.fromkeys(blockers))
     current.warnings = list(dict.fromkeys(warnings))
 
     if current.blockers:
-        if any(item.startswith("NEEDS_USER_INPUT") for item in current.blockers):
-            current.readiness = PlanStatus.NEEDS_USER_INPUT
-        elif any(item.startswith("BLOCKED_POLICY") for item in current.blockers):
+        if any(item.startswith("BLOCKED_POLICY") for item in current.blockers):
             current.readiness = PlanStatus.BLOCKED_POLICY
         elif any(item.startswith("BLOCKED_DATA") for item in current.blockers):
             current.readiness = PlanStatus.BLOCKED_DATA
+        elif any(item.startswith("BLOCKED_CONFIG") for item in current.blockers):
+            current.readiness = PlanStatus.BLOCKED_CONFIG
+        elif any(item.startswith("NEEDS_USER_INPUT") for item in current.blockers):
+            current.readiness = PlanStatus.NEEDS_USER_INPUT
         else:
             current.readiness = PlanStatus.BLOCKED_CONFIG
     else:

@@ -63,9 +63,9 @@ services:
     image: geollm-container-1:latest
     container_name: geollm-container-1
     ports:
-      - "11000:11000"
-      - "11001:11001"
-      - "11002:11002"
+      - "11000:8687"
+      - "11001:8657"
+      - "11002:8057"
     environment:
       - TileServer__MapEngineFallback__PreferMapEngine=false
       - TileServer__MapEngineFallback__Enabled=true

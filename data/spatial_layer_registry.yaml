@@ -6,7 +6,10 @@ layers:
     execution_status: executable
     physical_table: projection.s101_feature_current
     geometry_column: geometry
+    id_column: feature_instance_id
     code_column: feature_type_code
+    name_column: feature_type_name
+    attributes_column: attributes
     srid: 4326
     database: S100_dev_postgis
     supported_operations:
@@ -16,10 +19,81 @@ layers:
   marine_gazetteer:
     zone: serving
     layer_type: place_gazetteer
-    execution_status: registered
-    physical_table: public.maritime_gazetteer
-    geometry_column: geom
+    execution_status: executable
+    physical_table: serving.marine_gazetteer_current
+    geometry_column: geometry
+    name_column: name
     srid: 4326
+    supported_operations:
+    - geocode
+    - nearest
+    - dwithin
+  navigation_aid_busan:
+    zone: serving
+    layer_type: navigation_aid
+    execution_status: executable
+    source_asset: Dataset/해양수산부 부산지방해양수산청_항로표지정보_20250623.csv
+    physical_table: serving.navigation_aid_current
+    geometry_column: geometry
+    name_column: name
+    id_column: aid_no
+    srid: 4326
+    supported_operations:
+    - intersects
+    - dwithin
+    - nearest
+  anchorage_area:
+    zone: serving
+    layer_type: anchorage
+    execution_status: executable
+    source_asset: Dataset/정박지(면).zip
+    physical_table: serving.anchorage_area_current
+    geometry_column: geometry
+    name_column: name
+    srid: 4326
+    supported_operations:
+    - intersects
+    - dwithin
+    - nearest
+  anchorage_point:
+    zone: serving
+    layer_type: anchorage
+    execution_status: executable
+    source_asset: Dataset/정박지(점).zip
+    physical_table: serving.anchorage_point_current
+    geometry_column: geometry
+    name_column: name
+    srid: 4326
+    supported_operations:
+    - intersects
+    - dwithin
+    - nearest
+  fairway_area:
+    zone: serving
+    layer_type: fairway
+    execution_status: executable
+    source_asset: Dataset/일반항로.zip
+    physical_table: serving.fairway_area_current
+    geometry_column: geometry
+    name_column: name
+    srid: 4326
+    supported_operations:
+    - intersects
+    - dwithin
+    - nearest
+  traffic_separation_boundary:
+    zone: serving
+    layer_type: traffic_separation_boundary
+    execution_status: executable
+    source_asset: Dataset/통항분리경계선.zip
+    physical_table: serving.traffic_separation_boundary_current
+    geometry_column: geometry
+    name_column: name
+    srid: 4326
+    supported_operations:
+    - intersects
+    - dwithin
+    - nearest
   accident_s101_relation:
     zone: serving
     layer_type: accident_relation
@@ -81,7 +155,7 @@ layers:
     execution_status: executable
     source_asset: Dataset/도서지명.zip
     geometry_column: geometry
-    name_column: place_name
+    name_column: name
     srid: 4326
     supported_operations:
     - intersects

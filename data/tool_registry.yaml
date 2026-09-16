@@ -9,6 +9,10 @@ tools:
   postgis.dwithin:
     kind: spatial_function
     function: ST_DWithin
+  postgis.nearest:
+    kind: spatial_function
+    function: ST_Distance
+    template: nearest_feature
   rag.graph_scoped_retrieve:
     kind: graph_rag
   traffic.dynamic_layer_search:

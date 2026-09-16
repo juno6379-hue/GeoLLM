@@ -325,14 +325,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 encImageryLayer = null;
                 document.querySelectorAll('.btnEncOverlay, #btnEncOverlay').forEach(b => b.style.backgroundColor = '');
             } else {
-                const s101EncUrl = 'http://localhost:11000/encService';
+                const s101EncUrl = 'http://localhost:11002/encService';
                 const encProvider = new Cesium.WebMapServiceImageryProvider({
                     url: s101EncUrl,
                     layers: 'enc101',
                     parameters: {
                         format: 'image/png',
                         transparent: true,
-                        version: '1.3.0',
+                        version: '1.1.1',
                         displayMode: 'base,standard,others',
                         showTeText: 'true',
                         colorPalette: 'DAY',

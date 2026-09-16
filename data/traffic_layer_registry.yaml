@@ -6,50 +6,166 @@ layers:
   ais_route_analysis:
     source: AIS
     source_path: Dataset/AIS항로분석.zip
-    execution_status: needs_ingestion
-    expected_physical_table: serving.dynamic_traffic_layer
+    execution_status: executable
     data_type: dynamic_traffic_derived
     geometry_type: Polygon
     route_density_line_grid: grid_density
     crs: EPSG:5179
     related_concepts:
-      - traffic_density
-      - collision_risk
-      - route_risk
+    - traffic_density
+    - collision_risk
+    - route_risk
+    physical_table: serving.dynamic_traffic_layer
+    raw_table: raw.dynamic_traffic_archive_feature
+    standardized_table: standardized.dynamic_traffic_observation
+    geometry_column: geom
+    temporal_column: observed_at
+    time_bucket_column: observed_month
+    count_column: vessel_count_total
+    grid_id_column: grid_id
+    grid_level_column: grid_level
+    reference_place_columns:
+    - reference_place_id
+    - reference_place_name
+    - reference_distance_m
+    srid: 4326
+    available_months:
+    - '202301'
+    - '202302'
+    - '202303'
+    - '202304'
+    - '202305'
+    - '202306'
+    - '202307'
+    - '202308'
+    - '202309'
+    - '202310'
+    - '202311'
+    - '202312'
+    ingested_rows: 8736
+    last_ingested_at: '2026-09-15T08:42:48.518274+00:00'
   ais_major_route:
     source: AIS
     source_path: Dataset/AIS주요통항로분석.zip
-    execution_status: needs_ingestion
-    expected_physical_table: serving.dynamic_traffic_layer
+    execution_status: executable
     data_type: dynamic_traffic_derived
     geometry_type: raster_tile
     route_density_line_grid: major_route_raster_tile
     related_concepts:
-      - traffic_density
-      - collision_risk
-      - route_risk
+    - traffic_density
+    - collision_risk
+    - route_risk
+    layer_type: dynamic_traffic_tile
+    physical_table: serving.dynamic_traffic_tile_layer
+    raw_table: raw.dynamic_traffic_tile_archive
+    tile_path_column: tile_path
+    temporal_column: observed_at
+    time_bucket_column: observed_month
+    zoom_column: zoom_level
+    tile_x_column: tile_x
+    tile_y_column: tile_y
+    available_months:
+    - '202301'
+    - '202302'
+    - '202303'
+    - '202304'
+    - '202305'
+    - '202306'
+    - '202307'
+    - '202308'
+    - '202309'
+    - '202310'
+    - '202311'
+    - '202312'
+    available_zooms:
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    ingested_tiles: 486036
+    last_ingested_at: '2026-09-16T02:05:03.755368+00:00'
   vpass_route_analysis:
     source: V-PASS
     source_path: Dataset/V-PASS항로분석.zip
-    execution_status: needs_ingestion
-    expected_physical_table: serving.dynamic_traffic_layer
+    execution_status: executable
     data_type: dynamic_traffic_derived
     geometry_type: Polygon
     route_density_line_grid: grid_density
     crs: EPSG:5179
     related_concepts:
-      - small_vessel_traffic
-      - collision_risk
-      - rescue_vulnerability
+    - small_vessel_traffic
+    - collision_risk
+    - rescue_vulnerability
+    physical_table: serving.dynamic_traffic_layer
+    raw_table: raw.dynamic_traffic_archive_feature
+    standardized_table: standardized.dynamic_traffic_observation
+    geometry_column: geom
+    temporal_column: observed_at
+    time_bucket_column: observed_month
+    count_column: vessel_count_total
+    grid_id_column: grid_id
+    grid_level_column: grid_level
+    reference_place_columns:
+    - reference_place_id
+    - reference_place_name
+    - reference_distance_m
+    srid: 4326
+    available_months:
+    - '202301'
+    - '202302'
+    - '202303'
+    - '202304'
+    - '202305'
+    - '202306'
+    - '202307'
+    - '202308'
+    - '202309'
+    - '202310'
+    - '202311'
+    - '202312'
+    ingested_rows: 8736
+    last_ingested_at: '2026-09-15T08:42:48.518350+00:00'
   vpass_major_route:
     source: V-PASS
     source_path: Dataset/V-PASS주요통항로분석.zip
-    execution_status: needs_ingestion
-    expected_physical_table: serving.dynamic_traffic_layer
+    execution_status: executable
     data_type: dynamic_traffic_derived
     geometry_type: raster_tile
     route_density_line_grid: major_route_raster_tile
     related_concepts:
-      - small_vessel_traffic
-      - collision_risk
-      - rescue_vulnerability
+    - small_vessel_traffic
+    - collision_risk
+    - rescue_vulnerability
+    layer_type: dynamic_traffic_tile
+    physical_table: serving.dynamic_traffic_tile_layer
+    raw_table: raw.dynamic_traffic_tile_archive
+    tile_path_column: tile_path
+    temporal_column: observed_at
+    time_bucket_column: observed_month
+    zoom_column: zoom_level
+    tile_x_column: tile_x
+    tile_y_column: tile_y
+    available_months:
+    - '202301'
+    - '202302'
+    - '202303'
+    - '202304'
+    - '202305'
+    - '202306'
+    - '202307'
+    - '202308'
+    - '202309'
+    - '202310'
+    - '202311'
+    - '202312'
+    available_zooms:
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    ingested_tiles: 234138
+    last_ingested_at: '2026-09-16T02:05:03.755507+00:00'

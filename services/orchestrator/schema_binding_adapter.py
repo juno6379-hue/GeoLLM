@@ -1,4 +1,5 @@
 import os
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -39,7 +40,8 @@ class SchemaBindingAdapter:
     actual database schema.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, connection=None) -> None:
+        self.connection = connection
         self.layer_registry = _load_yaml(DATA_DIR / "spatial_layer_registry.yaml")
         self.traffic_layer_registry = _load_yaml(DATA_DIR / "traffic_layer_registry.yaml")
         self.time_series_registry = _load_yaml(DATA_DIR / "time_series_registry.yaml")
@@ -172,9 +174,11 @@ class SchemaBindingAdapter:
         self._bind_tool(tool_id, operation, template_id, result)
 
     def _bind_feature_radius(self, route_plan: Dict[str, Any], result: BindingResult) -> None:
-        self._bind_layer("GBENC_S101_feature", result)
-        self._bind_tool("gbenc.s101_feature_search_by_radius", "feature_search_by_radius", "feature_search_by_radius", result)
-        self._bind_tool("postgis.dwithin", "ST_DWithin", "feature_search_by_radius", result)
+        layer_id = route_plan.get("radius_layer_id") or "GBENC_S101_feature"
+        template_id = route_plan.get("radius_template_id") or "feature_search_by_radius"
+        self._bind_layer(layer_id, result)
+        self._bind_tool("gbenc.s101_feature_search_by_radius", "feature_search_by_radius", template_id, result)
+        self._bind_tool("postgis.dwithin", "ST_DWithin", template_id, result)
 
     def _bind_feature_area(self, route_plan: Dict[str, Any], result: BindingResult) -> None:
         self._bind_layer("GBENC_S101_feature", result)
@@ -211,6 +215,32 @@ class SchemaBindingAdapter:
                 result.blockers.append(f"BLOCKED_CONFIG: relation not found: {relation}")
                 continue
             columns = {col["name"]: col for col in info.get("columns", [])}
+            if layer.get("layer_type") == "dynamic_traffic_tile" or layer.get("geometry_type") == "raster_tile":
+                tile_path_column = layer.get("tile_path_column", "tile_path")
+                for required_column in [
+                    tile_path_column,
+                    layer.get("zoom_column", "zoom_level"),
+                    layer.get("tile_x_column", "tile_x"),
+                    layer.get("tile_y_column", "tile_y"),
+                ]:
+                    if required_column not in columns:
+                        result.blockers.append(f"BLOCKED_CONFIG: tile column not found: {relation}.{required_column}")
+                        break
+                else:
+                    result.data_bindings.append(
+                        DataBinding(
+                            dataset_id=layer_id,
+                            relation=relation,
+                            geometry_column=tile_path_column,
+                            srid=None,
+                            snapshot_version=str(self.traffic_layer_registry.get("version", "")) or None,
+                            layer_type="dynamic_traffic_tile",
+                            source_asset=layer.get("source_path"),
+                            execution_status=layer.get("execution_status"),
+                            read_only=True,
+                        )
+                    )
+                continue
             geometry_column = layer.get("geometry_column", "geom")
             if geometry_column not in columns:
                 result.blockers.append(f"BLOCKED_CONFIG: geometry column not found: {relation}.{geometry_column}")
@@ -278,6 +308,9 @@ class SchemaBindingAdapter:
         if not info.get("exists"):
             result.blockers.append(f"BLOCKED_CONFIG: relation not found: {relation}")
             return
+        if info.get("has_select") is False:
+            result.blockers.append(f"BLOCKED_POLICY: SELECT access denied: {relation}")
+            return
 
         columns = {col["name"]: col for col in info.get("columns", [])}
         if geometry_column not in columns:
@@ -333,15 +366,19 @@ class SchemaBindingAdapter:
 
     def _inspect_relation(self, relation: str) -> Dict[str, Any]:
         url = os.getenv("S101_DB_URL") or os.getenv("POSTGIS_URL")
-        if not url:
+        if not url and self.connection is None:
             return {"exists": False, "error": "S101_DB_URL or POSTGIS_URL is not configured"}
 
         schema, table = relation.split(".", 1)
         try:
             import psycopg2
 
-            with psycopg2.connect(url, connect_timeout=3) as conn:
+            connection = nullcontext(self.connection) if self.connection is not None else psycopg2.connect(url, connect_timeout=3)
+            with connection as conn:
+                if self.connection is None:
+                    conn.set_session(readonly=True)
                 with conn.cursor() as cur:
+                    cur.execute("SELECT set_config('statement_timeout', '5000', true)")
                     cur.execute("select to_regclass(%s)", (relation,))
                     exists = bool(cur.fetchone()[0])
                     columns: List[Dict[str, str]] = []
@@ -362,9 +399,9 @@ class SchemaBindingAdapter:
                             (schema, table),
                         )
                         columns = [{"name": row[0], "type": row[1]} for row in cur.fetchall()]
-                        cur.execute(f"select count(*) from {schema}.{table}")
-                        count = int(cur.fetchone()[0])
-                    return {"exists": exists, "columns": columns, "count": count}
+                    cur.execute("select has_table_privilege(to_regclass(%s), 'SELECT')", (relation,))
+                    has_select = bool(cur.fetchone()[0])
+                    return {"exists": exists, "columns": columns, "count": count, "has_select": has_select}
         except Exception as exc:
             logger.warning("Schema inspection failed", relation=relation, error=str(exc))
             return {"exists": False, "error": f"{type(exc).__name__}: {exc}"}

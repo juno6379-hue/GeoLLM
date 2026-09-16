@@ -1,0 +1,29 @@
+version: '1.0'
+places:
+  busan_port_entrance:
+    canonical_name: 부산항 입구
+    aliases:
+      - 부산항 입구
+      - 부산항입구
+      - 부산항
+      - Busan Port Entrance
+      - busan port entrance
+      - Busan Port
+      - busan port
+    geometry_wkt: POINT(129.075 35.075)
+    srid: 4326
+    status: approved
+    provenance: local_curated_binding
+  incheon_port:
+    canonical_name: 인천항
+    aliases:
+      - 인천항
+      - 인천
+      - Incheon Port
+      - incheon port
+      - Incheon
+      - incheon
+    geometry_wkt: POINT(126.592 37.456)
+    srid: 4326
+    status: approved
+    provenance: local_curated_binding

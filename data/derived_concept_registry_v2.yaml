@@ -2,91 +2,257 @@ version: '2.0'
 derived_concepts:
   navigation_hazard_object:
     aliases:
-      - 위험객체
-      - hazard
+    - 위험객체
+    - 위험 객체
+    - 항행위험
+    - hazard
     default_context: navigation_safety
     analysis_type: feature_search_by_radius
     primary_agent: Spatial Analysis Agent
     required_tools:
-      - geocoder.resolve_location
-      - gbenc.s101_feature_search_by_radius
-      - postgis.dwithin
+    - geocoder.resolve_location
+    - gbenc.s101_feature_search_by_radius
+    - postgis.dwithin
     required_data:
-      - GBENC_S101_feature
-      - GBENC_codeinformation
-      - s101_feature_dictionary
-      - marine_term_dictionary
-      - location_gazetteer
+    - GBENC_S101_feature
+    - GBENC_codeinformation
+    - s101_feature_dictionary
+    - marine_term_dictionary
+    - location_gazetteer
     target_features:
-      - Wreck
-      - Obstruction
-      - UnderwaterAwashRock
-      - BuoyIsolatedDanger
-      - BeaconIsolatedDanger
+    - Wreck
+    - Obstruction
+    - UnderwaterAwashRock
+    - IsolatedDangerBuoy
+    - IsolatedDangerBeacon
+    - EmergencyWreckMarkingBuoy
+    - LateralBuoy
+    - LateralBeacon
+    - CardinalBuoy
+    - CardinalBeacon
+    - SpecialPurposeGeneralBuoy
+    - SpecialPurposeGeneralBeacon
+    - LightAllAround
+    - LightSectored
+    execution_profiles:
+      s101_hazard_radius:
+        policy_version: '1.0'
+        context: navigation_safety
+        query_template: feature_search_by_radius
+        layer: GBENC_S101_feature
+        auto_resolve_feature_codes: true
+        feature_code_source: deployed_projection
+        candidate_source:
+          registry: data/s100_s101_mapping_registry.yaml
+          mapping: semantic_mappings.navigation_hazard_object.feature_candidates
+        target_features:
+        - UnderwaterAwashRock
+        - Wreck
+        - Obstruction
+        - IsolatedDangerBuoy
+        - IsolatedDangerBeacon
+        - EmergencyWreckMarkingBuoy
+        - LateralBuoy
+        - LateralBeacon
+        - CardinalBuoy
+        - CardinalBeacon
+        - SpecialPurposeGeneralBuoy
+        - SpecialPurposeGeneralBeacon
+        - LightAllAround
+        - LightSectored
+        feature_aliases:
+          UnderwaterAwashRock:
+          - UnderwaterAwashRock
+          - 간출암
+          - 수중암
+          - 수중암초
+          Wreck:
+          - Wreck
+          - 침선
+          - 난파선
+          Obstruction:
+          - Obstruction
+          - 장애물
+          - 항행장애물
+          IsolatedDangerBuoy:
+          - IsolatedDangerBuoy
+          - BuoyIsolatedDanger
+          - isolated danger buoy
+          - 고립위험 부표
+          - 위험 부표
+          IsolatedDangerBeacon:
+          - IsolatedDangerBeacon
+          - BeaconIsolatedDanger
+          - isolated danger beacon
+          - 고립위험 표지
+          - 위험 등표
+          EmergencyWreckMarkingBuoy:
+          - EmergencyWreckMarkingBuoy
+          - emergency wreck marking buoy
+          - 침선표지부표
+          - 침선 표지 부표
+          LateralBuoy:
+          - LateralBuoy
+          - lateral buoy
+          - buoy
+          - buoys
+          LateralBeacon:
+          - LateralBeacon
+          - lateral beacon
+          - beacon
+          - beacons
+          CardinalBuoy:
+          - CardinalBuoy
+          - cardinal buoy
+          CardinalBeacon:
+          - CardinalBeacon
+          - cardinal beacon
+          SpecialPurposeGeneralBuoy:
+          - SpecialPurposeGeneralBuoy
+          - special purpose buoy
+          SpecialPurposeGeneralBeacon:
+          - SpecialPurposeGeneralBeacon
+          - special purpose beacon
+          LightAllAround:
+          - LightAllAround
+          - light
+          - lights
+          - all around light
+          LightSectored:
+          - LightSectored
+          - sector light
+          - sectored light
+        feature_code_map:
+          UnderwaterAwashRock: 100
+          Wreck: 101
+          Obstruction: 102
+          IsolatedDangerBuoy:
+          - 556
+          - 557
+          - 558
+          - 559
+          - 560
+          IsolatedDangerBeacon:
+          - 556
+          - 557
+          - 558
+          - 559
+          - 560
+          EmergencyWreckMarkingBuoy:
+          - 556
+          - 557
+          LateralBuoy:
+          - 556
+          - 557
+          - 558
+          - 559
+          - 560
+          - 561
+          - 562
+          LateralBeacon:
+          - 556
+          - 557
+          - 558
+          - 559
+          - 560
+          - 561
+          CardinalBuoy:
+          - 556
+          - 557
+          CardinalBeacon:
+          - 556
+          SpecialPurposeGeneralBuoy:
+          - 556
+          - 557
+          - 558
+          - 559
+          - 560
+          - 561
+          - 562
+          - 563
+          - 564
+          - 565
+          - 566
+          - 567
+          SpecialPurposeGeneralBeacon:
+          - 556
+          - 557
+          - 558
+          - 559
+          - 560
+          - 561
+          - 562
+          - 563
+          - 564
+          - 565
+          - 566
+          LightAllAround: 167
+          LightSectored: 168
+        result_limit: 500
     contexts:
-      - navigation_safety
-      - grounding_risk
+    - navigation_safety
+    - grounding_risk
   restricted_navigation_area:
     aliases:
-      - 배가 못 지나가는 곳
-      - 통항 금지 구역
-      - 항행 제한 구역
+    - 배가 못 지나가는 곳
+    - 통항 금지 구역
+    - 항행 제한 구역
     default_context: navigation_safety
     analysis_type: feature_search_by_radius
     primary_agent: Spatial Analysis Agent
     required_tools:
-      - geocoder.resolve_location
-      - gbenc.s101_feature_search_by_radius
-      - postgis.dwithin
+    - geocoder.resolve_location
+    - gbenc.s101_feature_search_by_radius
+    - postgis.dwithin
     required_data:
-      - GBENC_S101_feature
-      - s101_feature_dictionary
-      - marine_term_dictionary
-      - location_gazetteer
+    - GBENC_S101_feature
+    - s101_feature_dictionary
+    - marine_term_dictionary
+    - location_gazetteer
     candidate_features:
-      - RestrictedArea
-      - TrafficSeparationScheme
-      - TrafficSeparationSchemeLanePart
-      - TrafficSeparationSchemeBoundary
-      - Fairway
+    - RestrictedArea
+    - TrafficSeparationScheme
+    - TrafficSeparationSchemeLanePart
+    - TrafficSeparationSchemeBoundary
+    - Fairway
     contexts:
-      - navigation_safety
-      - route_planning
+    - navigation_safety
+    - route_planning
     provenance: data/derived_concept_registry_v2.yaml
   navigation_hazard_area:
     aliases:
-      - 배가 못 지나가는 곳
-      - 통항 제한 구역
+    - 배가 못 지나가는 곳
+    - 통항 제한 구역
     default_context: navigation_safety
     analysis_type: feature_search_by_radius
     primary_agent: Spatial Analysis Agent
     candidate_features:
-      - RestrictedArea
-      - TrafficSeparationScheme
-      - TrafficSeparationSchemeLanePart
+    - RestrictedArea
+    - TrafficSeparationScheme
+    - TrafficSeparationSchemeLanePart
     required_tools:
-      - geocoder.resolve_location
-      - gbenc.s101_feature_search_by_radius
-      - postgis.dwithin
+    - geocoder.resolve_location
+    - gbenc.s101_feature_search_by_radius
+    - postgis.dwithin
     required_data:
-      - GBENC_S101_feature
-      - s101_feature_dictionary
-      - location_gazetteer
+    - GBENC_S101_feature
+    - s101_feature_dictionary
+    - location_gazetteer
     contexts:
-      - navigation_safety
-      - grounding_risk
-      - route_planning
+    - navigation_safety
+    - grounding_risk
+    - route_planning
     provenance: data/derived_concept_registry_v2.yaml
   dynamic_traffic:
     aliases:
-      - AIS
-      - V-PASS
-      - 선박통항
+    - AIS
+    - V-PASS
+    - 선박통항
     default_context: maritime_traffic
     primary_agent: AIS/V-PASS Analysis Agent
     required_data:
-      - DynamicTrafficLayer
-      - traffic_data_dictionary
+    - DynamicTrafficLayer
+    - traffic_data_dictionary
     contexts:
-      - maritime_traffic
-      - collision_risk
+    - maritime_traffic
+    - collision_risk

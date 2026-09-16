@@ -8,14 +8,117 @@ templates:
     - distance_m
     - nftc_codes
     executor: postgis.dwithin
+    default_layer: GBENC_S101_feature
+    result_limit: 30
+    distance_predicate: ST_DWithin
+    ordering: distance_m
+    sql_template: s101_feature_radius_dwithin
+    sql:
+      execute: |
+        WITH location AS (
+            SELECT ST_GeomFromText(%(base_wkt)s, %(srid)s) AS geom
+        ),
+        matches AS MATERIALIZED (
+            SELECT
+                f.{id_column} AS id,
+                f.dataset_id AS source_dataset_id,
+                f.dataset_version_id,
+                f.{code_column} AS feature_type_code,
+                f.{name_column} AS feature_type_name,
+                f.{geometry_column} AS geometry,
+                GeometryType(f.{geometry_column}) AS geometry_type,
+                f.{attributes_column} AS attributes,
+                ST_Distance(
+                    f.{geometry_column}::geography, l.geom::geography
+                ) AS distance_m
+            FROM {relation} AS f
+            CROSS JOIN location AS l
+            WHERE f.{code_column} = ANY(%(feature_codes)s)
+              AND f.{name_column} = ANY(%(target_features)s)
+              AND f.{geometry_column} IS NOT NULL
+              AND f.{geometry_column} && ST_MakeEnvelope(
+                  %(xmin)s, %(ymin)s, %(xmax)s, %(ymax)s, %(srid)s
+              )
+              AND ST_DWithin(
+                    f.{geometry_column}::geography, l.geom::geography, %(distance_m)s
+              )
+        ),
+        page AS (
+            SELECT id, source_dataset_id, dataset_version_id, feature_type_code,
+                   feature_type_name, geometry_type, attributes,
+                   ST_AsGeoJSON(geometry)::jsonb AS geometry, distance_m
+            FROM matches
+            ORDER BY distance_m, id
+            LIMIT %(result_limit)s
+            OFFSET %(offset)s
+        ),
+        type_counts AS (
+            SELECT feature_type_name, count(*) AS count FROM matches GROUP BY feature_type_name
+        )
+        SELECT (SELECT count(*) FROM matches) AS total_count,
+               COALESCE((SELECT jsonb_object_agg(feature_type_name, count) FROM type_counts), jsonb_build_object()) AS total_counts_by_type,
+               COALESCE((SELECT jsonb_agg(to_jsonb(page) ORDER BY distance_m, id) FROM page), '[]'::jsonb) AS rows,
+               (SELECT ST_AsGeoJSON(ST_Buffer(geom::geography, %(distance_m)s)::geometry)::jsonb FROM location) AS search_geometry;
   traffic_search_by_time_space:
     allowed_layers:
     - AIS
     - V-PASS
+    default_relation: serving.dynamic_traffic_layer
     required_parameters:
     - time_range
     - geometry
     executor: traffic.dynamic_layer_search
+    geometry_column: geom
+    temporal_column: observed_at
+    count_column: vessel_count_total
+    grid_id_column: grid_id
+    source_column: layer_source
+    sql_template: dynamic_traffic_time_space
+    sql:
+      summary: |
+        SELECT layer_source,
+               count(*) AS grid_count,
+               sum(vessel_count_total) AS vessel_count_total,
+               sum(vessel_count_day) AS vessel_count_day,
+               sum(vessel_count_night) AS vessel_count_night
+        FROM serving.dynamic_traffic_layer
+        WHERE layer_source = ANY(%(sources)s)
+          AND observed_month BETWEEN %(start_month)s AND %(end_month)s
+          AND (%(base_wkt)s IS NULL OR ST_DWithin(geom::geography, ST_SetSRID(ST_GeomFromText(%(base_wkt)s), 4326)::geography, %(distance_m)s))
+        GROUP BY layer_source;
+  nearest_feature:
+    allowed_layers:
+    - GBENC_S101_feature
+    required_parameters:
+    - base_geometry
+    - feature_codes
+    executor: postgis.nearest
+    default_layer: GBENC_S101_feature
+    result_limit: 5
+    ordering: distance_m
+    sql_template: s101_nearest_feature
+    sql:
+      select: |
+        WITH location AS (
+            SELECT ST_GeomFromText(%(base_wkt)s, %(srid)s) AS geom
+        )
+        SELECT
+            f.{id_column} AS id,
+            f.{code_column} AS feature_type_code,
+            f.{name_column} AS feature_type_name,
+            GeometryType(f.{geometry_column}) AS geometry_type,
+            ST_AsGeoJSON(f.{geometry_column}) AS geojson,
+            ST_Distance(
+                ST_SetSRID(f.{geometry_column}, %(srid)s)::geography,
+                ST_SetSRID(l.geom, %(srid)s)::geography
+            ) AS distance_m,
+            f.{attributes_column} AS attributes
+        FROM {relation} AS f
+        CROSS JOIN location AS l
+        WHERE f.{code_column} = ANY(%(feature_codes)s)
+          AND f.{geometry_column} IS NOT NULL
+        ORDER BY distance_m, f.{id_column}
+        LIMIT %(result_limit)s;
   graph_scoped_rag:
     required_parameters:
     - entity_ids

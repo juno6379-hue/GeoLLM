@@ -3,10 +3,12 @@ import json
 import hashlib
 from functools import lru_cache
 from datetime import datetime
+from pathlib import Path
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
+import yaml
 
 from shared.schemas.agent import AgentRequest, AgentStatus, AgentResult, Intent, SpatialContext, SecurityContext, TaskPlan, ExecutionSlots, QueryExecutionContext, PlanStatus
 from services.orchestrator.state import OrchestratorState, log_transition
@@ -31,6 +33,8 @@ from services.orchestrator.evidence_builder import build_evidence_bundle
 from services.data_discovery_agent.agent import execute_data_discovery
 from services.llm_config import llm_api_enabled
 from services.validation_agent.agent import validate_orchestration
+from services.spatial_analysis_agent.place_resolver import PlaceResolutionProblem, resolve_location
+from services.orchestrator.s101_portrayal import resolve_s101_portrayal
 
 context_resolver = ContextResolver()
 route_planner = RoutePlanner()
@@ -39,13 +43,53 @@ graph_rag_retriever = GraphRAGRetriever()
 S101_DICT_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "s101_smart_dictionary.json")
 S101_CATALOGUE_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "s101_catalogue.json")
 TIME_SERIES_REGISTRY_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "time_series_registry.yaml")
-S101_HAZARD_FEATURE_CODES = [100, 101, 102]
+S101_HAZARD_FEATURE_CODES = [100, 101, 102, 167, 168, 556, 557, 558, 559, 560, 561, 562, 563, 564, 565, 566, 567]
 S101_HAZARD_FEATURE_NAMES = {
     100: "UnderwaterAwashRock",
     101: "Wreck",
     102: "Obstruction",
+    167: "LightAllAround",
+    168: "LightSectored",
+    556: "NavigationAid",
 }
 S101_HAZARD_RADIUS_RESULT_LIMIT = 30
+REQUESTED_SPATIAL_LAYER_TARGETS = {
+    "navigation_aid": {
+        "relation": "serving.navigation_aid_current",
+        "layer_id": "navigation_aid_busan",
+        "title": "\ud56d\ub85c\ud45c\uc9c0",
+        "layer_type": "navigation_aid",
+        "terms": [
+            "\ud56d\ub85c\ud45c\uc9c0",
+            "\ud574\uc0c1 \ud45c\uc9c0",
+            "\ub4f1\ub300",
+            "\ubd80\ud45c",
+            "navigation aid",
+            "aids to navigation",
+        ],
+    },
+    "fairway": {
+        "relation": "serving.fairway_area_current",
+        "layer_id": "fairway_area",
+        "title": "\uc77c\ubc18\ud56d\ub85c",
+        "layer_type": "fairway",
+        "terms": ["\uc77c\ubc18\ud56d\ub85c", "fairway"],
+    },
+    "entry_restricted": {
+        "relation": "serving.hazard_area_current",
+        "layer_id": "entry_restricted_area",
+        "title": "\uc9c4\uc785\uc81c\ud55c\uad6c\uc5ed",
+        "layer_type": "hazard_area",
+        "terms": ["\uc9c4\uc785\uc81c\ud55c", "\uc9c4\uc785 \uc81c\ud55c", "entry restricted"],
+    },
+    "speed_restriction": {
+        "relation": "serving.hazard_area_current",
+        "layer_id": "speed_restriction_area",
+        "title": "\uc18d\ub3c4\uc81c\ud55c\uad6c\uc5ed",
+        "layer_type": "hazard_area",
+        "terms": ["\uc18d\ub3c4\uc81c\ud55c", "\uc18d\ub3c4 \uc81c\ud55c", "speed restriction"],
+    },
+}
 KNOWN_MARINE_PLACE_WKT = {
     "부산항 입구": "POINT(129.075 35.075)",
     "부산항": "POINT(129.075 35.075)",
@@ -54,6 +98,204 @@ KNOWN_MARINE_PLACE_WKT = {
     "인천항": "POINT(126.592 37.456)",
     "인천": "POINT(126.592 37.456)",
 }
+
+DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+ROOT_DIR = Path(__file__).resolve().parents[2]
+S101_DCEG_CHUNKS_PATH = ROOT_DIR / "outputs" / "rag" / "s101_dceg_chunks.jsonl"
+S101_DICT_PATH = DATA_DIR / "s101_smart_dictionary.json"
+S101_CATALOGUE_PATH = DATA_DIR / "s101_catalogue.json"
+TIME_SERIES_REGISTRY_PATH = DATA_DIR / "time_series_registry.yaml"
+S101_FEATURE_QUERY_ALIASES = {
+    "AnchorageArea": ["정박지", "정박구역", "투묘지", "anchorage"],
+}
+
+
+@lru_cache(maxsize=None)
+def _load_yaml_registry(filename: str) -> dict:
+    try:
+        return yaml.safe_load((DATA_DIR / filename).read_text(encoding="utf-8")) or {}
+    except Exception as exc:
+        logger.warning("Failed to load registry", filename=filename, error=str(exc))
+        return {}
+
+
+def _feature_codes_for_name(feature_code_map: dict, name: str) -> list[int]:
+    raw = feature_code_map.get(name)
+    values = raw if isinstance(raw, list) else [raw]
+    codes = []
+    for value in values:
+        try:
+            codes.append(int(value))
+        except (TypeError, ValueError):
+            continue
+    return codes
+
+
+def _flatten_feature_codes(feature_code_map: dict, target_features: list[str]) -> list[int]:
+    codes = []
+    for name in target_features:
+        codes.extend(_feature_codes_for_name(feature_code_map, name))
+    return list(dict.fromkeys(codes))
+
+
+def _feature_names_by_code(feature_code_map: dict) -> dict[int, str]:
+    names = {}
+    for name in feature_code_map:
+        for code in _feature_codes_for_name(feature_code_map, name):
+            names.setdefault(code, name)
+    return names
+
+
+def _s101_hazard_radius_registry_config() -> dict:
+    concept = ((_load_yaml_registry("derived_concept_registry_v2.yaml").get("derived_concepts") or {})
+               .get("navigation_hazard_object") or {})
+    profile = ((concept.get("execution_profiles") or {}).get("s101_hazard_radius") or {})
+    template_id = profile.get("query_template") or concept.get("analysis_type") or "feature_search_by_radius"
+    template = ((_load_yaml_registry("query_template_registry.yaml").get("templates") or {}).get(template_id) or {})
+    layer_id = profile.get("layer") or template.get("default_layer") or "GBENC_S101_feature"
+    layer = ((_load_yaml_registry("spatial_layer_registry.yaml").get("layers") or {}).get(layer_id) or {})
+    feature_code_map = profile.get("feature_code_map") or {}
+    target_features = _s101_hazard_candidate_features(concept, profile, feature_code_map)
+    feature_names = _feature_names_by_code(feature_code_map)
+    resolved_feature_code_map = {}
+    if profile.get("auto_resolve_feature_codes", True):
+        resolved_feature_code_map = _resolve_s101_feature_code_map_from_projection(layer, target_features)
+    if resolved_feature_code_map:
+        feature_code_map = resolved_feature_code_map
+        target_features = [name for name in target_features if name in resolved_feature_code_map]
+        feature_names = _feature_names_by_code(resolved_feature_code_map)
+    feature_codes = _flatten_feature_codes(feature_code_map, target_features)
+    return {
+        "concept_id": "navigation_hazard_object",
+        "template_id": template_id,
+        "template": template,
+        "layer_id": layer_id,
+        "layer": layer,
+        "target_features": target_features,
+        "feature_codes": feature_codes,
+        "feature_names": feature_names,
+        "result_limit": int(profile.get("result_limit") or template.get("result_limit") or S101_HAZARD_RADIUS_RESULT_LIMIT),
+        "feature_code_source": "deployed_projection" if resolved_feature_code_map else "registry_fallback",
+    }
+
+
+def _s101_hazard_candidate_features(concept: dict, profile: dict, feature_code_map: dict) -> list[str]:
+    return list(dict.fromkeys(profile.get("target_features") or []))
+
+
+@lru_cache(maxsize=16)
+def _resolve_s101_feature_code_map_from_projection_cached(
+    relation: str,
+    name_column: str,
+    code_column: str,
+    feature_names: tuple[str, ...],
+) -> tuple[tuple[str, tuple[int, ...]], ...]:
+    if not relation or not feature_names:
+        return ()
+    db_url = os.getenv("S101_DB_URL") or os.getenv("POSTGIS_URL")
+    if not db_url:
+        return ()
+    schema_table = relation.split(".", 1)
+    if len(schema_table) != 2:
+        return ()
+    schema, table = schema_table
+    try:
+        import psycopg2
+
+        with psycopg2.connect(db_url, connect_timeout=3) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"""
+                    SELECT {name_column}, array_agg(DISTINCT {code_column} ORDER BY {code_column}) AS feature_type_codes
+                    FROM {schema}.{table}
+                    WHERE {name_column} = ANY(%s)
+                    GROUP BY {name_column}
+                    ORDER BY {name_column}
+                    """,
+                    (list(feature_names),),
+                )
+                rows = []
+                for name, codes in cur.fetchall():
+                    if name and codes:
+                        rows.append((str(name), tuple(int(code) for code in codes if code is not None)))
+                return tuple(rows)
+    except Exception as exc:
+        logger.warning("Failed to resolve S-101 feature codes from projection", relation=relation, error=str(exc))
+        return ()
+
+
+def _resolve_s101_feature_code_map_from_projection(layer: dict, target_features: list[str]) -> dict[str, list[int]]:
+    relation = layer.get("physical_table") or layer.get("expected_physical_table")
+    name_column = layer.get("name_column", "feature_type_name")
+    code_column = layer.get("code_column", "feature_type_code")
+    resolved = _resolve_s101_feature_code_map_from_projection_cached(
+        str(relation or ""),
+        str(name_column),
+        str(code_column),
+        tuple(target_features),
+    )
+    return dict(resolved)
+
+
+def _s101_hazard_feature_codes() -> list[int]:
+    return _s101_hazard_radius_registry_config()["feature_codes"] or S101_HAZARD_FEATURE_CODES
+
+
+def _s101_hazard_feature_names() -> dict[int, str]:
+    return _s101_hazard_radius_registry_config()["feature_names"] or S101_HAZARD_FEATURE_NAMES
+
+
+def _s101_hazard_target_features() -> list[str]:
+    return _s101_hazard_radius_registry_config()["target_features"] or ["UnderwaterAwashRock", "Wreck", "Obstruction"]
+
+
+def _s101_nearest_feature_config(target_features: list[str]) -> dict:
+    template_id = "nearest_feature"
+    template = ((_load_yaml_registry("query_template_registry.yaml").get("templates") or {}).get(template_id) or {})
+    layer_id = template.get("default_layer") or "GBENC_S101_feature"
+    layer = ((_load_yaml_registry("spatial_layer_registry.yaml").get("layers") or {}).get(layer_id) or {})
+    feature_code_map = _resolve_s101_feature_code_map_from_projection(layer, target_features)
+    return {
+        "template_id": template_id,
+        "template": template,
+        "layer_id": layer_id,
+        "layer": layer,
+        "target_features": [name for name in target_features if name in feature_code_map],
+        "feature_codes": _flatten_feature_codes(feature_code_map, target_features),
+        "feature_names": _feature_names_by_code(feature_code_map),
+        "result_limit": int(template.get("result_limit") or 5),
+    }
+
+
+def _nearest_target_features_from_query(query: str) -> list[str]:
+    text = query or ""
+    lowered = text.lower()
+    if any(term in lowered or term in text for term in ["anchorage", "\uc815\ubc15\uc9c0", "?뺣컯吏"]):
+        return ["AnchorageArea"]
+    if any(term in lowered or term in text for term in ["mooring", "\uacc4\ub958", "\ubb18\ub9c1"]):
+        return ["MooringArea", "MooringBuoy"]
+    return []
+
+
+def _looks_like_s101_nearest_feature_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    has_nearest = any(term in lowered or term in text for term in ["nearest", "closest", "\uac00\uae4c\uc6b4", "媛源뚯슫"])
+    return has_nearest and bool(_nearest_target_features_from_query(query))
+
+
+def _registered_place_aliases() -> dict[str, dict]:
+    registry_data = _load_yaml_registry("place_geometry_registry.yaml")
+    aliases: dict[str, dict] = {}
+    for place_id, place in (registry_data.get("places") or {}).items():
+        if not isinstance(place, dict):
+            continue
+        names = [place.get("canonical_name"), *(place.get("aliases") or [])]
+        for name in names:
+            if name:
+                aliases[str(name).lower()] = {"place_id": place_id, **place}
+    return aliases
+
 def get_s101_dictionary():
     try:
         with open(S101_DICT_PATH, "r", encoding="utf-8") as f:
@@ -73,17 +315,118 @@ def _load_s101_catalogue_exact() -> tuple[dict, ...]:
         values = data.get("feature_types") or data.get("items") or [] if isinstance(data, dict) else []
     return tuple(item for item in values if isinstance(item, dict) and item.get("code"))
 
+@lru_cache(maxsize=1)
+def _load_s101_dceg_chunks_exact() -> tuple[dict, ...]:
+    if not S101_DCEG_CHUNKS_PATH.exists():
+        return ()
+    rows = []
+    try:
+        with S101_DCEG_CHUNKS_PATH.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                if line.strip():
+                    rows.append(json.loads(line))
+    except Exception as exc:
+        logger.warning("Failed to load S-101 DCEG chunks", error=str(exc))
+        return ()
+    return tuple(rows)
+
+def _is_s101_dceg_2_0_chunk(row: dict) -> bool:
+    metadata = row.get("metadata") or {}
+    title = str(metadata.get("title") or "")
+    source_file = str(metadata.get("source_file") or "")
+    return (
+        metadata.get("product_id") == "S-101"
+        and metadata.get("document_type") == "dceg"
+        and metadata.get("version") == "2.0.0"
+        and ("DCEG" in title or "DCEG" in source_file)
+    )
+
+def _score_s101_dceg_chunk(row: dict, feature: dict) -> int:
+    metadata = row.get("metadata") or {}
+    text = str(row.get("text") or "")
+    lowered = text.lower()
+    code = str(feature.get("code") or "")
+    name = str(feature.get("name") or code)
+    aliases = [str(alias) for alias in feature.get("aliases") or []]
+    score = 0
+    target_feature_phrase = f"s-101 geo feature: {name.lower()}"
+    has_any_geo_feature_table = "s-101 geo feature:" in lowered
+    has_target_instruction = (
+        "if it is required to encode an anchorage" in lowered
+        or f"using the feature {name.lower()}" in lowered
+        or f"using an {name.lower()} feature" in lowered
+    )
+    for term in [code, name, *aliases]:
+        if term and term.lower() in lowered:
+            score += 20
+    related = {str(item).lower() for item in metadata.get("related_features") or []}
+    if name.lower() in related or code.lower() in related:
+        score += 30
+    if target_feature_phrase in lowered:
+        score += 200
+    elif has_any_geo_feature_table:
+        score -= 120
+    if "iho definition:" in lowered and target_feature_phrase in lowered:
+        score += 60
+    if "allowable encoding value" in lowered:
+        score += 25
+    if "if it is required to encode" in lowered or "remarks:" in lowered:
+        score += 60
+    if not target_feature_phrase in lowered and not has_target_instruction:
+        score -= 80
+    if "associated to:" in lowered or "role type role associated with" in lowered:
+        score -= 100
+    if "................................" in text:
+        score -= 40
+    return score
+
+def _s101_dceg_docs_for_feature_exact(feature: dict, limit: int = 2) -> list[dict]:
+    candidates = []
+    for row in _load_s101_dceg_chunks_exact():
+        if not _is_s101_dceg_2_0_chunk(row):
+            continue
+        score = _score_s101_dceg_chunk(row, feature)
+        if score > 0:
+            candidates.append((score, row))
+    docs = []
+    seen = set()
+    for _, row in sorted(candidates, key=lambda item: item[0], reverse=True):
+        chunk_id = str(row.get("chunk_id") or "")
+        if not chunk_id or chunk_id in seen:
+            continue
+        seen.add(chunk_id)
+        metadata = row.get("metadata") or {}
+        docs.append({
+            "document_id": chunk_id,
+            "title": metadata.get("title") or "S-101 Annex A DCEG Ed. 2.0.0",
+            "version": metadata.get("version") or "2.0.0",
+            "section": metadata.get("section"),
+            "page": metadata.get("page_no", "N/A"),
+            "source": metadata.get("source_id") or "s101_dceg_2_0_0",
+            "source_id": metadata.get("source_id"),
+            "source_file": metadata.get("source_file"),
+            "document_type": "dceg",
+            "excerpt_reference": str(row.get("text") or ""),
+            "retrieved_at": datetime.utcnow().isoformat() + "Z",
+            "relevance_score": 1.0,
+            "chunk_id": chunk_id,
+        })
+        if len(docs) >= limit:
+            break
+    return docs
+
 def _exact_s101_feature_match(query: str) -> dict | None:
     lowered = (query or "").lower()
     if "s-101" not in lowered and "s101" not in lowered and "feature catalogue" not in lowered:
         return None
-    if not any(term in lowered or term in (query or "") for term in ("definition", "정의", "설명", "feature catalogue", "근거")):
+    if not any(term in lowered or term in (query or "") for term in ("definition", "encoding", "dceg", "instruction", "guidance", "정의", "설명", "인코딩", "지침", "근거", "feature catalogue")):
         return None
     for feature in _load_s101_catalogue_exact():
         code = str(feature.get("code") or "")
         name = str(feature.get("name") or code)
         aliases = [str(alias) for alias in feature.get("aliases") or []]
-        if any(token and token.lower() in lowered for token in [code, name, *aliases]):
+        query_aliases = S101_FEATURE_QUERY_ALIASES.get(code, [])
+        if any(token and token.lower() in lowered for token in [code, name, *aliases, *query_aliases]):
             return feature
     return None
 
@@ -230,6 +573,22 @@ def _extract_key_value_slots(query: str) -> dict:
     return slots
 
 
+def _extract_temporal_window_from_query(query: str) -> dict | None:
+    text = query or ""
+    lowered = text.lower()
+    import re
+
+    if any(term in lowered or term in text for term in ["최근 1년", "최근 일년", "지난 1년", "last year", "past year"]):
+        return {"preset": "last_1_year", "duration": "P1Y", "source": "query_text"}
+    match = re.search(r"(?:최근|지난)\s*(\d+)\s*(년|개월|달|일)", text)
+    if match:
+        value = int(match.group(1))
+        unit = match.group(2)
+        designator = {"년": "Y", "개월": "M", "달": "M", "일": "D"}[unit]
+        return {"preset": f"last_{value}_{unit}", "duration": f"P{value}{designator}", "source": "query_text"}
+    return None
+
+
 def _looks_like_external_tide_query(query: str) -> bool:
     text = query or ""
     lowered = text.lower()
@@ -356,10 +715,34 @@ def _looks_like_legal_rag_query(query: str) -> bool:
         "\ubc95\ub839",
         "\uace0\uc2dc",
         "\uaddc\uc815",
+        "\ud1b5\ud56d\ub839",
+        "\ud1b5\ud56d \uba85\ub839",
+        "\ud1b5\ud56d\uba85\ub839",
+        "\ud1b5\ud56d \uaddc\uc815",
+        "\ud1b5\ud56d\uaddc\uc815",
         "\uadfc\uac70",
         "\ud574\uc0c1\uad50\ud1b5\uc548\uc804",
         "abc-999",
     ])
+
+def _looks_like_traffic_document_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    explicit = [
+        "\ud1b5\ud56d\ub839",
+        "\ud1b5\ud56d \uba85\ub839",
+        "\ud1b5\ud56d\uba85\ub839",
+        "\ud1b5\ud56d \uaddc\uc815",
+        "\ud1b5\ud56d\uaddc\uc815",
+        "\ud1b5\ud56d \ubc95\ub839",
+        "\ud1b5\ud56d\ubc95\ub839",
+        "traffic regulation",
+        "traffic order",
+        "navigation order",
+    ]
+    if any(term in lowered or term in text for term in explicit):
+        return True
+    return "\ud1b5\ud56d" in text and any(term in text for term in ["\ub839", "\ubc95\ub839", "\uace0\uc2dc", "\uaddc\uc815", "\uba85\ub839", "\uc9c0\uce68"])
 
 def _looks_like_no_evidence_document_query(query: str) -> bool:
     text = query or ""
@@ -374,6 +757,8 @@ def _looks_like_no_evidence_document_query(query: str) -> bool:
 def _looks_like_traffic_query(query: str) -> bool:
     text = query or ""
     lowered = text.lower()
+    if _looks_like_traffic_document_query(text):
+        return False
     return any(term in lowered or term in text for term in [
         "ais",
         "v-pass",
@@ -453,6 +838,25 @@ def _looks_like_accident_relation_query(query: str) -> bool:
 def _looks_like_policy_block_query(query: str) -> bool:
     text = query or ""
     lowered = text.lower()
+    public_restriction_terms = [
+        "entry_restricted_area",
+        "speed_restriction_area",
+        "\uc9c4\uc785\uc81c\ud55c",
+        "\uc18d\ub3c4\uc81c\ud55c",
+        "\uc9c4\uc785 \uc81c\ud55c",
+        "\uc18d\ub3c4 \uc81c\ud55c",
+    ]
+    if any(term in lowered or term in text for term in public_restriction_terms):
+        return False
+    if any(term in lowered or term in text for term in [
+        "entry_restricted_area",
+        "speed_restriction_area",
+        "진입제한",
+        "속도제한",
+        "진입 제한",
+        "속도 제한",
+    ]):
+        return False
     return any(term in lowered or term in text for term in [
         "\uad8c\ud55c \uc5c6\ub294",
         "\ube44\uacf5\uac1c",
@@ -521,25 +925,72 @@ def _spatial_context_dict(state: OrchestratorState) -> dict:
 
 def _resolve_known_marine_place_wkt(query: str, state: OrchestratorState) -> tuple[str | None, str | None]:
     spatial = _spatial_context_dict(state)
-    location_text = str(spatial.get("base_location") or spatial.get("location_text") or "")
-    haystack = " ".join([query or "", location_text]).lower()
-    if spatial.get("geometry"):
-        return str(spatial.get("geometry")), location_text or None
-    known_places = {
-        "\ubd80\uc0b0\ud56d \uc785\uad6c": "POINT(129.075 35.075)",
-        "\ubd80\uc0b0\ud56d": "POINT(129.075 35.075)",
-        "\uc778\ucc9c\ud56d": "POINT(126.592 37.456)",
-        "\uc778\ucc9c": "POINT(126.592 37.456)",
-        **KNOWN_MARINE_PLACE_WKT,
+    try:
+        geometry, label, _, _ = resolve_location(query, spatial)
+        return geometry, label
+    except PlaceResolutionProblem:
+        return None, spatial.get("base_location") or spatial.get("location_text")
+
+
+def _looks_like_place_lookup(query: str) -> bool:
+    import re
+
+    if any(term in query.lower() for term in ["nearest", "closest", "가까운", "반경", "이내", "위험", "hazard", "침선", "목록", "법령", "규정", "위치 추적", "항적", "정박지", "anchorage", "선박", "구역", "교통량", "유속", "시설"]):
+        return False
+    return bool(re.search(r"(?:위치|좌표|어디)(?:를|가|는|을|에|인지|야|입니까|\s|[?.!]|$)|\b(?:where is|where are|coordinates of|location of)\b", query, re.I))
+
+
+def _place_lookup_update(state, payload, analysis_type="place_lookup"):
+    from shapely import wkt
+
+    resolved = payload["status"] == "RESOLVED"
+    status = AgentStatus.COMPLETED if resolved else AgentStatus(payload["status"])
+    resolution = payload.get("location_resolution") or {}
+    collection = {"type": "FeatureCollection", "features": []}
+    evidence = {"spatial_feature_evidence": [], "spatial_layer_evidence": []}
+    text = payload["summary"]
+    if resolved:
+        point = wkt.loads(payload["geometry"])
+        identifier = payload.get("place_id") or f"reference:{state['task_id']}"
+        evidence_id = f"place:{identifier}:{payload.get('place_version') or 'input'}"
+        properties = {"place_id": identifier, "place_version": payload.get("place_version"), "name": payload["location_text"], "evidence_id": evidence_id}
+        collection["features"] = [{"type": "Feature", "id": identifier, "geometry": {"type": "Point", "coordinates": [point.x, point.y]}, "properties": properties}]
+        evidence["spatial_feature_evidence"] = [{"evidence_id": evidence_id, "evidence_type": "place_reference", "source_ref": resolution["source_ref"], "data": {**properties, "location_resolution": resolution}}]
+        text = f"{payload['location_text']}: 경도 {point.x:.6f}, 위도 {point.y:.6f} (EPSG:4326)."
+    spatial = _spatial_context_dict(state)
+    safe_spatial = {key: value for key, value in spatial.items() if key in {"base_location", "location_text", "place_id", "place_version", "geometry", "crs", "buffer_distance", "target_features", "exclusions", "context", "result_limit", "offset", "k"}}
+    structured = {**payload, "analysis_type": analysis_type, "original_query": state["query"], "spatial_context": safe_spatial, "count": 1 if resolved else None, "returned_count": int(resolved), "geojson": collection}
+    plan = {"analysis_type": analysis_type, "primary_agent": "Spatial Analysis Agent", "execution_ready": resolved, "status": "EXECUTION_READY" if resolved else ("NEEDS_USER_INPUT" if status == AgentStatus.NEEDS_CLARIFICATION else "BLOCKED_DATA")}
+    context = QueryExecutionContext(request_id=state["task_id"], revision=state.get("execution_revision") or 1, original_query=state["query"], route_plan=plan, provenance={"location_resolution": resolution})
+    context.plan_hash = hashlib.sha256(json.dumps({"query": state["query"], "geometry": payload.get("geometry"), "location_resolution": resolution}, sort_keys=True).encode()).hexdigest()
+    context.readiness = PlanStatus(plan["status"])
+    if resolved:
+        context.slots = ExecutionSlots(location_text=payload["location_text"], reference_geometry=payload["geometry"], crs=payload["crs"], resolution_status=resolution["status"], analysis_type=analysis_type)
+    else:
+        context.blockers = [payload.get("error_code", "LOCATION_UNCONFIRMED")]
+    final = {
+        "task_id": state["task_id"], "request_id": state["task_id"], "status": status.value,
+        "contract_version": context.contract_version,
+        "agent_name": "Spatial Analysis Agent", "summary": text, "answer_text": text,
+        "error_code": payload.get("error_code"), "structured_result": structured,
+        "clarification_questions": [text] if status == AgentStatus.NEEDS_CLARIFICATION else [],
+        "clarification_options": payload.get("location_candidates", []),
+        "features": collection, "evidence_bundle": evidence,
+        "map_layers": [{"layer_id": f"place:{state['task_id']}", "title": payload["location_text"], "source_type": "geojson", "geometry_type": "POINT", "inline_geojson": collection, "feature_count": 1}] if resolved else [],
+        "orchestrator_v2": {"route_plan": plan, "query_execution_context": context.model_dump(mode="json"), "embedding_independent": True, "fast_path": "dataset_place_resolver"},
     }
-    for name, wkt in known_places.items():
-        if name.lower() in haystack or name in (query or "") or name in location_text:
-            return wkt, name
-    if any(marker in haystack or marker in location_text for marker in ["busan", "\ubd80\uc0b0", "고빆"]):
-        return "POINT(129.075 35.075)", location_text or "\ubd80\uc0b0\ud56d \uc785\uad6c"
-    if any(marker in haystack or marker in location_text for marker in ["incheon", "\uc778\ucc9c", "몄쿇"]):
-        return "POINT(126.592 37.456)", location_text or "\uc778\ucc9c\ud56d"
-    return None, location_text or None
+    return {"final_dict": final, "task_plan": plan, "query_execution_context": context.model_dump(mode="json"), "status": status, "state_history": log_transition(AgentStatus.INTENT_PARSED, status, actor="DatasetPlaceResolver")}
+
+
+async def fast_place_lookup_node(state: OrchestratorState) -> OrchestratorState:
+    import asyncio
+    from services.orchestrator.place_router import resolve_payload
+
+    if state.get("user_id") == "blocked_user":
+        payload = {"status": "BLOCKED", "error_code": "ACCESS_DENIED", "summary": "이 요청에 대한 접근 권한이 없습니다."}
+    else:
+        payload = await asyncio.to_thread(resolve_payload, state["query"], _spatial_context_dict(state))
+    return _place_lookup_update(state, payload)
 
 def _requested_distance_m(state: OrchestratorState, query: str) -> float | None:
     spatial = _spatial_context_dict(state)
@@ -553,15 +1004,7 @@ def _requested_distance_m(state: OrchestratorState, query: str) -> float | None:
 def _looks_like_s101_hazard_radius_query(query: str) -> bool:
     text = query or ""
     lowered = text.lower()
-    target = any(term in lowered or term in text for term in [
-        "위험객체",
-        "침선",
-        "wreck",
-        "obstruction",
-        "underwaterawashrock",
-        "\uc704\ud5d8\uac1d\uccb4",
-        "\uce68\uc120",
-    ])
+    target = _looks_like_s101_hazard_target(text)
     radius = any(term in lowered or term in text for term in ["km", "㎞", "킬로", "m 이내", "\uc774\ub0b4", "반경", "\ubc18\uacbd"])
     return target and radius
 
@@ -570,6 +1013,12 @@ def _looks_like_s101_hazard_target(query: str) -> bool:
     lowered = text.lower()
     return any(term in lowered or term in text for term in [
         "navigation_hazard_object",
+        "hazard",
+        "위험 객체",
+        "간출암",
+        "수중암",
+        "장애물",
+        "난파선",
         "wreck",
         "obstruction",
         "underwaterawashrock",
@@ -582,25 +1031,85 @@ def _looks_like_s101_hazard_target(query: str) -> bool:
     ])
 
 def _should_fast_execute_s101_hazard_radius(state: OrchestratorState) -> bool:
-    query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
-    parsed_intent = state.get("parsed_intent")
-    if parsed_intent is not None:
-        if hasattr(parsed_intent, "model_dump"):
-            query = " ".join([query, json.dumps(parsed_intent.model_dump(), ensure_ascii=False)])
-        else:
-            query = " ".join([query, str(parsed_intent)])
-    req = state.get("agent_request")
-    req_intent = getattr(req, "parsed_intent", None) if req is not None else None
-    if req_intent is not None:
-        if hasattr(req_intent, "model_dump"):
-            query = " ".join([query, json.dumps(req_intent.model_dump(), ensure_ascii=False)])
-        else:
-            query = " ".join([query, str(req_intent)])
+    query = state.get("query", "")
     if not _looks_like_s101_hazard_target(query):
         return False
-    base_wkt, _ = _resolve_known_marine_place_wkt(query, state)
-    distance_m = _requested_distance_m(state, query)
-    return bool(base_wkt and distance_m is not None and 0 < distance_m <= 50000)
+    nearest_request = any(term in query.lower() for term in ["nearest", "closest", "가까운", "가까이"])
+    if nearest_request and not _looks_like_s101_hazard_radius_query(query):
+        return False
+    if _looks_like_standard_rag_query(query) and not _looks_like_s101_hazard_radius_query(query):
+        return False
+    # Incomplete radius requests enter the same handler to obtain real clarification.
+    return True
+
+
+def _should_fast_execute_s101_nearest_feature(state: OrchestratorState) -> bool:
+    query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
+    # Location confirmation precedes any projection/schema lookup in the executor.
+    return _looks_like_s101_nearest_feature_query(query)
+
+
+def _should_fast_execute_traffic_query(state: OrchestratorState) -> bool:
+    query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
+    if not _looks_like_traffic_query(query):
+        return False
+    try:
+        from services.orchestrator.traffic_execution import traffic_layer_ready
+
+        return traffic_layer_ready()
+    except Exception as exc:
+        logger.warning("Traffic execution readiness check failed", error=str(exc))
+        return False
+
+
+def _requested_spatial_layer_targets(query: str) -> list[dict]:
+    text = query or ""
+    lowered = text.lower()
+    targets = []
+    for target in REQUESTED_SPATIAL_LAYER_TARGETS.values():
+        if any(term.lower() in lowered or term in text for term in target["terms"]):
+            targets.append(target)
+    if any(term in lowered or term in text for term in ["\uc704\ud5d8\uac1d\uccb4", "hazard object"]):
+        targets.extend([
+            REQUESTED_SPATIAL_LAYER_TARGETS["entry_restricted"],
+            REQUESTED_SPATIAL_LAYER_TARGETS["speed_restriction"],
+        ])
+    deduped = {}
+    for target in targets:
+        deduped[target["layer_id"]] = target
+    if (
+        "navigation_aid_busan" in deduped
+        and "fairway_area" in deduped
+        and "\ud56d\ub85c\ud45c\uc9c0" in text
+        and "\uc77c\ubc18\ud56d\ub85c" not in text
+        and "fairway" not in lowered
+    ):
+        deduped.pop("fairway_area", None)
+    return list(deduped.values())
+
+
+def _requested_layer_distance_m(query: str, state: OrchestratorState) -> float:
+    import re
+
+    spatial = _spatial_context_dict(state)
+    if spatial.get("buffer_distance") is not None:
+        try:
+            return float(spatial["buffer_distance"])
+        except (TypeError, ValueError):
+            pass
+    match = re.search(r"(\d+(?:\.\d+)?)\s*(km|\ud0ac\ub85c\ubbf8\ud130|\ud0ac\ub85c)", query or "", re.IGNORECASE)
+    if match:
+        return float(match.group(1)) * 1000.0
+    match = re.search(r"(\d+(?:\.\d+)?)\s*(m|\ubbf8\ud130)", query or "", re.IGNORECASE)
+    if match:
+        return float(match.group(1))
+    return 3000.0
+
+
+def _should_fast_execute_requested_spatial_layer(state: OrchestratorState) -> bool:
+    query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
+    return bool(_requested_spatial_layer_targets(query))
+
 
 def _spatial_context_has_text_location(state: OrchestratorState) -> bool:
     spatial = state.get("spatial_context") or {}
@@ -626,7 +1135,7 @@ def _should_fast_spatial_or_traffic_block(state: OrchestratorState) -> bool:
         return True
     if _looks_like_traffic_query(query):
         return True
-    return _looks_like_spatial_query(query)
+    return False
 
 def _fast_spatial_or_traffic_plan(query: str, state: OrchestratorState) -> tuple[dict, dict, str, str]:
     explicit_time_series = _looks_like_explicit_time_series_request(query)
@@ -756,6 +1265,9 @@ def _fast_spatial_or_traffic_plan(query: str, state: OrchestratorState) -> tuple
         "target_term": target_term,
         "analysis_type": analysis_type,
     }
+    temporal_window = _extract_temporal_window_from_query(query)
+    if temporal_window:
+        slots["temporal_window"] = temporal_window
     route_plan = {
         "task_id": f"TASK-SPATIAL-BLOCK-{state['task_id'][:3].upper()}",
         "status": "BLOCKED_POLICY" if policy_block else ("NEEDS_USER_INPUT" if ambiguous_hazard else "BLOCKED_DATA"),
@@ -993,6 +1505,8 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
     fast_spatial_or_traffic = (
         _looks_like_traffic_query(combined_fast_query)
         or _looks_like_spatial_query(combined_fast_query)
+        or _should_fast_execute_s101_hazard_radius(state)
+        or _looks_like_place_lookup(original_query)
         or _looks_like_explicit_time_series_request(combined_fast_query)
         or _looks_like_accident_relation_query(combined_fast_query)
         or _looks_like_policy_block_query(combined_fast_query)
@@ -1290,6 +1804,10 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
                         fix="새로운 의도 학습 또는 키워드 룰 추가 필요"
                     )
                         
+    temporal_window = _extract_temporal_window_from_query(combined_fast_query if fast_spatial_or_traffic else original_query)
+    if temporal_window and not temporal_conditions:
+        temporal_conditions = [temporal_window["preset"]]
+
     intent = Intent(
         intent_type=intent_type, 
         target_objects=target_objects,
@@ -1328,20 +1846,35 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         if not base_location and extracted_payload.get("location"):
             base_location = extracted_payload.get("location")
 
-    if base_location or map_bounds:
+    if base_location or map_bounds or req_spatial_ctx.get("geometry"):
         spatial_context = SpatialContext(
-            base_location=base_location, 
+            base_location=base_location,
+            place_id=req_spatial_ctx.get("place_id"),
+            place_version=req_spatial_ctx.get("place_version"),
+            geometry=req_spatial_ctx.get("geometry"),
+            crs=req_spatial_ctx.get("crs") or "EPSG:4326",
             map_bounds=map_bounds,
             buffer_distance=radius_m
         )
     else:
         spatial_context = None
+
+    preserved_spatial_context = dict(req_spatial_ctx)
+    if spatial_context:
+        for key, value in spatial_context.model_dump().items():
+            if key not in preserved_spatial_context and value is not None:
+                preserved_spatial_context[key] = value
+    if req_spatial_ctx.get("geometry") and "crs" not in req_spatial_ctx:
+        preserved_spatial_context.pop("crs", None)
     
+    task_id = str(state.get("task_id") or state.get("request_id") or "unknown_task")
+    user_id = str(state.get("user_id") or "default_user")
+    organization_id = str(state.get("organization_id") or "default_org")
     req = AgentRequest(
-        task_id=state["task_id"],
-        trace_id=f"tr-{state['task_id']}",
-        user_id=state.get("user_id", "default_user"),
-        organization_id=state.get("organization_id", "default_org"),
+        task_id=task_id,
+        trace_id=f"tr-{task_id}",
+        user_id=user_id,
+        organization_id=organization_id,
         agent_name="ClarificationAgent",
         original_query=original_query,
         parsed_intent=intent,
@@ -1357,10 +1890,10 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
     
     # RECEIVED -> INTENT_PARSED 로깅
     return {
-        "task_id": state["task_id"],
+        "task_id": task_id,
         "query": original_query,
-        "organization_id": state.get("organization_id", "default_org"),
-        "user_id": state.get("user_id", "default_user"),
+        "organization_id": organization_id,
+        "user_id": user_id,
         "agent_request": req, 
         "status": AgentStatus.INTENT_PARSED,
         "state_history": log_transition(AgentStatus.RECEIVED, AgentStatus.INTENT_PARSED),
@@ -1368,7 +1901,7 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         "normalization_debug": debug_logs,
         "norm_result": norm_result,
         "context_result": state.get("context_result"),
-        "spatial_context": spatial_context.model_dump() if spatial_context else state.get("spatial_context"),
+        "spatial_context": preserved_spatial_context,
         "extracted_slots": extracted_payload
     }
 
@@ -1395,6 +1928,7 @@ async def graph_rag_node(state: OrchestratorState) -> OrchestratorState:
 async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorState:
     """Return authoritative local catalogue answers without vector/LLM orchestration."""
     query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
+    temporal_window = _extract_temporal_window_from_query(query)
     feature = _exact_s101_feature_match(query)
     relation = _exact_s100_s101_relation_match(query)
     no_evidence = _looks_like_no_evidence_document_query(query) or _looks_like_legal_rag_query(query)
@@ -1437,6 +1971,37 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
             f"대표 근거는 S-101 Feature Catalogue 2.0.0 / feature:{code}이며, "
             f"정의는 다음과 같습니다: {definition}"
         )
+        dceg_docs = _s101_dceg_docs_for_feature_exact(feature)
+        dceg_citations = [
+            {
+                "document_id": item["document_id"],
+                "source": item["title"],
+                "source_id": item.get("source_id"),
+                "source_file": item.get("source_file"),
+                "section": item.get("section"),
+                "document_type": "dceg",
+                "chunk_id": item.get("chunk_id"),
+                "similarity": item.get("relevance_score"),
+                "provenance": {"method": "exact_s101_dceg_lookup", "query": query},
+            }
+            for item in dceg_docs
+        ]
+        documents = [doc, *dceg_docs]
+        citations = [citation, *dceg_citations]
+        dceg_refs = ", ".join(
+            f"{item.get('title')} / {item.get('section')}"
+            for item in dceg_docs
+            if item.get("title") and item.get("section")
+        )
+        answer = (
+            f"S-101 Feature Catalogue 2.0.0 기준 {name}의 정의는 \"{definition}\"입니다. "
+            f"근거는 Feature Catalogue의 feature:{code} 항목입니다."
+        )
+        if dceg_refs:
+            answer += (
+                f" 인코딩 지침 근거는 S-101 Annex A DCEG Ed. 2.0.0의 객체별 본문 청크이며, "
+                f"참조 위치는 {dceg_refs}입니다."
+            )
         target_term = code
     elif relation:
         target_term = "S-100/S-101"
@@ -1506,6 +2071,8 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
             "error_message": "No exact standard document match found.",
             "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.FAILED, actor="FastDocumentAnswer"),
         }
+    documents = locals().get("documents", [doc])
+    citations = locals().get("citations", [citation])
     doc_blocked = bool(no_evidence)
     route_plan = {
         "task_id": f"TASK-DOC-FAST-{state['task_id'][:3].upper()}",
@@ -1516,9 +2083,13 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
         "derived_concept": None,
         "primary_agent": "Standard RAG Agent",
         "secondary_agents": [],
-        "slots": {"target_term": target_term, "analysis_type": "document_search"},
+        "slots": {
+            "target_term": target_term,
+            "analysis_type": "document_search",
+            "temporal_window": temporal_window,
+        },
         "tools": ["rag.graph_scoped_retrieve"],
-        "data": ["s101_feature_catalogue"],
+        "data": ["s101_feature_catalogue", "s101_dceg_2_0_0"] if feature else ["s101_feature_catalogue"],
         "outputs": ["StandardDocumentOutput", "EvidenceBundle", "Summary"],
         "clarification_required": False,
         "confidence": 1.0,
@@ -1535,20 +2106,29 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
         "summary": answer,
         "answer_text": answer,
         "structured_result": {
-            "retrieved_count": 0 if doc_blocked else 1,
-            "documents": [] if doc_blocked else [doc],
-            "citations": [] if doc_blocked else [citation],
+            "retrieved_count": 0 if doc_blocked else len(documents),
+            "documents": [] if doc_blocked else documents,
+            "citations": [] if doc_blocked else citations,
             "no_evidence": doc_blocked,
             "evidence_candidate_summary": {},
+            "temporal_window": temporal_window,
+            "web_rag_usage": {
+                "web_used": False,
+                "rag_used": False,
+                "llm_used": False,
+                "execution_path": "document_no_evidence" if doc_blocked else "authoritative_document_fast_path",
+                "local_authoritative_registry_checked": True,
+                "embedding_independent": True,
+            },
         },
-        "evidence_bundle": {"rag_evidence": [] if doc_blocked else [citation], "kg_provenance": [], "regulatory_evidence": [], "spatial_feature_evidence": [], "spatial_layer_evidence": [], "accident_relation_evidence": []},
+        "evidence_bundle": {"rag_evidence": [] if doc_blocked else citations, "kg_provenance": [], "regulatory_evidence": [], "spatial_feature_evidence": [], "spatial_layer_evidence": [], "accident_relation_evidence": []},
         "orchestrator_v2": {
             "route_plan": route_plan,
             "query_execution_context": {
                 "readiness": "BLOCKED_DATA" if doc_blocked else "READY",
                 "blockers": ["NO_AUTHORITATIVE_EVIDENCE: local legal/standard evidence is not available"] if doc_blocked else [],
                 "warnings": [],
-                "data_bindings": [{"dataset_id": "s101_feature_catalogue", "relation": "authoritative_lookup"}],
+                "data_bindings": [{"dataset_id": item, "relation": "authoritative_lookup"} for item in (["s101_feature_catalogue", "s101_dceg_2_0_0"] if feature else ["s101_feature_catalogue"])],
                 "tool_bindings": [{"tool_id": "rag.graph_scoped_retrieve", "operation": "exact_catalogue_lookup"}],
             },
             "embedding_independent": True,
@@ -1663,6 +2243,8 @@ async def fast_spatial_or_traffic_block_node(state: OrchestratorState) -> Orches
             "analysis_type": analysis_type,
             "blockers": qec["blockers"],
             "count": None,
+            "temporal_window": route_plan.get("slots", {}).get("temporal_window"),
+            "web_rag_usage": {"web_used": False, "rag_used": False, "llm_used": False, "execution_path": analysis_type, "embedding_independent": True},
         },
         "orchestrator_v2": {
             "route_plan": route_plan,
@@ -1678,49 +2260,88 @@ async def fast_spatial_or_traffic_block_node(state: OrchestratorState) -> Orches
         "final_dict": final_dict,
         "task_plan": route_plan,
         "query_execution_context": qec,
-        "status": AgentStatus.COMPLETED,
-        "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.COMPLETED, actor="FastSpatialTrafficBlock"),
+        "status": AgentStatus.BLOCKED,
+        "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.BLOCKED, actor="FastSpatialTrafficBlock"),
     }
 
 async def fast_s101_hazard_radius_execute_node(state: OrchestratorState) -> OrchestratorState:
-    """Execute S-101 hazard-object radius search directly against PostGIS."""
-    query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
-    base_wkt, location_text = _resolve_known_marine_place_wkt(query, state)
-    distance_m = _requested_distance_m(state, query)
-    if not base_wkt or distance_m is None or distance_m <= 0:
+    """Run confirmed radius requests through the shared execution gate."""
+    import asyncio
+    from services.orchestrator.s101_radius_execution import execute_radius_request
+
+    if _looks_like_policy_block_query(state.get("query", "")):
+        return await fast_spatial_or_traffic_block_node(state)
+    final = await asyncio.to_thread(execute_radius_request, state)
+    context = final["orchestrator_v2"]["query_execution_context"]
+    status = AgentStatus(final["status"])
+    return {
+        "final_dict": final,
+        "task_plan": final["orchestrator_v2"]["route_plan"],
+        "query_execution_context": context,
+        "status": status,
+        "state_history": log_transition(AgentStatus.INTENT_PARSED, status, actor="ValidatedS101HazardRadius"),
+    }
+
+
+async def fast_dynamic_traffic_execute_node(state: OrchestratorState) -> OrchestratorState:
+    """Execute AIS/V-PASS dynamic traffic volume queries against PostGIS."""
+    import asyncio
+    from services.orchestrator.traffic_execution import TrafficProblem, execute_traffic_request
+
+    try:
+        final = await asyncio.to_thread(execute_traffic_request, state)
+        status = AgentStatus(final["status"])
+        return {
+            "final_dict": final,
+            "task_plan": final["orchestrator_v2"]["route_plan"],
+            "query_execution_context": final["orchestrator_v2"]["query_execution_context"],
+            "status": status,
+            "state_history": log_transition(AgentStatus.INTENT_PARSED, status, actor="DynamicTrafficLayerExecute"),
+        }
+    except TrafficProblem:
         return await fast_spatial_or_traffic_block_node(state)
 
-    sql = """
-WITH location AS (
-    SELECT ST_GeomFromText(%s, 4326) AS geom
-),
-params AS (
-    SELECT geom, ST_Expand(geom, %s::double precision / 90000.0) AS bbox
-    FROM location
-),
-matches AS (
-    SELECT
-        f.feature_instance_id AS id,
-        f.feature_type_code,
-        f.feature_type_name,
-        GeometryType(f.geometry) AS geometry_type,
-        ST_AsGeoJSON(f.geometry) AS geojson,
-        ST_Distance(ST_SetSRID(f.geometry, 4326)::geography, ST_SetSRID(l.geom, 4326)::geography) AS distance_m,
-        f.attributes AS attributes
-    FROM projection.s101_feature_current AS f
-    CROSS JOIN params AS l
-    WHERE f.feature_type_code = ANY(%s)
-      AND f.geometry IS NOT NULL
-      AND f.geometry && l.bbox
-      AND ST_DWithin(ST_SetSRID(f.geometry, 4326)::geography, ST_SetSRID(l.geom, 4326)::geography, %s)
-    ORDER BY distance_m, f.feature_instance_id
-    LIMIT %s
-)
-SELECT id, feature_type_code, feature_type_name, geometry_type, geojson, distance_m, attributes
-FROM matches;
-"""
+
+async def fast_s101_nearest_feature_execute_node(state: OrchestratorState) -> OrchestratorState:
+    """Execute registry-backed nearest S-101 feature search against PostGIS."""
+    import asyncio
+    from services.orchestrator.place_router import resolve_payload
+
+    query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
+    if state.get("user_id") == "blocked_user":
+        return _place_lookup_update(state, {"status": "BLOCKED", "error_code": "ACCESS_DENIED", "summary": "이 요청에 대한 접근 권한이 없습니다."}, "nearest_feature")
+    location = await asyncio.to_thread(resolve_payload, state["query"], _spatial_context_dict(state))
+    if location["status"] != "RESOLVED":
+        return _place_lookup_update(state, location, "nearest_feature")
+    base_wkt, location_text = location["geometry"], location["location_text"]
+    target_features = _nearest_target_features_from_query(query)
+    config = _s101_nearest_feature_config(target_features)
+    layer = config["layer"]
+    template = config["template"]
+    relation = layer.get("physical_table") or layer.get("expected_physical_table")
+    feature_codes = config["feature_codes"]
+    if not base_wkt or not relation or not feature_codes:
+        return await fast_spatial_or_traffic_block_node(state)
+
+    format_args = {
+        "relation": relation,
+        "id_column": layer.get("id_column", "feature_instance_id"),
+        "code_column": layer.get("code_column", "feature_type_code"),
+        "name_column": layer.get("name_column", "feature_type_name"),
+        "geometry_column": layer.get("geometry_column", "geometry"),
+        "attributes_column": layer.get("attributes_column", "attributes"),
+    }
+    select_sql = str(((template.get("sql") or {}).get("select") or "")).format(**format_args)
+    if not select_sql:
+        return await fast_spatial_or_traffic_block_node(state)
+
+    params = {
+        "base_wkt": base_wkt,
+        "srid": int(layer.get("srid") or 4326),
+        "feature_codes": feature_codes,
+        "result_limit": int(config["result_limit"]),
+    }
     rows: list[dict] = []
-    total_count = 0
     try:
         import psycopg2
         import psycopg2.extras
@@ -1730,25 +2351,10 @@ FROM matches;
             raise RuntimeError("S101_DB_URL or POSTGIS_URL is not configured")
         with psycopg2.connect(db_url, connect_timeout=3) as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute(sql, (base_wkt, float(distance_m), S101_HAZARD_FEATURE_CODES, float(distance_m), S101_HAZARD_RADIUS_RESULT_LIMIT))
+                cur.execute(select_sql, params)
                 rows = [dict(row) for row in cur.fetchall()]
-                cur.execute(
-                    """
-                    WITH location AS (SELECT ST_GeomFromText(%s, 4326) AS geom),
-                    params AS (SELECT geom, ST_Expand(geom, %s::double precision / 90000.0) AS bbox FROM location)
-                    SELECT count(*) AS count
-                    FROM projection.s101_feature_current AS f
-                    CROSS JOIN params AS l
-                    WHERE f.feature_type_code = ANY(%s)
-                      AND f.geometry IS NOT NULL
-                      AND f.geometry && l.bbox
-                      AND ST_DWithin(ST_SetSRID(f.geometry, 4326)::geography, ST_SetSRID(l.geom, 4326)::geography, %s)
-                    """,
-                    (base_wkt, float(distance_m), S101_HAZARD_FEATURE_CODES, float(distance_m)),
-                )
-                total_count = int(cur.fetchone()["count"])
     except Exception as exc:
-        logger.warning("Fast S-101 hazard radius execution failed", error=str(exc), query=query)
+        logger.warning("Fast S-101 nearest feature execution failed", error=str(exc), query=query)
         return await fast_spatial_or_traffic_block_node(state)
 
     features = []
@@ -1756,46 +2362,47 @@ FROM matches;
     for row in rows:
         geometry = json.loads(row["geojson"]) if row.get("geojson") else None
         feature_type_code = int(row.get("feature_type_code") or 0)
-        feature_name = row.get("feature_type_name") or S101_HAZARD_FEATURE_NAMES.get(feature_type_code) or f"NFTC:{feature_type_code}"
+        feature_name = row.get("feature_type_name") or config["feature_names"].get(feature_type_code) or f"NFTC:{feature_type_code}"
         distance_value = float(row.get("distance_m") or 0.0)
         properties = {
             "feature_instance_id": row.get("id"),
             "feature_type_code": feature_type_code,
             "feature_name": feature_name,
             "distance_m": round(distance_value, 2),
-            "source": "projection.s101_feature_current",
+            "source": relation,
         }
         attrs = row.get("attributes")
         if isinstance(attrs, dict):
             properties["attributes"] = attrs
+        geometry_type = (geometry or {}).get("type") if isinstance(geometry, dict) else None
+        properties["portrayal"] = resolve_s101_portrayal(feature_name, geometry_type, attrs)
+        properties["portrayal_symbol"] = properties["portrayal"].get("symbol")
+        properties["portrayal_symbol_asset"] = properties["portrayal"].get("asset")
         features.append({"type": "Feature", "geometry": geometry, "properties": properties})
         table_rows.append(properties)
 
+    nearest = table_rows[0] if table_rows else {}
     feature_collection = {"type": "FeatureCollection", "features": features}
-    counts_by_type: dict[str, int] = {}
-    for item in table_rows:
-        counts_by_type[item["feature_name"]] = counts_by_type.get(item["feature_name"], 0) + 1
-
     route_plan = {
-        "task_id": f"TASK-S101-RADIUS-{state['task_id'][:3].upper()}",
+        "task_id": f"TASK-S101-NEAREST-{state['task_id'][:3].upper()}",
         "status": "EXECUTION_READY",
         "intent": "SPATIAL_ANALYSIS",
         "context": "navigation_safety",
-        "analysis_type": "feature_search_by_radius",
-        "derived_concept": "navigation_hazard_object",
+        "analysis_type": "nearest_feature",
+        "derived_concept": "nearest_feature",
         "primary_agent": "Spatial Analysis Agent",
         "secondary_agents": [],
         "slots": {
             "location_text": location_text,
             "reference_geometry": base_wkt,
-            "distance_m": float(distance_m),
-            "target_term": "navigation_hazard_object",
-            "target_features": ["UnderwaterAwashRock", "Wreck", "Obstruction"],
-            "nftc_codes": S101_HAZARD_FEATURE_CODES,
-            "analysis_type": "feature_search_by_radius",
+            "target_term": "anchorage",
+            "target_features": config["target_features"],
+            "nftc_codes": feature_codes,
+            "k": int(config["result_limit"]),
+            "analysis_type": "nearest_feature",
         },
-        "tools": ["postgis.dwithin"],
-        "data": ["GBENC_S101_feature"],
+        "tools": ["postgis.nearest"],
+        "data": [config["layer_id"]],
         "outputs": ["GeoJSON", "FeatureTable", "Summary"],
         "clarification_required": False,
         "confidence": 1.0,
@@ -1807,55 +2414,55 @@ FROM matches;
         "blockers": [],
         "warnings": [],
         "data_bindings": [{
-            "dataset_id": "GBENC_S101_feature",
-            "relation": "projection.s101_feature_current",
-            "geometry_column": "geometry",
-            "srid": 4326,
-            "layer_type": "s101_feature",
-            "execution_status": "executable",
+            "dataset_id": config["layer_id"],
+            "relation": relation,
+            "geometry_column": layer.get("geometry_column", "geometry"),
+            "srid": int(layer.get("srid") or 4326),
+            "layer_type": layer.get("layer_type", "s101_feature"),
+            "execution_status": layer.get("execution_status", "executable"),
             "read_only": True,
         }],
         "tool_bindings": [{
-            "tool_id": "postgis.dwithin",
-            "operation": "feature_search_by_radius",
-            "query_template_id": "feature_search_by_radius",
+            "tool_id": "postgis.nearest",
+            "operation": "nearest_feature",
+            "query_template_id": config["template_id"],
             "schema_version": "2.0",
         }],
     }
     summary = (
-        f"{location_text or '지정 위치'} 기준 {int(distance_m)}m 이내 S-101 위험객체를 {total_count}건 찾았습니다. "
-        f"응답에는 가까운 순서로 최대 {len(features)}건을 포함했습니다."
+        f"{location_text or '기준 위치'}에서 가장 가까운 S-101 정박지는 "
+        f"{round(float(nearest.get('distance_m') or 0.0), 2)}m 거리에 있습니다."
+        if nearest else f"{location_text or '기준 위치'} 주변에서 S-101 정박지를 찾지 못했습니다."
     )
     final_dict = {
         "task_id": state["task_id"],
         "trace_id": f"tr-{state['task_id']}",
         "agent_name": "Spatial Analysis Agent",
-        "agent_version": "2.3.0-s101-radius-execute",
+        "agent_version": "2.3.0-s101-nearest-execute",
         "status": "COMPLETED",
         "summary": summary,
         "answer_text": summary,
         "structured_result": {
             "status": "COMPLETED",
-            "analysis_type": "feature_search_by_radius",
-            "count": total_count,
-            "returned_count": len(features),
-            "counts_by_type": counts_by_type,
+            "analysis_type": "nearest_feature",
+            "count": len(features),
+            "nearest": nearest,
             "location_text": location_text,
             "reference_geometry": base_wkt,
-            "distance_m": float(distance_m),
+            "target_features": config["target_features"],
             "features": table_rows,
             "geojson": feature_collection,
         },
         "map_layers": [{
-            "layer_id": f"{state['task_id']}-s101-hazard-radius",
+            "layer_id": f"{state['task_id']}-s101-nearest-feature",
             "task_id": state["task_id"],
-            "title": "S-101 Hazard Objects",
+            "title": "Nearest S-101 Feature",
             "description": summary,
             "geometry_type": "GEOMETRY",
             "source_type": "geojson",
             "inline_geojson": feature_collection,
             "feature_count": len(features),
-            "metadata": {"total_count": total_count, "source": "projection.s101_feature_current"},
+            "metadata": {"source": relation, "query_template_id": config["template_id"]},
         }],
         "features": feature_collection,
         "evidence_bundle": {
@@ -1864,9 +2471,10 @@ FROM matches;
             "regulatory_evidence": [],
             "spatial_feature_evidence": table_rows[:100],
             "spatial_layer_evidence": [{
-                "dataset_id": "GBENC_S101_feature",
-                "relation": "projection.s101_feature_current",
-                "feature_type_codes": S101_HAZARD_FEATURE_CODES,
+                "dataset_id": config["layer_id"],
+                "relation": relation,
+                "feature_type_codes": feature_codes,
+                "query_template_id": config["template_id"],
             }],
             "accident_relation_evidence": [],
         },
@@ -1874,8 +2482,251 @@ FROM matches;
             "route_plan": route_plan,
             "query_execution_context": qec,
             "embedding_independent": True,
-            "fast_path": "s101_hazard_radius_execute",
+            "fast_path": "registry_backed_s101_nearest_feature_execute",
         },
+        "contract_version": "geollm.execution.v1",
+        "request_id": state.get("task_id"),
+    }
+    qec.setdefault("provenance", {})["location_resolution"] = location["location_resolution"]
+    final_dict["structured_result"].update({key: location.get(key) for key in ("place_id", "place_version", "location_resolution")})
+    return {
+        "final_dict": final_dict,
+        "task_plan": route_plan,
+        "query_execution_context": qec,
+        "status": AgentStatus.COMPLETED,
+        "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.COMPLETED, actor="FastS101NearestFeatureExecute"),
+    }
+
+
+async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) -> OrchestratorState:
+    """Execute Dataset-ingested spatial layer radius searches against PostGIS."""
+    import asyncio
+    from services.orchestrator.place_router import resolve_payload
+
+    query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
+    targets = _requested_spatial_layer_targets(state.get("query", ""))
+    if not targets:
+        return await fast_spatial_or_traffic_block_node(state)
+
+    location = await asyncio.to_thread(resolve_payload, state["query"], _spatial_context_dict(state))
+    if location["status"] != "RESOLVED":
+        return _place_lookup_update(state, location, "feature_search_by_radius")
+
+    base_wkt = location["geometry"]
+    location_text = location["location_text"]
+    distance_m = _requested_layer_distance_m(query, state)
+    limit_per_layer = 100
+    sql = """
+        WITH base AS (
+            SELECT ST_SetSRID(ST_GeomFromText(%(base_wkt)s), 4326)::geography AS g
+        )
+        SELECT source_id,
+               layer_id,
+               name,
+               properties,
+               provenance,
+               ST_AsGeoJSON(geometry)::json AS geojson,
+               ST_Distance(geometry::geography, base.g) AS distance_m
+        FROM {relation}, base
+        WHERE layer_id = %(layer_id)s
+          AND geometry IS NOT NULL
+          AND ST_DWithin(geometry::geography, base.g, %(distance_m)s)
+        ORDER BY geometry::geography <-> base.g
+        LIMIT %(limit)s
+    """
+
+    rows: list[dict] = []
+    try:
+        import psycopg2
+        import psycopg2.extras
+
+        db_url = os.getenv("S101_DB_URL") or os.getenv("POSTGIS_URL")
+        if not db_url:
+            raise RuntimeError("POSTGIS_URL or S101_DB_URL is not configured")
+        with psycopg2.connect(db_url, connect_timeout=3) as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                for target in targets:
+                    cur.execute(
+                        sql.format(relation=target["relation"]),
+                        {
+                            "base_wkt": base_wkt,
+                            "layer_id": target["layer_id"],
+                            "distance_m": distance_m,
+                            "limit": limit_per_layer,
+                        },
+                    )
+                    for row in cur.fetchall():
+                        item = dict(row)
+                        item["_target"] = target
+                        rows.append(item)
+    except Exception as exc:
+        logger.warning("Requested spatial layer execution failed", error=str(exc), query=query)
+        return await fast_spatial_or_traffic_block_node(state)
+
+    rows.sort(key=lambda row: float(row.get("distance_m") or 0.0))
+    features = []
+    table_rows = []
+    evidence = []
+    for idx, row in enumerate(rows[:200]):
+        target = row["_target"]
+        geometry = row.get("geojson")
+        if isinstance(geometry, str):
+            geometry = json.loads(geometry)
+        props = row.get("properties") if isinstance(row.get("properties"), dict) else {}
+        provenance = row.get("provenance") if isinstance(row.get("provenance"), dict) else {}
+        distance_value = round(float(row.get("distance_m") or 0.0), 2)
+        feature_id = f"{target['layer_id']}:{row.get('source_id') or idx}"
+        properties = {
+            **props,
+            "source_id": row.get("source_id"),
+            "layer_id": target["layer_id"],
+            "layer_title": target["title"],
+            "layer_type": target["layer_type"],
+            "name": row.get("name") or props.get("name") or props.get("title"),
+            "distance_m": distance_value,
+            "source": target["relation"],
+            "provenance": provenance,
+            "feature_id": feature_id,
+        }
+        features.append({"type": "Feature", "id": feature_id, "geometry": geometry, "properties": properties})
+        table_rows.append(properties)
+        evidence.append({
+            "evidence_id": f"spatial:{state['task_id']}:{idx}",
+            "evidence_type": "spatial_feature",
+            "summary": properties.get("name") or target["title"],
+            "source_ref": target["relation"],
+            "data": {
+                "feature_id": feature_id,
+                "layer_id": target["layer_id"],
+                "distance_m": distance_value,
+                "properties": properties,
+                "geometry_type": (geometry or {}).get("type") if isinstance(geometry, dict) else None,
+            },
+        })
+
+    collection = {"type": "FeatureCollection", "features": features}
+    target_titles = ", ".join(target["title"] for target in targets)
+    answer = (
+        f"{location_text} \uae30\uc900 {distance_m:g}m \uc774\ub0b4 "
+        f"{target_titles} {len(features)}\uac74\uc744 \ucc3e\uc558\uc2b5\ub2c8\ub2e4."
+    )
+    route_plan = {
+        "task_id": f"TASK-REQUESTED-LAYER-{state['task_id'][:3].upper()}",
+        "status": "EXECUTION_READY",
+        "intent": "SPATIAL_ANALYSIS",
+        "context": "dataset_spatial_layer",
+        "analysis_type": "feature_search_by_radius",
+        "derived_concept": "dataset_spatial_layer_radius",
+        "primary_agent": "Spatial Analysis Agent",
+        "secondary_agents": [],
+        "slots": {
+            "location_text": location_text,
+            "reference_geometry": base_wkt,
+            "buffer_distance": distance_m,
+            "target_layers": [target["layer_id"] for target in targets],
+            "analysis_type": "feature_search_by_radius",
+        },
+        "tools": ["postgis.radius"],
+        "data": [target["layer_id"] for target in targets],
+        "outputs": ["GeoJSON", "FeatureTable", "Summary"],
+        "clarification_required": False,
+        "confidence": 1.0,
+        "execution_ready": True,
+        "route_plan_status": "EXECUTION_READY",
+    }
+    qec = {
+        "readiness": "READY",
+        "blockers": [],
+        "warnings": [],
+        "data_bindings": [
+            {
+                "dataset_id": target["layer_id"],
+                "relation": target["relation"],
+                "geometry_column": "geometry",
+                "srid": 4326,
+                "layer_type": target["layer_type"],
+                "execution_status": "executable",
+                "read_only": True,
+            }
+            for target in targets
+        ],
+        "tool_bindings": [{
+            "tool_id": "postgis.radius",
+            "operation": "feature_search_by_radius",
+            "schema_version": "2.0",
+        }],
+        "provenance": {"location_resolution": location.get("location_resolution")},
+    }
+    layer_evidence = [
+        {
+            "dataset_id": target["layer_id"],
+            "relation": target["relation"],
+            "layer_type": target["layer_type"],
+            "feature_count": sum(1 for row in table_rows if row.get("layer_id") == target["layer_id"]),
+        }
+        for target in targets
+    ]
+    final_dict = {
+        "task_id": state["task_id"],
+        "trace_id": f"tr-{state['task_id']}",
+        "agent_name": "Spatial Analysis Agent",
+        "agent_version": "2.4.0-requested-spatial-layer-execute",
+        "status": "COMPLETED",
+        "summary": answer,
+        "answer_text": answer,
+        "structured_result": {
+            "status": "COMPLETED",
+            "analysis_type": "feature_search_by_radius",
+            "count": len(features),
+            "returned_count": len(features),
+            "total_count": len(features),
+            "feature_ids": [feature["id"] for feature in features],
+            "location_text": location_text,
+            "reference_geometry": base_wkt,
+            "buffer_distance": distance_m,
+            "target_layers": [target["layer_id"] for target in targets],
+            "features": table_rows,
+            "geojson": collection,
+            **{key: location.get(key) for key in ("place_id", "place_version", "location_resolution")},
+        },
+        "map_layers": [{
+            "layer_id": f"{state['task_id']}-requested-spatial-layers",
+            "task_id": state["task_id"],
+            "title": "\uacf5\uac04 \ub808\uc774\uc5b4 \uac80\uc0c9 \uacb0\uacfc",
+            "description": answer,
+            "geometry_type": "GEOMETRY",
+            "source_type": "geojson",
+            "inline_geojson": collection,
+            "feature_count": len(features),
+            "metadata": {"target_layers": [target["layer_id"] for target in targets]},
+        }],
+        "features": collection,
+        "spatial_result_summary": {
+            "feature_count": len(features),
+            "display_feature_count": len(features),
+            "result_reference": "requested_spatial_layers",
+        },
+        "spatial_feature_evidence": evidence,
+        "spatial_layer_evidence": layer_evidence,
+        "evidence_bundle": {
+            "rag_evidence": [],
+            "kg_provenance": [],
+            "regulatory_evidence": [],
+            "spatial_feature_evidence": evidence,
+            "spatial_layer_evidence": layer_evidence,
+            "accident_relation_evidence": [],
+        },
+        "orchestrator_v2": {
+            "route_plan": route_plan,
+            "query_execution_context": qec,
+            "embedding_independent": True,
+            "fast_path": "requested_dataset_spatial_layer_execute",
+        },
+        "claims": [{
+            "claim_id": f"claim:{state['task_id']}:summary",
+            "text": answer,
+            "evidence_ids": [item["evidence_id"] for item in evidence[:10]],
+        }],
         "contract_version": "geollm.execution.v1",
         "request_id": state.get("task_id"),
     }
@@ -1884,8 +2735,9 @@ FROM matches;
         "task_plan": route_plan,
         "query_execution_context": qec,
         "status": AgentStatus.COMPLETED,
-        "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.COMPLETED, actor="FastS101HazardRadiusExecute"),
+        "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.COMPLETED, actor="RequestedSpatialLayerExecute"),
     }
+
 
 async def data_discovery_node(state: OrchestratorState) -> OrchestratorState:
     """Discover available Lake/KG/DB sources before context resolution."""
@@ -2108,27 +2960,31 @@ async def create_plan_node(state: OrchestratorState) -> OrchestratorState:
     
     # Resolve the named place before dispatch so every Agent implementation
     # receives a concrete spatial reference, not only a display label.
-    if req.spatial_context and not req.spatial_context.geometry and req.spatial_context.base_location:
+    if req.spatial_context and (req.spatial_context.place_id or req.spatial_context.base_location):
         try:
-            from services.spatial_analysis_agent.geocoding_tool import get_maritime_coordinates
+            import asyncio
 
-            place_name = req.spatial_context.base_location
-            for suffix in ("입구", "주변", "근처", "일대", "반경", "이내"):
-                place_name = place_name.replace(suffix, " ")
-            resolved_wkt = get_maritime_coordinates.invoke(" ".join(place_name.split()))
-            if isinstance(resolved_wkt, str) and resolved_wkt.upper().startswith("POINT"):
-                req.spatial_context.geometry = resolved_wkt
-                slots["reference_geometry"] = resolved_wkt
-                slots["resolution_status"] = "RESOLVED"
-                slots["crs"] = "EPSG:4326"
-                logger.info("Plan location resolved", location=place_name.strip(), geometry=resolved_wkt)
-        except Exception as e:
-            logger.warning("Plan location resolution failed", location=req.spatial_context.base_location, error=str(e))
+            geometry, label, crs, resolution = await asyncio.to_thread(resolve_location, state["query"], req.spatial_context.model_dump())
+            req.spatial_context.geometry = geometry
+            req.spatial_context.base_location = label
+            req.spatial_context.crs = crs
+            req.spatial_context.place_id = resolution.get("place_id")
+            req.spatial_context.place_version = resolution.get("place_version")
+            req.spatial_context.location_resolution = resolution
+            slots.update(reference_geometry=geometry, location=label, resolution_status=resolution["status"], crs=crs)
+            req.previous_agent_outputs.pop("location_resolution_problem", None)
+        except PlaceResolutionProblem as exc:
+            req.spatial_context.geometry = None
+            slots.pop("reference_geometry", None)
+            slots["resolution_status"] = exc.code
+            req.previous_agent_outputs["location_resolution_problem"] = {"status": "NEEDS_CLARIFICATION" if exc.status == "NEEDS_USER_INPUT" else "BLOCKED", "error_code": exc.code, "summary": str(exc), "location_candidates": exc.candidates}
 
     state_spatial_context = req.spatial_context.model_dump() if req.spatial_context else state.get("spatial_context")
     context_state = dict(state)
     context_state["spatial_context"] = state_spatial_context
     req.query_execution_context = _build_query_execution_context(context_state, slots, ctx_res, plan_dict)
+    if req.spatial_context and req.spatial_context.location_resolution:
+        req.query_execution_context.provenance["location_resolution"] = req.spatial_context.location_resolution
     req.query_execution_context = validate_execution_context(req.query_execution_context)
 
     if req.query_execution_context.readiness == PlanStatus.EXECUTION_READY:
@@ -2159,6 +3015,9 @@ async def execute_agent_node(state: OrchestratorState) -> OrchestratorState:
     req.previous_agent_outputs["graph_context"] = state.get("graph_context", {})
     req.previous_agent_outputs["data_discovery_result"] = state.get("data_discovery_result", {})
 
+    if req.previous_agent_outputs.get("location_resolution_problem"):
+        return _place_lookup_update(state, req.previous_agent_outputs["location_resolution_problem"], "place_lookup")
+
     contract_required_agents = {"Spatial Analysis Agent", "Accident/Risk Agent", "AIS Analysis Agent", "Time-Series Agent", "Time-Series Forecast Agent"}
     if req.agent_name in contract_required_agents and not req.query_execution_context:
         agent_result = AgentResult(
@@ -2185,7 +3044,11 @@ async def execute_agent_node(state: OrchestratorState) -> OrchestratorState:
         req.query_execution_context = qec
         if qec.readiness != PlanStatus.EXECUTION_READY:
             blockers = qec.blockers or ["Execution contract is not ready"]
-            status = AgentStatus.NEEDS_CLARIFICATION if any(b.startswith("NEEDS_USER_INPUT") for b in blockers) else AgentStatus.BLOCKED
+            status = (
+                AgentStatus.NEEDS_CLARIFICATION
+                if qec.readiness == PlanStatus.NEEDS_USER_INPUT
+                else AgentStatus.BLOCKED
+            )
             agent_result = AgentResult(
                 task_id=req.task_id,
                 trace_id=req.trace_id,
@@ -2209,28 +3072,14 @@ async def execute_agent_node(state: OrchestratorState) -> OrchestratorState:
                 "state_history": log_transition(AgentStatus.PLAN_CREATED, status, reason="Execution contract blocked")
             }
 
-    # dispatch 경계에서 공간 실행계약을 다시 강제한다.
-    # 재개된 state나 예전 graph state는 위치가 TaskPlan에만 남아 있을 수 있다.
-    if req.task_plan and req.task_plan.slots:
-        location_name = req.task_plan.slots.get("location")
-        if location_name and (not req.spatial_context or not req.spatial_context.geometry):
-            try:
-                from services.spatial_analysis_agent.geocoding_tool import get_maritime_coordinates
+    # Revalidate source identity at dispatch, including resumed plans.
+    if req.spatial_context and req.spatial_context.place_id:
+        try:
+            import asyncio
 
-                normalized_name = location_name
-                for suffix in ("입구", "주변", "근처", "일대", "반경", "이내"):
-                    normalized_name = normalized_name.replace(suffix, " ")
-                geometry = get_maritime_coordinates.invoke(" ".join(normalized_name.split()))
-                if isinstance(geometry, str) and geometry.upper().startswith("POINT"):
-                    distance_m = req.task_plan.slots.get("distance_m")
-                    req.spatial_context = SpatialContext(
-                        base_location=location_name,
-                        geometry=geometry,
-                        buffer_distance=distance_m,
-                    )
-                    logger.info("Dispatch location resolved", location=location_name, geometry=geometry)
-            except Exception as e:
-                logger.warning("Dispatch location resolution failed", location=location_name, error=str(e))
+            await asyncio.to_thread(resolve_location, state["query"], req.spatial_context.model_dump())
+        except PlaceResolutionProblem as exc:
+            return _place_lookup_update(state, {"status": "NEEDS_CLARIFICATION" if exc.status == "NEEDS_USER_INPUT" else "BLOCKED", "error_code": exc.code, "summary": str(exc), "location_candidates": exc.candidates})
     
     try:
         # Dynamic Dispatch via Registry
@@ -2641,6 +3490,14 @@ def check_intent_parsed(state: OrchestratorState) -> str:
         return "fast_external_data_requirement"
     if _should_fast_execute_s101_hazard_radius(state):
         return "fast_s101_hazard_radius_execute"
+    if _should_fast_execute_s101_nearest_feature(state):
+        return "fast_s101_nearest_feature_execute"
+    if _should_fast_execute_requested_spatial_layer(state):
+        return "fast_requested_spatial_layer_execute"
+    if _looks_like_place_lookup(state.get("query", "")):
+        return "fast_place_lookup"
+    if _should_fast_execute_traffic_query(state):
+        return "fast_dynamic_traffic_execute"
     if _should_fast_spatial_or_traffic_block(state):
         return "fast_spatial_or_traffic_block"
     if _exact_s101_feature_match(query) or _exact_s100_s101_relation_match(query) or _looks_like_legal_rag_query(query) or _looks_like_no_evidence_document_query(query):
@@ -2714,6 +3571,10 @@ def build_orchestrator_graph():
     workflow.add_node("fast_external_data_requirement", fast_external_data_requirement_node)
     workflow.add_node("fast_spatial_or_traffic_block", fast_spatial_or_traffic_block_node)
     workflow.add_node("fast_s101_hazard_radius_execute", fast_s101_hazard_radius_execute_node)
+    workflow.add_node("fast_dynamic_traffic_execute", fast_dynamic_traffic_execute_node)
+    workflow.add_node("fast_s101_nearest_feature_execute", fast_s101_nearest_feature_execute_node)
+    workflow.add_node("fast_requested_spatial_layer_execute", fast_requested_spatial_layer_execute_node)
+    workflow.add_node("fast_place_lookup", fast_place_lookup_node)
     workflow.add_node("graph_rag", graph_rag_node)
     workflow.add_node("data_discovery", data_discovery_node)
     workflow.add_node("resolve_context", resolve_context_node)
@@ -2736,6 +3597,10 @@ def build_orchestrator_graph():
             "fast_document_answer": "fast_document_answer",
             "fast_spatial_or_traffic_block": "fast_spatial_or_traffic_block",
             "fast_s101_hazard_radius_execute": "fast_s101_hazard_radius_execute",
+            "fast_dynamic_traffic_execute": "fast_dynamic_traffic_execute",
+            "fast_s101_nearest_feature_execute": "fast_s101_nearest_feature_execute",
+            "fast_requested_spatial_layer_execute": "fast_requested_spatial_layer_execute",
+            "fast_place_lookup": "fast_place_lookup",
             "create_plan": "create_plan",
             "resolve_context": "graph_rag"
         }
@@ -2744,6 +3609,10 @@ def build_orchestrator_graph():
     workflow.add_edge("fast_document_answer", END)
     workflow.add_edge("fast_spatial_or_traffic_block", END)
     workflow.add_edge("fast_s101_hazard_radius_execute", END)
+    workflow.add_edge("fast_dynamic_traffic_execute", END)
+    workflow.add_edge("fast_s101_nearest_feature_execute", END)
+    workflow.add_edge("fast_requested_spatial_layer_execute", END)
+    workflow.add_edge("fast_place_lookup", END)
     workflow.add_conditional_edges("graph_rag", check_graph_rag_next, {
         "data_discovery": "data_discovery",
         "resolve_context": "resolve_context",

@@ -45,6 +45,9 @@ class Intent(BaseModel):
 
 class SpatialContext(BaseModel):
     base_location: Optional[str] = None
+    place_id: Optional[str] = None
+    place_version: Optional[str] = None
+    location_resolution: Optional[Dict[str, Any]] = None
     geometry: Optional[str] = None
     buffer_distance: Optional[float] = None
     map_bounds: Optional[List[float]] = None

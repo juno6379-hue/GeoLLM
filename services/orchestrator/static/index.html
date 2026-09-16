@@ -31,6 +31,19 @@
         
         /* Content Area */
         .content-area { flex-grow: 1; display: flex; flex-direction: column; padding: 10px; gap: 10px; overflow-y: auto; }
+        .query-summary { flex-shrink: 0; min-width: 0; padding: 16px 18px; background: #fff; border-bottom: 2px solid #0284c7; overflow-wrap: anywhere; }
+        .query-summary[hidden] { display: none; }
+        .query-summary-heading { display: flex; gap: 12px; flex-wrap: wrap; justify-content: space-between; font-size: 12px; color: #475569; }
+        .query-summary-status { color: #0369a1; font-weight: 600; }
+        .query-summary-query { font-size: 12px; color: #64748b; margin: 10px 0 6px; }
+        .query-summary h2 { font-size: 17px; line-height: 1.55; margin: 0; font-weight: 600; }
+        .query-summary-body { font-size: 13px; line-height: 1.6; margin: 6px 0 0; white-space: pre-wrap; }
+        .query-summary-facts { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 6px 12px; margin: 12px 0 0; font-size: 12px; line-height: 1.6; }
+        .query-summary-facts:empty { display: none; }
+        .query-summary-facts dt { color: #64748b; }
+        .query-summary-facts dd { margin: 0; min-width: 0; }
+        .evidence-technical { margin-top: 6px; font-size: 11px; color: #64748b; overflow-wrap: anywhere; }
+        .evidence-technical > summary { cursor: pointer; }
         
         /* Top Row (Chat, Map, Results) */
         .top-row { display: flex; gap: 10px; flex-grow: 1; min-height: 750px; }
@@ -143,10 +156,85 @@
         .review-decision-box input, .review-decision-box textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--border-light); border-radius: 6px; padding: 8px; font-size: 12px; font-family: inherit; }
         .review-decision-box textarea { min-height: 64px; resize: vertical; }
         .review-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+        #returnedCount { font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+        #radiusDetails { margin: 12px 0; min-width: 0; overflow-x: auto; }
+        .radius-meta { font-size: 11px; line-height: 1.6; color: #64748b; overflow-wrap: anywhere; }
+        .radius-message { font-size: 12px; line-height: 1.6; white-space: pre-wrap; }
+        .radius-surface { display: grid; gap: 6px; margin: 10px 0; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; background: #f8fafc; }
+        .radius-surface-row { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 8px; align-items: start; font-size: 11px; line-height: 1.45; }
+        .radius-surface-label { color: #64748b; font-weight: 700; }
+        .radius-surface-value { color: #0f172a; overflow-wrap: anywhere; text-align: right; }
+        .radius-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 11px; margin-top: 10px; }
+        .radius-table th, .radius-table td { padding: 7px 4px; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+        .radius-table th { color: #475569; background: #f8fafc; }
+        .radius-table th:first-child { width: 35%; }
+        .radius-table th:last-child { width: 19%; }
+        .radius-table tr.radius-selected td { background: #fff7ed; box-shadow: inset 3px 0 0 #f97316; }
+        .evidence-item.radius-selected { border-color: #fb923c; background: #fff7ed; box-shadow: inset 3px 0 0 #f97316; }
+        .feature-focus { padding: 0; border: 0; background: transparent; color: #0369a1; cursor: pointer; font: inherit; text-align: left; overflow-wrap: anywhere; }
+        .feature-focus:hover { text-decoration: underline; }
+        .radius-popup { font-size: 12px; line-height: 1.6; max-width: 280px; overflow-wrap: anywhere; }
+        .s101-portrayal-marker { width: 32px; height: 32px; background: transparent; border: 0; }
+        .s101-portrayal-symbol { width: 32px; height: 32px; display: block; filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.35)); }
+        .s101-symbol-obstruction { filter: invert(55%) sepia(92%) saturate(1294%) hue-rotate(349deg) brightness(102%) contrast(95%) drop-shadow(0 1px 2px rgba(15, 23, 42, 0.28)); }
+        .s101-symbol-wreck { filter: invert(23%) sepia(92%) saturate(3192%) hue-rotate(349deg) brightness(91%) contrast(90%) drop-shadow(0 1px 2px rgba(15, 23, 42, 0.28)); }
+        .s101-symbol-rock { filter: invert(31%) sepia(82%) saturate(2105%) hue-rotate(246deg) brightness(92%) contrast(93%) drop-shadow(0 1px 2px rgba(15, 23, 42, 0.28)); }
+        .s101-fallback-symbol { width: 30px; height: 30px; display: grid; place-items: center; border: 2px solid currentColor; border-radius: 50%; background: rgba(255,255,255,0.92); font-size: 18px; font-weight: 800; line-height: 1; box-shadow: 0 1px 4px rgba(15,23,42,0.28); }
+        .s101-fallback-berth { color: #2563eb; }
+        .s101-fallback-obstruction { color: #f97316; }
+        .s101-fallback-wreck { color: #dc2626; }
+        .s101-fallback-rock { color: #7c3aed; }
+        .s101-fallback-danger-mark { color: #ca8a04; }
+        .s101-fallback-wreck-mark { color: #be123c; }
+        .s101-fallback-aid { color: #2563eb; }
+        .s101-fallback-light { color: #d97706; }
+        .s101-scale-overview .s101-portrayal-symbol { width: 22px; height: 22px; }
+        .s101-scale-overview .s101-fallback-symbol { width: 22px; height: 22px; font-size: 12px; border-width: 1px; }
+        .s101-scale-harbor .s101-portrayal-symbol { width: 30px; height: 30px; }
+        .s101-scale-harbor .s101-fallback-symbol { width: 28px; height: 28px; font-size: 16px; }
+        .s101-scale-detail .s101-portrayal-symbol { width: 38px; height: 38px; }
+        .s101-scale-detail .s101-fallback-symbol { width: 36px; height: 36px; font-size: 20px; border-width: 2px; }
+        .traffic-legend { background: rgba(255,255,255,0.92); border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 10px; font-size: 11px; line-height: 1.5; color: #0f172a; box-shadow: 0 1px 4px rgba(15,23,42,0.18); }
+        .traffic-legend-title { font-weight: 800; margin-bottom: 4px; }
+        .traffic-legend span { display: inline-block; width: 14px; height: 9px; margin-right: 6px; border: 1px solid rgba(15,23,42,0.25); vertical-align: middle; opacity: 0.75; }
+        .traffic-legend-note { margin-top: 4px; color: #64748b; }
+        .radius-warning { color: #9f1239; font-size: 12px; padding: 8px 0; }
+        .radius-pagination { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 10px; font-size: 11px; flex-wrap: wrap; }
+        .radius-pagination button { border: 1px solid #cbd5e1; border-radius: 4px; padding: 7px 9px; background: white; color: #0369a1; cursor: pointer; font: inherit; }
+        .radius-pagination button:disabled { opacity: 0.45; cursor: default; }
+        .location-candidate { padding: 12px 0; border-bottom: 1px solid #e2e8f0; font-size: 12px; overflow-wrap: anywhere; }
+        .location-confirm { margin-top: 8px; padding: 7px 10px; border: 1px solid #0284c7; border-radius: 4px; background: #0284c7; color: white; cursor: pointer; font: inherit; }
+        .location-confirm:disabled { opacity: 0.5; cursor: default; }
+        .radius-point-form { padding: 14px 0; border-top: 1px solid #e2e8f0; margin-top: 12px; }
+        .radius-point-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+        .radius-point-fields label { display: grid; gap: 5px; font-size: 11px; color: #475569; }
+        .radius-point-fields input { min-width: 0; width: 100%; box-sizing: border-box; padding: 7px 5px; font: inherit; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 4px; }
+        .radius-point-fields input[aria-invalid="true"] { border-color: #be123c; }
         @media (max-width: 1180px) {
+            .sidebar { display: none; }
+            .top-row { flex-wrap: wrap; min-height: 0; }
+            .map-panel { min-width: 300px; min-height: 420px; }
+            .results-panel { width: auto; flex-basis: 100%; min-width: 0; }
             .trace-pipeline { grid-template-columns: 1fr; }
             .trace-card.trace-card-wide { grid-column: auto; }
             .review-layout { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 700px) {
+            .navbar { padding: 0 10px; }
+            .nav-actions { display: none; }
+            .content-area { min-width: 0; }
+            .top-row { flex-direction: column; flex-wrap: nowrap; flex-shrink: 0; }
+            .chat-panel, .map-panel, .results-panel { width: 100%; min-width: 0; flex-shrink: 0; box-sizing: border-box; }
+            .chat-panel { min-height: 280px; }
+            .map-panel { height: 420px; }
+            .results-panel { flex-basis: auto; }
+            .chat-input-wrapper input { min-width: 0; }
+            .pipeline-track { overflow-x: auto; justify-content: flex-start; gap: 12px; padding: 0; }
+            .pipeline-step { min-width: 70px; }
+            .trace-pipeline { padding: 8px; }
+            .trace-value-row { grid-template-columns: minmax(90px, 0.4fr) minmax(0, 1fr); }
+            .review-layout { grid-template-columns: minmax(0, 1fr); padding: 8px; }
+            .review-detail-grid { grid-template-columns: 90px minmax(0, 1fr); }
         }
     </style>
 </head>
@@ -188,6 +276,13 @@
 
         <!-- Main Content -->
         <div class="content-area">
+            <section id="querySummary" class="query-summary" aria-label="질의 결과 요약" aria-live="polite" aria-atomic="true" hidden>
+                <div class="query-summary-heading"><strong>질의 결과 요약</strong><span id="querySummaryStatus" class="query-summary-status"></span></div>
+                <p id="querySummaryQuery" class="query-summary-query"></p>
+                <h2 id="querySummaryTitle"></h2>
+                <p id="querySummaryBody" class="query-summary-body"></p>
+                <dl id="querySummaryFacts" class="query-summary-facts"></dl>
+            </section>
             
             <!-- Top Row -->
             <div class="top-row">
@@ -197,8 +292,15 @@
                     <div class="panel-header">💬 대화형 GeoLLM 질의창</div>
                     <div class="preset-prompts" id="chatHistory">
                         <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">부산항 입구 3km 이내 위험객체를 찾아줘</div>
-                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">최근 1년간 통항량을 분석해줘</div>
-                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">해상풍력 후보지를 제약조건별로 평가해줘</div>
+                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">부산항 입구 10km 이내 위험객체를 종류별로 요약해줘</div>
+                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">부산항 입구에서 가장 가까운 침선 5개를 찾아줘</div>
+                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">최근 1년간 AIS/V-PASS 통항량을 분석해줘</div>
+                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">AIS와 V-PASS 데이터는 어느 기간까지 적재되어 있어?</div>
+                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">최근 1년 통항량이 가장 높은 격자와 월을 알려줘</div>
+                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">통항량 지도 셀을 클릭했을 때 보여줄 AIS/V-PASS 세부정보를 설명해줘</div>
+                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">부산항 입구 주변 정박지와 항로표지를 같이 조회해줘</div>
+                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">진입제한구역과 속도제한구역 레이어가 적재되어 있는지 확인해줘</div>
+                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">법령/사고/표준 문서 근거까지 포함해서 부산항 항행위험 원인을 설명해줘</div>
                     </div>
                     <div class="chat-input-area">
                         <div class="chat-input-wrapper">
@@ -229,6 +331,7 @@
                             <div class="summary-card danger">
                                 <div class="val" id="dangerCount">0건</div>
                                 <div class="lbl">공간분석 결과</div>
+                                <div id="returnedCount"></div>
                             </div>
                             <div class="summary-card">
                                 <div class="val" id="intentResult">-</div>
@@ -243,7 +346,8 @@
                                 <div class="lbl">정확도</div>
                             </div>
                         </div>
-                        
+                        <section id="radiusDetails" aria-label="공간 객체 조회 결과" hidden></section>
+
                         <div class="section-title">분석 근거</div>
                         <div class="answer-card">
                             <div class="evidence-list" id="answerEvidence">
@@ -514,6 +618,8 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4leaflet/1.0.2/proj4leaflet.min.js"></script>
+    <script src="/query-summary.js?v=20260916-scale-all-features"></script>
+    <script src="/radius-results.js?v=20260916-scale-all-features"></script>
     
     <script>
         // Init Map
@@ -534,12 +640,12 @@
         );
 
         // S-101 전자해도 WMS (로컬 맵 서버)
-        const s101EncUrl = 'http://localhost:11000/encService';
+        const s101EncUrl = 'http://localhost:11002/encService';
         const s101Layer = L.tileLayer.wms(s101EncUrl, {
             layers: 'enc101', 
             format: 'image/png',
             transparent: true,
-            version: '1.3.0',
+            version: '1.1.1',
             displayMode: 'base,standard,others',
             showTeText: true,
             colorPalette: 'DAY',
@@ -719,6 +825,7 @@
         }
 
         function setAnalysisPanel(status, message, evidenceItems = []) {
+            QuerySummary.show(status, message);
             document.getElementById("answerStatus").innerText = status;
             document.getElementById("answerText").innerText = message || "-";
 
@@ -953,9 +1060,9 @@
             }
         }
 
-        async function sendQuery() {
+        async function sendQuery(submission = {}) {
             const queryInput = document.getElementById("query");
-            const query = queryInput.value.trim();
+            const query = (submission.query || queryInput.value).trim();
             if (!query) return;
 
             document.getElementById('tracePanel').style.display = 'grid';
@@ -969,6 +1076,8 @@
             
             // UI 초기화
             btn.disabled = true;
+            RadiusResults.reset();
+            QuerySummary.show("분석 중", "검색 결과를 확인하고 있습니다.", query);
             activeLayers.forEach(l => map.removeLayer(l)); activeLayers = [];
             document.getElementById("logArea").innerHTML = "";
             document.getElementById("dangerCount").innerText = "분석중...";
@@ -1019,9 +1128,9 @@
                     query: query, 
                     user_id: "admin", 
                     organization_id: "test",
-                    spatial_context: { map_bounds: map_bounds }
+                    spatial_context: { map_bounds: map_bounds, ...(submission.spatialContext || {}) }
                 };
-                if (currentTaskId) reqBody.task_id = currentTaskId;
+                if (currentTaskId && !submission.fresh) reqBody.task_id = currentTaskId;
 
                 const response = await fetch('/api/v1/tasks/stream', {
                     method: 'POST',
@@ -1073,6 +1182,15 @@
                                 fetchTraceData(currentTaskId);
                             } else if (data.event === 'completed') {
                                 fetchTraceData(currentTaskId);
+                                if (RadiusResults.isRadius(data.final_result)) {
+                                    RadiusResults.render(data.final_result, { map, activeLayers, originalQuery: query, submit: sendQuery });
+                                    const completed = ['COMPLETED', 'SUCCESS', 'SUCCESS_EMPTY'].includes(data.final_result.status);
+                                    if (completed) setStep('report', 'done');
+                                    addLog(completed ? '[System] 공간 조회 완료' : '[System] 공간 조회 조건 확인');
+                                    btn.disabled = false;
+                                    currentTaskId = null;
+                                    continue;
+                                }
                                 if (data.status === 'FAILED' || (data.final_result && data.final_result.status === 'FAILED')) {
 
                                     addLog(`[Error] 분석 실패`);
@@ -1388,6 +1506,7 @@
                 }
             } catch (error) {
                 addLog(`[Error] 통신 오류: ${error.message}`);
+                setAnalysisPanel("통신 오류", "검색 결과를 받지 못했습니다. 연결 상태를 확인한 뒤 다시 요청해 주세요.");
                 btn.disabled = false;
             }
         }
