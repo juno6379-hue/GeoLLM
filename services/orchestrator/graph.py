@@ -1125,10 +1125,13 @@ def _looks_like_accident_spatial_history_query(query: str) -> bool:
         "within",
     ]
     has_place = bool(_registered_place_aliases()) and any(alias in lowered or alias in text for alias in _registered_place_aliases())
+    has_spatial_context = bool(_spatial_context_dict({}).get("geometry"))
+    has_accident_history = any(term in lowered or term in text for term in accident_terms)
+    has_spatial_relation = any(term in lowered or term in text for term in spatial_terms)
     return (
-        any(term in lowered or term in text for term in accident_terms)
-        and any(term in lowered or term in text for term in spatial_terms)
-        and (has_place or bool(_spatial_context_dict({}).get("geometry")))
+        has_accident_history
+        and (has_place or has_spatial_context)
+        and (has_spatial_relation or has_place or has_spatial_context)
     )
 
 def _should_fast_execute_accident_spatial_history(state: OrchestratorState) -> bool:

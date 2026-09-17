@@ -53,6 +53,22 @@ def test_nearby_accident_history_prefers_spatial_history_tool(monkeypatch):
     )
 
 
+def test_place_accident_history_uses_spatial_history_tool_without_nearby_word(monkeypatch):
+    monkeypatch.setenv("GEOLLM_CAPABILITY_PGVECTOR", "false")
+
+    trace = query_candidate_broker.build_trace("독도 사고 이력")
+
+    signals = {row["signal_id"] for row in trace["deterministic_signals"]}
+    assert {"accident_event", "accident_history", "place_name"} <= signals
+    assert trace["execution_contract"]["execution_route"] == "ACCIDENT_ANALYSIS"
+    assert trace["capability_candidates"][0]["candidate_id"] == "tool.accident_spatial_history_lookup"
+    assert execution_contract_ready(
+        trace,
+        route="ACCIDENT_ANALYSIS",
+        capability_id="tool.accident_spatial_history_lookup",
+    )
+
+
 def test_spatial_relation_is_not_promoted_to_derived_concept():
     slots = ExecutionSlots.from_payload({"derived_concepts": ["부근"], "spatial_relation": "부근"})
 

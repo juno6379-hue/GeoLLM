@@ -136,6 +136,7 @@ DETERMINISTIC_PATTERNS: list[tuple[str, re.Pattern[str], list[str]]] = [
 
 DETERMINISTIC_PATTERNS.extend([
     ("accident_event", re.compile(r"accident|incident|사고|사건|해상조난|조난사고|해양사고|선박사고", re.I), ["ACCIDENT_ANALYSIS"]),
+    ("accident_history", re.compile(r"사고\s*이력|사고\s*내역|이력|history", re.I), ["ACCIDENT_ANALYSIS"]),
     ("accident_cause", re.compile(r"정비불량|관리소홀|운항부주의|안전부주의|원인미상|발생원인", re.I), ["ACCIDENT_ANALYSIS"]),
     ("accident_type", re.compile(r"기관손상|추진기손상|키손상|침몰|침수|좌초|충돌|화재|전복|표류|발생유형", re.I), ["ACCIDENT_ANALYSIS"]),
     ("structured_event_lookup", re.compile(r"찾아줘|찾아|검색|조회|목록|event|case", re.I), ["ACCIDENT_ANALYSIS"]),
@@ -446,6 +447,26 @@ def _capability_candidates(
     *,
     top_k: int = 8,
 ) -> list[dict[str, Any]]:
+    signal_ids = {signal.signal_id for signal in signals}
+    execution_route = _primary_execution_route(route_candidates)
+    if (
+        execution_route == "ACCIDENT_ANALYSIS"
+        and signal_ids & {"accident_history"}
+        and signal_ids & {"place_name", "place_name_utf8"}
+    ):
+        deterministic_candidates = _registry_capability_candidates(
+            query,
+            route_candidates,
+            signals,
+            top_k=top_k,
+            require_signal_match=True,
+        )
+        if any(
+            candidate.get("candidate_id") == "tool.accident_spatial_history_lookup"
+            for candidate in deterministic_candidates
+        ):
+            return deterministic_candidates
+
     pgvector_candidates, _policy = _pgvector_capability_candidates(query, route_candidates, top_k=top_k)
     if pgvector_candidates:
         supplement = _registry_capability_candidates(
