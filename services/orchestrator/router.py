@@ -344,9 +344,17 @@ def _preserve_spatial_stream_payload(result: dict, compact: dict) -> None:
     structured = result.get("structured_result") if isinstance(result.get("structured_result"), dict) else {}
     orch = result.get("orchestrator_v2") if isinstance(result.get("orchestrator_v2"), dict) else {}
     route = orch.get("route_plan") if isinstance(orch.get("route_plan"), dict) else {}
+    spatial_stream_analysis_types = {
+        "feature_search_by_radius",
+        "place_lookup",
+        "nearest_feature",
+        "traffic_search_by_time_space",
+        "accident_spatial_history_lookup",
+        "accident_event_lookup",
+    }
     is_radius = (
-        structured.get("analysis_type") in {"feature_search_by_radius", "place_lookup", "nearest_feature", "traffic_search_by_time_space"}
-        or route.get("analysis_type") in {"feature_search_by_radius", "place_lookup", "nearest_feature", "traffic_search_by_time_space"}
+        structured.get("analysis_type") in spatial_stream_analysis_types
+        or route.get("analysis_type") in spatial_stream_analysis_types
         or "location_candidates" in structured
     )
     for key in ("task_id", "clarification_questions", "clarification_options", "warnings"):
@@ -374,6 +382,7 @@ def _preserve_spatial_stream_payload(result: dict, compact: dict) -> None:
         "web_rag_usage", "result_surface",
         "result_surface_contract",
         "execution_contract",
+        "events", "radius_m",
         "total_traffic_count", "grid_count", "source_breakdown", "monthly_breakdown",
         "tile_layer_summary", "temporal_window", "effective_temporal_window",
     ):
