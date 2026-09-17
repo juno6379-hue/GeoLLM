@@ -8,6 +8,76 @@ policies:
   authority_gate_required: true
   ollama_role: ambiguity_resolver_only
   verified_execution_only: true
+lexical_signals:
+- signal_id: accident_event
+  routes:
+  - ACCIDENT_ANALYSIS
+  terms:
+  - 사고
+  - 사건
+  - 해상조난
+  - 조난사고
+  - 해양사고
+  - 선박사고
+  - accident
+  - incident
+  - case
+- signal_id: accident_cause
+  routes:
+  - ACCIDENT_ANALYSIS
+  terms:
+  - 정비불량
+  - 관리소홀
+  - 운항부주의
+  - 안전부주의
+  - 원인미상
+  - 발생원인
+- signal_id: accident_type
+  routes:
+  - ACCIDENT_ANALYSIS
+  terms:
+  - 기관손상
+  - 추진기손상
+  - 키손상
+  - 침몰
+  - 침수
+  - 좌초
+  - 좌주
+  - 충돌
+  - 접촉
+  - 화재
+  - 전복
+  - 표류
+  - 발생유형
+- signal_id: structured_event_lookup
+  routes:
+  - ACCIDENT_ANALYSIS
+  terms:
+  - 찾아줘
+  - 찾아
+  - 검색
+  - 조회
+  - 목록
+  - 찾아 볼래
+- signal_id: nearby_search
+  routes:
+  - SPATIAL_ANALYSIS
+  terms:
+  - 부근
+  - 근처
+  - 주변
+  - 반경
+  - 이내
+- signal_id: marine_gazetteer_target
+  routes:
+  - SPATIAL_ANALYSIS
+  - PLACE_LOOKUP
+  terms:
+  - 해저지명
+  - 해저 지명
+  - 해양지명
+  - 해양 지명
+  - 지명
 capabilities:
 - capability_id: resolver.place_registry
   object_type: resolver_description
@@ -319,6 +389,7 @@ capabilities:
   deterministic_hints:
   - accident_event
   - accident_cause
+  - accident_type
   - structured_event_lookup
 - capability_id: tool.accident_event_lookup
   object_type: tool_description
@@ -346,6 +417,7 @@ capabilities:
   deterministic_hints:
   - accident_event
   - accident_cause
+  - accident_type
   - structured_event_lookup
 - capability_id: dataset.accident_events
   object_type: dataset_metadata
@@ -371,6 +443,8 @@ capabilities:
   registry_ref: data/spatial_layer_registry.yaml
   deterministic_hints:
   - accident_event
+  - accident_cause
+  - accident_type
   - structured_event_lookup
 - capability_id: ontology.accident_risk_event
   object_type: ontology_class_description

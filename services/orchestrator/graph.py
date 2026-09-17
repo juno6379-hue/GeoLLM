@@ -2626,6 +2626,7 @@ def _dataset_evidence_terms(query: str) -> list[str]:
     terms: list[str] = []
     generic_stems = ("근거", "출처", "원천", "적재", "임베딩", "학습", "확인", "데이터셋", "데이터", "파일")
     for token in raw_tokens:
+        cleaned = _strip_korean_particles(token)
         cleaned = token.strip("`'\".,;:!?[]{}")
         cleaned = re.sub(r"(?:은|는|이|가|을|를|로|으로|에서|에게|까지|부터|인지|됐는지|되었는지|되는지|된것|된 것)$", "", cleaned)
         lowered = cleaned.lower()
@@ -2775,14 +2776,56 @@ ACCIDENT_EVENT_STOPWORDS = {
     "\uadfc\uac70",
     "\uc704\uce58",
     "\uc9c0\ub3c4",
+    "\ucc3e\uc544\ubcfc\ub798",
+    "\ubcf4\uc5ec",
+    "\uc54c\ub824",
+    "\uac80\uc0c9\ud574",
+    "\uac80\uc0c9\ud574\uc918",
+    "\uc870\ud68c\ud574",
+    "\uc870\ud68c\ud574\uc918",
 }
+
+
+def _strip_korean_particles(token: str) -> str:
+    cleaned = token.strip("`'\".,;:!?[]{}()")
+    endings = (
+        "\uc73c\ub85c\ubd80\ud130",
+        "\ub85c\ubd80\ud130",
+        "\uc5d0\uc11c\ub294",
+        "\uc5d0\uc11c",
+        "\uc5d0\uac8c",
+        "\uaed8",
+        "\uc73c\ub85c",
+        "\ucc98\ub7fc",
+        "\uc774\ub77c\uba74",
+        "\ub77c\uba74",
+        "\uae4c\uc9c0",
+        "\ubd80\ud130",
+        "\ub9cc",
+        "\uc640",
+        "\uacfc",
+        "\uc740",
+        "\ub294",
+        "\uc774",
+        "\uac00",
+        "\uc744",
+        "\ub97c",
+        "\uc758",
+        "\uc5d0",
+        "\ub3c4",
+        "\ub85c",
+    )
+    for ending in endings:
+        if cleaned.endswith(ending) and len(cleaned) > len(ending) + 1:
+            return cleaned[: -len(ending)]
+    return cleaned
 
 
 def _accident_event_terms(query: str) -> list[str]:
     raw_tokens = re.findall(r"[0-9A-Za-z\uac00-\ud7a3_-]{2,}", query or "")
     terms: list[str] = []
     for token in raw_tokens:
-        cleaned = token.strip("`'\".,;:!?[]{}()")
+        cleaned = _strip_korean_particles(token)
         cleaned = re.sub(r"(?:을|를|이|가|은|는|으로|로|에서|에게|께|의|과|와|도|만|부터|까지|처럼|라면|이면)$", "", cleaned)
         lowered = cleaned.lower()
         if lowered in ACCIDENT_EVENT_STOPWORDS or cleaned in ACCIDENT_EVENT_STOPWORDS:

@@ -6,6 +6,7 @@ import os
 import re
 import urllib.request
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -164,6 +165,23 @@ def _load_registry() -> dict[str, Any]:
         return {}
 
 
+@lru_cache(maxsize=1)
+def _registry_lexical_signals() -> tuple[tuple[str, tuple[str, ...], tuple[str, ...]], ...]:
+    registry = _load_registry()
+    rows = []
+    for item in registry.get("lexical_signals") or []:
+        signal_id = str(item.get("signal_id") or "").strip()
+        routes = tuple(str(route) for route in item.get("routes") or [] if route)
+        terms = tuple(str(term).lower() for term in item.get("terms") or [] if str(term).strip())
+        if signal_id and routes and terms:
+            rows.append((signal_id, routes, terms))
+    return tuple(rows)
+
+
+def _compact_text(text: str) -> str:
+    return re.sub(r"\s+", "", text or "").lower()
+
+
 def _tokens(text: str) -> set[str]:
     return {
         token.lower()
@@ -179,6 +197,30 @@ def _signal_scan(query: str) -> list[Signal]:
         if match:
             signals.append(Signal(signal_id=signal_id, routes=routes, value=match.group(0)))
     return signals
+
+
+def _registry_signal_scan(query: str) -> list[Signal]:
+    lowered = (query or "").lower()
+    compacted = _compact_text(query)
+    signals: list[Signal] = []
+    for signal_id, routes, terms in _registry_lexical_signals():
+        for term in terms:
+            if term in lowered or _compact_text(term) in compacted:
+                signals.append(Signal(signal_id=signal_id, routes=list(routes), value=term))
+                break
+    return signals
+
+
+def _dedupe_signals(signals: list[Signal]) -> list[Signal]:
+    deduped: list[Signal] = []
+    seen: set[tuple[str, str | None]] = set()
+    for signal in signals:
+        key = (signal.signal_id, signal.value)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(signal)
+    return deduped
 
 
 def _route_candidates(query: str, signals: list[Signal], *, top_k: int = 5) -> list[dict[str, Any]]:
@@ -222,6 +264,54 @@ def _capability_text(capability: dict[str, Any]) -> str:
         if isinstance(values, list):
             parts.extend(str(item) for item in values)
     return " ".join(parts)
+
+
+def _registry_capability_candidates(
+    query: str,
+    route_candidates: list[dict[str, Any]],
+    signals: list[Signal],
+    *,
+    top_k: int = 8,
+    require_signal_match: bool = False,
+) -> list[dict[str, Any]]:
+    registry = _load_registry()
+    capabilities = registry.get("capabilities") or []
+    query_tokens = _tokens(query)
+    route_scores = {row["route"]: float(row.get("score") or 0.0) for row in route_candidates}
+    signal_ids = {signal.signal_id for signal in signals}
+    scored: list[tuple[float, dict[str, Any]]] = []
+    for capability in capabilities:
+        hint_overlap = signal_ids & set(capability.get("deterministic_hints") or [])
+        if require_signal_match and not hint_overlap:
+            continue
+        text_tokens = _tokens(_capability_text(capability))
+        overlap = query_tokens & text_tokens
+        token_score = len(overlap) / math.sqrt(max(len(query_tokens), 1) * max(len(text_tokens), 1))
+        routes = capability.get("routes") or []
+        route_score = max((route_scores.get(route, 0.0) for route in routes), default=0.0)
+        hint_score = min(len(hint_overlap) * 0.16, 0.48)
+        score = token_score + (route_score * 0.55) + hint_score
+        if score <= 0:
+            continue
+        item = {
+            "candidate_id": capability.get("capability_id"),
+            "kind": capability.get("object_type"),
+            "label": capability.get("label"),
+            "routes": routes,
+            "role": capability.get("role"),
+            "score": round(min(score, 1.0), 3),
+            "matched_tokens": sorted(overlap)[:10],
+            "matched_signals": sorted(hint_overlap),
+            "input_slots": capability.get("input_slots") or [],
+            "output_slots": capability.get("output_slots") or [],
+            "authority_ref": capability.get("authority_ref"),
+            "registry_ref": capability.get("registry_ref"),
+            "verification_status": "pending",
+            "retrieval_source": "registry_signal" if hint_overlap else "registry_fallback",
+        }
+        scored.append((score, item))
+    scored.sort(key=lambda item: item[0], reverse=True)
+    return [item for _, item in scored[:top_k]]
 
 
 def _embed_query(text: str) -> list[float]:
@@ -347,42 +437,39 @@ def _capability_candidates(
 ) -> list[dict[str, Any]]:
     pgvector_candidates, _policy = _pgvector_capability_candidates(query, route_candidates, top_k=top_k)
     if pgvector_candidates:
-        return pgvector_candidates
-    registry = _load_registry()
-    capabilities = registry.get("capabilities") or []
-    query_tokens = _tokens(query)
-    route_scores = {row["route"]: float(row.get("score") or 0.0) for row in route_candidates}
-    signal_ids = {signal.signal_id for signal in signals}
-    scored: list[tuple[float, dict[str, Any]]] = []
-    for capability in capabilities:
-        text_tokens = _tokens(_capability_text(capability))
-        overlap = query_tokens & text_tokens
-        token_score = len(overlap) / math.sqrt(max(len(query_tokens), 1) * max(len(text_tokens), 1))
-        routes = capability.get("routes") or []
-        route_score = max((route_scores.get(route, 0.0) for route in routes), default=0.0)
-        hint_overlap = signal_ids & set(capability.get("deterministic_hints") or [])
-        hint_score = min(len(hint_overlap) * 0.12, 0.36)
-        score = token_score + (route_score * 0.55) + hint_score
-        if score <= 0:
-            continue
-        item = {
-            "candidate_id": capability.get("capability_id"),
-            "kind": capability.get("object_type"),
-            "label": capability.get("label"),
-            "routes": routes,
-            "role": capability.get("role"),
-            "score": round(min(score, 1.0), 3),
-            "matched_tokens": sorted(overlap)[:10],
-            "matched_signals": sorted(hint_overlap),
-            "input_slots": capability.get("input_slots") or [],
-            "output_slots": capability.get("output_slots") or [],
-            "authority_ref": capability.get("authority_ref"),
-            "registry_ref": capability.get("registry_ref"),
-            "verification_status": "pending",
-        }
-        scored.append((score, item))
-    scored.sort(key=lambda item: item[0], reverse=True)
-    return [item for _, item in scored[:top_k]]
+        supplement = _registry_capability_candidates(
+            query,
+            route_candidates,
+            signals,
+            top_k=top_k,
+            require_signal_match=True,
+        )
+        merged = {str(item.get("candidate_id")): item for item in pgvector_candidates}
+        for item in supplement:
+            candidate_id = str(item.get("candidate_id"))
+            if candidate_id not in merged:
+                merged[candidate_id] = item
+                continue
+            existing = merged[candidate_id]
+            existing["score"] = max(float(existing.get("score") or 0.0), float(item.get("score") or 0.0))
+            existing["matched_signals"] = sorted(
+                set(existing.get("matched_signals") or []) | set(item.get("matched_signals") or [])
+            )
+            existing["matched_tokens"] = sorted(
+                set(existing.get("matched_tokens") or []) | set(item.get("matched_tokens") or [])
+            )[:10]
+            existing["retrieval_source"] = "pgvector+registry_signal"
+        result = list(merged.values())
+        result.sort(
+            key=lambda item: (
+                float(item.get("score") or 0.0),
+                len(item.get("matched_signals") or []),
+                1 if "registry_signal" in str(item.get("retrieval_source") or "") else 0,
+            ),
+            reverse=True,
+        )
+        return result[: max(top_k, len(pgvector_candidates))]
+    return _registry_capability_candidates(query, route_candidates, signals, top_k=top_k)
 
 
 def _verify_candidates(capabilities: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -576,7 +663,7 @@ def execution_contract_ready(trace: dict[str, Any] | None, *, route: str | None 
 class QueryCandidateBroker:
     def build_trace(self, query: str, normalized_query: str | None = None, norm_result: dict[str, Any] | None = None) -> dict[str, Any]:
         combined = " ".join(part for part in [query, normalized_query] if part)
-        signals = _signal_scan(combined)
+        signals = _dedupe_signals(_signal_scan(combined) + _registry_signal_scan(combined))
         routes = _route_candidates(combined, signals)
         capabilities = _capability_candidates(combined, routes, signals)
         pgvector_used = bool(capabilities and capabilities[0].get("retrieval_source") == "pgvector")
