@@ -2,6 +2,7 @@ from services.orchestrator.query_candidate_broker import (
     execution_contract_ready,
     query_candidate_broker,
 )
+from shared.schemas.agent import ExecutionSlots
 
 
 def test_accident_lookup_contract_is_registry_ready_without_pgvector(monkeypatch):
@@ -50,3 +51,10 @@ def test_nearby_accident_history_prefers_spatial_history_tool(monkeypatch):
         route="ACCIDENT_ANALYSIS",
         capability_id="tool.accident_spatial_history_lookup",
     )
+
+
+def test_spatial_relation_is_not_promoted_to_derived_concept():
+    slots = ExecutionSlots.from_payload({"derived_concepts": ["부근"], "spatial_relation": "부근"})
+
+    assert slots.spatial_relation == "부근"
+    assert slots.derived_concept is None

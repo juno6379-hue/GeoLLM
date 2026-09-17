@@ -76,6 +76,9 @@ class SchemaBindingAdapter:
             result.warnings.extend(accident_binding.warnings)
             result.inspected_relations.update(accident_binding.inspected_relations)
             self._bind_tool("accident.s101_relation_lookup", "accident_relation_lookup", "accident_s101_relation_lookup", result)
+        elif analysis_type == "accident_spatial_history_lookup":
+            self._bind_accident_events(result)
+            self._bind_tool("accident.spatial_history_lookup", "structured_accident_spatial_history_lookup", "accident_spatial_history_lookup", result)
         elif analysis_type in {
             "spatial_layer_overlay",
             "current_tidal_lookup",
@@ -363,6 +366,34 @@ class SchemaBindingAdapter:
                 )
             )
         return result
+
+    def _bind_accident_events(self, result: BindingResult) -> None:
+        layer = self.layer_registry.get("layers", {}).get("accident_events", {})
+        relation = layer.get("physical_table") or "serving.accident_events"
+        geometry_column = layer.get("geometry_column", "geom")
+        info = self._inspect_relation(relation)
+        result.inspected_relations[relation] = info
+        if not info.get("exists"):
+            result.blockers.append(f"BLOCKED_CONFIG: relation not found: {relation}")
+            return
+        columns = {col["name"]: col for col in info.get("columns", [])}
+        for col in (geometry_column, "event_id", "occurred_at", "authority", "cause", "accident_type"):
+            if col not in columns:
+                result.blockers.append(f"BLOCKED_CONFIG: required column not found: {relation}.{col}")
+        if not result.blockers:
+            result.data_bindings.append(
+                DataBinding(
+                    dataset_id="accident_events",
+                    relation=relation,
+                    geometry_column=geometry_column,
+                    distance_column="distance_m",
+                    srid=4326,
+                    snapshot_version="current",
+                    layer_type=layer.get("layer_type", "accident_event"),
+                    execution_status=layer.get("execution_status", "executable"),
+                    read_only=True,
+                )
+            )
 
     def _inspect_relation(self, relation: str) -> Dict[str, Any]:
         url = os.getenv("S101_DB_URL") or os.getenv("POSTGIS_URL")

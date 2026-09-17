@@ -203,7 +203,9 @@ class ExecutionSlots(BaseModel):
             payload["target_features"] = payload["target_feature_candidates"]
         if payload.get("derived_concepts") and not payload.get("derived_concept"):
             concepts = payload["derived_concepts"]
-            payload["derived_concept"] = concepts[0] if isinstance(concepts, list) and concepts else concepts
+            candidate = concepts[0] if isinstance(concepts, list) and concepts else concepts
+            if candidate not in {"부근", "근처", "주변", "이내", "반경", "거리", "사고", "이력"}:
+                payload["derived_concept"] = candidate
         allowed = set(cls.model_fields)
         normalized = {key: value for key, value in payload.items() if key in allowed}
         return cls(**normalized)

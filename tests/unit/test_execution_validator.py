@@ -27,6 +27,19 @@ def _fake_relation_info(relation):
                 {"name": "distance_meters", "type": "numeric"},
             ],
         }
+    if relation == "serving.accident_events":
+        return {
+            "exists": True,
+            "count": 4636,
+            "columns": [
+                {"name": "event_id", "type": "text"},
+                {"name": "occurred_at", "type": "timestamp"},
+                {"name": "authority", "type": "text"},
+                {"name": "cause", "type": "text"},
+                {"name": "accident_type", "type": "text"},
+                {"name": "geom", "type": "geometry(Point,4326)"},
+            ],
+        }
     if relation in {
         "serving.planned_port_area_current",
         "serving.eddy_hazard_area_current",
@@ -120,6 +133,55 @@ def test_execution_validator_blocks_unresolved_geometry(monkeypatch):
 
     assert validated.readiness == PlanStatus.NEEDS_USER_INPUT
     assert "NEEDS_USER_INPUT: reference geometry is unresolved" in validated.blockers
+
+
+def test_accident_spatial_history_requires_resolved_geometry(monkeypatch):
+    from services.orchestrator import execution_validator
+
+    adapter = SchemaBindingAdapter()
+    monkeypatch.setattr(adapter, "_inspect_relation", _fake_relation_info)
+    monkeypatch.setattr(execution_validator, "schema_binding_adapter", adapter)
+
+    qec = QueryExecutionContext(
+        route_plan={"analysis_type": "accident_spatial_history_lookup"},
+        slots=ExecutionSlots(
+            location_text="독도",
+            distance_m=10000,
+            spatial_relation="nearby",
+            target_term="accident_history",
+            derived_concept="accident_event",
+        ),
+    )
+
+    validated = validate_execution_context(qec)
+
+    assert validated.readiness == PlanStatus.NEEDS_USER_INPUT
+    assert "NEEDS_USER_INPUT: reference geometry is unresolved" in validated.blockers
+
+
+def test_accident_spatial_history_ready_only_after_geometry_and_binding(monkeypatch):
+    from services.orchestrator import execution_validator
+
+    adapter = SchemaBindingAdapter()
+    monkeypatch.setattr(adapter, "_inspect_relation", _fake_relation_info)
+    monkeypatch.setattr(execution_validator, "schema_binding_adapter", adapter)
+
+    qec = QueryExecutionContext(
+        route_plan={"analysis_type": "accident_spatial_history_lookup"},
+        slots=ExecutionSlots(
+            location_text="독도",
+            reference_geometry="POINT(131.864444 37.241389)",
+            crs="EPSG:4326",
+            distance_m=10000,
+            spatial_relation="nearby",
+            target_term="accident_history",
+            derived_concept="accident_event",
+        ),
+    )
+
+    validated = validate_execution_context(qec)
+
+    assert validated.readiness == PlanStatus.EXECUTION_READY
 
 
 def test_execution_validator_marks_ready_with_bindings(monkeypatch):

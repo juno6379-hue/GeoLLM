@@ -164,6 +164,27 @@ def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=No
         if not current.tool_bindings:
             blockers.append("BLOCKED_CONFIG: no validated accident relation tool binding")
 
+    elif analysis_type == "accident_spatial_history_lookup":
+        if not _has_reference_geometry(current):
+            blockers.append("NEEDS_USER_INPUT: reference geometry is unresolved")
+        if slots.distance_m is None:
+            blockers.append("NEEDS_USER_INPUT: distance_m is required")
+        else:
+            try:
+                distance = float(slots.distance_m)
+                if not math.isfinite(distance):
+                    blockers.append("NEEDS_USER_INPUT: distance_m must be finite")
+                elif distance <= 0:
+                    blockers.append("NEEDS_USER_INPUT: distance_m must be positive")
+                elif distance > MAX_RADIUS_M:
+                    blockers.append(f"BLOCKED_POLICY: distance_m exceeds max radius {MAX_RADIUS_M:g}")
+            except (TypeError, ValueError):
+                blockers.append("NEEDS_USER_INPUT: distance_m must be numeric")
+        if not current.data_bindings:
+            blockers.append("BLOCKED_CONFIG: no validated accident event binding")
+        if not current.tool_bindings:
+            blockers.append("BLOCKED_CONFIG: no validated accident spatial history tool binding")
+
     elif analysis_type in {"traffic_search_by_time_space", "dynamic_traffic_lookup"}:
         if not _has_reference_geometry(current):
             blockers.append("NEEDS_USER_INPUT: reference geometry is unresolved")

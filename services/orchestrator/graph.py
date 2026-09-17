@@ -5,6 +5,7 @@ import re
 from functools import lru_cache
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_openai import ChatOpenAI
@@ -527,6 +528,36 @@ def _as_float(value):
     except (TypeError, ValueError):
         return None
 
+NON_DERIVED_CONCEPT_TERMS = {
+    "\ubd80\uadfc",
+    "\uadfc\ucc98",
+    "\uc8fc\ubcc0",
+    "\uc774\ub0b4",
+    "\ubc18\uacbd",
+    "\uac70\ub9ac",
+    "\ucc3e\uc544",
+    "\ucc3e\uc544\uc918",
+    "\uc0ac\uace0",
+    "\uc774\ub825",
+}
+
+
+def _valid_derived_concept(value: Any) -> str | None:
+    text = str(value or "").strip()
+    if not text or text in NON_DERIVED_CONCEPT_TERMS:
+        return None
+    concepts = (_load_yaml_registry("derived_concept_registry_v2.yaml").get("derived_concepts") or {})
+    legacy = (_load_yaml_registry("derived_concept_registry.yaml").get("derived_concepts") or {})
+    known = set(concepts) | set(legacy)
+    known.update(
+        str(item.get("concept_id"))
+        for item in list(concepts.values()) + list(legacy.values())
+        if isinstance(item, dict) and item.get("concept_id")
+    )
+    known.update({"accident_event", "dynamic_traffic", "dataset_embedding_provenance"})
+    return text if text in known else None
+
+
 def _enrich_extracted_slots(slots: dict | None, norm_result: dict | None) -> dict:
     """Keep normalized terms and executable spatial slots in one payload."""
     enriched = dict(slots or {})
@@ -535,9 +566,13 @@ def _enrich_extracted_slots(slots: dict | None, norm_result: dict | None) -> dic
     candidate_contexts = norm_result.get("candidate_contexts") or []
     if canonical_terms:
         enriched.setdefault("canonical_terms", canonical_terms)
-        enriched.setdefault("derived_concepts", canonical_terms)
-        if not enriched.get("derived_concept"):
-            enriched["derived_concept"] = canonical_terms[0]
+        valid_concepts = [term for term in canonical_terms if _valid_derived_concept(term)]
+        if valid_concepts:
+            enriched.setdefault("derived_concepts", valid_concepts)
+            if not _valid_derived_concept(enriched.get("derived_concept")):
+                enriched["derived_concept"] = valid_concepts[0]
+        elif not _valid_derived_concept(enriched.get("derived_concept")):
+            enriched.pop("derived_concept", None)
     if candidate_contexts:
         enriched.setdefault("candidate_contexts", candidate_contexts)
         if not enriched.get("context"):
@@ -1902,6 +1937,12 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
             output_format = "MAP"
             intent_understanding = "Requested dataset spatial layer search requires a validated reference geometry and spatial layer binding."
             execution_plan = "1. Resolve the reference place. 2. Execute the requested spatial layer radius search. 3. Return map features and evidence."
+        elif _looks_like_accident_spatial_history_query(combined_fast_query):
+            intent_type = "ACCIDENT_ANALYSIS"
+            target_objects = ["accident_history"]
+            output_format = "MAP"
+            intent_understanding = "Nearby accident history requires a validated place anchor, radius, and accident event serving-table binding."
+            execution_plan = "1. Resolve the reference place. 2. Validate accident spatial history binding. 3. Query serving.accident_events by distance and return map evidence."
         elif _looks_like_explicit_time_series_request(combined_fast_query):
             intent_type = "TIME_SERIES_ANALYSIS"
             target_objects = ["time_series"]
@@ -2270,9 +2311,13 @@ async def graph_rag_node(state: OrchestratorState) -> OrchestratorState:
     query = state.get("query") or state.get("normalized_query") or ""
     intent = state.get("agent_request").parsed_intent if state.get("agent_request") else None
     norm = state.get("norm_result") or {}
+    derived_seed = [
+        item for item in (norm.get("derived_concepts", []) or norm.get("canonical_terms", []))
+        if _valid_derived_concept(item)
+    ]
     seed_context = {
         "target_features": list(intent.target_objects) if intent else [],
-        "derived_concepts": norm.get("derived_concepts", []) or norm.get("canonical_terms", []),
+        "derived_concepts": derived_seed,
         "document_type": norm.get("document_type", []),
     }
     context = graph_rag_retriever.retrieve(query, seed_context)
@@ -3108,35 +3153,54 @@ async def fast_accident_spatial_history_lookup_node(state: OrchestratorState) ->
     plan_status = "BLOCKED_DATA" if result.get("error") else "EXECUTION_READY"
     route_plan = {
         "task_id": f"TASK-ACCIDENT-SPATIAL-{task_id[:3].upper()}",
-        "status": plan_status,
+        "status": "DRAFT",
         "intent": "ACCIDENT_ANALYSIS",
         "context": "accident_risk",
         "analysis_type": "accident_spatial_history_lookup",
         "derived_concept": "accident_event",
         "primary_agent": "Accident/Risk Agent",
         "secondary_agents": ["Spatial Analysis Agent"],
-        "slots": {"location_text": location_text, "radius_m": radius_m, "analysis_type": "accident_spatial_history_lookup"},
+        "slots": {
+            "location_text": location_text,
+            "reference_geometry": geometry_wkt,
+            "crs": crs,
+            "distance_m": radius_m,
+            "spatial_relation": "nearby",
+            "target_term": "accident_history",
+            "derived_concept": "accident_event",
+            "analysis_type": "accident_spatial_history_lookup",
+        },
         "tools": ["accident.spatial_history_lookup"],
         "data": ["serving.accident_events"],
         "outputs": ["AccidentEventGeoJSON", "EvidenceBundle", "Summary"],
         "clarification_required": False,
         "confidence": 1.0 if found else 0.82,
-        "execution_ready": not bool(result.get("error")),
-        "route_plan_status": plan_status,
+        "execution_ready": False,
+        "route_plan_status": "DRAFT",
     }
-    qec = {
-        "readiness": "READY" if not result.get("error") else "BLOCKED_DATA",
-        "blockers": [result["error"]] if result.get("error") else [],
-        "warnings": ["기본 반경은 질의에 거리 표현이 없을 때만 10,000m로 적용됩니다."],
-        "data_bindings": [{"dataset_id": "accident_events_coastguard_2025", "relation": "serving.accident_events", "geometry_column": "geom"}],
-        "tool_bindings": [{"tool_id": "accident.spatial_history_lookup", "operation": "structured_accident_spatial_history_lookup"}],
-    }
+    qec_model = QueryExecutionContext(
+        request_id=task_id,
+        task_id=task_id,
+        original_query=query,
+        normalized_query=state.get("normalized_query"),
+        route_plan=route_plan,
+        slots=ExecutionSlots.from_payload(route_plan["slots"]),
+        spatial={"spatial_context": {"base_location": location_text, "geometry": geometry_wkt, "crs": crs, "buffer_distance": radius_m}},
+        blockers=[result["error"]] if result.get("error") else [],
+        warnings=["기본 반경은 질의에 거리 표현이 없을 때만 10,000m로 적용됩니다."],
+        provenance={"location_resolution": resolution},
+    )
+    qec_model = validate_execution_context(qec_model)
+    route_plan["status"] = qec_model.readiness.value
+    route_plan["route_plan_status"] = qec_model.readiness.value
+    route_plan["execution_ready"] = qec_model.readiness == PlanStatus.EXECUTION_READY
+    qec = qec_model.model_dump(mode="json")
     final_dict = {
         "task_id": task_id,
         "trace_id": f"tr-{task_id}",
         "agent_name": "Accident/Risk Agent",
         "agent_version": "2.5.0-accident-spatial-history-fast-path",
-        "status": AgentStatus.COMPLETED if not result.get("error") else AgentStatus.BLOCKED,
+        "status": AgentStatus.COMPLETED if qec_model.readiness == PlanStatus.EXECUTION_READY else AgentStatus.BLOCKED,
         "summary": answer,
         "answer_text": answer,
         "structured_result": {
@@ -3182,7 +3246,7 @@ async def fast_accident_spatial_history_lookup_node(state: OrchestratorState) ->
     }
     _attach_candidate_trace(state, final_dict)
     _record_query_quality_issues(state, final_dict)
-    status = AgentStatus.COMPLETED if not result.get("error") else AgentStatus.BLOCKED
+    status = AgentStatus.COMPLETED if qec_model.readiness == PlanStatus.EXECUTION_READY else AgentStatus.BLOCKED
     return {
         "final_dict": final_dict,
         "task_plan": route_plan,
