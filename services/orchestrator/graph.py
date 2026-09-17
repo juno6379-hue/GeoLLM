@@ -963,6 +963,41 @@ def _looks_like_accident_relation_query(query: str) -> bool:
     lowered = text.lower()
     return "feature_instance_id=" in lowered and any(term in lowered or term in text for term in ["accident", "\uc0ac\uace0", "\uc774\ub825"])
 
+def _looks_like_accident_event_lookup_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    if "feature_instance_id=" in lowered:
+        return False
+    accident_terms = [
+        "accident",
+        "\uc0ac\uace0",
+        "\uc0ac\uac74",
+        "\ud574\uc0c1\uc870\ub09c",
+        "\uc870\ub09c\uc0ac\uace0",
+        "\ud574\uc591\uc0ac\uace0",
+        "\uc120\ubc15\uc0ac\uace0",
+    ]
+    detail_terms = [
+        "\uc815\ube44\ubd88\ub7c9",
+        "\uad00\ub9ac\uc18c\ud640",
+        "\uc6b4\ud56d\ubd80\uc8fc\uc758",
+        "\uc548\uc804\ubd80\uc8fc\uc758",
+        "\uc6d0\uc778\ubbf8\uc0c1",
+        "\uae30\uad00\uc190\uc0c1",
+        "\ucd94\uc9c4\uae30\uc190\uc0c1",
+        "\ud0a4\uc190\uc0c1",
+        "\uce68\ubab0",
+        "\uce68\uc218",
+        "\uc88c\ucd08",
+        "\ucda9\ub3cc",
+        "\ud654\uc7ac",
+        "\uc804\ubcf5",
+        "\ud45c\ub958",
+        "\ucc3e\uc544",
+        "\ucc3e\uc544\uc918",
+    ]
+    return any(term in lowered or term in text for term in accident_terms) and any(term in lowered or term in text for term in detail_terms)
+
 def _looks_like_policy_block_query(query: str) -> bool:
     text = query or ""
     lowered = text.lower()
@@ -2701,6 +2736,279 @@ def _query_dataset_evidence_sources(query: str, limit: int = 12) -> list[dict]:
     return results[:limit]
 
 
+ACCIDENT_EVENT_STOPWORDS = {
+    "accident",
+    "event",
+    "events",
+    "case",
+    "cases",
+    "\uc0ac\uace0",
+    "\uc0ac\uac74",
+    "\ud574\uc0c1\uc870\ub09c",
+    "\uc870\ub09c\uc0ac\uace0",
+    "\ud574\uc591\uc0ac\uace0",
+    "\uc120\ubc15\uc0ac\uace0",
+    "\ucc3e\uc544",
+    "\ucc3e\uc544\uc918",
+    "\ubcf4\uc5ec\uc918",
+    "\uc54c\ub824\uc918",
+    "\ubaa9\ub85d",
+    "\uac80\uc0c9",
+    "\uc870\ud68c",
+    "\uadfc\uac70",
+    "\uc704\uce58",
+    "\uc9c0\ub3c4",
+}
+
+
+def _accident_event_terms(query: str) -> list[str]:
+    raw_tokens = re.findall(r"[0-9A-Za-z\uac00-\ud7a3_-]{2,}", query or "")
+    terms: list[str] = []
+    for token in raw_tokens:
+        cleaned = token.strip("`'\".,;:!?[]{}()")
+        cleaned = re.sub(r"(?:을|를|이|가|은|는|으로|로|에서|에게|께|의|과|와|도|만|부터|까지|처럼|라면|이면)$", "", cleaned)
+        lowered = cleaned.lower()
+        if lowered in ACCIDENT_EVENT_STOPWORDS or cleaned in ACCIDENT_EVENT_STOPWORDS:
+            continue
+        if re.fullmatch(r"\d{1,4}", cleaned):
+            continue
+        terms.append(cleaned)
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for term in terms:
+        key = term.lower()
+        if key not in seen:
+            seen.add(key)
+            deduped.append(term)
+    return deduped[:8]
+
+
+def _query_accident_events(query: str, limit: int = 120) -> dict:
+    terms = _accident_event_terms(query)
+    db_url = _dataset_evidence_db_url()
+    if not db_url:
+        return {"terms": terms, "total": 0, "rows": [], "error": "S101_DB_URL or POSTGIS_URL is not configured"}
+    where_parts: list[str] = []
+    params: list[str] = []
+    for term in terms:
+        pattern = f"%{term}%"
+        where_parts.append(
+            "(authority ILIKE %s OR sea_area ILIKE %s OR cause ILIKE %s OR accident_type ILIKE %s OR vessel_type ILIKE %s)"
+        )
+        params.extend([pattern, pattern, pattern, pattern, pattern])
+    where_sql = " AND ".join(where_parts) if where_parts else "TRUE"
+    try:
+        import psycopg2
+        import psycopg2.extras
+
+        with psycopg2.connect(db_url, connect_timeout=3) as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(f"SELECT count(*) AS total FROM serving.accident_events WHERE {where_sql}", params)
+                total = int((cur.fetchone() or {}).get("total") or 0)
+                cur.execute(
+                    f"""
+                    SELECT
+                        event_id,
+                        source_row_number,
+                        occurred_at,
+                        authority,
+                        sea_area,
+                        weather,
+                        cause,
+                        accident_type,
+                        vessel_count,
+                        people_count,
+                        rescued,
+                        injured,
+                        dead,
+                        missing,
+                        vessel_type,
+                        tonnage,
+                        longitude,
+                        latitude,
+                        ST_AsGeoJSON(geom)::text AS geometry_geojson
+                    FROM serving.accident_events
+                    WHERE {where_sql}
+                    ORDER BY occurred_at DESC, source_row_number ASC
+                    LIMIT %s
+                    """,
+                    [*params, limit],
+                )
+                rows = [dict(row) for row in cur.fetchall()]
+    except Exception as exc:
+        logger.warning("Accident event lookup failed", error=str(exc))
+        return {"terms": terms, "total": 0, "rows": [], "error": str(exc)}
+
+    for row in rows:
+        if isinstance(row.get("occurred_at"), datetime):
+            row["occurred_at"] = row["occurred_at"].strftime("%Y-%m-%d %H:%M")
+    return {"terms": terms, "total": total, "rows": rows, "error": None}
+
+
+async def fast_accident_event_lookup_node(state: OrchestratorState) -> OrchestratorState:
+    """Answer row-level accident event lookup from serving.accident_events."""
+    query = state.get("query") or state.get("normalized_query") or ""
+    task_id = str(state.get("task_id") or "local")
+    generated_at = datetime.utcnow().isoformat() + "Z"
+    result = _query_accident_events(query)
+    rows = result.get("rows") or []
+    total = int(result.get("total") or 0)
+    found = bool(rows)
+    quality_metrics = _quality_metrics_from_state(state, fast_path="accident_event_structured_lookup", exact=found)
+
+    features = []
+    for row in rows:
+        geometry = json.loads(row.get("geometry_geojson") or "{}")
+        properties = {key: value for key, value in row.items() if key != "geometry_geojson"}
+        properties.update({
+            "layer_role": "accident_event",
+            "label": f"{row.get('authority') or ''} {row.get('cause') or ''} {row.get('accident_type') or ''}".strip(),
+            "source_ref": "serving.accident_events",
+        })
+        features.append({"type": "Feature", "id": row.get("event_id"), "geometry": geometry, "properties": properties})
+    collection = {"type": "FeatureCollection", "features": features}
+
+    by_type: dict[str, int] = {}
+    by_sea_area: dict[str, int] = {}
+    people_total = 0
+    rescued_total = 0
+    casualties_total = 0
+    for row in rows:
+        by_type[str(row.get("accident_type") or "\ubbf8\uc0c1")] = by_type.get(str(row.get("accident_type") or "\ubbf8\uc0c1"), 0) + 1
+        by_sea_area[str(row.get("sea_area") or "\ubbf8\uc0c1")] = by_sea_area.get(str(row.get("sea_area") or "\ubbf8\uc0c1"), 0) + 1
+        people_total += int(row.get("people_count") or 0)
+        rescued_total += int(row.get("rescued") or 0)
+        casualties_total += int(row.get("injured") or 0) + int(row.get("dead") or 0) + int(row.get("missing") or 0)
+
+    top_types = ", ".join(f"{name} {count}\uac74" for name, count in sorted(by_type.items(), key=lambda item: item[1], reverse=True)[:4])
+    top_areas = ", ".join(f"{name} {count}\uac74" for name, count in sorted(by_sea_area.items(), key=lambda item: item[1], reverse=True)[:4])
+    terms_text = ", ".join(result.get("terms") or []) or query
+    if found:
+        sample = rows[0]
+        answer = (
+            f"`serving.accident_events`에서 `{terms_text}` 조건의 해상조난사고 {total}건을 찾았습니다. "
+            f"지도에는 최근순 {len(rows)}건을 사고 이벤트 포인트로 표시했습니다. "
+            f"조회된 표시 목록 기준 사고유형은 {top_types or '집계 없음'}, 발생해역은 {top_areas or '집계 없음'}입니다. "
+            f"표시 목록의 발생인원 합계는 {people_total}명, 구조 {rescued_total}명, 부상/사망/실종 합계 {casualties_total}명입니다. "
+            f"가장 최근 사례는 {sample.get('occurred_at')} {sample.get('authority')} 관할, {sample.get('sea_area')}, "
+            f"{sample.get('cause')} 원인, {sample.get('accident_type')} 유형입니다. "
+            "제한 사항: 이 경로는 해양경찰청 2025 해상조난사고 상세데이터의 구조화 row를 기준으로 하며, 사고 원인과 전자해도 객체 간 인과관계는 추정하지 않습니다."
+        )
+    else:
+        answer = (
+            f"`serving.accident_events`에서 `{terms_text}` 조건과 일치하는 해상조난사고 row를 찾지 못했습니다. "
+            "철자, 관할해경서, 발생원인, 발생유형 중 하나를 더 구체화하면 구조화 사고 테이블에서 다시 조회할 수 있습니다."
+        )
+
+    citations = [{
+        "document_id": "dataset:coastguard_accident_events_2025",
+        "source": "해양경찰청 해상조난사고 상세데이터",
+        "source_id": "serving.accident_events",
+        "source_file": "Dataset/해양경찰청_해상조난사고 상세데이터 현황_20251231 (1).csv",
+        "section": "structured accident rows",
+        "document_type": "accident_data",
+        "chunk_id": "serving.accident_events",
+        "similarity": 1.0 if found else 0.0,
+        "summary_ko": f"조건 `{terms_text}`에 대한 구조화 사고 row {total}건",
+        "detail_label": "상세정보",
+        "detail_text": "관할해경서, 발생해역, 발생원인, 발생유형, 선종, 인원 및 좌표는 serving.accident_events에서 직접 조회했습니다.",
+        "provenance": {"method": "structured_accident_event_lookup", "retrieved_at": generated_at, "terms": result.get("terms") or []},
+    }]
+    route_plan = {
+        "task_id": f"TASK-ACCIDENT-EVENT-{task_id[:3].upper()}",
+        "status": "EXECUTION_READY" if not result.get("error") else "BLOCKED_DATA",
+        "intent": "ACCIDENT_ANALYSIS",
+        "context": "accident_risk",
+        "analysis_type": "accident_event_lookup",
+        "derived_concept": "accident_event",
+        "primary_agent": "Accident/Risk Agent",
+        "secondary_agents": [],
+        "slots": {"target_terms": result.get("terms") or [], "analysis_type": "accident_event_lookup"},
+        "tools": ["accident.event_lookup"],
+        "data": ["serving.accident_events"],
+        "outputs": ["AccidentEventGeoJSON", "EvidenceBundle", "Summary"],
+        "clarification_required": False,
+        "confidence": 1.0 if found else 0.72,
+        "execution_ready": not bool(result.get("error")),
+        "route_plan_status": "EXECUTION_READY" if not result.get("error") else "BLOCKED_DATA",
+    }
+    qec = {
+        "readiness": "READY" if not result.get("error") else "BLOCKED_DATA",
+        "blockers": [result["error"]] if result.get("error") else [],
+        "warnings": [
+            "사고 row 위치와 전자해도 객체의 공간 관계 또는 인과관계는 이 조회만으로 단정하지 않습니다.",
+            "표시 목록 집계는 응답 제한으로 반환된 최근순 row 기준이며, 전체 건수는 total_count를 사용하십시오.",
+        ],
+        "data_bindings": [{"dataset_id": "accident_events_coastguard_2025", "relation": "serving.accident_events", "geometry_column": "geom"}],
+        "tool_bindings": [{"tool_id": "accident.event_lookup", "operation": "structured_accident_event_lookup"}],
+    }
+    final_dict = {
+        "task_id": task_id,
+        "trace_id": f"tr-{task_id}",
+        "agent_name": "Accident/Risk Agent",
+        "agent_version": "2.4.0-accident-event-fast-path",
+        "status": AgentStatus.COMPLETED if not result.get("error") else AgentStatus.BLOCKED,
+        "summary": answer,
+        "answer_text": answer,
+        "structured_result": {
+            "analysis_type": "accident_event_lookup",
+            "total_count": total,
+            "returned_count": len(rows),
+            "terms": result.get("terms") or [],
+            "events": [{key: value for key, value in row.items() if key != "geometry_geojson"} for row in rows],
+            "geojson": collection,
+            "quality_metrics": quality_metrics,
+            "web_rag_usage": {
+                "web_used": False,
+                "rag_used": False,
+                "llm_used": False,
+                "execution_path": "accident_event_structured_fast_path",
+                "local_authoritative_registry_checked": True,
+                "embedding_independent": True,
+            },
+        },
+        "features": collection,
+        "map_layers": [{
+            "layer_id": f"accident-events:{task_id}",
+            "title": "해상조난사고 이벤트",
+            "source_type": "geojson",
+            "geometry_type": "POINT",
+            "inline_geojson": collection,
+            "feature_count": len(features),
+            "style": {"circleColor": "#d9480f", "circleRadius": 6, "circleOpacity": 0.78},
+            "metadata": {"layer_role": "accident_event", "total_count": total, "source_ref": "serving.accident_events"},
+        }],
+        "evidence_bundle": {
+            "rag_evidence": [],
+            "kg_provenance": [{"source_ref": "data/accident_dictionary.yaml", "concept": "accident_event", "terms": result.get("terms") or []}],
+            "regulatory_evidence": [],
+            "spatial_feature_evidence": [],
+            "spatial_layer_evidence": citations,
+            "accident_relation_evidence": citations,
+        },
+        "orchestrator_v2": {
+            "route_plan": route_plan,
+            "query_execution_context": qec,
+            "embedding_independent": True,
+            "fast_path": "accident_event_structured_lookup",
+            "quality_metrics": quality_metrics,
+        },
+        "contract_version": "geollm.execution.v1",
+        "request_id": task_id,
+    }
+    _attach_candidate_trace(state, final_dict)
+    _record_query_quality_issues(state, final_dict)
+    status = AgentStatus.COMPLETED if not result.get("error") else AgentStatus.BLOCKED
+    return {
+        "final_dict": final_dict,
+        "task_plan": route_plan,
+        "query_execution_context": qec,
+        "candidate_trace": state.get("candidate_trace"),
+        "status": status,
+        "state_history": log_transition(AgentStatus.INTENT_PARSED, status, actor="FastAccidentEventLookup"),
+    }
+
+
 async def fast_dataset_evidence_answer_node(state: OrchestratorState) -> OrchestratorState:
     """Answer Dataset provenance questions from live knowledge.document_chunks."""
     query = state.get("query") or state.get("normalized_query") or ""
@@ -4274,6 +4582,8 @@ def check_intent_parsed(state: OrchestratorState) -> str:
         return "fast_s101_nearest_feature_execute"
     if _should_fast_execute_requested_spatial_layer(state):
         return "fast_requested_spatial_layer_execute"
+    if _looks_like_accident_event_lookup_query(query):
+        return "fast_accident_event_lookup"
     if _looks_like_place_lookup(state.get("query", "")) or _looks_like_known_place_search(state.get("query", ""), state):
         return "fast_place_lookup"
     if _looks_like_dataset_evidence_query(query):
@@ -4366,6 +4676,7 @@ def build_orchestrator_graph():
     workflow.add_node("fast_dynamic_traffic_execute", fast_dynamic_traffic_execute_node)
     workflow.add_node("fast_s101_nearest_feature_execute", fast_s101_nearest_feature_execute_node)
     workflow.add_node("fast_requested_spatial_layer_execute", fast_requested_spatial_layer_execute_node)
+    workflow.add_node("fast_accident_event_lookup", fast_accident_event_lookup_node)
     workflow.add_node("fast_place_lookup", fast_place_lookup_node)
     workflow.add_node("graph_rag", graph_rag_node)
     workflow.add_node("data_discovery", data_discovery_node)
@@ -4393,6 +4704,7 @@ def build_orchestrator_graph():
             "fast_dynamic_traffic_execute": "fast_dynamic_traffic_execute",
             "fast_s101_nearest_feature_execute": "fast_s101_nearest_feature_execute",
             "fast_requested_spatial_layer_execute": "fast_requested_spatial_layer_execute",
+            "fast_accident_event_lookup": "fast_accident_event_lookup",
             "fast_place_lookup": "fast_place_lookup",
             "create_plan": "create_plan",
             "resolve_context": "graph_rag"
@@ -4406,6 +4718,7 @@ def build_orchestrator_graph():
     workflow.add_edge("fast_dynamic_traffic_execute", END)
     workflow.add_edge("fast_s101_nearest_feature_execute", END)
     workflow.add_edge("fast_requested_spatial_layer_execute", END)
+    workflow.add_edge("fast_accident_event_lookup", END)
     workflow.add_edge("fast_place_lookup", END)
     workflow.add_conditional_edges("graph_rag", check_graph_rag_next, {
         "data_discovery": "data_discovery",
