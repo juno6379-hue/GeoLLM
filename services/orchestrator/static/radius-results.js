@@ -1,7 +1,7 @@
 (function () {
     "use strict";
 
-    const featureId = row => String(row?.feature_id ?? row?.feature_instance_id ?? row?.id ?? row?.source_id ?? "");
+    const featureId = row => String(row?.feature_id ?? row?.feature_instance_id ?? row?.event_id ?? row?.id ?? row?.source_id ?? "");
     const evidenceData = item => {
         const data = item && typeof item.data === "object" ? item.data : item;
         if (!data || typeof data !== "object") return data;
@@ -119,10 +119,20 @@
     }
 
     function rowDisplayName(row) {
+        if (row?.layer_role === "accident_event") {
+            return row?.label || [row?.authority, row?.cause, row?.accident_type].filter(Boolean).join(" ") || "Accident event";
+        }
         return row?.display_name || row?.feature_display_name || row?.name || row?.feature_name || row?.feature_type_name || "공간 객체";
     }
 
     function featureStyle(row) {
+        if (row?.layer_role === "accident_event") {
+            const cause = String(row?.cause || "");
+            if (cause.includes("정비") || cause.toLowerCase().includes("maintenance")) {
+                return { color: "#b45309", fillColor: "#fbbf24", label: "Accident event" };
+            }
+            return { color: "#be123c", fillColor: "#fb7185", label: "Accident event" };
+        }
         const name = row?.feature_name || row?.feature_type_name || "";
         if (name === "Obstruction") return { color: "#f97316", fillColor: "#fed7aa", label: "장애물" };
         if (name === "Wreck") return { color: "#dc2626", fillColor: "#fecaca", label: "침선" };
@@ -231,6 +241,20 @@
     }
 
     function appendFeatureDetails(container, row, referenceLabel) {
+        if (row?.layer_role === "accident_event") {
+            container.append(element("strong", rowDisplayName(row)));
+            container.append(element("div", `Event ID: ${featureId(row) || "-"}`));
+            container.append(element("div", `기준점: ${referenceLabel}`));
+            container.append(element("div", `기준점에서 ${window.QuerySummary.distanceText(row.distance_m)}`));
+            container.append(element("div", `발생시각: ${row.occurred_at || "-"}`));
+            container.append(element("div", `관할: ${row.authority || "-"} / 해역: ${row.sea_area || "-"}`));
+            container.append(element("div", `원인: ${row.cause || "-"} / 유형: ${row.accident_type || "-"}`));
+            container.append(element("div", `선종: ${row.vessel_type || "-"} / 톤수: ${row.tonnage ?? "-"}`));
+            container.append(element("div", `인원: ${row.people_count ?? "-"} / 구조 ${row.rescued ?? "-"} / 사망 ${row.dead ?? "-"} / 실종 ${row.missing ?? "-"}`));
+            container.append(element("div", `좌표: ${row.latitude ?? "-"}, ${row.longitude ?? "-"} (WGS84)`, "radius-meta"));
+            container.append(element("div", `Source: ${row.source_ref || "serving.accident_events"}`, "radius-meta"));
+            return;
+        }
         container.append(element("strong", rowDisplayName(row)));
         container.append(element("div", `객체 ID: ${featureId(row) || "-"}`));
         container.append(element("div", `기준점: ${referenceLabel}`));
@@ -266,6 +290,17 @@
             });
         }
         const row = feature.properties || {};
+        if (row.layer_role === "accident_event") {
+            const style = featureStyle(row);
+            return L.circleMarker(latlng, {
+                radius: 7,
+                color: style.color,
+                fillColor: style.fillColor,
+                fillOpacity: 0.9,
+                opacity: 0.95,
+                weight: 2,
+            });
+        }
         const symbol = featureSymbol(row);
         if (!symbol) {
             const fallback = fallbackSymbol(row);
@@ -302,8 +337,12 @@
         const structured = result?.structured_result || {};
         return structured.analysis_type === "feature_search_by_radius"
             || structured.analysis_type === "traffic_search_by_time_space"
+            || structured.analysis_type === "accident_spatial_history_lookup"
+            || structured.analysis_type === "accident_event_lookup"
             || result?.orchestrator_v2?.route_plan?.analysis_type === "feature_search_by_radius"
-            || result?.orchestrator_v2?.route_plan?.analysis_type === "traffic_search_by_time_space";
+            || result?.orchestrator_v2?.route_plan?.analysis_type === "traffic_search_by_time_space"
+            || result?.orchestrator_v2?.route_plan?.analysis_type === "accident_spatial_history_lookup"
+            || result?.orchestrator_v2?.route_plan?.analysis_type === "accident_event_lookup";
     }
 
     function isTrafficAnalysis(result) {
@@ -704,7 +743,9 @@
             return;
         }
 
-        const rows = Array.isArray(structured.features) ? structured.features : [];
+        const rows = Array.isArray(structured.features)
+            ? structured.features
+            : Array.isArray(structured.events) ? structured.events : [];
         const evidenceItems = result.evidence_bundle?.spatial_feature_evidence || [];
         const total = structured.total_count ?? structured.count;
         const returned = structured.returned_count;
