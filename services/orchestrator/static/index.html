@@ -42,6 +42,10 @@
         .query-summary-facts:empty { display: none; }
         .query-summary-facts dt { color: #64748b; }
         .query-summary-facts dd { margin: 0; min-width: 0; }
+        .query-summary-detail, .evidence-detail { margin-top: 8px; font-size: 12px; color: #334155; }
+        .query-summary-detail summary, .evidence-detail summary { cursor: pointer; color: #0369a1; font-weight: 600; list-style: none; }
+        .query-summary-detail summary::before, .evidence-detail summary::before { content: "i"; display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; margin-right: 6px; border-radius: 50%; border: 1px solid #0284c7; font-size: 10px; font-weight: 700; }
+        .query-summary-detail pre, .evidence-detail pre { max-height: 260px; overflow: auto; margin: 8px 0 0; padding: 10px; white-space: pre-wrap; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; color: #0f172a; font-family: inherit; }
         .evidence-technical { margin-top: 6px; font-size: 11px; color: #64748b; overflow-wrap: anywhere; }
         .evidence-technical > summary { cursor: pointer; }
         
@@ -680,6 +684,9 @@
 
         function formatEvidenceMeta(item) {
             const parts = [];
+            if (item.document_type) parts.push(`doc=${item.document_type}`);
+            if (item.title) parts.push(`title=${item.title}`);
+            if (item.source_file) parts.push(`source=${item.source_file}`);
             if (item.layer_id) parts.push(`layer=${item.layer_id}`);
             if (item.feature_code) parts.push(`feature=${item.feature_code}`);
             if (item.score !== null && item.score !== undefined) parts.push(`score=${item.score}`);
@@ -752,6 +759,10 @@
                     <div>Partition</div><div>${escapeHtml(item.partition)}</div>
                     <div>Evidence type</div><div>${escapeHtml(item.evidence_type)}</div>
                     <div>출처</div><div>${escapeHtml(item.source_ref)}</div>
+                    <div>문서 유형</div><div>${escapeHtml(item.document_type || "-")}</div>
+                    <div>제목</div><div>${escapeHtml(item.title || "-")}</div>
+                    <div>Source file</div><div>${escapeHtml(item.source_file || "-")}</div>
+                    <div>Source ID</div><div>${escapeHtml(item.source_id || "-")}</div>
                     <div>Layer</div><div>${escapeHtml(item.layer_id || "-")}</div>
                     <div>Feature</div><div>${escapeHtml(item.feature_code || "-")}</div>
                     <div>검토 필요</div><div>${item.review_required ? "예" : "아니오"}</div>
@@ -840,6 +851,64 @@
             });
         }
 
+        function setAnalysisPanel(status, message, evidenceItems = []) {
+            QuerySummary.show(status, message);
+            document.getElementById("answerStatus").innerText = status;
+            document.getElementById("answerText").innerText = message || "-";
+
+            const evidence = document.getElementById("answerEvidence");
+            evidence.innerHTML = "";
+            const safeEvidence = evidenceItems.length ? evidenceItems : ["표시할 근거가 아직 없습니다."];
+            safeEvidence.forEach(item => {
+                const div = document.createElement("div");
+                div.className = "evidence-item";
+                if (item && typeof item === "object") {
+                    const label = item.summary_ko || item.label || item.title || item.source || "근거";
+                    const detailText = item.detail_text || item.excerpt_reference || item.content || "";
+                    const title = document.createElement("div");
+                    title.innerText = label;
+                    div.appendChild(title);
+                    if (detailText) {
+                        const details = document.createElement("details");
+                        details.className = "evidence-detail";
+                        const summary = document.createElement("summary");
+                        summary.innerText = item.detail_label || "상세정보";
+                        const pre = document.createElement("pre");
+                        pre.innerText = detailText;
+                        details.append(summary, pre);
+                        div.appendChild(details);
+                    }
+                } else {
+                    div.innerText = item;
+                }
+                evidence.appendChild(div);
+            });
+        }
+
+        function formatPercent(value) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return "-";
+            return `${(n * 100).toFixed(1)}%`;
+        }
+
+        function getQualityMetrics(finalResult) {
+            const structured = finalResult && finalResult.structured_result ? finalResult.structured_result : {};
+            const orch = finalResult && finalResult.orchestrator_v2 ? finalResult.orchestrator_v2 : {};
+            return (finalResult && (finalResult.quality_metrics || structured.quality_metrics || orch.quality_metrics)) || {};
+        }
+
+        function updateQualityCards(finalResult, fallbackCount) {
+            const route = finalResult && finalResult.orchestrator_v2 && finalResult.orchestrator_v2.route_plan ? finalResult.orchestrator_v2.route_plan : {};
+            const quality = getQualityMetrics(finalResult);
+            const intent = route.intent || (finalResult && finalResult.intent && finalResult.intent.intent_type) || (finalResult && finalResult.agent_name) || "-";
+            document.getElementById("intentResult").innerText = intent;
+            document.getElementById("similarityScore").innerText = formatPercent(quality.kg_similarity ?? quality.intent_similarity ?? quality.evidence_similarity);
+            document.getElementById("accuracyScore").innerText = formatPercent(quality.estimated_accuracy);
+            if (fallbackCount !== undefined && fallbackCount !== null) {
+                document.getElementById("dangerCount").innerText = `${fallbackCount}건`;
+            }
+        }
+
         function getActualFeatures(geojsonData) {
             if (!geojsonData || !Array.isArray(geojsonData.features)) return [];
             return geojsonData.features.filter(f => !(f.properties && (f.properties.is_buffer || f.properties.role === 'search_buffer')));
@@ -853,6 +922,7 @@
                 ? `요청 조건에 해당하는 공간 객체 ${count}건을 식별했습니다. 지도에서 위치와 분포를 확인할 수 있습니다.`
                 : "요청 조건에 해당하는 공간 객체를 찾지 못했습니다.");
 
+            updateQualityCards(finalResult, geojsonData ? count : undefined);
             const provenance = finalResult.provenance || {};
             const evidenceBundle = finalResult.evidence_bundle || {};
             const spatialProv = provenance.spatial_provenance || provenance || {};
@@ -861,6 +931,9 @@
             const warnings = finalResult.warnings || [];
 
             const evidenceItems = [];
+            const structured = finalResult.structured_result || {};
+            const citations = Array.isArray(structured.citations) ? structured.citations : [];
+            citations.forEach(citation => evidenceItems.push(citation));
             if (evidenceBundle.spatial_layer_evidence && evidenceBundle.spatial_layer_evidence.length) evidenceItems.push(`공간 레이어 근거 ${evidenceBundle.spatial_layer_evidence.length}건`);
             if (evidenceBundle.regulatory_evidence && evidenceBundle.regulatory_evidence.length) evidenceItems.push(`법령/고시 근거 ${evidenceBundle.regulatory_evidence.length}건`);
             evidenceItems.push(`공간분석: ${count}건 식별`);
@@ -1472,16 +1545,7 @@
                                         }
                                         document.getElementById("intentResult").innerText = intentText;
                                         
-                                        let simScore = 0;
-                                        if (data.context_result && data.context_result.confidence) {
-                                            simScore = (data.context_result.confidence * 100).toFixed(1);
-                                        }
-                                        document.getElementById("similarityScore").innerText = simScore + "%";
-                                        
-                                        // Accuracy is derived from whether result features were actually found correctly 
-                                        // or could be mapped to spatial task confidence.
-                                        let accScore = actualFeatures.length > 0 ? "100.0%" : "N/A";
-                                        document.getElementById("accuracyScore").innerText = accScore;
+                                        updateQualityCards(data.final_result || {}, actualFeatures.length);
                                     }
                                 }
                                 if (!(data.final_result && data.final_result.status === 'FAILED')) {
@@ -1510,7 +1574,35 @@
                 btn.disabled = false;
             }
         }
-        window.addEventListener("DOMContentLoaded", () => loadEvidenceCandidates());
+        function setupPresetPrompts() {
+            const prompts = [
+                "Dataset supplemental embedding에 AIS 위치정보 통계 데이터셋 근거가 들어갔는지 찾아줘",
+                "AIS/V-PASS 주요통항로분석 데이터셋의 출처와 임베딩 근거를 보여줘",
+                "해양지명 gazetteer와 도서지명 gazetteer가 어떤 근거로 적재되었는지 설명해줘",
+                "항로표지정보_20250623 CSV는 임베딩 대상인지 공간 적재 대상인지 근거와 함께 확인해줘",
+                "속도제한구역과 진입제한구역 Dataset 레이어의 evidence 후보를 찾아줘",
+                "SOLAS와 해양안전백서 supplemental 문서가 검색 근거 후보로 잡히는지 확인해줘",
+                "S-101 2.0 Obstruction 정의와 DCEG 근거를 찾아줘",
+                "부산항 입구 3km 이내 위험객체를 찾고 S-101 문서 근거도 같이 보여줘",
+                "최근 1년 AIS/V-PASS 통항량 분석 결과와 Dataset 출처 근거를 함께 설명해줘",
+                "새로 병합된 dataset_profile evidence 후보 중 검토가 필요한 항목을 요약해줘"
+            ];
+            const container = document.getElementById("chatHistory");
+            if (!container) return;
+            container.innerHTML = "";
+            prompts.forEach(prompt => {
+                const button = document.createElement("div");
+                button.className = "preset-btn";
+                button.textContent = prompt;
+                button.onclick = () => { document.getElementById("query").value = prompt; };
+                container.appendChild(button);
+            });
+        }
+
+        window.addEventListener("DOMContentLoaded", () => {
+            setupPresetPrompts();
+            loadEvidenceCandidates();
+        });
     </script>
 </body>
 </html>

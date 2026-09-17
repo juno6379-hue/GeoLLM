@@ -1,8 +1,13 @@
 (function () {
     "use strict";
 
-    const featureId = row => String(row.feature_instance_id ?? row.id ?? "");
-    const evidenceData = item => item && typeof item.data === "object" ? item.data : item;
+    const featureId = row => String(row?.feature_id ?? row?.feature_instance_id ?? row?.id ?? row?.source_id ?? "");
+    const evidenceData = item => {
+        const data = item && typeof item.data === "object" ? item.data : item;
+        if (!data || typeof data !== "object") return data;
+        const props = data.properties && typeof data.properties === "object" ? data.properties : {};
+        return { ...props, ...data };
+    };
     const numberText = value => typeof value === "number" && Number.isFinite(value)
         ? value.toLocaleString("ko-KR") : "-";
     const yesNo = value => value ? "사용" : "미사용";
@@ -111,6 +116,10 @@
             LightSectored: "섹터등",
         };
         return names[value] || window.QuerySummary?.featureName?.(value) || value || "공간 객체";
+    }
+
+    function rowDisplayName(row) {
+        return row?.display_name || row?.feature_display_name || row?.name || row?.feature_name || row?.feature_type_name || "공간 객체";
     }
 
     function featureStyle(row) {
@@ -222,7 +231,7 @@
     }
 
     function appendFeatureDetails(container, row, referenceLabel) {
-        container.append(element("strong", featureDisplayName(row.feature_name)));
+        container.append(element("strong", rowDisplayName(row)));
         container.append(element("div", `객체 ID: ${featureId(row) || "-"}`));
         container.append(element("div", `기준점: ${referenceLabel}`));
         container.append(element("div", `기준점에서 ${window.QuerySummary.distanceText(row.distance_m)}`));
@@ -773,7 +782,7 @@
                     featureLayers.set(id, layer);
                     const popup = element("div", undefined, "radius-popup");
                     popup.dataset.featureId = id;
-                    popup.append(element("strong", window.QuerySummary.featureName(row.feature_name)));
+                    popup.append(element("strong", rowDisplayName(row)));
                     popup.append(element("div", `기준점에서 ${window.QuerySummary.distanceText(row.distance_m)}`));
                     popup.replaceChildren();
                     appendFeatureDetails(popup, row, referenceLabel);
@@ -830,7 +839,7 @@
                 focusFeature(id);
             });
             tr.insertCell().append(button);
-            tr.insertCell().textContent = featureDisplayName(row.feature_name);
+            tr.insertCell().textContent = rowDisplayName(row);
             tr.insertCell().textContent = numberText(row.distance_m);
         }
         details.append(table);

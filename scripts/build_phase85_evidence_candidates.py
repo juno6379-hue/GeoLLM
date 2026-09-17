@@ -30,6 +30,8 @@ DEFAULT_RAG = EVIDENCE / "rag_evidence_candidates.jsonl"
 DEFAULT_REGULATORY = EVIDENCE / "regulatory_evidence_candidates.jsonl"
 DEFAULT_REVIEW = REVIEW / "evidence_candidate_needs_review.jsonl"
 DEFAULT_SUMMARY = EVIDENCE / "phase85_evidence_candidate_summary.json"
+DEFAULT_DATASET_EMBEDDINGS = OUT / "rag" / "dataset_supplemental_embeddings.jsonl"
+DEFAULT_DATASET_COVERAGE = OUT / "reports" / "dataset_embedding_coverage.json"
 
 
 def load_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -233,6 +235,58 @@ def build_regulatory_candidates(
     return items
 
 
+def build_dataset_embedding_candidates(embeddings_path: Path, coverage_path: Path) -> list[dict[str, Any]]:
+    """Expose newly embedded Dataset supplemental chunks as reviewable RAG evidence candidates."""
+    rows = load_jsonl(embeddings_path)
+    coverage = json.loads(coverage_path.read_text(encoding="utf-8")) if coverage_path.exists() else {}
+    inventory = {
+        item.get("source_file"): item
+        for item in coverage.get("inventory", [])
+        if isinstance(item, dict) and item.get("source_file")
+    }
+    items: list[dict[str, Any]] = []
+    seen_sources: set[str] = set()
+    for row in rows:
+        metadata = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        source_file = metadata.get("source_file") or metadata.get("source_path")
+        if not source_file or source_file in seen_sources:
+            continue
+        seen_sources.add(source_file)
+        source_inventory = inventory.get(source_file, {})
+        document_type = metadata.get("document_type") or "dataset_profile"
+        title = metadata.get("title") or Path(source_file).stem
+        source_status = source_inventory.get("status") or document_type
+        items.append(
+            evidence_item(
+                "rag_evidence",
+                "dataset_embedding_coverage_candidate",
+                f"Dataset embedding coverage: {title} ({document_type})",
+                source_file,
+                {
+                    "chunk_id": row.get("chunk_id"),
+                    "document_type": document_type,
+                    "title": title,
+                    "source_file": source_file,
+                    "source_id": metadata.get("source_id"),
+                    "section": metadata.get("section"),
+                    "product_id": metadata.get("product_id"),
+                    "related_concepts": metadata.get("related_concepts") or [],
+                    "coverage_status": source_status,
+                    "coverage_reason": source_inventory.get("reason"),
+                    "supplemental_chunks": source_inventory.get("supplemental_chunks"),
+                    "verification_status": "CANDIDATE",
+                    "edge_candidates": [
+                        {"subject": metadata.get("source_id") or source_file, "predicate": "supportsRagSource", "object": "knowledge.document_chunks"},
+                        {"subject": metadata.get("source_id") or source_file, "predicate": "derivedFromDataset", "object": source_file},
+                    ],
+                },
+                0.78 if document_type == "dataset_profile" else 0.72,
+                True,
+            )
+        )
+    return items
+
+
 def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as fh:
@@ -250,6 +304,8 @@ def main() -> None:
     parser.add_argument("--regulatory-output", type=Path, default=DEFAULT_REGULATORY)
     parser.add_argument("--review-output", type=Path, default=DEFAULT_REVIEW)
     parser.add_argument("--summary", type=Path, default=DEFAULT_SUMMARY)
+    parser.add_argument("--dataset-embeddings", type=Path, default=DEFAULT_DATASET_EMBEDDINGS)
+    parser.add_argument("--dataset-coverage", type=Path, default=DEFAULT_DATASET_COVERAGE)
     args = parser.parse_args()
 
     matches = load_jsonl(args.matches)
@@ -257,6 +313,8 @@ def main() -> None:
     legal_registry = load_yaml(args.legal_registry)
 
     kg_items, rag_items = build_kg_and_rag_candidates(matches, proposals)
+    dataset_rag_items = build_dataset_embedding_candidates(args.dataset_embeddings, args.dataset_coverage)
+    rag_items.extend(dataset_rag_items)
     regulatory_items = build_regulatory_candidates(proposals, legal_registry)
     review_items = [item for item in [*kg_items, *rag_items, *regulatory_items] if item.get("review_required")]
     summary = {
@@ -264,6 +322,7 @@ def main() -> None:
         "phase": "8.5",
         "kg_provenance_candidates": len(kg_items),
         "rag_evidence_candidates": len(rag_items),
+        "dataset_embedding_candidates": len(dataset_rag_items),
         "regulatory_evidence_candidates": len(regulatory_items),
         "review_required_count": len(review_items),
         "policy": {

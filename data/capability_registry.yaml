@@ -1,0 +1,299 @@
+version: '0.1'
+status: dry_run
+description: 'Candidate-first capability registry for GeoLLM. These entries are used to retrieve Resolver, Agent, Tool, Dataset, Ontology, marine term, and feature class candidates before KG/Registry verification. Similarity from this registry is never authority by itself.
+
+  '
+policies:
+  pgvector_role: candidate_retrieval_only
+  authority_gate_required: true
+  ollama_role: ambiguity_resolver_only
+  verified_execution_only: true
+capabilities:
+- capability_id: resolver.place_registry
+  object_type: resolver_description
+  label: Place Registry Resolver
+  routes:
+  - PLACE_LOOKUP
+  - SPATIAL_ANALYSIS
+  role: supporting_or_primary
+  description: 'Resolve Korean maritime place names, ports, port entrances, islands, and curated reference points to canonical geometry and provenance.
+
+    '
+  input_slots:
+  - query_text
+  - place_name
+  output_slots:
+  - canonical_name
+  - geometry
+  - crs
+  - source_ref
+  - authority
+  authority_ref: data/place_geometry_registry.yaml
+  registry_ref: data/place_geometry_registry.yaml
+  deterministic_hints:
+  - find_intent
+  - place_name
+  - location_text
+  - nearby_search
+- capability_id: resolver.dataset_provenance_registry
+  object_type: resolver_description
+  label: Dataset Provenance Resolver
+  routes:
+  - DATASET_PROVENANCE
+  role: primary
+  description: 'Resolve questions about Dataset source files, parsing, standardization, serving tables, ingestion reports, row counts, and embedding coverage.
+
+    '
+  input_slots:
+  - query_text
+  - dataset_name
+  output_slots:
+  - source_file
+  - serving_table
+  - row_count
+  - ingestion_report
+  - embedding_status
+  authority_ref: outputs/reports/dataset_embedding_coverage.json
+  registry_ref: outputs/reports/requested_dataset_layer_ingestion.md
+  deterministic_hints:
+  - provenance_request
+  - dataset_term
+  - ingestion_status
+- capability_id: resolver.marine_gazetteer_spatial
+  object_type: resolver_description
+  label: Marine Gazetteer Spatial Resolver
+  routes:
+  - SPATIAL_ANALYSIS
+  - PLACE_LOOKUP
+  - LAYER_INSPECTION
+  role: primary_or_supporting
+  description: 'Resolve nearby marine place-name and undersea-place-name questions to the executable marine gazetteer spatial layer. Use this for queries asking for 해양지명, 해저지명, 부근 지명, 주변 지명, or marine place names near a resolved anchor such as Dokdo.
+
+    '
+  input_slots:
+  - query_text
+  - anchor_geometry
+  - radius_m
+  output_slots:
+  - marine_place_names
+  - display_name
+  - geometry
+  - distance_m
+  - source_ref
+  authority_ref: Dataset/해양수산부_공동활용체계_해양지명_20221231.csv
+  registry_ref: data/spatial_layer_registry.yaml
+  deterministic_hints:
+  - place_name
+  - nearby_search
+  - marine_gazetteer_target
+- capability_id: resolver.s101_feature_dictionary
+  object_type: feature_class_description
+  label: S-101 Feature Dictionary Resolver
+  routes:
+  - SPATIAL_ANALYSIS
+  - STANDARD_RAG
+  - LAYER_INSPECTION
+  role: supporting_or_primary
+  description: 'Resolve S-101 feature class names, aliases, hazard feature groups, geometry type, catalogue references, and portrayal references.
+
+    '
+  input_slots:
+  - query_text
+  - feature_term
+  output_slots:
+  - feature_type
+  - feature_code
+  - feature_group
+  - catalogue_ref
+  - portrayal_ref
+  authority_ref: data/s101_catalogue.json
+  registry_ref: data/derived_concept_registry_v2.yaml
+  deterministic_hints:
+  - feature_term
+  - hazard_target
+  - s101_term
+- capability_id: tool.spatial_radius_search
+  object_type: tool_description
+  label: Spatial Radius Search Tool
+  routes:
+  - SPATIAL_ANALYSIS
+  role: primary
+  description: 'Execute radius-based spatial feature search using a verified anchor geometry, radius in meters, and target feature candidates.
+
+    '
+  input_slots:
+  - anchor_geometry
+  - radius_m
+  - target_feature_group
+  output_slots:
+  - spatial_features
+  - feature_count
+  - query_extent
+  - map_layers
+  authority_ref: data/query_template_registry.yaml
+  registry_ref: data/spatial_layer_registry.yaml
+  deterministic_hints:
+  - radius_slot
+  - nearby_search
+  - spatial_relation
+- capability_id: tool.dynamic_traffic_aggregation
+  object_type: tool_description
+  label: Dynamic AIS/V-PASS Traffic Aggregation Tool
+  routes:
+  - TRAFFIC_ANALYSIS
+  role: primary
+  description: 'Aggregate AIS and V-PASS traffic counts by time window, cell, source, and region using analytical dynamic traffic layers.
+
+    '
+  input_slots:
+  - temporal_window
+  - spatial_filter
+  output_slots:
+  - traffic_count
+  - grid_cells
+  - source_breakdown
+  - monthly_breakdown
+  authority_ref: data/time_series_registry.yaml
+  registry_ref: data/data_registry.yaml
+  deterministic_hints:
+  - traffic_term
+  - temporal_window
+  - ais_vpass
+- capability_id: tool.graph_scoped_rag
+  object_type: tool_description
+  label: Graph-Scoped RAG Retriever
+  routes:
+  - STANDARD_RAG
+  - DATASET_PROVENANCE
+  role: primary_or_supporting
+  description: 'Retrieve authoritative document chunks, evidence candidates, legal or standard references, and S-101 catalogue/DCEG text with KG context.
+
+    '
+  input_slots:
+  - query_text
+  - route_tags
+  - evidence_filter
+  output_slots:
+  - documents
+  - citations
+  - evidence_candidates
+  - quality_metrics
+  authority_ref: data/evidence_registry.yaml
+  registry_ref: knowledge.document_chunks
+  deterministic_hints:
+  - definition_request
+  - evidence_request
+  - standard_term
+- capability_id: agent.spatial_analysis
+  object_type: agent_description
+  label: Spatial Analysis Agent
+  routes:
+  - SPATIAL_ANALYSIS
+  - PLACE_LOOKUP
+  - LAYER_INSPECTION
+  role: primary
+  description: 'Handles verified spatial analysis, place lookup, feature proximity, nearest feature search, map layers, legend, and click-detail surfaces.
+
+    '
+  input_slots:
+  - route_plan
+  - query_execution_context
+  output_slots:
+  - map_layers
+  - spatial_result_summary
+  - evidence_bundle
+  authority_ref: data/agent_capability_registry.yaml
+  registry_ref: data/agent_capability_registry.yaml
+  deterministic_hints:
+  - map_output
+  - spatial_result
+- capability_id: agent.data_discovery
+  object_type: agent_description
+  label: Data Discovery Agent
+  routes:
+  - DATASET_PROVENANCE
+  - TRAFFIC_ANALYSIS
+  role: primary_or_supporting
+  description: 'Handles local data availability, Dataset provenance, serving table discovery, source coverage, and missing external-data requirements.
+
+    '
+  input_slots:
+  - query_text
+  - dataset_candidate
+  output_slots:
+  - data_discovery_result
+  - source_evidence
+  authority_ref: data/data_registry.yaml
+  registry_ref: data/data_registry.yaml
+  deterministic_hints:
+  - dataset_term
+  - provenance_request
+  - data_availability
+- capability_id: ontology.navigation_hazard_object
+  object_type: ontology_class_description
+  label: Navigation Hazard Object
+  routes:
+  - SPATIAL_ANALYSIS
+  - LAYER_INSPECTION
+  role: supporting
+  description: 'Ontology concept for hazards to navigation, including obstruction, wreck, underwater or awash rock, and configured navigation-aid risk objects.
+
+    '
+  input_slots:
+  - feature_term
+  output_slots:
+  - concept_id
+  - feature_group
+  - kg_path
+  authority_ref: data/derived_concept_registry_v2.yaml
+  registry_ref: data/derived_concept_registry_v2.yaml
+  deterministic_hints:
+  - hazard_target
+  - feature_term
+- capability_id: term.marine_obstruction
+  object_type: marine_term
+  label: Obstruction
+  routes:
+  - STANDARD_RAG
+  - SPATIAL_ANALYSIS
+  - LAYER_INSPECTION
+  role: supporting_or_primary
+  description: 'Marine term and S-101 feature candidate for obstruction. Depending on the query, it may require definition retrieval, spatial object search, or layer inspection.
+
+    '
+  input_slots:
+  - query_text
+  output_slots:
+  - canonical_term
+  - feature_type
+  - catalogue_ref
+  authority_ref: data/s101_catalogue.json
+  registry_ref: data/s101_smart_dictionary.json
+  deterministic_hints:
+  - feature_term
+  - definition_request
+  - hazard_target
+- capability_id: dataset.dynamic_traffic_layer
+  object_type: dataset_metadata
+  label: AIS/V-PASS Dynamic Traffic Layer
+  routes:
+  - TRAFFIC_ANALYSIS
+  - DATASET_PROVENANCE
+  role: primary_or_supporting
+  description: 'Metadata for AIS and V-PASS dynamic traffic analytical layers, available period, source breakdown, monthly statistics, and grid-cell summaries.
+
+    '
+  input_slots:
+  - temporal_window
+  - spatial_filter
+  output_slots:
+  - coverage_period
+  - source_breakdown
+  - row_count
+  - analytical_layer
+  authority_ref: data/time_series_registry.yaml
+  registry_ref: data/data_registry.yaml
+  deterministic_hints:
+  - traffic_term
+  - ais_vpass
+  - temporal_window

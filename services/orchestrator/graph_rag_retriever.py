@@ -82,6 +82,10 @@ def _candidate_text(row: dict[str, Any]) -> str:
         row.get("evidence_type"),
         data.get("dataset_id"),
         data.get("layer_id"),
+        data.get("document_type"),
+        data.get("title"),
+        data.get("source_file"),
+        data.get("source_id"),
         data.get("feature_code"),
         data.get("feature_name"),
         data.get("legal_notice_id"),
@@ -106,6 +110,72 @@ def _score_candidate(row: dict[str, Any], query_tokens: set[str], context_tokens
     return min(1.0, base_score * 0.5 + lexical * 0.35 + contextual * 0.15)
 
 
+def _mean(values: list[float]) -> float:
+    return sum(values) / len(values) if values else 0.0
+
+
+def _quality_metrics(
+    query: str,
+    context: dict[str, Any],
+    nodes: dict[str, dict[str, Any]],
+    seed_ids: list[str],
+    related_ids: list[str],
+    graph_paths: list[dict[str, Any]],
+    evidence_candidates: dict[str, list[dict[str, Any]]],
+) -> dict[str, Any]:
+    query_tokens = _tokens(query)
+    context_tokens = _tokens([
+        context.get("target_features"),
+        context.get("target_layers"),
+        context.get("target_dynamic_layers"),
+        context.get("derived_concepts"),
+        context.get("product_id"),
+        context.get("candidate_documents"),
+    ])
+    seed_token_hits = 0
+    for seed_id in seed_ids:
+        seed_text = _search_text(nodes.get(seed_id, {}))
+        if query_tokens & _tokens(seed_text):
+            seed_token_hits += 1
+    intent_similarity = seed_token_hits / max(1, len(seed_ids))
+    if not seed_ids and context_tokens:
+        intent_similarity = min(1.0, len(query_tokens & context_tokens) / max(1, min(len(context_tokens), 8)))
+    evidence_scores = [
+        float(item.get("match_score") or 0.0)
+        for rows in evidence_candidates.values()
+        for item in rows
+    ]
+    kg_similarity = min(1.0, (len(related_ids) / 12.0) * 0.55 + (len(graph_paths) / 4.0) * 0.45)
+    evidence_similarity = max(evidence_scores) if evidence_scores else 0.0
+    evidence_average = _mean(evidence_scores)
+    estimated_accuracy = min(
+        1.0,
+        intent_similarity * 0.35
+        + kg_similarity * 0.25
+        + evidence_similarity * 0.30
+        + evidence_average * 0.10,
+    )
+    return {
+        "intent_similarity": round(intent_similarity, 4),
+        "kg_similarity": round(kg_similarity, 4),
+        "evidence_similarity": round(evidence_similarity, 4),
+        "evidence_average_similarity": round(evidence_average, 4),
+        "estimated_accuracy": round(estimated_accuracy, 4),
+        "confidence_band": "high" if estimated_accuracy >= 0.8 else ("medium" if estimated_accuracy >= 0.55 else "low"),
+        "method": "heuristic_online_query_quality_v1",
+        "notes": [
+            "estimated_accuracy is not labelled ground-truth accuracy.",
+            "It combines intent seed coverage, KG path coverage, and evidence candidate match scores.",
+        ],
+        "coverage": {
+            "seed_count": len(seed_ids),
+            "related_node_count": len(related_ids),
+            "graph_path_count": len(graph_paths),
+            "evidence_candidate_count": len(evidence_scores),
+        },
+    }
+
+
 def _compact_candidate(row: dict[str, Any], match_score: float) -> dict[str, Any]:
     data = row.get("data") if isinstance(row.get("data"), dict) else {}
     return {
@@ -122,6 +192,10 @@ def _compact_candidate(row: dict[str, Any], match_score: float) -> dict[str, Any
             for key in (
                 "dataset_id",
                 "layer_id",
+                "document_type",
+                "title",
+                "source_file",
+                "source_id",
                 "feature_code",
                 "feature_name",
                 "chunk_id",
@@ -321,6 +395,7 @@ class GraphRAGRetriever:
         traffic = bool(dynamic_layers or context.get("target_dynamic_layers")) or any(x in lowered for x in ("ais", "v-pass", "vpass", "교통", "통항로"))
         accident = bool(context.get("accident_events")) or any(x in lowered for x in ("사고", "위험", "accident", "risk", "조난"))
         graph_paths = [{"seed": seed, "path": paths[seed], "node_names": [_text(nodes[item].get("name", item)) for item in paths[seed]]} for seed in seed_ids if seed in paths]
+        quality = _quality_metrics(query, context, nodes, seed_ids, related_ids, graph_paths, evidence_candidates)
         return {
             "resolved_terms": _names(nodes, related_ids, "MarineTerm"),
             "derived_concepts": _names(nodes, related_ids, "DerivedConcept"),
@@ -335,6 +410,7 @@ class GraphRAGRetriever:
             "rag_filters": filters,
             "execution_hints": {"requires_data_discovery": True, "requires_spatial_analysis": spatial, "requires_traffic_analysis": traffic, "requires_accident_analysis": accident, "requires_rag": True},
             "graph_paths": graph_paths,
+            "quality_metrics": quality,
             "explanation": "질의를 KG seed로 해석하고 bounded BFS로 Feature, Concept, Layer, Agent, Tool, 문서 후보를 제한했습니다.",
             "graph_supported": bool(nodes),
             "provenance": {
@@ -343,5 +419,6 @@ class GraphRAGRetriever:
                 "candidate_document_ids": [item for item in distances if nodes[item].get("node_type") in {"StandardDocument", "LawDocument", "DocumentChunk"}],
                 "evidence_candidate_sources": {key: str(path.relative_to(ROOT)).replace("\\", "/") for key, path in _candidate_sources().items()},
                 "evidence_candidate_counts": {key: len(value) for key, value in evidence_candidates.items()},
+                "quality_metrics": quality,
             },
         }

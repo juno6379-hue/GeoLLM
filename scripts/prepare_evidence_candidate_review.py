@@ -46,6 +46,10 @@ def compact_candidate(row: dict[str, Any]) -> dict[str, Any]:
         "review_required": row.get("review_required"),
         "dataset_id": data.get("dataset_id"),
         "layer_id": data.get("layer_id"),
+        "document_type": data.get("document_type"),
+        "title": data.get("title"),
+        "source_file": data.get("source_file"),
+        "source_id": data.get("source_id"),
         "feature_code": data.get("feature_code"),
         "chunk_id": data.get("chunk_id"),
         "legal_notice_id": data.get("legal_notice_id"),
@@ -56,23 +60,26 @@ def compact_candidate(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def build_template(candidates: list[dict[str, Any]], sources: list[Path]) -> dict[str, Any]:
+def build_template(candidates: list[dict[str, Any]], sources: list[Path], existing: dict[str, Any] | None = None) -> dict[str, Any]:
+    existing = existing or {}
+    previous_decisions = existing.get("decisions") if isinstance(existing.get("decisions"), dict) else {}
     decisions: dict[str, Any] = {}
     for row in sorted(candidates, key=lambda item: (item.get("partition") or "", item.get("evidence_id") or "")):
         evidence_id = row["evidence_id"]
+        previous = previous_decisions.get(evidence_id) if isinstance(previous_decisions.get(evidence_id), dict) else {}
         decisions[evidence_id] = {
-            "decision": "hold",
-            "reviewer": None,
-            "reviewed_at": None,
-            "reason": "자동 생성된 evidence 후보입니다. 승인/반려/보류 사유를 검토자가 작성합니다.",
-            "review_required_accepted": False,
-            "verification_status_override": None,
+            "decision": previous.get("decision", "hold"),
+            "reviewer": previous.get("reviewer"),
+            "reviewed_at": previous.get("reviewed_at"),
+            "reason": previous.get("reason", "자동 생성된 evidence 후보입니다. 승인/반려/보류 사유를 검토자가 작성합니다."),
+            "review_required_accepted": previous.get("review_required_accepted", False),
+            "verification_status_override": previous.get("verification_status_override"),
             "candidate": compact_candidate(row),
         }
     return {
         "version": "0.1",
         "phase": "8.7",
-        "status": "review_template",
+        "status": "review_template_updated" if previous_decisions else "review_template",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "sources": [relpath(path) for path in sources],
         "policy": {
@@ -95,7 +102,8 @@ def main() -> None:
     candidates: list[dict[str, Any]] = []
     for path in args.inputs:
         candidates.extend(load_jsonl(path))
-    doc = build_template(candidates, args.inputs)
+    existing = yaml.safe_load(args.output.read_text(encoding="utf-8")) if args.output.exists() else {}
+    doc = build_template(candidates, args.inputs, existing)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(yaml.safe_dump(doc, allow_unicode=True, sort_keys=False), encoding="utf-8")
     print(json.dumps({"decisions": len(doc["decisions"]), "output": str(args.output)}, ensure_ascii=False))

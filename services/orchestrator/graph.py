@@ -1,6 +1,7 @@
 import os
 import json
 import hashlib
+import re
 from functools import lru_cache
 from datetime import datetime
 from pathlib import Path
@@ -28,6 +29,7 @@ from services.orchestrator.feature_resolver import feature_resolver
 from services.orchestrator.context_resolver import ContextResolver
 from services.orchestrator.route_planner import RoutePlanner
 from services.orchestrator.graph_rag_retriever import GraphRAGRetriever
+from services.orchestrator.query_candidate_broker import execution_contract_ready, query_candidate_broker
 from services.orchestrator.execution_validator import validate_execution_context
 from services.orchestrator.evidence_builder import build_evidence_bundle
 from services.data_discovery_agent.agent import execute_data_discovery
@@ -39,6 +41,68 @@ from services.orchestrator.s101_portrayal import resolve_s101_portrayal
 context_resolver = ContextResolver()
 route_planner = RoutePlanner()
 graph_rag_retriever = GraphRAGRetriever()
+
+
+def _candidate_trace_summary(trace: dict | None) -> dict:
+    if not isinstance(trace, dict):
+        return {}
+    routes = trace.get("route_candidates") if isinstance(trace.get("route_candidates"), list) else []
+    capabilities = trace.get("capability_candidates") if isinstance(trace.get("capability_candidates"), list) else []
+    verified = trace.get("verified_candidates") if isinstance(trace.get("verified_candidates"), list) else []
+    return {
+        "contract": trace.get("contract"),
+        "mode": trace.get("mode"),
+        "top_routes": [
+            {
+                "route": row.get("route"),
+                "score": row.get("score"),
+                "role": row.get("role"),
+                "signals": row.get("signals") or [],
+            }
+            for row in routes[:3]
+            if isinstance(row, dict)
+        ],
+        "top_capabilities": [
+            {
+                "candidate_id": row.get("candidate_id"),
+                "kind": row.get("kind"),
+                "score": row.get("score"),
+                "routes": row.get("routes") or [],
+            }
+            for row in capabilities[:5]
+            if isinstance(row, dict)
+        ],
+        "verified_ready_count": sum(1 for row in verified if isinstance(row, dict) and row.get("status") == "verified_ready"),
+        "ollama_needed": ((trace.get("ollama_policy") or {}).get("needed") if isinstance(trace.get("ollama_policy"), dict) else None),
+    }
+
+
+def _attach_candidate_trace(state: OrchestratorState, final_dict: dict) -> dict:
+    trace = state.get("candidate_trace")
+    if not isinstance(trace, dict) or not isinstance(final_dict, dict):
+        return final_dict
+    final_dict.setdefault("structured_result", {})
+    if isinstance(final_dict["structured_result"], dict):
+        final_dict["structured_result"]["candidate_trace_summary"] = _candidate_trace_summary(trace)
+        if isinstance(trace.get("execution_contract"), dict):
+            final_dict["structured_result"]["execution_contract"] = trace["execution_contract"]
+    final_dict.setdefault("orchestrator_v2", {})
+    if isinstance(final_dict["orchestrator_v2"], dict):
+        final_dict["orchestrator_v2"]["candidate_trace"] = trace
+        if isinstance(trace.get("execution_contract"), dict):
+            final_dict["orchestrator_v2"]["execution_contract"] = trace["execution_contract"]
+            qec = final_dict["orchestrator_v2"].get("query_execution_context")
+            if isinstance(qec, dict):
+                qec.setdefault("execution_contract", trace["execution_contract"])
+    return final_dict
+
+
+def _contract_ready_any(state: OrchestratorState, *, route: str, capability_ids: list[str]) -> bool:
+    trace = state.get("candidate_trace")
+    return any(
+        execution_contract_ready(trace, route=route, capability_id=capability_id)
+        for capability_id in capability_ids
+    )
 
 S101_DICT_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "s101_smart_dictionary.json")
 S101_CATALOGUE_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "s101_catalogue.json")
@@ -54,6 +118,23 @@ S101_HAZARD_FEATURE_NAMES = {
 }
 S101_HAZARD_RADIUS_RESULT_LIMIT = 30
 REQUESTED_SPATIAL_LAYER_TARGETS = {
+    "marine_gazetteer": {
+        "relation": "serving.marine_gazetteer_current",
+        "layer_id": "marine_gazetteer_mof",
+        "title": "\ud574\uc591\uc9c0\uba85",
+        "layer_type": "marine_gazetteer",
+        "terms": [
+            "\uc9c0\uba85",
+            "\ud574\uc591\uc9c0\uba85",
+            "\ud574\uc591 \uc9c0\uba85",
+            "\ud574\uc800\uc9c0\uba85",
+            "\ud574\uc800 \uc9c0\uba85",
+            "\ubd80\uadfc \uc9c0\uba85",
+            "\uc8fc\ubcc0 \uc9c0\uba85",
+            "marine gazetteer",
+            "place name",
+        ],
+    },
     "navigation_aid": {
         "relation": "serving.navigation_aid_current",
         "layer_id": "navigation_aid_busan",
@@ -754,6 +835,53 @@ def _looks_like_no_evidence_document_query(query: str) -> bool:
         "\uc5c6\ub294",
     ])
 
+def _looks_like_dataset_evidence_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    dataset_terms = [
+        "dataset",
+        "data set",
+        "csv",
+        "zip",
+        "shp",
+        "geojson",
+        "\ub370\uc774\ud130\uc14b",
+        "\ub370\uc774\ud130 \uc14b",
+        "\ub370\uc774\ud130",
+        "\ud30c\uc77c",
+        "\uc801\uc7ac",
+        "\uc784\ubca0\ub529",
+        "\ud559\uc2b5",
+        "embedding",
+        "embedded",
+        "evidence",
+        "document_chunks",
+        "knowledge.document_chunks",
+    ]
+    provenance_terms = [
+        "\uadfc\uac70",
+        "\ucd9c\ucc98",
+        "\uc6d0\ucc9c",
+        "\uc801\uc7ac",
+        "\uac80\uc99d",
+        "\ud559\uc2b5",
+        "\uc784\ubca0\ub529",
+        "\ub418\uc5c8",
+        "\ub410",
+        "\ud588",
+        "\ud655\uc778",
+        "source",
+        "provenance",
+        "basis",
+        "coverage",
+        "chunk",
+        "chunks",
+    ]
+    file_like = bool(re.search(r"(?:Dataset[/\\]|\.csv|\.zip|\.shp|\.geojson|_[0-9]{8})", text, re.I))
+    has_dataset_context = any(term in lowered or term in text for term in dataset_terms)
+    has_provenance = any(term in lowered or term in text for term in provenance_terms)
+    return file_like or (has_dataset_context and has_provenance)
+
 def _looks_like_traffic_query(query: str) -> bool:
     text = query or ""
     lowered = text.lower()
@@ -940,6 +1068,50 @@ def _looks_like_place_lookup(query: str) -> bool:
     return bool(re.search(r"(?:위치|좌표|어디)(?:를|가|는|을|에|인지|야|입니까|\s|[?.!]|$)|\b(?:where is|where are|coordinates of|location of)\b", query, re.I))
 
 
+def _looks_like_known_place_search(query: str, state: OrchestratorState | None = None) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    if not text.strip():
+        return False
+    if any(term in lowered or term in text for term in [
+        "nearest",
+        "closest",
+        "hazard",
+        "traffic",
+        "ais",
+        "v-pass",
+        "vpass",
+        "\uc704\ud5d8\uac1d\uccb4",
+        "\uce68\uc120",
+        "obstruction",
+        "wreck",
+        "\uc815\ubc15\uc9c0",
+        "\ud56d\ub85c\ud45c\uc9c0",
+        "\uad6c\uc5ed",
+        "\ud1b5\ud56d",
+    ]):
+        return False
+    if not any(term in lowered or term in text for term in [
+        "\ucc3e\uc544\uc918",
+        "\ucc3e\uc544",
+        "\uc5b4\ub514",
+        "\uc704\uce58",
+        "\uc88c\ud45c",
+        "where is",
+        "coordinates of",
+        "location of",
+    ]):
+        return False
+    try:
+        resolve_location(text, _spatial_context_dict(state or {}))
+        return True
+    except PlaceResolutionProblem as exc:
+        return bool(exc.candidates)
+    except Exception as exc:
+        logger.warning("Known place search precheck failed", error=str(exc), query=text)
+        return False
+
+
 def _place_lookup_update(state, payload, analysis_type="place_lookup"):
     from shapely import wkt
 
@@ -968,6 +1140,8 @@ def _place_lookup_update(state, payload, analysis_type="place_lookup"):
         context.slots = ExecutionSlots(location_text=payload["location_text"], reference_geometry=payload["geometry"], crs=payload["crs"], resolution_status=resolution["status"], analysis_type=analysis_type)
     else:
         context.blockers = [payload.get("error_code", "LOCATION_UNCONFIRMED")]
+    quality_metrics = _quality_metrics_from_state(state, fast_path="dataset_place_resolver", exact=resolved)
+    structured["quality_metrics"] = quality_metrics
     final = {
         "task_id": state["task_id"], "request_id": state["task_id"], "status": status.value,
         "contract_version": context.contract_version,
@@ -977,9 +1151,11 @@ def _place_lookup_update(state, payload, analysis_type="place_lookup"):
         "clarification_options": payload.get("location_candidates", []),
         "features": collection, "evidence_bundle": evidence,
         "map_layers": [{"layer_id": f"place:{state['task_id']}", "title": payload["location_text"], "source_type": "geojson", "geometry_type": "POINT", "inline_geojson": collection, "feature_count": 1}] if resolved else [],
-        "orchestrator_v2": {"route_plan": plan, "query_execution_context": context.model_dump(mode="json"), "embedding_independent": True, "fast_path": "dataset_place_resolver"},
+        "orchestrator_v2": {"route_plan": plan, "query_execution_context": context.model_dump(mode="json"), "embedding_independent": True, "fast_path": "dataset_place_resolver", "quality_metrics": quality_metrics},
     }
-    return {"final_dict": final, "task_plan": plan, "query_execution_context": context.model_dump(mode="json"), "status": status, "state_history": log_transition(AgentStatus.INTENT_PARSED, status, actor="DatasetPlaceResolver")}
+    _attach_candidate_trace(state, final)
+    _record_query_quality_issues(state, final)
+    return {"final_dict": final, "task_plan": plan, "query_execution_context": context.model_dump(mode="json"), "candidate_trace": state.get("candidate_trace"), "status": status, "state_history": log_transition(AgentStatus.INTENT_PARSED, status, actor="DatasetPlaceResolver")}
 
 
 async def fast_place_lookup_node(state: OrchestratorState) -> OrchestratorState:
@@ -1040,18 +1216,32 @@ def _should_fast_execute_s101_hazard_radius(state: OrchestratorState) -> bool:
     if _looks_like_standard_rag_query(query) and not _looks_like_s101_hazard_radius_query(query):
         return False
     # Incomplete radius requests enter the same handler to obtain real clarification.
-    return True
+    return _contract_ready_any(
+        state,
+        route="SPATIAL_ANALYSIS",
+        capability_ids=["resolver.s101_feature_dictionary", "tool.spatial_radius_search", "agent.spatial_analysis"],
+    )
 
 
 def _should_fast_execute_s101_nearest_feature(state: OrchestratorState) -> bool:
     query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
     # Location confirmation precedes any projection/schema lookup in the executor.
-    return _looks_like_s101_nearest_feature_query(query)
+    return _looks_like_s101_nearest_feature_query(query) and _contract_ready_any(
+        state,
+        route="SPATIAL_ANALYSIS",
+        capability_ids=["resolver.s101_feature_dictionary", "tool.spatial_radius_search", "agent.spatial_analysis"],
+    )
 
 
 def _should_fast_execute_traffic_query(state: OrchestratorState) -> bool:
     query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
     if not _looks_like_traffic_query(query):
+        return False
+    if not _contract_ready_any(
+        state,
+        route="TRAFFIC_ANALYSIS",
+        capability_ids=["tool.dynamic_traffic_aggregation", "dataset.dynamic_traffic_layer", "agent.data_discovery"],
+    ):
         return False
     try:
         from services.orchestrator.traffic_execution import traffic_layer_ready
@@ -1066,6 +1256,19 @@ def _requested_spatial_layer_targets(query: str) -> list[dict]:
     text = query or ""
     lowered = text.lower()
     targets = []
+    provenance_terms = [
+        "\uadfc\uac70",
+        "\ucd9c\ucc98",
+        "\uc801\uc7ac",
+        "\ud30c\uc2f1",
+        "\ud45c\uc900\ud654",
+        "\uc784\ubca0\ub529",
+        "source",
+        "provenance",
+        "embedding",
+    ]
+    if any(term in lowered or term in text for term in provenance_terms):
+        return []
     for target in REQUESTED_SPATIAL_LAYER_TARGETS.values():
         if any(term.lower() in lowered or term in text for term in target["terms"]):
             targets.append(target)
@@ -1108,7 +1311,14 @@ def _requested_layer_distance_m(query: str, state: OrchestratorState) -> float:
 
 def _should_fast_execute_requested_spatial_layer(state: OrchestratorState) -> bool:
     query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
-    return bool(_requested_spatial_layer_targets(query))
+    if not _requested_spatial_layer_targets(query):
+        return False
+    trace = state.get("candidate_trace")
+    return execution_contract_ready(
+        trace,
+        route="SPATIAL_ANALYSIS",
+        capability_id="resolver.marine_gazetteer_spatial",
+    )
 
 
 def _spatial_context_has_text_location(state: OrchestratorState) -> bool:
@@ -1481,6 +1691,27 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         
     state["normalization_debug"] = debug_logs
     state["norm_result"] = norm_result
+    candidate_trace = query_candidate_broker.build_trace(
+        original_query,
+        normalized_query=query,
+        norm_result=norm_result,
+    )
+    state["candidate_trace"] = candidate_trace
+    trace_summary = _candidate_trace_summary(candidate_trace)
+    top_routes = [
+        f"{row.get('route')}:{row.get('score')}"
+        for row in trace_summary.get("top_routes", [])
+        if isinstance(row, dict)
+    ]
+    if top_routes:
+        debug_logs.append(f"Candidate routes(dry-run): {', '.join(top_routes)}")
+    top_capabilities = [
+        str(row.get("candidate_id"))
+        for row in trace_summary.get("top_capabilities", [])[:3]
+        if isinstance(row, dict) and row.get("candidate_id")
+    ]
+    if top_capabilities:
+        debug_logs.append(f"Capability candidates(dry-run): {', '.join(top_capabilities)}")
     
     # 쿼리가 변경되더라도 state["query"]는 원문 유지를 위해 덮어쓰지 않습니다.
     
@@ -1499,14 +1730,20 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
     fast_external_tide = _looks_like_external_tide_query(original_query)
     fast_external_weather = _looks_like_external_weather_query(original_query)
     fast_standard_rag = _looks_like_standard_rag_query(original_query)
+    fast_dataset_evidence = _looks_like_dataset_evidence_query(original_query)
     fast_legal_or_no_evidence_rag = _looks_like_legal_rag_query(original_query) or _looks_like_no_evidence_document_query(original_query)
     fast_time_series = _looks_like_time_series_query(original_query)
+    fast_known_place = _looks_like_known_place_search(original_query, state)
     combined_fast_query = f"{original_query} {query}"
+    fast_requested_layer = bool(_requested_spatial_layer_targets(combined_fast_query))
     fast_spatial_or_traffic = (
+        fast_requested_layer
+        or
         _looks_like_traffic_query(combined_fast_query)
         or _looks_like_spatial_query(combined_fast_query)
         or _should_fast_execute_s101_hazard_radius(state)
         or _looks_like_place_lookup(original_query)
+        or fast_known_place
         or _looks_like_explicit_time_series_request(combined_fast_query)
         or _looks_like_accident_relation_query(combined_fast_query)
         or _looks_like_policy_block_query(combined_fast_query)
@@ -1518,7 +1755,7 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         or _looks_like_eddy_hazard_query(combined_fast_query)
         or _looks_like_island_query(combined_fast_query)
     )
-    cached_intent = None if (fast_external_tide or fast_external_weather or fast_standard_rag or fast_legal_or_no_evidence_rag or fast_time_series or fast_spatial_or_traffic) else cache.check_cache(query)
+    cached_intent = None if (fast_external_tide or fast_external_weather or fast_standard_rag or fast_dataset_evidence or fast_legal_or_no_evidence_rag or fast_time_series or fast_spatial_or_traffic or fast_known_place) else cache.check_cache(query)
     if fast_external_tide:
         intent_type = "DATA_DISCOVERY"
         target_objects = [term for term in ["대조기", "조석", "조위", "물때", "tide"] if term in original_query or term in query.lower()]
@@ -1537,6 +1774,12 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         output_format = "SUMMARY"
         intent_understanding = "Official marine weather observation or forecast data is required for this query."
         execution_plan = "1. Check local registry and discovery evidence. 2. If local data is unavailable, mark required external marine weather source. 3. Do not fabricate weather values."
+    elif fast_dataset_evidence:
+        intent_type = "DATA_DISCOVERY"
+        target_objects = ["gazetteer", "dataset_provenance"]
+        output_format = "SUMMARY"
+        intent_understanding = "Dataset/gazetteer provenance lookup is required."
+        execution_plan = "1. Check dataset ingestion report. 2. Return source files, serving tables, row counts, and evidence candidates."
     elif fast_standard_rag or fast_legal_or_no_evidence_rag:
         intent_type = "KNOWLEDGE_SEARCH"
         target_objects = [term for term in ["S-100", "S-101", "Wreck", "Obstruction", "Feature Catalogue", "DCEG"] if term.lower() in query.lower()]
@@ -1545,8 +1788,20 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         output_format = "SUMMARY"
         intent_understanding = "Marine standards or catalogue document search is required."
         execution_plan = "1. Route to Standard RAG Agent. 2. Retrieve graph-scoped document evidence. 3. Answer only with retrieved evidence and citations."
+    elif fast_known_place:
+        intent_type = "SPATIAL_SEARCH"
+        target_objects = ["named_place"]
+        output_format = "MAP"
+        intent_understanding = "A known named marine place should be resolved from the gazetteer or place registry."
+        execution_plan = "1. Resolve the named place against local gazetteers. 2. Return its source-backed location and map point."
     elif fast_spatial_or_traffic:
-        if _looks_like_explicit_time_series_request(combined_fast_query):
+        if fast_requested_layer:
+            intent_type = "SPATIAL_SEARCH"
+            target_objects = ["dataset_spatial_layer"]
+            output_format = "MAP"
+            intent_understanding = "Requested dataset spatial layer search requires a validated reference geometry and spatial layer binding."
+            execution_plan = "1. Resolve the reference place. 2. Execute the requested spatial layer radius search. 3. Return map features and evidence."
+        elif _looks_like_explicit_time_series_request(combined_fast_query):
             intent_type = "TIME_SERIES_ANALYSIS"
             target_objects = ["time_series"]
             output_format = "SUMMARY"
@@ -1684,7 +1939,8 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
                             "normalized_query": query,
                             "normalization_debug": debug_logs,
                             "context_result": context_result,
-                            "norm_result": norm_result
+                            "norm_result": norm_result,
+                            "candidate_trace": candidate_trace,
                         }
                     
                     if extracted:
@@ -1902,14 +2158,15 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         "norm_result": norm_result,
         "context_result": state.get("context_result"),
         "spatial_context": preserved_spatial_context,
-        "extracted_slots": extracted_payload
+        "extracted_slots": extracted_payload,
+        "candidate_trace": candidate_trace,
     }
 
 from services.orchestrator.feature_resolver import feature_resolver
 
 async def graph_rag_node(state: OrchestratorState) -> OrchestratorState:
     """Run graph candidate discovery between normalization and context resolution."""
-    query = state.get("normalized_query") or state.get("query", "")
+    query = state.get("query") or state.get("normalized_query") or ""
     intent = state.get("agent_request").parsed_intent if state.get("agent_request") else None
     norm = state.get("norm_result") or {}
     seed_context = {
@@ -1921,9 +2178,99 @@ async def graph_rag_node(state: OrchestratorState) -> OrchestratorState:
     return {
         "graph_context": context,
         "graph_rag_context": context,
+        "candidate_trace": state.get("candidate_trace"),
         "status": AgentStatus.INTENT_PARSED,
         "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.INTENT_PARSED, actor="GraphRAGRetriever", reason="KG candidate plan created"),
     }
+
+def _quality_metrics_from_state(state: OrchestratorState, *, fast_path: str | None = None, exact: bool = False) -> dict:
+    graph_context = state.get("graph_context") or state.get("graph_rag_context") or {}
+    quality = graph_context.get("quality_metrics") if isinstance(graph_context, dict) else None
+    if isinstance(quality, dict) and quality:
+        result = dict(quality)
+        result.setdefault("fast_path", fast_path)
+        return result
+    if exact:
+        return {
+            "intent_similarity": 1.0,
+            "kg_similarity": 1.0,
+            "evidence_similarity": 1.0,
+            "evidence_average_similarity": 1.0,
+            "estimated_accuracy": 1.0,
+            "confidence_band": "high",
+            "method": "deterministic_exact_route_match",
+            "fast_path": fast_path,
+            "notes": ["Exact fast-path route. Ground-truth accuracy still requires review feedback."],
+        }
+    return {
+        "intent_similarity": 0.0,
+        "kg_similarity": 0.0,
+        "evidence_similarity": 0.0,
+        "evidence_average_similarity": 0.0,
+        "estimated_accuracy": 0.0,
+        "confidence_band": "low",
+        "method": "quality_unavailable",
+        "fast_path": fast_path,
+        "notes": ["No KG quality signal was available for this route."],
+    }
+
+def _record_query_quality_issues(state: OrchestratorState, final_dict: dict) -> None:
+    if not isinstance(final_dict, dict):
+        return
+    structured = final_dict.get("structured_result") if isinstance(final_dict.get("structured_result"), dict) else {}
+    orch = final_dict.get("orchestrator_v2") if isinstance(final_dict.get("orchestrator_v2"), dict) else {}
+    route_plan = orch.get("route_plan") if isinstance(orch.get("route_plan"), dict) else {}
+    quality = final_dict.get("quality_metrics") or structured.get("quality_metrics") or orch.get("quality_metrics") or {}
+    evidence_summary = structured.get("evidence_candidate_summary") or {}
+    task_id = str(final_dict.get("task_id") or state.get("task_id") or "")
+    query = str(state.get("query") or final_dict.get("original_query") or "")
+    issues: list[tuple[str, str, dict]] = []
+
+    status = str(final_dict.get("status") or structured.get("status") or state.get("status") or "")
+    error_code = final_dict.get("error_code")
+    if error_code in {"NO_AUTHORITATIVE_EVIDENCE", "BLOCKED_DATA"} or status in {"BLOCKED", "BLOCKED_DATA"}:
+        issues.append(("blocked_or_no_evidence_response", "high", {"status": status, "error_code": error_code}))
+
+    method = str(quality.get("method") or "")
+    estimated_accuracy = quality.get("estimated_accuracy")
+    kg_similarity = quality.get("kg_similarity")
+    evidence_similarity = quality.get("evidence_similarity")
+    if method == "quality_unavailable":
+        issues.append(("quality_metrics_unavailable", "medium", {"method": method}))
+    try:
+        if estimated_accuracy is not None and float(estimated_accuracy) < 0.55:
+            issues.append(("low_estimated_accuracy", "medium", {"estimated_accuracy": estimated_accuracy}))
+    except (TypeError, ValueError):
+        pass
+    try:
+        if kg_similarity is not None and float(kg_similarity) < 0.35:
+            issues.append(("low_kg_similarity", "medium", {"kg_similarity": kg_similarity}))
+    except (TypeError, ValueError):
+        pass
+    try:
+        if evidence_similarity is not None and float(evidence_similarity) < 0.35:
+            issues.append(("low_evidence_similarity", "medium", {"evidence_similarity": evidence_similarity}))
+    except (TypeError, ValueError):
+        pass
+
+    if route_plan.get("execution_ready") is False and not route_plan.get("clarification_required"):
+        issues.append(("execution_not_ready_without_clarification", "high", {"route_plan_status": route_plan.get("route_plan_status")}))
+
+    seen: set[str] = set()
+    for issue_type, severity, details in issues:
+        if issue_type in seen:
+            continue
+        seen.add(issue_type)
+        collector.record_quality_issue(
+            query=query,
+            task_id=task_id,
+            issue_type=issue_type,
+            severity=severity,
+            route_plan=route_plan,
+            quality_metrics=quality,
+            evidence_summary=evidence_summary,
+            details=details,
+        )
 
 async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorState:
     """Return authoritative local catalogue answers without vector/LLM orchestration."""
@@ -1964,6 +2311,9 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
             "document_type": "feature_catalogue",
             "chunk_id": doc["document_id"],
             "similarity": 1.0,
+            "summary_ko": f"{doc['title']} / {doc['section']}: {name}의 정의는 \"{definition}\"입니다.",
+            "detail_label": "상세정보",
+            "detail_text": content,
             "provenance": {"method": "exact_s101_feature_catalogue_lookup", "query": query},
         }
         answer = (
@@ -1981,7 +2331,14 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
                 "section": item.get("section"),
                 "document_type": "dceg",
                 "chunk_id": item.get("chunk_id"),
+                "page": item.get("page"),
                 "similarity": item.get("relevance_score"),
+                "summary_ko": (
+                    f"{item.get('title')} / {item.get('section')} / page {item.get('page')}: "
+                    f"{str(item.get('excerpt_reference') or '')[:180]}"
+                ),
+                "detail_label": "상세정보",
+                "detail_text": item.get("excerpt_reference"),
                 "provenance": {"method": "exact_s101_dceg_lookup", "query": query},
             }
             for item in dceg_docs
@@ -2001,6 +2358,20 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
             answer += (
                 f" 인코딩 지침 근거는 S-101 Annex A DCEG Ed. 2.0.0의 객체별 본문 청크이며, "
                 f"참조 위치는 {dceg_refs}입니다."
+            )
+        dceg_refs_with_pages = ", ".join(
+            f"{item.get('title')} / {item.get('section')} / page {item.get('page')}"
+            for item in dceg_docs
+            if item.get("title") and item.get("section")
+        )
+        answer = (
+            f"S-101 Feature Catalogue 2.0.0 기준 {name}의 정의는 \"{definition}\"입니다. "
+            f"근거는 Feature Catalogue의 feature:{code} 항목입니다."
+        )
+        if dceg_refs_with_pages:
+            answer += (
+                f" 인코딩 지침 근거는 S-101 Annex A DCEG Ed. 2.0.0의 객체별 본문 청크에서 확인했으며, "
+                f"참조 위치는 {dceg_refs_with_pages}입니다. 긴 원문은 상세정보에서 확인할 수 있습니다."
             )
         target_term = code
     elif relation:
@@ -2073,7 +2444,12 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
         }
     documents = locals().get("documents", [doc])
     citations = locals().get("citations", [citation])
-    doc_blocked = bool(no_evidence)
+    doc_blocked = target_term == "no_authoritative_evidence"
+    quality_metrics = _quality_metrics_from_state(
+        state,
+        fast_path="document_no_evidence" if doc_blocked else "authoritative_s101_feature_catalogue",
+        exact=not doc_blocked,
+    )
     route_plan = {
         "task_id": f"TASK-DOC-FAST-{state['task_id'][:3].upper()}",
         "status": "BLOCKED_DATA" if doc_blocked else "EXECUTION_READY",
@@ -2111,6 +2487,7 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
             "citations": [] if doc_blocked else citations,
             "no_evidence": doc_blocked,
             "evidence_candidate_summary": {},
+            "quality_metrics": quality_metrics,
             "temporal_window": temporal_window,
             "web_rag_usage": {
                 "web_used": False,
@@ -2133,16 +2510,366 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
             },
             "embedding_independent": True,
             "fast_path": "document_no_evidence" if doc_blocked else "authoritative_s101_feature_catalogue",
+            "quality_metrics": quality_metrics,
         },
         "contract_version": "geollm.execution.v1",
         "request_id": state.get("task_id"),
     }
+    _attach_candidate_trace(state, final_dict)
+    _record_query_quality_issues(state, final_dict)
     return {
         "final_dict": final_dict,
         "task_plan": route_plan,
         "query_execution_context": final_dict["orchestrator_v2"]["query_execution_context"],
+        "candidate_trace": state.get("candidate_trace"),
         "status": AgentStatus.BLOCKED if doc_blocked else AgentStatus.COMPLETED,
         "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.BLOCKED if doc_blocked else AgentStatus.COMPLETED, actor="FastDocumentAnswer"),
+    }
+
+DATASET_EVIDENCE_DOC_TYPES = {
+    "dataset_profile",
+    "accident_data",
+    "supplemental_document",
+}
+
+
+DATASET_EVIDENCE_STOPWORDS = {
+    "dataset",
+    "data",
+    "set",
+    "csv",
+    "zip",
+    "file",
+    "source",
+    "provenance",
+    "evidence",
+    "embedding",
+    "embedded",
+    "chunks",
+    "chunk",
+    "근거",
+    "출처",
+    "원천",
+    "적재",
+    "임베딩",
+    "학습",
+    "데이터",
+    "데이터셋",
+    "데이터",
+    "파일",
+    "확인",
+    "알려줘",
+    "보여줘",
+    "됐는지",
+    "되었는지",
+    "어떤",
+    "어디까지",
+}
+
+
+def _dataset_evidence_terms(query: str) -> list[str]:
+    text = query or ""
+    text = text.replace("조산사고", "조난사고")
+    raw_tokens = re.findall(r"[0-9A-Za-z가-힣_()&#./-]{2,}", text)
+    terms: list[str] = []
+    generic_stems = ("근거", "출처", "원천", "적재", "임베딩", "학습", "확인", "데이터셋", "데이터", "파일")
+    for token in raw_tokens:
+        cleaned = token.strip("`'\".,;:!?[]{}")
+        cleaned = re.sub(r"(?:은|는|이|가|을|를|로|으로|에서|에게|까지|부터|인지|됐는지|되었는지|되는지|된것|된 것)$", "", cleaned)
+        lowered = cleaned.lower()
+        if (
+            len(cleaned) < 2
+            or lowered in DATASET_EVIDENCE_STOPWORDS
+            or cleaned in DATASET_EVIDENCE_STOPWORDS
+            or any(cleaned.startswith(stem) for stem in generic_stems)
+        ):
+            continue
+        terms.append(cleaned)
+        if "_" in cleaned:
+            terms.extend(part for part in cleaned.split("_") if len(part) >= 2)
+        if "/" in cleaned or "\\" in cleaned:
+            terms.extend(part for part in re.split(r"[/\\]", cleaned) if len(part) >= 2)
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for term in terms:
+        key = term.lower()
+        if key not in seen:
+            seen.add(key)
+            deduped.append(term)
+    return deduped[:10]
+
+
+def _dataset_evidence_db_url() -> str:
+    return os.environ.get("S101_DB_URL") or os.environ.get("POSTGIS_URL") or ""
+
+
+def _query_dataset_evidence_sources(query: str, limit: int = 12) -> list[dict]:
+    terms = _dataset_evidence_terms(query)
+    if not terms:
+        return []
+    db_url = _dataset_evidence_db_url()
+    if not db_url:
+        logger.warning("Dataset evidence lookup skipped: database URL is not configured")
+        return []
+    patterns = [f"%{term}%" for term in terms]
+    try:
+        import psycopg2
+        import psycopg2.extras
+
+        with psycopg2.connect(db_url) as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        chunk_id,
+                        document_type,
+                        content,
+                        source_id,
+                        source_sha256,
+                        metadata,
+                        metadata->>'title' AS title,
+                        COALESCE(metadata->>'source_file', metadata->>'source_path') AS source_file,
+                        metadata->>'section' AS section,
+                        metadata->>'extraction_status' AS extraction_status,
+                        embedding IS NULL AS embedding_missing
+                    FROM knowledge.document_chunks
+                    WHERE embedding IS NOT NULL
+                      AND document_type = ANY(%s)
+                      AND (
+                        metadata::text ILIKE ANY(%s)
+                        OR content ILIKE ANY(%s)
+                        OR source_id ILIKE ANY(%s)
+                      )
+                    LIMIT 240
+                    """,
+                    (list(DATASET_EVIDENCE_DOC_TYPES), patterns, patterns, patterns),
+                )
+                rows = [dict(row) for row in cur.fetchall()]
+    except Exception as exc:
+        logger.warning("Dataset evidence lookup failed", error=str(exc))
+        return []
+
+    grouped: dict[tuple[str, str, str], dict] = {}
+    for row in rows:
+        metadata = row.get("metadata") or {}
+        title = row.get("title") or metadata.get("title") or row.get("source_id") or "Dataset evidence"
+        source_file = row.get("source_file") or metadata.get("source_file") or metadata.get("source_path") or row.get("source_id") or "N/A"
+        document_type = row.get("document_type") or metadata.get("document_type") or "dataset_profile"
+        key = (str(source_file), str(title), str(document_type))
+        text_for_score = " ".join([
+            str(title),
+            str(source_file),
+            str(row.get("source_id") or ""),
+            str(row.get("content") or ""),
+            json.dumps(metadata, ensure_ascii=False),
+        ]).lower()
+        score = sum(1 for term in terms if term.lower() in text_for_score)
+        item = grouped.setdefault(
+            key,
+            {
+                "dataset_id": str(row.get("source_id") or hashlib.sha256(str(source_file).encode("utf-8")).hexdigest()[:16]),
+                "name": str(title),
+                "source_file": str(source_file),
+                "target_relation": "knowledge.document_chunks",
+                "row_count": 0,
+                "null_embedding": 0,
+                "document_type": str(document_type),
+                "evidence_type": f"{document_type}_embedding_chunk",
+                "source_sha256": row.get("source_sha256") or metadata.get("source_sha256"),
+                "sections": set(),
+                "chunk_ids": [],
+                "score": 0,
+                "excerpt": "",
+            },
+        )
+        item["row_count"] += 1
+        item["null_embedding"] += 1 if row.get("embedding_missing") else 0
+        item["score"] += score
+        if row.get("section"):
+            item["sections"].add(str(row.get("section")))
+        if row.get("chunk_id") and len(item["chunk_ids"]) < 8:
+            item["chunk_ids"].append(str(row.get("chunk_id")))
+        if not item["excerpt"] and row.get("content"):
+            item["excerpt"] = " ".join(str(row.get("content")).split())[:320]
+
+    results = []
+    for item in grouped.values():
+        normalized = dict(item)
+        normalized["sections"] = sorted(item["sections"])[:8]
+        results.append(normalized)
+    results.sort(key=lambda item: (item.get("score", 0), item.get("row_count", 0)), reverse=True)
+    return results[:limit]
+
+
+async def fast_dataset_evidence_answer_node(state: OrchestratorState) -> OrchestratorState:
+    """Answer Dataset provenance questions from live knowledge.document_chunks."""
+    query = state.get("query") or state.get("normalized_query") or ""
+    task_id = str(state.get("task_id") or "local")
+    generated_at = datetime.utcnow().isoformat() + "Z"
+    sources = _query_dataset_evidence_sources(query)
+    citations = []
+    documents = []
+    for item in sources:
+        doc = {
+            "document_id": f"dataset_provenance:{item['dataset_id']}",
+            "title": item["name"],
+            "version": "live_knowledge_document_chunks",
+            "section": ", ".join(item.get("sections") or []) or item.get("document_type") or "dataset_evidence",
+            "page": "N/A",
+            "source": "knowledge.document_chunks",
+            "source_file": item["source_file"],
+            "excerpt_reference": (
+                f"{item['dataset_id']} -> {item['target_relation']}: "
+                f"{item['row_count']} embedded chunks; excerpt={item.get('excerpt') or 'N/A'}"
+            ),
+            "retrieved_at": generated_at,
+            "relevance_score": item.get("score") or 1.0,
+        }
+        citation = {
+            "document_id": doc["document_id"],
+            "source": doc["title"],
+            "source_id": item["dataset_id"],
+            "source_file": item["source_file"],
+            "section": doc["section"],
+            "document_type": item.get("document_type") or "dataset_profile",
+            "chunk_id": ", ".join(item.get("chunk_ids") or []) or doc["document_id"],
+            "similarity": item.get("score") or 1.0,
+            "summary_ko": f"{item['name']} / {item['source_file']}: {item['row_count']}개 embedded chunk",
+            "detail_label": "상세정보",
+            "detail_text": item.get("excerpt") or doc["excerpt_reference"],
+            "provenance": {
+                "method": "live_document_chunks_dataset_evidence_lookup",
+                "target_relation": item["target_relation"],
+                "row_count": item["row_count"],
+                "null_embedding": item.get("null_embedding", 0),
+                "evidence_type": item["evidence_type"],
+                "query": query,
+            },
+        }
+        documents.append(doc)
+        citations.append(citation)
+    found = bool(sources)
+    quality_metrics = _quality_metrics_from_state(state, fast_path="dataset_evidence_live_document_chunks", exact=found)
+    target_terms = _dataset_evidence_terms(query)
+    target_term = ", ".join(target_terms[:4]) if target_terms else "dataset"
+    derived_concept = "dataset_embedding_provenance"
+    total_chunks = sum(int(item.get("row_count") or 0) for item in sources)
+    total_null_embeddings = sum(int(item.get("null_embedding") or 0) for item in sources)
+    type_counts: dict[str, int] = {}
+    for item in sources:
+        document_type = str(item.get("document_type") or "dataset_profile")
+        type_counts[document_type] = type_counts.get(document_type, 0) + int(item.get("row_count") or 0)
+    type_summary = ", ".join(f"{name} {count}건" for name, count in sorted(type_counts.items()))
+    source_summary = "; ".join(
+        f"{item.get('source_file')} ({item.get('document_type')}, {item.get('row_count')} chunks)"
+        for item in sources[:6]
+    )
+    if found:
+        answer = (
+            f"live `knowledge.document_chunks`에서 질의와 맞는 Dataset 근거 {len(sources)}개 source, "
+            f"총 {total_chunks}개 embedded chunk를 찾았습니다. "
+            f"문서 유형별로는 {type_summary or '분류 정보 없음'}이며, embedding NULL은 {total_null_embeddings}건입니다. "
+            f"주요 원천은 {source_summary}입니다. "
+            "이 fast path는 법령/고시 확정 근거가 아니라 Dataset provenance, 임베딩 coverage, RAG/분석 근거 확인용입니다."
+        )
+    else:
+        answer = (
+            "live `knowledge.document_chunks`에서 이 질의와 직접 매칭되는 Dataset 임베딩 근거를 찾지 못했습니다. "
+            "근거 없는 적재 여부나 chunk 수를 생성하지 않습니다. 파일명, 기관명, 데이터셋명 중 하나를 더 구체적으로 넣으면 다시 조회할 수 있습니다."
+        )
+    route_plan = {
+        "task_id": f"TASK-DATASET-EVIDENCE-{task_id[:3].upper()}",
+        "status": "EXECUTION_READY",
+        "intent": "DATA_DISCOVERY",
+        "context": "dataset_provenance",
+        "analysis_type": "dataset_evidence_lookup",
+        "derived_concept": derived_concept,
+        "primary_agent": "Data Discovery Agent",
+        "secondary_agents": [],
+        "slots": {
+            "target_term": target_term,
+            "analysis_type": "dataset_evidence_lookup",
+            "requested_sources": [item["dataset_id"] for item in sources],
+        },
+        "tools": ["dataset.ingestion_report_lookup", "rag.dataset_profile_retrieve"],
+        "data": [item["target_relation"] for item in sources],
+        "outputs": ["DatasetEvidenceOutput", "EvidenceBundle", "Summary"],
+        "clarification_required": False,
+        "confidence": 1.0,
+        "execution_ready": True,
+        "route_plan_status": "EXECUTION_READY",
+    }
+    final_dict = {
+        "task_id": task_id,
+        "trace_id": f"tr-{task_id}",
+        "agent_name": "Data Discovery Agent",
+        "agent_version": "2.3.0-dataset-evidence-fast-path",
+        "status": AgentStatus.COMPLETED,
+        "summary": answer,
+        "answer_text": answer,
+        "structured_result": {
+            "retrieved_count": len(documents),
+            "documents": documents,
+            "citations": citations,
+            "sources": sources,
+            "no_evidence": False,
+            "evidence_candidate_summary": {
+                "rag_evidence": len(citations),
+                "dataset_embedding_coverage_candidate": len(citations),
+            },
+            "quality_metrics": quality_metrics,
+            "web_rag_usage": {
+                "web_used": False,
+                "rag_used": True,
+                "llm_used": False,
+                "execution_path": "dataset_evidence_fast_path",
+                "local_authoritative_registry_checked": False,
+                "dataset_ingestion_report_checked": True,
+            },
+        },
+        "evidence_bundle": {
+            "rag_evidence": citations,
+            "kg_provenance": [],
+            "regulatory_evidence": [],
+            "spatial_feature_evidence": [],
+            "spatial_layer_evidence": citations,
+            "accident_relation_evidence": [],
+        },
+        "orchestrator_v2": {
+            "route_plan": route_plan,
+            "query_execution_context": {
+                "readiness": "READY",
+                "blockers": [],
+                "warnings": [],
+                "data_bindings": [
+                    {
+                        "dataset_id": item["dataset_id"],
+                        "relation": item["target_relation"],
+                        "source_file": item["source_file"],
+                    }
+                    for item in sources
+                ],
+                "tool_bindings": [
+                    {"tool_id": "dataset.ingestion_report_lookup", "operation": "exact_dataset_provenance_lookup"},
+                    {"tool_id": "rag.dataset_profile_retrieve", "operation": "dataset_embedding_candidate_lookup"},
+                ],
+            },
+            "embedding_independent": False,
+            "fast_path": "dataset_evidence_live_document_chunks",
+            "quality_metrics": quality_metrics,
+        },
+        "contract_version": "geollm.execution.v1",
+        "request_id": task_id,
+    }
+    _attach_candidate_trace(state, final_dict)
+    _record_query_quality_issues(state, final_dict)
+    return {
+        "final_dict": final_dict,
+        "task_plan": route_plan,
+        "query_execution_context": final_dict["orchestrator_v2"]["query_execution_context"],
+        "candidate_trace": state.get("candidate_trace"),
+        "status": AgentStatus.COMPLETED,
+        "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.COMPLETED, actor="FastDatasetEvidenceAnswer"),
     }
 
 async def fast_external_data_requirement_node(state: OrchestratorState) -> OrchestratorState:
@@ -2207,10 +2934,13 @@ async def fast_external_data_requirement_node(state: OrchestratorState) -> Orche
         "contract_version": "geollm.execution.v1",
         "request_id": state.get("task_id"),
     }
+    _attach_candidate_trace(state, final_dict)
+    _record_query_quality_issues(state, final_dict)
     return {
         "final_dict": final_dict,
         "task_plan": route_plan,
         "query_execution_context": qec,
+        "candidate_trace": state.get("candidate_trace"),
         "data_discovery_result": {
             "requires_external_api": True,
             "api_params": {"domain": requirement["domain"], "external_data_evidence": requirement},
@@ -2224,6 +2954,7 @@ async def fast_spatial_or_traffic_block_node(state: OrchestratorState) -> Orches
     """Return immediate BLOCKED_DATA for spatial/traffic requests without ready bindings."""
     query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
     route_plan, qec, agent_name, analysis_type = _fast_spatial_or_traffic_plan(query, state)
+    quality_metrics = _quality_metrics_from_state(state, fast_path="spatial_or_traffic_blocked_data")
     blocker_text = "; ".join(qec["blockers"])
     answer = (
         "요청한 공간/교통 분석은 임의 결과나 검증되지 않은 데이터를 만들 수 없습니다. "
@@ -2244,6 +2975,7 @@ async def fast_spatial_or_traffic_block_node(state: OrchestratorState) -> Orches
             "blockers": qec["blockers"],
             "count": None,
             "temporal_window": route_plan.get("slots", {}).get("temporal_window"),
+            "quality_metrics": quality_metrics,
             "web_rag_usage": {"web_used": False, "rag_used": False, "llm_used": False, "execution_path": analysis_type, "embedding_independent": True},
         },
         "orchestrator_v2": {
@@ -2251,15 +2983,19 @@ async def fast_spatial_or_traffic_block_node(state: OrchestratorState) -> Orches
             "query_execution_context": qec,
             "embedding_independent": True,
             "fast_path": "spatial_or_traffic_blocked_data",
+            "quality_metrics": quality_metrics,
         },
         "evidence_bundle": {"rag_evidence": [], "kg_provenance": [], "regulatory_evidence": [], "spatial_feature_evidence": [], "spatial_layer_evidence": [], "accident_relation_evidence": []},
         "contract_version": "geollm.execution.v1",
         "request_id": state.get("task_id"),
     }
+    _attach_candidate_trace(state, final_dict)
+    _record_query_quality_issues(state, final_dict)
     return {
         "final_dict": final_dict,
         "task_plan": route_plan,
         "query_execution_context": qec,
+        "candidate_trace": state.get("candidate_trace"),
         "status": AgentStatus.BLOCKED,
         "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.BLOCKED, actor="FastSpatialTrafficBlock"),
     }
@@ -2272,12 +3008,14 @@ async def fast_s101_hazard_radius_execute_node(state: OrchestratorState) -> Orch
     if _looks_like_policy_block_query(state.get("query", "")):
         return await fast_spatial_or_traffic_block_node(state)
     final = await asyncio.to_thread(execute_radius_request, state)
+    _attach_candidate_trace(state, final)
     context = final["orchestrator_v2"]["query_execution_context"]
     status = AgentStatus(final["status"])
     return {
         "final_dict": final,
         "task_plan": final["orchestrator_v2"]["route_plan"],
         "query_execution_context": context,
+        "candidate_trace": state.get("candidate_trace"),
         "status": status,
         "state_history": log_transition(AgentStatus.INTENT_PARSED, status, actor="ValidatedS101HazardRadius"),
     }
@@ -2290,11 +3028,13 @@ async def fast_dynamic_traffic_execute_node(state: OrchestratorState) -> Orchest
 
     try:
         final = await asyncio.to_thread(execute_traffic_request, state)
+        _attach_candidate_trace(state, final)
         status = AgentStatus(final["status"])
         return {
             "final_dict": final,
             "task_plan": final["orchestrator_v2"]["route_plan"],
             "query_execution_context": final["orchestrator_v2"]["query_execution_context"],
+            "candidate_trace": state.get("candidate_trace"),
             "status": status,
             "state_history": log_transition(AgentStatus.INTENT_PARSED, status, actor="DynamicTrafficLayerExecute"),
         }
@@ -2310,7 +3050,7 @@ async def fast_s101_nearest_feature_execute_node(state: OrchestratorState) -> Or
     query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
     if state.get("user_id") == "blocked_user":
         return _place_lookup_update(state, {"status": "BLOCKED", "error_code": "ACCESS_DENIED", "summary": "이 요청에 대한 접근 권한이 없습니다."}, "nearest_feature")
-    location = await asyncio.to_thread(resolve_payload, state["query"], _spatial_context_dict(state))
+    location = await asyncio.to_thread(resolve_payload, query, _spatial_context_dict(state))
     if location["status"] != "RESOLVED":
         return _place_lookup_update(state, location, "nearest_feature")
     base_wkt, location_text = location["geometry"], location["location_text"]
@@ -2504,11 +3244,11 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
     from services.orchestrator.place_router import resolve_payload
 
     query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
-    targets = _requested_spatial_layer_targets(state.get("query", ""))
+    targets = _requested_spatial_layer_targets(query)
     if not targets:
         return await fast_spatial_or_traffic_block_node(state)
 
-    location = await asyncio.to_thread(resolve_payload, state["query"], _spatial_context_dict(state))
+    location = await asyncio.to_thread(resolve_payload, query, _spatial_context_dict(state))
     if location["status"] != "RESOLVED":
         return _place_lookup_update(state, location, "feature_search_by_radius")
 
@@ -2576,27 +3316,37 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
         provenance = row.get("provenance") if isinstance(row.get("provenance"), dict) else {}
         distance_value = round(float(row.get("distance_m") or 0.0), 2)
         feature_id = f"{target['layer_id']}:{row.get('source_id') or idx}"
+        evidence_id = f"spatial:{state['task_id']}:{idx}"
+        display_name = row.get("name") or props.get("name") or props.get("title") or props.get("\uc9c0\uba85\uba85") or target["title"]
         properties = {
             **props,
             "source_id": row.get("source_id"),
             "layer_id": target["layer_id"],
             "layer_title": target["title"],
             "layer_type": target["layer_type"],
-            "name": row.get("name") or props.get("name") or props.get("title"),
+            "name": display_name,
+            "display_name": display_name,
+            "feature_name": display_name,
+            "feature_display_name": display_name,
             "distance_m": distance_value,
             "source": target["relation"],
             "provenance": provenance,
             "feature_id": feature_id,
+            "id": feature_id,
+            "evidence_id": evidence_id,
         }
         features.append({"type": "Feature", "id": feature_id, "geometry": geometry, "properties": properties})
         table_rows.append(properties)
         evidence.append({
-            "evidence_id": f"spatial:{state['task_id']}:{idx}",
+            "evidence_id": evidence_id,
             "evidence_type": "spatial_feature",
             "summary": properties.get("name") or target["title"],
             "source_ref": target["relation"],
             "data": {
+                **properties,
                 "feature_id": feature_id,
+                "id": feature_id,
+                "evidence_id": evidence_id,
                 "layer_id": target["layer_id"],
                 "distance_m": distance_value,
                 "properties": properties,
@@ -2606,9 +3356,11 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
 
     collection = {"type": "FeatureCollection", "features": features}
     target_titles = ", ".join(target["title"] for target in targets)
+    sample_names = [str(row.get("name")) for row in table_rows[:8] if row.get("name")]
+    sample_text = f" 주요 지명: {', '.join(sample_names)}." if sample_names else ""
     answer = (
         f"{location_text} \uae30\uc900 {distance_m:g}m \uc774\ub0b4 "
-        f"{target_titles} {len(features)}\uac74\uc744 \ucc3e\uc558\uc2b5\ub2c8\ub2e4."
+        f"{target_titles} {len(features)}\uac74\uc744 \ucc3e\uc558\uc2b5\ub2c8\ub2e4.{sample_text}"
     )
     route_plan = {
         "task_id": f"TASK-REQUESTED-LAYER-{state['task_id'][:3].upper()}",
@@ -2638,6 +3390,7 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
         "readiness": "READY",
         "blockers": [],
         "warnings": [],
+        "execution_contract": (state.get("candidate_trace") or {}).get("execution_contract"),
         "data_bindings": [
             {
                 "dataset_id": target["layer_id"],
@@ -2682,11 +3435,22 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
             "total_count": len(features),
             "feature_ids": [feature["id"] for feature in features],
             "location_text": location_text,
+            "distance_m": distance_m,
             "reference_geometry": base_wkt,
             "buffer_distance": distance_m,
             "target_layers": [target["layer_id"] for target in targets],
+            "target_features": [target["title"] for target in targets],
             "features": table_rows,
             "geojson": collection,
+            "result_surface_contract": {
+                "join_key": "feature_id",
+                "feature_ids": [feature["id"] for feature in features],
+                "map_feature_count": len(features),
+                "table_row_count": len(table_rows),
+                "evidence_feature_count": len(evidence),
+                "authority": "registry/postgis_geometry",
+                "candidate_retrieval": "pgvector_capability_top_k",
+            },
             **{key: location.get(key) for key in ("place_id", "place_version", "location_resolution")},
         },
         "map_layers": [{
@@ -2719,6 +3483,7 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
         "orchestrator_v2": {
             "route_plan": route_plan,
             "query_execution_context": qec,
+            "execution_contract": (state.get("candidate_trace") or {}).get("execution_contract"),
             "embedding_independent": True,
             "fast_path": "requested_dataset_spatial_layer_execute",
         },
@@ -3203,6 +3968,7 @@ async def map_report_node(state: OrchestratorState) -> OrchestratorState:
     if analysis_type in {"document_search", "rag.document_search", "graph_scoped_rag"} and not external_requirement:
         structured = result.structured_result or {}
         evidence_bundle = result.evidence_bundle
+        quality_metrics = _quality_metrics_from_state(state, fast_path="document_search_compact")
         final_dict = {
             "task_id": result.task_id,
             "trace_id": result.trace_id,
@@ -3217,6 +3983,7 @@ async def map_report_node(state: OrchestratorState) -> OrchestratorState:
                 "documents": structured.get("documents", [])[:3] if isinstance(structured.get("documents"), list) else [],
                 "citations": structured.get("citations", [])[:3] if isinstance(structured.get("citations"), list) else [],
                 "evidence_candidate_summary": structured.get("evidence_candidate_summary"),
+                "quality_metrics": quality_metrics,
             },
             "evidence_bundle": evidence_bundle.model_dump(mode="json") if hasattr(evidence_bundle, "model_dump") else {},
             "orchestrator_v2": {
@@ -3226,6 +3993,7 @@ async def map_report_node(state: OrchestratorState) -> OrchestratorState:
                 "query_execution_context": state.get("query_execution_context", {}),
                 "embedding_independent": True,
                 "fast_path": "document_search_compact",
+                "quality_metrics": quality_metrics,
             },
             "claims": [{
                 "claim_id": f"claim:{result.task_id}:summary",
@@ -3242,6 +4010,7 @@ async def map_report_node(state: OrchestratorState) -> OrchestratorState:
             "contract_version": "geollm.execution.v1",
             "request_id": state.get("task_id"),
         }
+        _record_query_quality_issues(state, final_dict)
         return {
             "final_dict": final_dict,
             "status": AgentStatus.COMPLETED,
@@ -3249,10 +4018,14 @@ async def map_report_node(state: OrchestratorState) -> OrchestratorState:
         }
     
     final_dict = result.model_dump(mode="json")
+    quality_metrics = _quality_metrics_from_state(state)
     final_dict["contract_version"] = final_dict.get("contract_version") or "geollm.execution.v1"
     final_dict["request_id"] = final_dict.get("request_id") or state.get("task_id")
     final_dict["answer_text"] = final_dict.get("answer_text") or result.answer_text or result.summary or "분석 결과를 생성하지 못했습니다."
     
+    final_dict.setdefault("structured_result", {})
+    final_dict["structured_result"]["quality_metrics"] = quality_metrics
+
     if external_requirement:
         final_dict["external_data_requirement"] = external_requirement
         final_dict["answer_text"] = (
@@ -3374,13 +4147,19 @@ async def map_report_node(state: OrchestratorState) -> OrchestratorState:
         }
     }
     final_dict["debug_trace"] = debug_trace
+    final_dict["debug_trace"]["6. Query Quality"] = quality_metrics
     final_dict["orchestrator_v2"] = {
         "graph_context": state.get("graph_context", {}),
         "data_discovery_result": state.get("data_discovery_result", {}),
         "route_plan": state.get("task_plan", {}),
         "query_execution_context": state.get("query_execution_context", {}),
         "embedding_independent": True,
+        "quality_metrics": quality_metrics,
+        "candidate_trace": state.get("candidate_trace", {}),
     }
+    final_dict.setdefault("structured_result", {})
+    if isinstance(final_dict["structured_result"], dict):
+        final_dict["structured_result"]["candidate_trace_summary"] = _candidate_trace_summary(state.get("candidate_trace"))
     provenance = result.provenance or {}
     evidence_bundle = build_evidence_bundle(
         graph_context=state.get("graph_context") or structured.get("kg_context") or {},
@@ -3414,6 +4193,7 @@ async def map_report_node(state: OrchestratorState) -> OrchestratorState:
         "provenance_keys": sorted(provenance.keys()),
     }])
     
+    _record_query_quality_issues(state, final_dict)
     return {
         "final_dict": final_dict,
         "status": AgentStatus.COMPLETED,
@@ -3494,13 +4274,24 @@ def check_intent_parsed(state: OrchestratorState) -> str:
         return "fast_s101_nearest_feature_execute"
     if _should_fast_execute_requested_spatial_layer(state):
         return "fast_requested_spatial_layer_execute"
-    if _looks_like_place_lookup(state.get("query", "")):
+    if _looks_like_place_lookup(state.get("query", "")) or _looks_like_known_place_search(state.get("query", ""), state):
         return "fast_place_lookup"
+    if _looks_like_dataset_evidence_query(query):
+        return "fast_dataset_evidence_answer"
     if _should_fast_execute_traffic_query(state):
         return "fast_dynamic_traffic_execute"
     if _should_fast_spatial_or_traffic_block(state):
         return "fast_spatial_or_traffic_block"
-    if _exact_s101_feature_match(query) or _exact_s100_s101_relation_match(query) or _looks_like_legal_rag_query(query) or _looks_like_no_evidence_document_query(query):
+    if (
+        _exact_s101_feature_match(query)
+        or _exact_s100_s101_relation_match(query)
+        or _looks_like_legal_rag_query(query)
+        or _looks_like_no_evidence_document_query(query)
+    ) and _contract_ready_any(
+        state,
+        route="STANDARD_RAG",
+        capability_ids=["tool.graph_scoped_rag", "resolver.s101_feature_dictionary"],
+    ):
         return "fast_document_answer"
     if _looks_like_time_series_query(query):
         return "create_plan"
@@ -3568,6 +4359,7 @@ def build_orchestrator_graph():
     # Add Nodes
     workflow.add_node("parse_intent", parse_intent_node)
     workflow.add_node("fast_document_answer", fast_document_answer_node)
+    workflow.add_node("fast_dataset_evidence_answer", fast_dataset_evidence_answer_node)
     workflow.add_node("fast_external_data_requirement", fast_external_data_requirement_node)
     workflow.add_node("fast_spatial_or_traffic_block", fast_spatial_or_traffic_block_node)
     workflow.add_node("fast_s101_hazard_radius_execute", fast_s101_hazard_radius_execute_node)
@@ -3595,6 +4387,7 @@ def build_orchestrator_graph():
             "needs_clarification": "audit_log",
             "fast_external_data_requirement": "fast_external_data_requirement",
             "fast_document_answer": "fast_document_answer",
+            "fast_dataset_evidence_answer": "fast_dataset_evidence_answer",
             "fast_spatial_or_traffic_block": "fast_spatial_or_traffic_block",
             "fast_s101_hazard_radius_execute": "fast_s101_hazard_radius_execute",
             "fast_dynamic_traffic_execute": "fast_dynamic_traffic_execute",
@@ -3607,6 +4400,7 @@ def build_orchestrator_graph():
     )
     workflow.add_edge("fast_external_data_requirement", END)
     workflow.add_edge("fast_document_answer", END)
+    workflow.add_edge("fast_dataset_evidence_answer", END)
     workflow.add_edge("fast_spatial_or_traffic_block", END)
     workflow.add_edge("fast_s101_hazard_radius_execute", END)
     workflow.add_edge("fast_dynamic_traffic_execute", END)

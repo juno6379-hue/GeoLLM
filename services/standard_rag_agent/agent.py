@@ -328,6 +328,81 @@ def _citation_for_doc(doc: Dict[str, Any], provenance: Dict[str, Any]) -> Dict[s
     }
 
 
+def _deterministic_s101_feature_summary(search_query: str, retrieved_docs) -> str | None:
+    feature_doc = next((doc for doc in retrieved_docs if (doc.get("metadata") or {}).get("document_type") == "feature_catalogue"), None)
+    dceg_docs = [doc for doc in retrieved_docs if (doc.get("metadata") or {}).get("document_type") == "dceg"]
+    if not feature_doc:
+        return None
+
+    metadata = feature_doc.get("metadata") or {}
+    content = str(feature_doc.get("content") or "")
+    definition = ""
+    if "Definition: " in content:
+        definition = content.split("Definition: ", 1)[1].split(". Aliases:", 1)[0].strip()
+
+    feature_name = metadata.get("feature_name") or metadata.get("feature_code") or "해당 객체"
+    summary = (
+        f"S-101 Feature Catalogue 2.0.0 기준 {feature_name}의 정의는 \"{definition}\"입니다. "
+        f"근거는 Feature Catalogue의 {feature_doc.get('section')} 항목입니다."
+    )
+    if dceg_docs:
+        refs = ", ".join(
+            f"{doc.get('title')} / {doc.get('section')} / page {doc.get('page') or 'N/A'}"
+            for doc in dceg_docs
+            if doc.get("title") and doc.get("section")
+        )
+        summary += (
+            f" 인코딩 지침 근거는 S-101 Annex A DCEG Ed. 2.0.0의 객체별 본문 청크에서 확인했으며, "
+            f"참조 위치는 {refs}입니다. 긴 원문은 상세정보에서 확인할 수 있습니다."
+        )
+    return summary
+
+
+def _deterministic_rag_summary(search_query: str, retrieved_docs) -> str:
+    if not retrieved_docs:
+        return "관련 표준/문서 근거를 찾지 못했습니다. 확정 근거 없이 조항, 날짜, feature 정의를 생성하지 않습니다."
+
+    exact_summary = _deterministic_s101_feature_summary(search_query, retrieved_docs)
+    if exact_summary:
+        return exact_summary
+
+    doc = retrieved_docs[0]
+    title = doc.get("title") or doc.get("source") or "검색 문서"
+    section = doc.get("section") or "section N/A"
+    content = " ".join(str(doc.get("content") or doc.get("excerpt_reference") or "").split())
+    if len(content) > 220:
+        content = content[:220].rstrip() + "..."
+    return (
+        f"질의와 관련된 근거 문서 {len(retrieved_docs)}건을 찾았습니다. "
+        f"대표 근거는 {title} / {section}이며, 내용 요지는 다음과 같습니다: {content}"
+    )
+
+
+def _citation_for_doc(doc: Dict[str, Any], provenance: Dict[str, Any]) -> Dict[str, Any]:
+    metadata = doc.get("metadata") or {}
+    title = doc.get("title") or doc.get("source") or "검색 문서"
+    section = doc.get("section") or metadata.get("section") or "section N/A"
+    content = str(doc.get("content") or doc.get("excerpt_reference") or "").strip()
+    short_content = " ".join(content.split())
+    if len(short_content) > 160:
+        short_content = short_content[:160].rstrip() + "..."
+    return {
+        "document_id": doc.get("doc_id", doc.get("document_id", "N/A")),
+        "source": doc.get("source", doc.get("title", "N/A")),
+        "source_id": doc.get("source_id"),
+        "source_file": metadata.get("source_file") or metadata.get("source_path"),
+        "section": doc.get("section"),
+        "page": doc.get("page") or metadata.get("page_no"),
+        "document_type": metadata.get("document_type") or doc.get("document_type"),
+        "chunk_id": doc.get("doc_id", doc.get("chunk_id")),
+        "similarity": doc.get("similarity") or doc.get("relevance_score"),
+        "summary_ko": f"{title} / {section}: {short_content}" if short_content else f"{title} / {section}",
+        "detail_label": "상세정보",
+        "detail_text": content,
+        "provenance": provenance,
+    }
+
+
 def _apply_compact_evidence_fields(structured_result: Dict[str, Any], graph_result: Dict[str, Any]) -> None:
     evidence_candidates = graph_result.get("evidence_candidates") or {}
     structured_result["evidence_candidate_summary"] = {

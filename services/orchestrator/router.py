@@ -99,6 +99,10 @@ def _candidate_summary(row: dict) -> dict:
         "review_required": row.get("review_required"),
         "dataset_id": data.get("dataset_id"),
         "layer_id": data.get("layer_id"),
+        "document_type": data.get("document_type"),
+        "title": data.get("title"),
+        "source_file": data.get("source_file"),
+        "source_id": data.get("source_id"),
         "feature_code": data.get("feature_code"),
         "chunk_id": data.get("chunk_id"),
         "legal_notice_id": data.get("legal_notice_id"),
@@ -300,6 +304,8 @@ def _to_jsonable(value):
 def _compact_agent_result_for_stream(agent_result):
     result = _to_jsonable(agent_result) or {}
     structured = result.get("structured_result") if isinstance(result.get("structured_result"), dict) else {}
+    orch = result.get("orchestrator_v2") if isinstance(result.get("orchestrator_v2"), dict) else {}
+    quality_metrics = structured.get("quality_metrics") or orch.get("quality_metrics")
     evidence_bundle = result.get("evidence_bundle") if isinstance(result.get("evidence_bundle"), dict) else {}
     evidence_counts = {
         key: len(value)
@@ -324,7 +330,9 @@ def _compact_agent_result_for_stream(agent_result):
             "count": structured.get("count"),
             "status": structured.get("status"),
             "evidence_candidate_summary": structured.get("evidence_candidate_summary"),
+            "quality_metrics": quality_metrics,
         },
+        "quality_metrics": quality_metrics,
         "evidence_counts": evidence_counts,
         "provenance": result.get("provenance", {}),
     }
@@ -358,11 +366,14 @@ def _preserve_spatial_stream_payload(result: dict, compact: dict) -> None:
         "nearest_returned_count", "feature_ids", "features", "geojson", "result_id", "query_execution_id",
         "returned_counts_by_type", "total_counts_by_type", "location_candidates",
         "feature_type_breakdown", "location_text", "distance_m", "original_query",
+        "buffer_distance", "target_layers",
         "reference_geometry", "reference_crs", "geometry", "crs", "source_layer", "blockers",
         "offset", "target_features", "exclusions", "spatial_context",
         "place_id", "place_version", "location_resolution",
         "geojson_feature_count", "map_layer_count", "evidence_bundle_counts",
         "web_rag_usage", "result_surface",
+        "result_surface_contract",
+        "execution_contract",
         "total_traffic_count", "grid_count", "source_breakdown", "monthly_breakdown",
         "tile_layer_summary", "temporal_window", "effective_temporal_window",
     ):
@@ -377,6 +388,8 @@ def _compact_final_result_for_stream(final_result):
     result = _to_jsonable(final_result) or {}
     structured = result.get("structured_result") if isinstance(result.get("structured_result"), dict) else {}
     orch = result.get("orchestrator_v2") if isinstance(result.get("orchestrator_v2"), dict) else {}
+    quality_metrics = structured.get("quality_metrics") or orch.get("quality_metrics")
+    candidate_trace = orch.get("candidate_trace") if isinstance(orch.get("candidate_trace"), dict) else result.get("candidate_trace")
     qec = orch.get("query_execution_context") if isinstance(orch.get("query_execution_context"), dict) else {}
     evidence_bundle = result.get("evidence_bundle") if isinstance(result.get("evidence_bundle"), dict) else {}
     evidence_counts = {
@@ -401,9 +414,14 @@ def _compact_final_result_for_stream(final_result):
             "count": structured.get("count"),
             "status": structured.get("status"),
             "evidence_candidate_summary": structured.get("evidence_candidate_summary"),
+            "quality_metrics": quality_metrics,
         },
+        "quality_metrics": quality_metrics,
         "orchestrator_v2": {
             "route_plan": orch.get("route_plan") or {},
+            "quality_metrics": quality_metrics,
+            "candidate_trace": candidate_trace or {},
+            "execution_contract": orch.get("execution_contract") or (candidate_trace or {}).get("execution_contract") or {},
             "query_execution_context": {
                 "readiness": qec.get("readiness"),
                 "blockers": qec.get("blockers"),
@@ -420,6 +438,24 @@ def _compact_final_result_for_stream(final_result):
 
 def _terminal_result_for_stream(state_vals: dict) -> dict:
     final_result = _to_jsonable(state_vals.get("final_dict") or state_vals.get("agent_result"))
+    candidate_trace = _to_jsonable(state_vals.get("candidate_trace")) or {}
+    if isinstance(final_result, dict) and candidate_trace:
+        final_result.setdefault("orchestrator_v2", {})
+        if isinstance(final_result["orchestrator_v2"], dict):
+            final_result["orchestrator_v2"].setdefault("candidate_trace", candidate_trace)
+        final_result.setdefault("structured_result", {})
+        if isinstance(final_result["structured_result"], dict):
+            final_result["structured_result"].setdefault("candidate_trace_summary", {
+                "contract": candidate_trace.get("contract"),
+                "mode": candidate_trace.get("mode"),
+                "top_routes": (candidate_trace.get("route_candidates") or [])[:3],
+                "top_capabilities": (candidate_trace.get("capability_candidates") or [])[:5],
+                "verified_ready_count": sum(
+                    1 for row in candidate_trace.get("verified_candidates") or []
+                    if isinstance(row, dict) and row.get("status") == "verified_ready"
+                ),
+                "ollama_needed": (candidate_trace.get("ollama_policy") or {}).get("needed"),
+            })
     payload = {"error_message": state_vals.get("error_message")}
     if final_result:
         if os.environ.get("GEOLLM_STREAM_FULL_RESULT", "").lower() in {"1", "true", "yes", "on"}:
@@ -485,7 +521,7 @@ def _radius_restart_state(current_state: dict, req) -> dict:
     for field in (
         "final_dict", "agent_request", "agent_result", "task_plan", "query_execution_context",
         "context_result", "extracted_slots", "norm_result", "normalized_query", "normalization_debug",
-        "graph_context", "graph_rag_context", "data_discovery_result", "clarification_questions", "error_message",
+        "graph_context", "graph_rag_context", "candidate_trace", "data_discovery_result", "clarification_questions", "error_message",
     ):
         restarted[field] = None
     restarted.update(approval_granted=None, retry_count=0)

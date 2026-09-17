@@ -27,3 +27,17 @@ places:
     srid: 4326
     status: approved
     provenance: local_curated_binding
+  dokdo:
+    canonical_name: 독도
+    aliases:
+      - 독도
+      - 독도를
+      - 독도의
+      - Dokdo
+      - dokdo
+      - Liancourt Rocks
+      - liancourt rocks
+    geometry_wkt: POINT(131.864444 37.241389)
+    srid: 4326
+    status: approved
+    provenance: local_curated_korean_island_reference

@@ -85,4 +85,40 @@ class FeedbackCollector:
         except Exception as e:
             logger.error("Failed to record context feedback", error=str(e))
 
+    def record_quality_issue(
+        self,
+        query: str,
+        task_id: Optional[str],
+        issue_type: str,
+        severity: str,
+        route_plan: Optional[Dict[str, Any]] = None,
+        quality_metrics: Optional[Dict[str, Any]] = None,
+        evidence_summary: Optional[Dict[str, Any]] = None,
+        details: Optional[Dict[str, Any]] = None,
+    ):
+        record = {
+            "timestamp": datetime.now().isoformat(),
+            "task_id": task_id,
+            "query": query,
+            "issue_type": issue_type,
+            "severity": severity,
+            "route_plan": route_plan or {},
+            "quality_metrics": quality_metrics or {},
+            "evidence_summary": evidence_summary or {},
+            "details": details or {},
+            "status": "pending_review",
+        }
+        quality_file = os.path.join(self.feedback_dir, "query_quality_issues.jsonl")
+        try:
+            with open(quality_file, "a", encoding="utf-8") as f:
+                f.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
+            logger.warning(
+                "Query quality issue recorded",
+                task_id=task_id,
+                issue_type=issue_type,
+                severity=severity,
+            )
+        except Exception as e:
+            logger.error("Failed to record query quality issue", error=str(e))
+
 collector = FeedbackCollector()

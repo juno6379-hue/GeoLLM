@@ -2,6 +2,8 @@
 
 Date: 2026-09-11
 
+Update 2026-09-16: the S-101 2.0 core embedding target has been completed and merged into the live `gbhd_s101.knowledge.document_chunks` table. A Dataset supplemental coverage pass was also completed; see `docs/24-rag-remaining-development-plan.md` and `outputs/reports/dataset_embedding_validation.md` for the current counts.
+
 This review defines what should be embedded for the S-101 2.0 GeoLLM baseline.
 
 ## 1. Decision

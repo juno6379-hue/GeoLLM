@@ -29,6 +29,7 @@
         delete node("querySummary").dataset.resultId;
         for (const id of ["querySummaryQuery", "querySummaryStatus", "querySummaryTitle", "querySummaryBody"]) node(id).textContent = "";
         node("querySummaryFacts").replaceChildren();
+        node("querySummary").querySelectorAll(".query-summary-detail").forEach(element => element.remove());
     }
 
     function show(status, message, query) {
@@ -39,7 +40,17 @@
         node("querySummaryQuery").textContent = query ?? previousQuery;
         node("querySummaryTitle").textContent = status;
         const paragraph = String(message || "").split(/\n\s*\n/)[0];
-        node("querySummaryBody").textContent = paragraph.length > 320 ? `${paragraph.slice(0, 320)}…` : paragraph;
+        node("querySummaryBody").textContent = paragraph.length > 320 ? `${paragraph.slice(0, 320)}...` : paragraph;
+        if (paragraph.length > 320) {
+            const details = document.createElement("details");
+            details.className = "query-summary-detail";
+            const summary = document.createElement("summary");
+            summary.textContent = "상세정보";
+            const full = document.createElement("pre");
+            full.textContent = paragraph;
+            details.append(summary, full);
+            node("querySummaryFacts").before(details);
+        }
     }
 
     function fact(label, value) {

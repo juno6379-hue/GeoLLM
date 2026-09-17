@@ -174,8 +174,14 @@ def _matches(text, candidates, *, exact=False):
             if _normalized(alias) not in normalized_text:
                 continue
             pattern = r"(?<![A-Za-z0-9가-힣])" + r"\s*".join(re.escape(part) for part in alias.split()) + suffix
+            match_count = 0
             for match in re.finditer(pattern, text, re.I):
                 hits.append((match.start(), match.end(), candidate))
+                match_count += 1
+            if match_count == 0:
+                start = normalized_text.find(_normalized(alias))
+                if start >= 0:
+                    hits.append((start, start + len(_normalized(alias)), candidate))
     result = {}
     for start, end, candidate in hits:
         if not any(other_start <= start and end <= other_end and (start, end) != (other_start, other_end) for other_start, other_end, _ in hits):
@@ -282,7 +288,7 @@ def resolve_location(query, spatial=None, *, places=None, catalog=None):
         parent = re.sub(_MODIFIERS, " ", label, flags=re.I).strip()
         matches = _matches(parent, available, exact=True)
         modified = _has_unbound_qualifier(query, label, matches)
-    if loaded.get("unavailable_sources"):
+    if loaded.get("unavailable_sources") and not matches:
         raise PlaceResolutionProblem("BLOCKED_DATA", "GAZETTEER_UNAVAILABLE", "지명 원본의 연결 또는 품질을 확인해야 합니다. 좌표를 직접 지정하거나 잠시 후 다시 조회해 주세요.", candidates=[{**item, "requires_confirmation": True} for item in matches])
     if len(matches) == 1 and not modified:
         return _resolved(matches[0], "RESOLVED_GAZETTEER")
