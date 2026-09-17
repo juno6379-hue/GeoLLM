@@ -158,6 +158,33 @@ templates:
               TRUE
         ORDER BY occurred_at DESC, source_row_number ASC
         LIMIT %(result_limit)s;
+  accident_spatial_history_lookup:
+    allowed_layers:
+    - accident_events
+    required_parameters:
+    - base_geometry
+    - distance_m
+    executor: accident.spatial_history_lookup
+    default_relation: serving.accident_events
+    geometry_column: geom
+    ordering: distance_m ASC, occurred_at DESC
+    result_limit: 120
+    sql_template: accident_spatial_history_lookup
+    sql:
+      select: |
+        WITH base AS (
+          SELECT ST_SetSRID(ST_GeomFromText(%(base_geometry)s), 4326)::geography AS g
+        )
+        SELECT event_id, source_row_number, occurred_at, authority, sea_area,
+               weather, cause, accident_type, vessel_count, people_count,
+               rescued, injured, dead, missing, vessel_type, tonnage,
+               longitude, latitude,
+               ST_Distance(geom::geography, base.g) AS distance_m,
+               ST_AsGeoJSON(geom)::jsonb AS geometry
+        FROM serving.accident_events, base
+        WHERE ST_DWithin(geom::geography, base.g, %(distance_m)s)
+        ORDER BY ST_Distance(geom::geography, base.g), occurred_at DESC NULLS LAST
+        LIMIT %(result_limit)s;
   spatial_layer_overlay_lookup:
     allowed_layers:
     - tidal_current_surface

@@ -23,6 +23,9 @@ tools:
   accident.event_lookup:
     kind: structured_event_lookup
     template: accident_event_lookup
+  accident.spatial_history_lookup:
+    kind: spatial_event_lookup
+    template: accident_spatial_history_lookup
   spatial.layer_overlay_lookup:
     kind: spatial_layer_query
     template: spatial_layer_overlay_lookup

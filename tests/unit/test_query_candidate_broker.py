@@ -35,3 +35,18 @@ def test_compacted_korean_query_uses_registry_lexical_signals(monkeypatch):
     assert route_scores["SPATIAL_ANALYSIS"] > 0
     signals = {row["signal_id"] for row in trace["deterministic_signals"]}
     assert {"nearby_search", "marine_gazetteer_target"} <= signals
+
+
+def test_nearby_accident_history_prefers_spatial_history_tool(monkeypatch):
+    monkeypatch.setenv("GEOLLM_CAPABILITY_PGVECTOR", "false")
+
+    trace = query_candidate_broker.build_trace("독도 부근 사고 이력")
+
+    signals = {row["signal_id"] for row in trace["deterministic_signals"]}
+    assert {"accident_event", "accident_history", "nearby_search"} <= signals
+    assert trace["capability_candidates"][0]["candidate_id"] == "tool.accident_spatial_history_lookup"
+    assert execution_contract_ready(
+        trace,
+        route="ACCIDENT_ANALYSIS",
+        capability_id="tool.accident_spatial_history_lookup",
+    )

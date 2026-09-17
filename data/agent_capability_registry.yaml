@@ -64,6 +64,24 @@ analysis_types:
       - FeatureTable
       - EvidenceBundle
       - Summary
+  accident_spatial_history_lookup:
+    primary_agent: Accident/Risk Agent
+    secondary_agents:
+      - Spatial Analysis Agent
+      - Validation Agent
+      - Map Report Agent
+    required_tools:
+      - geocoder.resolve_location
+      - accident.spatial_history_lookup
+      - postgis.dwithin
+    required_data:
+      - accident_events
+      - location_gazetteer
+    outputs:
+      - AccidentEventGeoJSON
+      - FeatureTable
+      - EvidenceBundle
+      - Summary
   current_tidal_lookup:
     primary_agent: Spatial Analysis Agent
     secondary_agents:

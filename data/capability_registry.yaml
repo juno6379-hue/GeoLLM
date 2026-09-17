@@ -22,6 +22,17 @@ lexical_signals:
   - accident
   - incident
   - case
+- signal_id: accident_history
+  routes:
+  - ACCIDENT_ANALYSIS
+  terms:
+  - 사고 이력
+  - 사고이력
+  - 사고 내역
+  - 사고내역
+  - 이력
+  - history
+  - accident history
 - signal_id: accident_cause
   routes:
   - ACCIDENT_ANALYSIS
@@ -419,6 +430,34 @@ capabilities:
   - accident_cause
   - accident_type
   - structured_event_lookup
+- capability_id: tool.accident_spatial_history_lookup
+  object_type: tool_description
+  label: Structured Accident Spatial History Lookup Tool
+  routes:
+  - ACCIDENT_ANALYSIS
+  - SPATIAL_ANALYSIS
+  role: primary
+  description: 'Resolve a verified place anchor, apply an explicit or default radius, and execute deterministic spatial accident history lookup against serving.accident_events using ST_DWithin. Returns accident event rows, distances from the anchor, GeoJSON map points, counts, and evidence from the same authoritative row set.
+
+    '
+  input_slots:
+  - place_name
+  - anchor_geometry
+  - radius_m
+  output_slots:
+  - accident_events
+  - total_count
+  - distance_m
+  - geojson
+  - map_layers
+  - evidence_bundle
+  authority_ref: serving.accident_events
+  registry_ref: data/query_template_registry.yaml
+  deterministic_hints:
+  - accident_event
+  - accident_history
+  - nearby_search
+  - place_name
 - capability_id: dataset.accident_events
   object_type: dataset_metadata
   label: Coast Guard Accident Events Serving Layer

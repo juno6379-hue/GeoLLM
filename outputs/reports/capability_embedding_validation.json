@@ -1,12 +1,12 @@
 {
   "status": "OK",
-  "generated_at": "2026-09-17T07:12:50.878695+00:00",
-  "chunk_count": 16,
-  "embedding_count": 16,
+  "generated_at": "2026-09-17T07:28:30.918811+00:00",
+  "chunk_count": 17,
+  "embedding_count": 17,
   "model": "bge-m3",
   "dimension": 1024,
   "chunk_output": "outputs/rag/capability_chunks.jsonl",
   "embedding_output": "outputs/rag/capability_embeddings.jsonl",
-  "live_total": 16,
+  "live_total": 17,
   "live_null_embeddings": 0
 }

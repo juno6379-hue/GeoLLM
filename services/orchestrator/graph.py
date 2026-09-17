@@ -998,6 +998,54 @@ def _looks_like_accident_event_lookup_query(query: str) -> bool:
     ]
     return any(term in lowered or term in text for term in accident_terms) and any(term in lowered or term in text for term in detail_terms)
 
+def _looks_like_accident_spatial_history_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    accident_terms = [
+        "accident",
+        "incident",
+        "\uc0ac\uace0",
+        "\uc774\ub825",
+        "\uc0ac\uace0\uc774\ub825",
+        "\ud574\uc0c1\uc870\ub09c",
+        "\uc870\ub09c\uc0ac\uace0",
+        "\ud574\uc591\uc0ac\uace0",
+    ]
+    spatial_terms = [
+        "\ubd80\uadfc",
+        "\uadfc\ucc98",
+        "\uc8fc\ubcc0",
+        "\ubc18\uacbd",
+        "\uc774\ub0b4",
+        "near",
+        "nearby",
+        "around",
+        "within",
+    ]
+    has_place = bool(_registered_place_aliases()) and any(alias in lowered or alias in text for alias in _registered_place_aliases())
+    return (
+        any(term in lowered or term in text for term in accident_terms)
+        and any(term in lowered or term in text for term in spatial_terms)
+        and (has_place or bool(_spatial_context_dict({}).get("geometry")))
+    )
+
+def _should_fast_execute_accident_spatial_history(state: OrchestratorState) -> bool:
+    query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
+    if not _looks_like_accident_spatial_history_query(query):
+        return False
+    trace = state.get("candidate_trace")
+    if isinstance(trace, dict):
+        return any(
+            _contract_ready_any(state, route="ACCIDENT_ANALYSIS", capability_ids=[capability_id])
+            for capability_id in [
+                "tool.accident_spatial_history_lookup",
+                "tool.accident_event_lookup",
+                "dataset.accident_events",
+                "resolver.place_registry",
+            ]
+        )
+    return True
+
 def _should_fast_execute_accident_event_lookup(state: OrchestratorState) -> bool:
     query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
     if not _looks_like_accident_event_lookup_query(query):
@@ -1798,6 +1846,7 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         or fast_known_place
         or _looks_like_explicit_time_series_request(combined_fast_query)
         or _looks_like_accident_relation_query(combined_fast_query)
+        or _looks_like_accident_spatial_history_query(combined_fast_query)
         or _looks_like_policy_block_query(combined_fast_query)
         or _looks_like_ambiguous_hazard_query(combined_fast_query)
         or _looks_like_tidal_current_query(combined_fast_query)
@@ -2903,6 +2952,245 @@ def _query_accident_events(query: str, limit: int = 120) -> dict:
         if isinstance(row.get("occurred_at"), datetime):
             row["occurred_at"] = row["occurred_at"].strftime("%Y-%m-%d %H:%M")
     return {"terms": terms, "total": total, "rows": rows, "error": None}
+
+
+def _query_accident_events_near_geometry(
+    geometry_wkt: str,
+    *,
+    radius_m: float,
+    limit: int = 120,
+) -> dict:
+    db_url = _dataset_evidence_db_url()
+    if not db_url:
+        return {"total": 0, "rows": [], "error": "S101_DB_URL or POSTGIS_URL is not configured"}
+    try:
+        import psycopg2
+        import psycopg2.extras
+
+        with psycopg2.connect(db_url, connect_timeout=3) as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SET LOCAL statement_timeout = '2500ms'")
+                cur.execute(
+                    """
+                    WITH base AS (
+                        SELECT ST_SetSRID(ST_GeomFromText(%s), 4326)::geography AS g
+                    )
+                    SELECT count(*) AS total
+                    FROM serving.accident_events AS a, base
+                    WHERE ST_DWithin(a.geom::geography, base.g, %s)
+                    """,
+                    (geometry_wkt, radius_m),
+                )
+                total = int((cur.fetchone() or {}).get("total") or 0)
+                cur.execute(
+                    """
+                    WITH base AS (
+                        SELECT ST_SetSRID(ST_GeomFromText(%s), 4326)::geography AS g
+                    )
+                    SELECT
+                        a.event_id,
+                        a.source_row_number,
+                        a.occurred_at,
+                        a.authority,
+                        a.sea_area,
+                        a.weather,
+                        a.cause,
+                        a.accident_type,
+                        a.vessel_count,
+                        a.people_count,
+                        a.rescued,
+                        a.injured,
+                        a.dead,
+                        a.missing,
+                        a.vessel_type,
+                        a.tonnage,
+                        a.longitude,
+                        a.latitude,
+                        ST_Distance(a.geom::geography, base.g) AS distance_m,
+                        ST_AsGeoJSON(a.geom)::text AS geometry_geojson
+                    FROM serving.accident_events AS a, base
+                    WHERE ST_DWithin(a.geom::geography, base.g, %s)
+                    ORDER BY ST_Distance(a.geom::geography, base.g), a.occurred_at DESC NULLS LAST
+                    LIMIT %s
+                    """,
+                    (geometry_wkt, radius_m, limit),
+                )
+                rows = [dict(row) for row in cur.fetchall()]
+    except Exception as exc:
+        logger.warning("Accident spatial history lookup failed", error=str(exc), radius_m=radius_m)
+        return {"total": 0, "rows": [], "error": str(exc)}
+
+    for row in rows:
+        if isinstance(row.get("occurred_at"), datetime):
+            row["occurred_at"] = row["occurred_at"].strftime("%Y-%m-%d %H:%M")
+        if row.get("distance_m") is not None:
+            row["distance_m"] = round(float(row["distance_m"]), 2)
+    return {"total": total, "rows": rows, "error": None}
+
+
+async def fast_accident_spatial_history_lookup_node(state: OrchestratorState) -> OrchestratorState:
+    """Answer nearby accident history from serving.accident_events using a resolved place geometry."""
+    import asyncio
+
+    query = state.get("query") or state.get("normalized_query") or ""
+    task_id = str(state.get("task_id") or "local")
+    generated_at = datetime.utcnow().isoformat() + "Z"
+    radius_m = _requested_distance_m(state, query) or 10000.0
+    try:
+        geometry_wkt, location_text, crs, resolution = await asyncio.to_thread(
+            resolve_location,
+            query,
+            _spatial_context_dict(state),
+        )
+    except PlaceResolutionProblem as exc:
+        payload = {
+            "status": "NEEDS_CLARIFICATION" if exc.status == "NEEDS_USER_INPUT" else "BLOCKED",
+            "error_code": exc.code,
+            "summary": str(exc),
+            "location_candidates": exc.candidates,
+        }
+        return _place_lookup_update(state, payload, "accident_spatial_history_lookup")
+
+    result = _query_accident_events_near_geometry(geometry_wkt, radius_m=radius_m)
+    rows = result.get("rows") or []
+    total = int(result.get("total") or 0)
+    found = bool(rows)
+    quality_metrics = _quality_metrics_from_state(state, fast_path="accident_spatial_history_lookup", exact=found)
+    features = []
+    for row in rows:
+        geometry = json.loads(row.get("geometry_geojson") or "{}")
+        properties = {key: value for key, value in row.items() if key != "geometry_geojson"}
+        properties.update({
+            "layer_role": "accident_event",
+            "label": f"{row.get('authority') or ''} {row.get('cause') or ''} {row.get('accident_type') or ''}".strip(),
+            "source_ref": "serving.accident_events",
+            "distance_m": row.get("distance_m"),
+        })
+        features.append({"type": "Feature", "id": row.get("event_id"), "geometry": geometry, "properties": properties})
+    collection = {"type": "FeatureCollection", "features": features}
+    type_counts: dict[str, int] = {}
+    cause_counts: dict[str, int] = {}
+    for row in rows:
+        type_counts[str(row.get("accident_type") or "\ubbf8\uc0c1")] = type_counts.get(str(row.get("accident_type") or "\ubbf8\uc0c1"), 0) + 1
+        cause_counts[str(row.get("cause") or "\ubbf8\uc0c1")] = cause_counts.get(str(row.get("cause") or "\ubbf8\uc0c1"), 0) + 1
+    top_types = ", ".join(f"{name} {count}\uac74" for name, count in sorted(type_counts.items(), key=lambda item: item[1], reverse=True)[:4])
+    top_causes = ", ".join(f"{name} {count}\uac74" for name, count in sorted(cause_counts.items(), key=lambda item: item[1], reverse=True)[:4])
+    if result.get("error"):
+        answer = f"{location_text} 부근 사고 이력 조회가 실패했습니다. 원인: {result['error']}"
+    elif found:
+        nearest = rows[0]
+        answer = (
+            f"{location_text} 기준 반경 {radius_m:g}m 이내 해상조난사고 이력 {total}건을 "
+            f"`serving.accident_events`에서 확인했습니다. 지도에는 거리순 {len(rows)}건을 표시했습니다. "
+            f"표시 목록 기준 사고유형은 {top_types or '집계 없음'}, 발생원인은 {top_causes or '집계 없음'}입니다. "
+            f"가장 가까운 사고는 약 {nearest.get('distance_m')}m 거리의 {nearest.get('occurred_at')} "
+            f"{nearest.get('authority')} 관할, {nearest.get('cause')} 원인, {nearest.get('accident_type')} 유형입니다. "
+            "거리 기준점은 place registry/gazetteer에서 확정한 기준점이며, 별도 거리 표현이 없으면 기본 반경 10,000m를 사용합니다."
+        )
+    else:
+        answer = (
+            f"{location_text} 기준 반경 {radius_m:g}m 이내에서는 `serving.accident_events`에 적재된 "
+            "해상조난사고 이력을 찾지 못했습니다. 별도 거리 표현이 없어서 기본 반경 10,000m를 사용했습니다."
+        )
+    citations = [{
+        "document_id": "dataset:coastguard_accident_events_2025",
+        "source": "해양경찰청 해상조난사고 상세데이터",
+        "source_id": "serving.accident_events",
+        "section": "spatial accident history rows",
+        "document_type": "accident_data",
+        "chunk_id": "serving.accident_events",
+        "similarity": 1.0 if found else 0.0,
+        "summary_ko": f"{location_text} 기준 반경 {radius_m:g}m 이내 사고 이력 {total}건",
+        "detail_label": "상세정보",
+        "detail_text": "사고 좌표와 기준점 거리, 관할해경서, 발생해역, 발생원인, 발생유형은 serving.accident_events에서 직접 조회했습니다.",
+        "provenance": {"method": "structured_accident_spatial_history_lookup", "retrieved_at": generated_at, "radius_m": radius_m, "location_resolution": resolution},
+    }]
+    plan_status = "BLOCKED_DATA" if result.get("error") else "EXECUTION_READY"
+    route_plan = {
+        "task_id": f"TASK-ACCIDENT-SPATIAL-{task_id[:3].upper()}",
+        "status": plan_status,
+        "intent": "ACCIDENT_ANALYSIS",
+        "context": "accident_risk",
+        "analysis_type": "accident_spatial_history_lookup",
+        "derived_concept": "accident_event",
+        "primary_agent": "Accident/Risk Agent",
+        "secondary_agents": ["Spatial Analysis Agent"],
+        "slots": {"location_text": location_text, "radius_m": radius_m, "analysis_type": "accident_spatial_history_lookup"},
+        "tools": ["accident.spatial_history_lookup"],
+        "data": ["serving.accident_events"],
+        "outputs": ["AccidentEventGeoJSON", "EvidenceBundle", "Summary"],
+        "clarification_required": False,
+        "confidence": 1.0 if found else 0.82,
+        "execution_ready": not bool(result.get("error")),
+        "route_plan_status": plan_status,
+    }
+    qec = {
+        "readiness": "READY" if not result.get("error") else "BLOCKED_DATA",
+        "blockers": [result["error"]] if result.get("error") else [],
+        "warnings": ["기본 반경은 질의에 거리 표현이 없을 때만 10,000m로 적용됩니다."],
+        "data_bindings": [{"dataset_id": "accident_events_coastguard_2025", "relation": "serving.accident_events", "geometry_column": "geom"}],
+        "tool_bindings": [{"tool_id": "accident.spatial_history_lookup", "operation": "structured_accident_spatial_history_lookup"}],
+    }
+    final_dict = {
+        "task_id": task_id,
+        "trace_id": f"tr-{task_id}",
+        "agent_name": "Accident/Risk Agent",
+        "agent_version": "2.5.0-accident-spatial-history-fast-path",
+        "status": AgentStatus.COMPLETED if not result.get("error") else AgentStatus.BLOCKED,
+        "summary": answer,
+        "answer_text": answer,
+        "structured_result": {
+            "analysis_type": "accident_spatial_history_lookup",
+            "total_count": total,
+            "returned_count": len(rows),
+            "location_text": location_text,
+            "radius_m": radius_m,
+            "location_resolution": resolution,
+            "events": [{key: value for key, value in row.items() if key != "geometry_geojson"} for row in rows],
+            "geojson": collection,
+            "quality_metrics": quality_metrics,
+            "performance_profile": {"path": "fast_accident_spatial_history_lookup", "db_statement_timeout_ms": 2500},
+        },
+        "features": collection,
+        "map_layers": [{
+            "layer_id": f"accident-spatial-history:{task_id}",
+            "title": f"{location_text} 부근 사고 이력",
+            "source_type": "geojson",
+            "geometry_type": "POINT",
+            "inline_geojson": collection,
+            "feature_count": len(features),
+            "style": {"circleColor": "#dc2626", "circleRadius": 6, "circleOpacity": 0.76},
+            "metadata": {"layer_role": "accident_event", "total_count": total, "source_ref": "serving.accident_events", "radius_m": radius_m},
+        }],
+        "evidence_bundle": {
+            "rag_evidence": [],
+            "kg_provenance": [{"source_ref": "data/place_geometry_registry.yaml", "concept": "place_anchor", "location_resolution": resolution}],
+            "regulatory_evidence": [],
+            "spatial_feature_evidence": [],
+            "spatial_layer_evidence": citations,
+            "accident_relation_evidence": citations,
+        },
+        "orchestrator_v2": {
+            "route_plan": route_plan,
+            "query_execution_context": qec,
+            "embedding_independent": True,
+            "fast_path": "accident_spatial_history_lookup",
+            "quality_metrics": quality_metrics,
+        },
+        "contract_version": "geollm.execution.v1",
+        "request_id": task_id,
+    }
+    _attach_candidate_trace(state, final_dict)
+    _record_query_quality_issues(state, final_dict)
+    status = AgentStatus.COMPLETED if not result.get("error") else AgentStatus.BLOCKED
+    return {
+        "final_dict": final_dict,
+        "task_plan": route_plan,
+        "query_execution_context": qec,
+        "candidate_trace": state.get("candidate_trace"),
+        "status": status,
+        "state_history": log_transition(AgentStatus.INTENT_PARSED, status, actor="FastAccidentSpatialHistoryLookup"),
+    }
 
 
 async def fast_accident_event_lookup_node(state: OrchestratorState) -> OrchestratorState:
@@ -4642,6 +4930,8 @@ def check_intent_parsed(state: OrchestratorState) -> str:
         return "fast_s101_nearest_feature_execute"
     if _should_fast_execute_requested_spatial_layer(state):
         return "fast_requested_spatial_layer_execute"
+    if _should_fast_execute_accident_spatial_history(state):
+        return "fast_accident_spatial_history_lookup"
     if _should_fast_execute_accident_event_lookup(state):
         return "fast_accident_event_lookup"
     if _looks_like_place_lookup(state.get("query", "")) or _looks_like_known_place_search(state.get("query", ""), state):
@@ -4736,6 +5026,7 @@ def build_orchestrator_graph():
     workflow.add_node("fast_dynamic_traffic_execute", fast_dynamic_traffic_execute_node)
     workflow.add_node("fast_s101_nearest_feature_execute", fast_s101_nearest_feature_execute_node)
     workflow.add_node("fast_requested_spatial_layer_execute", fast_requested_spatial_layer_execute_node)
+    workflow.add_node("fast_accident_spatial_history_lookup", fast_accident_spatial_history_lookup_node)
     workflow.add_node("fast_accident_event_lookup", fast_accident_event_lookup_node)
     workflow.add_node("fast_place_lookup", fast_place_lookup_node)
     workflow.add_node("graph_rag", graph_rag_node)
@@ -4764,6 +5055,7 @@ def build_orchestrator_graph():
             "fast_dynamic_traffic_execute": "fast_dynamic_traffic_execute",
             "fast_s101_nearest_feature_execute": "fast_s101_nearest_feature_execute",
             "fast_requested_spatial_layer_execute": "fast_requested_spatial_layer_execute",
+            "fast_accident_spatial_history_lookup": "fast_accident_spatial_history_lookup",
             "fast_accident_event_lookup": "fast_accident_event_lookup",
             "fast_place_lookup": "fast_place_lookup",
             "create_plan": "create_plan",
@@ -4778,6 +5070,7 @@ def build_orchestrator_graph():
     workflow.add_edge("fast_dynamic_traffic_execute", END)
     workflow.add_edge("fast_s101_nearest_feature_execute", END)
     workflow.add_edge("fast_requested_spatial_layer_execute", END)
+    workflow.add_edge("fast_accident_spatial_history_lookup", END)
     workflow.add_edge("fast_accident_event_lookup", END)
     workflow.add_edge("fast_place_lookup", END)
     workflow.add_conditional_edges("graph_rag", check_graph_rag_next, {
