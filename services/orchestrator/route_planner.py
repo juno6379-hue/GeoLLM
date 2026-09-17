@@ -23,9 +23,9 @@ class RoutePlanner:
         graph_context = graph_context or {}
         data_discovery_result = data_discovery_result or {}
         slots = dict(slots or {})
-        slots.setdefault("target_features", graph_context.get("target_features", []))
-        slots.setdefault("target_layers", graph_context.get("target_layers", []))
-        slots.setdefault("target_dynamic_layers", graph_context.get("target_dynamic_layers", []))
+        slots.setdefault("target_features", graph_context.get("resolved_target_features", []))
+        slots.setdefault("target_layers", graph_context.get("resolved_target_layers", []))
+        slots.setdefault("target_dynamic_layers", graph_context.get("resolved_target_dynamic_layers", []))
         # 1. infer_intent fallback (from 05_intent_agent_routing_rules.md)
         if intent in (None, "UNKNOWN", "N/A", "clarification_required"):
             intent = self._infer_intent(slots)
@@ -106,7 +106,7 @@ class RoutePlanner:
         if concept_data.get("default_tool"):
             tools.add(concept_data.get("default_tool"))
         route_plan["required_tools"] = list(tools)
-        for tool in graph_context.get("candidate_tools", []):
+        for tool in graph_context.get("verified_tools", []) or graph_context.get("resolved_tools", []):
             if tool not in route_plan["required_tools"]: route_plan["required_tools"].append(tool)
         if analysis_type in {"document_search", "rag.document_search", "graph_scoped_rag"}:
             route_plan["required_tools"] = [

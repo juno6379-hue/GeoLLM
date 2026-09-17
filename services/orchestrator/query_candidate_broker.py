@@ -331,6 +331,17 @@ def _primary_execution_route(route_candidates: list[dict[str, Any]]) -> str | No
     top_route = top.get("route") if top else None
     if top_route in {"DATASET_PROVENANCE", "TRAFFIC_ANALYSIS", "STANDARD_RAG"}:
         return str(top_route)
+    accident = next((row for row in route_candidates if row.get("route") == "ACCIDENT_ANALYSIS"), None)
+    accident_signals = set(accident.get("signals") or []) if accident else set()
+    accident_execution_signals = {
+        "accident_event",
+        "accident_history",
+        "accident_cause",
+        "accident_type",
+        "structured_event_lookup",
+    }
+    if accident and float(accident.get("score") or 0.0) > 0 and accident_signals & accident_execution_signals:
+        return "ACCIDENT_ANALYSIS"
     spatial = next((row for row in route_candidates if row.get("route") == "SPATIAL_ANALYSIS"), None)
     spatial_signals = set(spatial.get("signals") or []) if spatial else set()
     spatial_execution_signals = {
@@ -557,19 +568,41 @@ def _tool_graph_candidates(capabilities: list[dict[str, Any]]) -> list[dict[str,
     return nodes[:10]
 
 
-def _tool_readiness(capabilities: list[dict[str, Any]], verified: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _execution_route_row(routes: list[dict[str, Any]], execution_route: str | None) -> dict[str, Any] | None:
+    if not execution_route:
+        return next((row for row in routes if row.get("role") == "primary"), None)
+    for row in routes:
+        if row.get("route") == execution_route:
+            selected = dict(row)
+            selected["role"] = "selected_execution"
+            return selected
+    return {"route": execution_route, "score": 0.0, "role": "selected_execution", "signals": []}
+
+
+def _tool_readiness(
+    capabilities: list[dict[str, Any]],
+    verified: list[dict[str, Any]],
+    *,
+    execution_route: str | None = None,
+) -> list[dict[str, Any]]:
     verified_ids = {row.get("candidate_id") for row in verified if row.get("status") == "verified_ready"}
     readiness = []
     for candidate in capabilities:
         candidate_id = candidate.get("candidate_id")
         kind = str(candidate.get("kind") or "")
         is_executable_kind = kind in {"tool_description", "agent_description", "resolver_description", "dataset_metadata"}
-        ready = is_executable_kind and candidate_id in verified_ids
+        candidate_routes = set(candidate.get("routes") or [])
+        route_selected = not execution_route or execution_route in candidate_routes
+        ready = is_executable_kind and candidate_id in verified_ids and route_selected
         readiness.append({
             "candidate_id": candidate_id,
             "kind": kind,
             "status": "ready" if ready else "candidate_only",
-            "reason": "verified executable registry/authority candidate" if ready else (
+            "execution_route": execution_route,
+            "reason": "verified executable registry/authority candidate for selected route" if ready else (
+                "verified alternative-route candidate; kept as candidate only"
+                if candidate_id in verified_ids and not route_selected
+                else
                 "verified supporting candidate, not executable by itself"
                 if candidate_id in verified_ids
                 else "not selected for execution until verified"
@@ -583,8 +616,10 @@ def _execution_contract(
     capabilities: list[dict[str, Any]],
     verified: list[dict[str, Any]],
     tool_readiness: list[dict[str, Any]],
+    *,
+    execution_route: str | None = None,
 ) -> dict[str, Any]:
-    primary_route = next((row for row in routes if row.get("role") == "primary"), None)
+    primary_route = _execution_route_row(routes, execution_route)
     verified_ids = {row.get("candidate_id") for row in verified if row.get("status") == "verified_ready"}
     ready_tools = [row for row in tool_readiness if row.get("status") == "ready"]
     ontology_candidates = [
@@ -625,7 +660,7 @@ def _execution_contract(
             "step": 5,
             "name": "tool_readiness",
             "status": "ready" if ready_tools else "blocked",
-            "authority": "verified_executable_capability",
+            "authority": "verified_executable_capability_for_selected_route",
             "candidate_ids": [row.get("candidate_id") for row in ready_tools[:8]],
         },
         {
@@ -639,6 +674,7 @@ def _execution_contract(
     return {
         "contract": "candidate_first_execution_contract.v1",
         "status": "ready" if steps[-1]["status"] == "ready" else "blocked",
+        "execution_route": execution_route,
         "steps": steps,
     }
 
@@ -654,8 +690,8 @@ def execution_contract_ready(trace: dict[str, Any] | None, *, route: str | None 
         if not any(row.get("route") == route and row.get("score", 0) > 0 for row in routes if isinstance(row, dict)):
             return False
     if capability_id:
-        verified = trace.get("verified_candidates") if isinstance(trace.get("verified_candidates"), list) else []
-        if not any(row.get("candidate_id") == capability_id and row.get("status") == "verified_ready" for row in verified if isinstance(row, dict)):
+        readiness = trace.get("tool_readiness") if isinstance(trace.get("tool_readiness"), list) else []
+        if not any(row.get("candidate_id") == capability_id and row.get("status") == "ready" for row in readiness if isinstance(row, dict)):
             return False
     return True
 
@@ -668,8 +704,9 @@ class QueryCandidateBroker:
         capabilities = _capability_candidates(combined, routes, signals)
         pgvector_used = bool(capabilities and capabilities[0].get("retrieval_source") == "pgvector")
         verified = _verify_candidates(capabilities)
-        readiness = _tool_readiness(capabilities, verified)
-        execution_contract = _execution_contract(routes, capabilities, verified, readiness)
+        execution_route = _primary_execution_route(routes)
+        readiness = _tool_readiness(capabilities, verified, execution_route=execution_route)
+        execution_contract = _execution_contract(routes, capabilities, verified, readiness, execution_route=execution_route)
         needs_ollama = self._needs_ollama(routes, verified)
         trace = {
             "contract": "candidate_first_orchestration.v0.dry_run",

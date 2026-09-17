@@ -539,6 +539,13 @@ NON_DERIVED_CONCEPT_TERMS = {
     "\ucc3e\uc544\uc918",
     "\uc0ac\uace0",
     "\uc774\ub825",
+    "temporary placing",
+    "temporary storage",
+    "fine sand",
+    "movable body type wave converter",
+    "transverse joints",
+    "side thruster",
+    "cofferdam",
 }
 
 
@@ -556,6 +563,66 @@ def _valid_derived_concept(value: Any) -> str | None:
     )
     known.update({"accident_event", "dynamic_traffic", "dataset_embedding_provenance"})
     return text if text in known else None
+
+
+def _as_unique_text_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+    values = value if isinstance(value, list) else [value]
+    return list(dict.fromkeys(str(item).strip() for item in values if str(item or "").strip()))
+
+
+def _sanitize_graph_context_for_execution(raw_context: dict | None, query: str, seed_context: dict | None) -> dict:
+    """Keep GraphRAG recall broad while preventing unverified candidates from becoming executable slots."""
+    if not isinstance(raw_context, dict):
+        return {}
+    seed_context = seed_context or {}
+    sanitized = dict(raw_context)
+    candidate_target_features = _as_unique_text_list(raw_context.get("target_features"))
+    candidate_target_layers = _as_unique_text_list(raw_context.get("target_layers"))
+    candidate_dynamic_layers = _as_unique_text_list(raw_context.get("target_dynamic_layers"))
+    candidate_derived = _as_unique_text_list(raw_context.get("derived_concepts"))
+    query_lower = (query or "").lower()
+
+    explicit_seed_features = []
+    candidate_feature_keys = {item.lower() for item in candidate_target_features}
+    for feature in _as_unique_text_list(seed_context.get("target_features")):
+        if feature.lower() in candidate_feature_keys and feature.lower() in query_lower:
+            explicit_seed_features.append(feature)
+
+    verified_derived = [item for item in candidate_derived if _valid_derived_concept(item)]
+    seed_derived = [item for item in _as_unique_text_list(seed_context.get("derived_concepts")) if _valid_derived_concept(item)]
+    verified_derived = list(dict.fromkeys(seed_derived + verified_derived))
+
+    sanitized["candidate_target_features"] = candidate_target_features
+    sanitized["candidate_target_layers"] = candidate_target_layers
+    sanitized["candidate_target_dynamic_layers"] = candidate_dynamic_layers
+    sanitized["candidate_derived_concepts"] = candidate_derived
+    sanitized["target_features"] = explicit_seed_features
+    sanitized["target_layers"] = []
+    sanitized["target_dynamic_layers"] = []
+    sanitized["derived_concepts"] = verified_derived
+    sanitized["candidate_only_policy"] = {
+        "policy_id": "candidate_recall_resolved_precision_v1",
+        "candidate_fields": [
+            "candidate_target_features",
+            "candidate_target_layers",
+            "candidate_target_dynamic_layers",
+            "candidate_derived_concepts",
+            "candidate_agents",
+            "candidate_tools",
+        ],
+        "resolved_fields": ["target_features", "target_layers", "target_dynamic_layers", "derived_concepts"],
+        "notes": [
+            "GraphRAG and S-101 catalogue matches are recall candidates.",
+            "Only explicit query seeds or registry-verified derived concepts are promoted into resolved fields.",
+        ],
+    }
+    hints = dict(raw_context.get("execution_hints") or {})
+    hints["candidate_requires_spatial_analysis"] = bool(hints.get("requires_spatial_analysis"))
+    hints["requires_spatial_analysis"] = bool(explicit_seed_features and seed_context.get("reference_geometry"))
+    sanitized["execution_hints"] = hints
+    return sanitized
 
 
 def _enrich_extracted_slots(slots: dict | None, norm_result: dict | None) -> dict:
@@ -1771,6 +1838,21 @@ def _build_query_execution_context(
             "analysis_type": _context_value(ctx_res, "analysis_type"),
             "status": _context_value(ctx_res, "status"),
             "confidence": _context_value(ctx_res, "confidence"),
+            "resolved": {
+                "derived_concept": _valid_derived_concept(slots.get("derived_concept")),
+                "target_features": _as_unique_text_list(slots.get("target_features")),
+                "target_layers": _as_unique_text_list(slots.get("target_layers")),
+                "target_dynamic_layers": _as_unique_text_list(slots.get("target_dynamic_layers")),
+            },
+            "candidates": {
+                "target_features": _as_unique_text_list(graph_context.get("candidate_target_features")),
+                "target_layers": _as_unique_text_list(graph_context.get("candidate_target_layers")),
+                "target_dynamic_layers": _as_unique_text_list(graph_context.get("candidate_target_dynamic_layers")),
+                "derived_concepts": _as_unique_text_list(graph_context.get("candidate_derived_concepts")),
+                "agents": _as_unique_text_list(graph_context.get("candidate_agents")),
+                "tools": _as_unique_text_list(graph_context.get("candidate_tools")),
+                "policy": graph_context.get("candidate_only_policy"),
+            },
         },
         kg=graph_context,
         context=context_payload,
@@ -2320,7 +2402,11 @@ async def graph_rag_node(state: OrchestratorState) -> OrchestratorState:
         "derived_concepts": derived_seed,
         "document_type": norm.get("document_type", []),
     }
-    context = graph_rag_retriever.retrieve(query, seed_context)
+    context = _sanitize_graph_context_for_execution(
+        graph_rag_retriever.retrieve(query, seed_context),
+        query,
+        seed_context,
+    )
     return {
         "graph_context": context,
         "graph_rag_context": context,
@@ -4377,13 +4463,24 @@ async def create_plan_node(state: OrchestratorState) -> OrchestratorState:
     derived_concept = None
     intent_val = req.parsed_intent.intent_type if req.parsed_intent else "clarification_required"
     ctx_derived = _context_value(ctx_res, "derived_concepts", [])
-    if ctx_derived:
-        derived_concept = ctx_derived[0]
+    valid_ctx_derived = [
+        valid for item in _as_unique_text_list(ctx_derived)
+        for valid in [_valid_derived_concept(item)]
+        if valid
+    ]
+    valid_graph_derived = [
+        valid for item in _as_unique_text_list(graph_context.get("derived_concepts"))
+        for valid in [_valid_derived_concept(item)]
+        if valid
+    ]
+    valid_slot_derived = _valid_derived_concept(slots.get("derived_concept"))
+    if valid_ctx_derived:
+        derived_concept = valid_ctx_derived[0]
         intent_val = _context_value(ctx_res, "intent") or intent_val
-    elif graph_context.get("derived_concepts"):
-        derived_concept = graph_context["derived_concepts"][0]
-    elif slots.get("derived_concept"):
-        derived_concept = slots.get("derived_concept")
+    elif valid_graph_derived:
+        derived_concept = valid_graph_derived[0]
+    elif valid_slot_derived:
+        derived_concept = valid_slot_derived
 
     analysis_type = _context_value(ctx_res, "analysis_type")
     if not analysis_type and _looks_like_standard_rag_query(state.get("query", "")):
