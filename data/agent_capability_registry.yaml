@@ -49,6 +49,21 @@ analysis_types:
       - AccidentRelationEvidence
       - GeoJSON
       - Summary
+  accident_event_lookup:
+    primary_agent: Accident/Risk Agent
+    secondary_agents:
+      - Validation Agent
+      - Map Report Agent
+    required_tools:
+      - accident.event_lookup
+    required_data:
+      - accident_events
+      - accident_data
+    outputs:
+      - AccidentEventGeoJSON
+      - FeatureTable
+      - EvidenceBundle
+      - Summary
   current_tidal_lookup:
     primary_agent: Spatial Analysis Agent
     secondary_agents:

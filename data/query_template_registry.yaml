@@ -130,6 +130,34 @@ templates:
     required_parameters:
     - feature_instance_id
     executor: accident.s101_relation_lookup
+  accident_event_lookup:
+    allowed_layers:
+    - accident_events
+    required_parameters:
+    - query_terms
+    executor: accident.event_lookup
+    default_relation: serving.accident_events
+    geometry_column: geom
+    text_filter_columns:
+    - authority
+    - sea_area
+    - cause
+    - accident_type
+    - vessel_type
+    ordering: occurred_at DESC, source_row_number ASC
+    result_limit: 120
+    sql_template: accident_event_structured_lookup
+    sql:
+      select: |
+        SELECT event_id, source_row_number, occurred_at, authority, sea_area,
+               weather, cause, accident_type, vessel_count, people_count,
+               rescued, injured, dead, missing, vessel_type, tonnage,
+               longitude, latitude, ST_AsGeoJSON(geom)::jsonb AS geometry
+        FROM serving.accident_events
+        WHERE /* query_terms are applied as AND of ILIKE over text_filter_columns */
+              TRUE
+        ORDER BY occurred_at DESC, source_row_number ASC
+        LIMIT %(result_limit)s;
   spatial_layer_overlay_lookup:
     allowed_layers:
     - tidal_current_surface

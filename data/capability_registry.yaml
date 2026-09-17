@@ -297,3 +297,99 @@ capabilities:
   - traffic_term
   - ais_vpass
   - temporal_window
+- capability_id: resolver.accident_event_terms
+  object_type: resolver_description
+  label: Accident Event Term Resolver
+  routes:
+  - ACCIDENT_ANALYSIS
+  role: supporting_or_primary
+  description: 'Resolve accident event lookup terms such as jurisdiction, cause, accident type, sea area, and vessel type from Korean maritime accident queries.
+
+    '
+  input_slots:
+  - query_text
+  output_slots:
+  - query_terms
+  - authority
+  - cause
+  - accident_type
+  - sea_area
+  authority_ref: data/accident_dictionary.yaml
+  registry_ref: data/agent_capability_registry.yaml
+  deterministic_hints:
+  - accident_event
+  - accident_cause
+  - structured_event_lookup
+- capability_id: tool.accident_event_lookup
+  object_type: tool_description
+  label: Structured Accident Event Lookup Tool
+  routes:
+  - ACCIDENT_ANALYSIS
+  role: primary
+  description: 'Execute deterministic row-level lookup against serving.accident_events and return accident event rows, GeoJSON map points, counts, and evidence from the same authoritative row set.
+
+    '
+  input_slots:
+  - query_terms
+  - authority
+  - cause
+  - accident_type
+  - sea_area
+  output_slots:
+  - accident_events
+  - total_count
+  - geojson
+  - map_layers
+  - evidence_bundle
+  authority_ref: serving.accident_events
+  registry_ref: data/query_template_registry.yaml
+  deterministic_hints:
+  - accident_event
+  - accident_cause
+  - structured_event_lookup
+- capability_id: dataset.accident_events
+  object_type: dataset_metadata
+  label: Coast Guard Accident Events Serving Layer
+  routes:
+  - ACCIDENT_ANALYSIS
+  - DATASET_PROVENANCE
+  role: primary_or_supporting
+  description: 'Authoritative serving table for Korea Coast Guard 2025 maritime distress accident event rows, with point geometry, occurrence time, authority, sea area, cause, type, vessel, and casualty attributes.
+
+    '
+  input_slots:
+  - query_terms
+  output_slots:
+  - event_id
+  - occurred_at
+  - authority
+  - sea_area
+  - cause
+  - accident_type
+  - geometry
+  authority_ref: serving.accident_events
+  registry_ref: data/spatial_layer_registry.yaml
+  deterministic_hints:
+  - accident_event
+  - structured_event_lookup
+- capability_id: ontology.accident_risk_event
+  object_type: ontology_class_description
+  label: Accident Risk Event
+  routes:
+  - ACCIDENT_ANALYSIS
+  - SPATIAL_ANALYSIS
+  role: supporting
+  description: 'Ontology class for spatialized maritime accident or distress events and their dimensions: cause, type, jurisdiction authority, and sea area. Event lookup may show co-location but must not infer causality with S-101 objects without relation evidence.
+
+    '
+  input_slots:
+  - accident_event
+  output_slots:
+  - upper_class
+  - kg_path
+  - evidence_partition
+  authority_ref: data/upper_ontology_registry.yaml
+  registry_ref: data/kg_ontology_contract.yaml
+  deterministic_hints:
+  - accident_event
+  - accident_risk

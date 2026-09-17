@@ -20,6 +20,9 @@ tools:
   accident.s101_relation_lookup:
     kind: relation_lookup
     template: accident_s101_relation_lookup
+  accident.event_lookup:
+    kind: structured_event_lookup
+    template: accident_event_lookup
   spatial.layer_overlay_lookup:
     kind: spatial_layer_query
     template: spatial_layer_overlay_lookup

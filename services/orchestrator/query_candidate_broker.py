@@ -95,6 +95,31 @@ ROUTE_HINTS["TRAFFIC_ANALYSIS"].extend([
     "월별",
 ])
 
+ROUTE_HINTS.setdefault("ACCIDENT_ANALYSIS", []).extend([
+    "accident",
+    "incident",
+    "case",
+    "사고",
+    "사건",
+    "해상조난",
+    "조난사고",
+    "해양사고",
+    "선박사고",
+    "정비불량",
+    "관리소홀",
+    "운항부주의",
+    "안전부주의",
+    "기관손상",
+    "추진기손상",
+    "침몰",
+    "침수",
+    "좌초",
+    "충돌",
+    "화재",
+    "전복",
+    "표류",
+])
+
 DETERMINISTIC_PATTERNS: list[tuple[str, re.Pattern[str], list[str]]] = [
     ("radius_slot", re.compile(r"(\d+(?:\.\d+)?)\s*(km|m|킬로|미터)", re.I), ["SPATIAL_ANALYSIS"]),
     ("temporal_window", re.compile(r"최근\s*\d+\s*(년|개월|달)|latest_available_12_months", re.I), ["TRAFFIC_ANALYSIS"]),
@@ -109,6 +134,10 @@ DETERMINISTIC_PATTERNS: list[tuple[str, re.Pattern[str], list[str]]] = [
 ]
 
 DETERMINISTIC_PATTERNS.extend([
+    ("accident_event", re.compile(r"accident|incident|사고|사건|해상조난|조난사고|해양사고|선박사고", re.I), ["ACCIDENT_ANALYSIS"]),
+    ("accident_cause", re.compile(r"정비불량|관리소홀|운항부주의|안전부주의|원인미상|발생원인", re.I), ["ACCIDENT_ANALYSIS"]),
+    ("accident_type", re.compile(r"기관손상|추진기손상|키손상|침몰|침수|좌초|충돌|화재|전복|표류|발생유형", re.I), ["ACCIDENT_ANALYSIS"]),
+    ("structured_event_lookup", re.compile(r"찾아줘|찾아|검색|조회|목록|event|case", re.I), ["ACCIDENT_ANALYSIS"]),
     ("nearby_search_utf8", re.compile(r"이내|반경|근처|주변|부근|거리", re.I), ["SPATIAL_ANALYSIS"]),
     ("marine_gazetteer_target", re.compile(r"해저지명|해저\s*지명|해양지명|해양\s*지명|부근\s*지명|주변\s*지명", re.I), ["SPATIAL_ANALYSIS"]),
     ("place_name_utf8", re.compile(r"독도|[가-힣A-Za-z]+항\s*입구|[가-힣A-Za-z]+항|[가-힣]+해역|도서지명", re.I), ["PLACE_LOOKUP"]),
@@ -383,6 +412,21 @@ def _verify_reference(ref: Any) -> dict[str, Any]:
     if not ref:
         return {"status": "missing", "ref": ref}
     ref_text = str(ref)
+    db_relation_prefixes = ("serving.", "projection.", "knowledge.", "public.", "canonical.")
+    if ref_text.startswith(db_relation_prefixes):
+        try:
+            import psycopg2
+
+            url = _db_url()
+            if not url:
+                return {"status": "declared", "type": "db_relation", "ref": ref_text, "reason": "database_url_missing"}
+            with psycopg2.connect(url, connect_timeout=3) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT to_regclass(%s)", (ref_text,))
+                    exists = bool(cur.fetchone()[0])
+            return {"status": "verified" if exists else "declared", "type": "db_relation", "ref": ref_text}
+        except Exception as exc:
+            return {"status": "declared", "type": "db_relation", "ref": ref_text, "reason": str(exc)}
     path_like = any(token in ref_text for token in ("/", "\\")) or Path(ref_text).suffix
     if path_like:
         path = ROOT / ref_text

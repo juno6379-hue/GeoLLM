@@ -998,6 +998,23 @@ def _looks_like_accident_event_lookup_query(query: str) -> bool:
     ]
     return any(term in lowered or term in text for term in accident_terms) and any(term in lowered or term in text for term in detail_terms)
 
+def _should_fast_execute_accident_event_lookup(state: OrchestratorState) -> bool:
+    query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
+    if not _looks_like_accident_event_lookup_query(query):
+        return False
+    trace = state.get("candidate_trace")
+    if isinstance(trace, dict):
+        return any(
+            _contract_ready_any(state, route="ACCIDENT_ANALYSIS", capability_ids=[capability_id])
+            for capability_id in [
+                "tool.accident_event_lookup",
+                "dataset.accident_events",
+                "resolver.accident_event_terms",
+            ]
+        )
+    # Pre-candidate-trace fallback for direct local calls and old tests.
+    return True
+
 def _looks_like_policy_block_query(query: str) -> bool:
     text = query or ""
     lowered = text.lower()
@@ -4582,7 +4599,7 @@ def check_intent_parsed(state: OrchestratorState) -> str:
         return "fast_s101_nearest_feature_execute"
     if _should_fast_execute_requested_spatial_layer(state):
         return "fast_requested_spatial_layer_execute"
-    if _looks_like_accident_event_lookup_query(query):
+    if _should_fast_execute_accident_event_lookup(state):
         return "fast_accident_event_lookup"
     if _looks_like_place_lookup(state.get("query", "")) or _looks_like_known_place_search(state.get("query", ""), state):
         return "fast_place_lookup"

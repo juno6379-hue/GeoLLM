@@ -27,6 +27,12 @@ datasets:
   accident_data:
     zone: standardized
     dictionary: data/accident_dictionary.yaml
+  accident_events:
+    zone: serving
+    source: gbhd_s101.serving.accident_events
+    geometry_column: geom
+    status: current
+    dictionary: data/accident_dictionary.yaml
   accident_s101_relation:
     zone: serving
     source: gbhd_s101.serving.accident_s101_relation_current

@@ -109,6 +109,24 @@ layers:
     supported_operations:
     - relation_lookup
     - dwithin
+  accident_events:
+    zone: serving
+    layer_type: accident_event
+    execution_status: executable
+    physical_table: serving.accident_events
+    geometry_column: geom
+    id_column: event_id
+    time_column: occurred_at
+    authority_column: authority
+    cause_column: cause
+    accident_type_column: accident_type
+    sea_area_column: sea_area
+    srid: 4326
+    database: S100_dev_postgis
+    supported_operations:
+    - event_lookup
+    - dwithin
+    - nearest
   tidal_current_surface:
     zone: standardized
     layer_type: tidal_current
