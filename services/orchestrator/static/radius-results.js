@@ -357,10 +357,13 @@
         const needsInput = [result?.status, structured.status].some(status => ["NEEDS_CLARIFICATION", "NEEDS_USER_INPUT"].includes(status));
         const blocked = [result?.status, structured.status].some(status => ["BLOCKED", "BLOCKED_DATA", "BLOCKED_CONFIG"].includes(status));
         const hasRadiusLayers = Array.isArray(result?.map_layers) && result.map_layers.some(layer =>
-            ["matched_features", "search_area"].includes(layer?.role || layer?.metadata?.role)
+            ["matched_features", "search_area", "accident_event", "accident_overlay"].includes(layer?.role || layer?.metadata?.role || layer?.metadata?.layer_role)
+            || layer?.inline_geojson?.features?.some(feature => feature?.properties?.layer_role === "accident_event")
         );
+        const hasSpatialGeojson = Array.isArray(structured.geojson?.features) || Array.isArray(result?.features?.features);
         return isRadiusAnalysis(result) || analysis === "place_lookup"
             || hasRadiusLayers
+            || hasSpatialGeojson && ["accident_spatial_history_lookup", "accident_event_lookup"].includes(analysis)
             || analysis === "nearest_feature" && (blocked || needsInput && Array.isArray(structured.location_candidates));
     }
 
@@ -950,7 +953,8 @@
 
         const expected = Array.isArray(structured.feature_ids) ? structured.feature_ids.map(String).sort() : [];
         const surfaces = [rows.map(featureId), mappedFeatures.map(f => featureId(f.properties || {})), evidenceItems.map(item => featureId(evidenceData(item) || {}))];
-        const mismatch = expected.length !== returned || surfaces.some(ids => ids.length !== returned || JSON.stringify(ids.sort()) !== JSON.stringify(expected));
+        const mismatch = expected.length > 0
+            && (expected.length !== returned || surfaces.some(ids => ids.length !== returned || JSON.stringify(ids.sort()) !== JSON.stringify(expected)));
         if (mismatch) {
             document.getElementById("answerStatus").textContent = "결과 확인 필요";
             window.QuerySummary.show("결과 확인 필요", "지도·목록·근거의 객체 목록이 일치하지 않아 검색 결과를 확인해야 합니다.", structured.original_query || originalQuery);
