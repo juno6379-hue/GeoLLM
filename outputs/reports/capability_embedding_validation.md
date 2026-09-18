@@ -1,7 +1,7 @@
 # Capability Embedding Validation
 
 - status: `OK`
-- generated_at: `2026-09-18T07:01:54.131534+00:00`
+- generated_at: `2026-09-18T07:14:44.286250+00:00`
 - chunks: `21`
 - embeddings: `21`
 - model: `bge-m3`

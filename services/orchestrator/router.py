@@ -13,6 +13,7 @@ import uuid
 import yaml
 
 from shared.schemas.agent import AgentStatus
+from services.orchestrator.fast_path_policy import is_instant_place_navigation_allowed
 from services.orchestrator.graph import orchestrator_graph
 from services.orchestrator.place_router import place_navigation_target, resolve_payload
 from services.orchestrator.state import OrchestratorState
@@ -49,23 +50,7 @@ def _valid_debug_derived_concept(value):
 
 
 def _is_instant_place_navigation(query: str) -> bool:
-    text = str(query or "").strip()
-    if not text:
-        return False
-    target = place_navigation_target(text)
-    lowered = text.lower()
-    blocked_terms = {
-        "사고", "위험", "침선", "장애물", "통항", "ais", "v-pass", "vpass",
-        "교통", "항로", "정박지", "보호구역", "천연보호구역",
-        "해저지명", "해양지명", "부근", "주변", "근처", "이내",
-    }
-    if any(term in lowered or term in text for term in blocked_terms):
-        return False
-    if target and target != text:
-        return True
-    # Short standalone place names should not fall into the full graph. The
-    # place resolver still returns confirmation candidates when authority is low.
-    return bool(re.match(r"^[가-힣A-Za-z0-9·\s]{2,30}(구|시|군|읍|면|동|리|도|항|만|해수욕장)$", text))
+    return is_instant_place_navigation_allowed(query)
 
 
 def _point_coordinates(wkt: str | None) -> list[float] | None:

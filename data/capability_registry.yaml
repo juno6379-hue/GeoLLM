@@ -8,6 +8,63 @@ policies:
   authority_gate_required: true
   ollama_role: ambiguity_resolver_only
   verified_execution_only: true
+router_policies:
+  instant_place_navigation:
+    description: 'Allow only simple place navigation or standalone place lookup to bypass the full semantic router. Any relation, analysis target, domain layer target, or multi-tool target must continue to Semantic Router and ExecutionValidator.'
+    decision_role: fast_path_gate_only
+    action_patterns:
+    - 찾아줘
+    - 보여줘
+    - 표시해줘
+    - 이동
+    - 가줘
+    - 위치
+    - 어디
+    - 좌표
+    - find
+    - show
+    - move
+    - where
+    standalone_place_suffix_pattern: '^[가-힣A-Za-z0-9·\s]{2,30}(구|시|군|읍|면|동|리|도|항|만|해수욕장)$'
+    suppress_when_signals:
+    - signal_id: spatial_relation
+      reason: spatial relation requires anchor/target separation
+      terms:
+      - 부근
+      - 주변
+      - 근처
+      - 이내
+      - 반경
+      - 인근
+      - 앞바다
+      - 해역
+    - signal_id: marine_gazetteer_target
+      reason: gazetteer target must use marine gazetteer resolver
+      terms:
+      - 해저지명
+      - 해저 지명
+      - 해양지명
+      - 해양 지명
+      - 부근 지명
+      - 주변 지명
+    - signal_id: analysis_target
+      reason: analysis target requires Semantic Router and ExecutionValidator
+      terms:
+      - 사고
+      - 위험
+      - 침선
+      - 장애물
+      - 통항
+      - 교통
+      - 항로
+      - 정박지
+      - 보호구역
+      - 천연보호구역
+      - ais
+      - v-pass
+      - vpass
+    suppress_when_semantic_place_types:
+    - marine_gazetteer
 lexical_signals:
 - signal_id: accident_event
   routes:
