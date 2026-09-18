@@ -68,12 +68,45 @@ def test_source_failure_is_blocked_not_empty_resolution(client, monkeypatch, sta
         raise PlaceResolutionProblem(status, code, "Source unavailable")
 
     monkeypatch.setattr(place_router, "resolve_location", resolve)
+    monkeypatch.setattr(place_router, "external_place_fallback", lambda query: None)
     response = client.post("/api/v1/places/resolve", json={"query": "A place"})
     assert response.status_code == 200
     assert response.json()["status"] == "BLOCKED"
     assert response.json()["error_code"] == code
     assert response.json()["location_candidates"] == []
     assert not response.json().get("geometry")
+
+
+def test_gazetteer_unavailable_returns_external_place_candidates(client, monkeypatch):
+    def resolve(query, spatial):
+        raise PlaceResolutionProblem("BLOCKED_DATA", "GAZETTEER_UNAVAILABLE", "Source unavailable")
+
+    fallback = {
+        "status": "NEEDS_CLARIFICATION",
+        "error_code": "EXTERNAL_PLACE_CANDIDATES",
+        "summary": "external candidates",
+        "location_candidates": [{
+            "place_id": "extgap.osm_nominatim:1",
+            "place_version": "a" * 64,
+            "label": "Haeundae-gu",
+            "geometry": "POINT(129.1638 35.1629)",
+            "crs": "EPSG:4326",
+            "requires_confirmation": True,
+            "authority_level": "supplemental",
+        }],
+        "external_evidence_report": {"domain_id": "administrative_place_lookup"},
+    }
+
+    monkeypatch.setattr(place_router, "resolve_location", resolve)
+    monkeypatch.setattr(place_router, "external_place_fallback", lambda query: fallback)
+    response = client.post("/api/v1/places/resolve", json={"query": "해운대구"})
+    body = response.json()
+
+    assert response.status_code == 200
+    assert body["status"] == "NEEDS_CLARIFICATION"
+    assert body["error_code"] == "EXTERNAL_PLACE_CANDIDATES"
+    assert body["location_candidates"][0]["geometry"] == "POINT(129.1638 35.1629)"
+    assert body["external_evidence_report"]["domain_id"] == "administrative_place_lookup"
 
 
 @pytest.mark.parametrize("payload", [{}, {"query": ""}, {"query": "x" * 1001}, {"query": "A", "spatial_context": []}, {"query": "A", "spatial_context": None}])

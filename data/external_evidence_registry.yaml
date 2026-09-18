@@ -62,6 +62,48 @@ source_tiers:
       - web_rag_candidate
       - document_candidate
 gap_domains:
+  administrative_place_lookup:
+    label: 행정구역/주소형 지명 후보
+    routes:
+      - PLACE_LOOKUP
+      - EXTERNAL_EVIDENCE_GAP_FILL
+      - DATASET_PROVENANCE
+    query_signals:
+      - regex:\S+구$
+      - regex:\S+동$
+      - regex:\S+읍$
+      - regex:\S+면$
+      - regex:\S+시$
+      - regex:\S+군$
+      - 주소
+      - 행정구역
+      - 행정동
+      - 법정동
+      - district
+      - address
+      - borough
+    local_layers_checked:
+      - marine_gazetteer
+      - island_gazetteer_current
+    authoritative_public_sources:
+      - source_id: vworld_or_juso_admin_boundary
+        source_name: 국가공간정보/도로명주소 행정구역 경계
+        authority: 국토교통부/행정안전부
+        source_url: https://www.juso.go.kr/
+        use_when:
+          - local marine gazetteer has no administrative place match
+          - OSM/Nominatim only provides supplemental candidates
+    osm_candidate_rules:
+      - source_id: osm_nominatim_administrative_place
+        source_name: OpenStreetMap Nominatim
+        authority: OpenStreetMap contributors
+        tags:
+          - boundary=administrative
+          - place=borough
+          - place=suburb
+          - place=city
+          - place=town
+        use_as_authority: false
   natural_heritage_protected_area:
     label: 천연보호구역/천연기념물 보호구역
     routes:

@@ -101,8 +101,14 @@ def detect_gap_domain(query: str, registry: dict[str, Any]) -> dict[str, Any] | 
     lowered = query.lower()
     for domain_id, domain in (registry.get("gap_domains") or {}).items():
         signals = domain.get("query_signals") or []
-        if any(str(signal).lower() in lowered for signal in signals):
-            return {"domain_id": domain_id, **domain}
+        for signal in signals:
+            signal_text = str(signal)
+            if signal_text.startswith("regex:"):
+                if re.search(signal_text.removeprefix("regex:"), query, re.I):
+                    return {"domain_id": domain_id, **domain}
+                continue
+            if signal_text.lower() in lowered:
+                return {"domain_id": domain_id, **domain}
     return None
 
 
@@ -142,6 +148,8 @@ def local_layer_specs(domain: dict[str, Any], spatial_registry: dict[str, Any]) 
         table = layer.get("physical_table")
         if not table and layer_id == "GBENC_S101_feature":
             table = "projection.s101_feature_current"
+        if not table and layer_id == "marine_gazetteer":
+            table = "public.maritime_gazetteer_khoa"
         if not table and layer_id.endswith("_current"):
             table = f"serving.{layer_id}"
         if not table and "." in layer_id:
@@ -254,12 +262,13 @@ def public_authoritative_candidates(query: str, domain_id: str, anchor: dict[str
 def osm_supplemental_candidates(query: str, domain_id: str, anchor: dict[str, Any] | None, domain: dict[str, Any]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for rule in domain.get("osm_candidate_rules") or []:
+        is_admin_place = domain_id == "administrative_place_lookup"
         payload = {
             "candidate_id": stable_id("extgap.osm_candidate", [query, domain_id, anchor, rule]),
             "query": query,
             "domain": domain_id,
-            "name": f"{anchor.get('canonical_name') if anchor else 'unresolved place'} OSM protected-area candidate",
-            "category": "supplemental_osm_candidate",
+            "name": f"{anchor.get('canonical_name') if anchor else query} OSM {'administrative-place' if is_admin_place else 'protected-area'} candidate",
+            "category": "supplemental_osm_administrative_candidate" if is_admin_place else "supplemental_osm_candidate",
             "anchor": anchor,
             "source_tier": "osm_supplemental",
             "authority_level": "supplemental",
@@ -529,9 +538,19 @@ def run_gap_fill(query: str, radius_m: int = 10000, check_db: bool = False, fetc
             "status": "BLOCKED_UNSUPPORTED_GAP_DOMAIN",
             "generated_at": utc_now(),
             "query": query,
+            "radius_m": radius_m,
             "reason": "no gap domain matched",
             "ollama_ambiguity_review": ollama_review,
+            "osm_fetch_diagnostics": {"enabled": False, "status": "skipped", "reason": "unsupported_gap_domain"},
+            "candidate_counts": {
+                "total": 0,
+                "public_authoritative": 0,
+                "supplemental": 0,
+                "osm_live": 0,
+                "promotion": 0,
+            },
             "candidates": [],
+            "promotion_candidates": [],
         }
     local_checks = check_local_layers(domain, anchor, spatial_registry, radius_m, check_db)
     domain_id = domain["domain_id"]

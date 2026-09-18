@@ -54,6 +54,27 @@ Ollama는 다음처럼 ambiguity review에만 사용한다.
 python scripts\run_external_evidence_gap_fill.py --query "독도 부근 천연보호구역을 찾아줘" --ask-ollama
 ```
 
+## Administrative Place Fallback
+
+`해운대구`처럼 로컬 해양/도서 gazetteer에 없는 행정구역·주소형 지명은 `administrative_place_lookup` gap domain으로 분류한다.
+
+- `/api/v1/places/resolve`에서 로컬 gazetteer가 `GAZETTEER_UNAVAILABLE`이면 external gap-fill 후보를 조회한다.
+- `GEOLLM_OSM_USER_AGENT`가 설정된 경우 Nominatim live 후보를 가져온다.
+- 반환 상태는 `NEEDS_CLARIFICATION`이며, 후보의 `authority_level`은 `supplemental`이다.
+- 후보는 지도 표시용 point/polygon을 포함할 수 있지만, authoritative 승격은 국가공간정보/도로명주소 등 공공 authoritative source 검증 후에만 가능하다.
+
+검증 예:
+
+```json
+{
+  "query": "해운대구",
+  "domain": "administrative_place_lookup",
+  "status": "NEEDS_CLARIFICATION",
+  "osm_live": 1,
+  "candidate_geometry": "POINT(129.1638 35.1629)"
+}
+```
+
 ## Dokdo Natural Heritage Example
 
 질의:

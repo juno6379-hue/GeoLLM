@@ -80,3 +80,21 @@ def test_ollama_review_is_skipped_by_default():
 
     assert report["ollama_ambiguity_review"]["enabled"] is False
     assert report["ollama_ambiguity_review"]["status"] == "skipped"
+
+
+def test_administrative_place_query_routes_to_external_place_candidates(monkeypatch):
+    monkeypatch.delenv("GEOLLM_OSM_USER_AGENT", raising=False)
+    report = run_gap_fill("\ud574\uc6b4\ub300\uad6c", fetch_osm=True)
+
+    assert report["status"] == "OK"
+    assert report["domain_id"] == "administrative_place_lookup"
+    assert report["osm_fetch_diagnostics"]["status"] == "blocked"
+    assert report["candidate_counts"]["supplemental"] >= 1
+
+
+def test_unsupported_gap_domain_report_is_markdown_safe():
+    report = run_gap_fill("completely unrelated phrase")
+
+    assert report["status"] == "BLOCKED_UNSUPPORTED_GAP_DOMAIN"
+    assert report["radius_m"] == 10000
+    assert report["candidate_counts"]["total"] == 0
