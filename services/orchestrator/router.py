@@ -53,14 +53,18 @@ def _is_instant_place_navigation(query: str) -> bool:
     if not text:
         return False
     target = place_navigation_target(text)
-    if not target or target == text:
-        return False
     lowered = text.lower()
     blocked_terms = {
         "사고", "위험", "침선", "장애물", "통항", "ais", "v-pass", "vpass",
         "교통", "항로", "정박지", "보호구역", "천연보호구역",
     }
-    return not any(term in lowered or term in text for term in blocked_terms)
+    if any(term in lowered or term in text for term in blocked_terms):
+        return False
+    if target and target != text:
+        return True
+    # Short standalone place names should not fall into the full graph. The
+    # place resolver still returns confirmation candidates when authority is low.
+    return bool(re.match(r"^[가-힣A-Za-z0-9·\s]{2,30}(구|시|군|읍|면|동|리|도|항|만|해수욕장)$", text))
 
 
 def _point_coordinates(wkt: str | None) -> list[float] | None:

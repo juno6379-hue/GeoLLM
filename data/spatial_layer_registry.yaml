@@ -183,7 +183,7 @@ layers:
   sea_parting_prediction:
     zone: standardized
     layer_type: sea_parting_prediction
-    execution_status: needs_ingestion
+    execution_status: executable
     source_assets:
     - Dataset/바다갈라짐예측정보_하섬.ZIP
     - Dataset/바다갈라짐예측정보_진도.ZIP
@@ -195,7 +195,6 @@ layers:
     - Dataset/바다갈라짐예측정보_서건도.ZIP
     - Dataset/바다갈라짐예측정보_무창포.ZIP
     - Dataset/바다갈라짐예측정보_동섬.ZIP
-    expected_physical_table: serving.sea_parting_prediction_current
     geometry_column: geometry
     time_column: predicted_at
     srid: 4326
@@ -203,6 +202,7 @@ layers:
     - intersects
     - dwithin
     - time_space_lookup
+    physical_table: serving.sea_parting_prediction_current
   vessel_traffic_control_area:
     zone: standardized
     layer_type: vessel_traffic_control_area

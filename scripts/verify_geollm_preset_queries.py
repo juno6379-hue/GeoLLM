@@ -142,7 +142,21 @@ def main() -> int:
     wait_for_health(args.base_url, args.health_timeout)
 
     results: list[dict[str, Any]] = []
-    for case in load_cases(args.cases):
+    cases = load_cases(args.cases)
+
+    def write_summary() -> dict[str, Any]:
+        summary = {
+            "total": len(results),
+            "planned_total": len(cases),
+            "passed": sum(1 for row in results if row["verdict"] == "PASS"),
+            "failed": sum(1 for row in results if row["verdict"] != "PASS"),
+            "results": results,
+        }
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(summary, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+        return summary
+
+    for case in cases:
         try:
             events, elapsed_ms = stream_events(args.base_url, case["query"], args.timeout)
             result = evaluate(case, events, elapsed_ms)
@@ -158,18 +172,12 @@ def main() -> int:
                 "summary": None,
             }
         results.append(result)
-        print(f"{result['verdict']:4} {result['case_id']} {result['status']} {result['elapsed_ms']}ms")
+        print(f"{result['verdict']:4} {result['case_id']} {result['status']} {result['elapsed_ms']}ms", flush=True)
         if result["failures"]:
-            print("     " + "; ".join(result["failures"]))
+            print("     " + "; ".join(result["failures"]), flush=True)
+        write_summary()
 
-    summary = {
-        "total": len(results),
-        "passed": sum(1 for row in results if row["verdict"] == "PASS"),
-        "failed": sum(1 for row in results if row["verdict"] != "PASS"),
-        "results": results,
-    }
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(summary, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    summary = write_summary()
     return 0 if summary["failed"] == 0 else 1
 
 

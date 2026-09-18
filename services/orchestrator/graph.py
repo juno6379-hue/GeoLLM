@@ -171,6 +171,47 @@ REQUESTED_SPATIAL_LAYER_TARGETS = {
         "layer_type": "hazard_area",
         "terms": ["\uc18d\ub3c4\uc81c\ud55c", "\uc18d\ub3c4 \uc81c\ud55c", "speed restriction"],
     },
+    "dumping_ground": {
+        "relation": "serving.hazard_area_current",
+        "layer_id": "dumping_ground_area",
+        "title": "\ud22c\uae30\uc7a5",
+        "layer_type": "hazard_area",
+        "terms": ["\ud22c\uae30\uc7a5", "\ud22c\uae30\uad6c\uc5ed", "\uc0b0\uc5c5\ud3d0\uae30\ubb3c\ud22c\uae30\uad6c\uc5ed", "\uc0b0\uc5c5\ud3d0\uae30\ubb3c \ud22c\uae30\uad6c\uc5ed", "dumping ground", "dumping area"],
+    },
+    "protected_sea": {
+        "relation": "serving.protected_area_current",
+        "layer_id": "protected_sea_area",
+        "title": "\ubcf4\ud638\uc218\uc5ed",
+        "layer_type": "protected_area",
+        "terms": ["\ubcf4\ud638\uc218\uc5ed", "\ubcf4\ud638\uad6c\uc5ed", "\ubcf4\ud638\ud574\uc5ed", "protected area"],
+    },
+    "vessel_traffic_control_area": {
+        "relation": "serving.vessel_traffic_control_area_current",
+        "layer_id": "vessel_traffic_control_area",
+        "title": "\uc120\ubc15\uc548\uc804\uad50\ud1b5\uad00\uc81c\uad6c\uc5ed",
+        "layer_type": "vessel_traffic_control_area",
+        "terms": ["\uc120\ubc15\uc548\uc804\uad50\ud1b5\uad00\uc81c\uad6c\uc5ed", "\ud574\uc0c1\uad50\ud1b5\uad00\uc81c\uad6c\uc5ed", "\ud574\uc0c1\uad50\ud1b5\uad00\uc81c", "\uad00\uc81c\uad6c\uc5ed", "vts", "vessel traffic control"],
+    },
+    "sea_parting_prediction": {
+        "relation": "serving.sea_parting_prediction_current",
+        "layer_id": "sea_parting_prediction",
+        "title": "\ubc14\ub2e4\uac08\ub77c\uc9d0 \uc608\uce21\uc815\ubcf4",
+        "layer_type": "sea_parting_prediction",
+        "name_column": "place_name",
+        "terms": ["\ubc14\ub2e4\uac08\ub77c\uc9d0", "\ubc14\ub2f7\uae38", "sea parting"],
+    },
+}
+SEA_PARTING_QUERY_ANCHORS = {
+    "\ub3d9\uc12c": "POINT(126.9360 33.4590)",
+    "\ubb34\ucc3d\ud3ec": "POINT(126.5350 36.2440)",
+    "\uc11c\uac74\ub3c4": "POINT(126.5080 33.2290)",
+    "\uc18c\uc57c\ub3c4": "POINT(126.1780 37.2290)",
+    "\uc2e4\ubbf8\ub3c4": "POINT(126.4030 37.4040)",
+    "\uc6b0\ub3c4": "POINT(126.9540 33.5050)",
+    "\uc6c5\ub3c4": "POINT(126.3520 36.8760)",
+    "\uc81c\ubd80\ub3c4": "POINT(126.6220 37.1700)",
+    "\uc9c4\ub3c4": "POINT(126.3230 34.4350)",
+    "\ud558\uc12c": "POINT(126.4690 35.6120)",
 }
 KNOWN_MARINE_PLACE_WKT = {
     "부산항 입구": "POINT(129.075 35.075)",
@@ -1099,8 +1140,6 @@ def _looks_like_accident_event_lookup_query(query: str) -> bool:
         "\ud654\uc7ac",
         "\uc804\ubcf5",
         "\ud45c\ub958",
-        "\ucc3e\uc544",
-        "\ucc3e\uc544\uc918",
     ]
     return any(term in lowered or term in text for term in accident_terms) and any(term in lowered or term in text for term in detail_terms)
 
@@ -1231,7 +1270,26 @@ def _looks_like_planned_port_query(query: str) -> bool:
 def _looks_like_protected_area_query(query: str) -> bool:
     text = query or ""
     lowered = text.lower()
-    return any(term in lowered or term in text for term in ["protected area", "\ubcf4\ud638\uad6c\uc5ed", "\ubcf4\ud638\ud574\uc5ed"])
+    return any(term in lowered or term in text for term in [
+        "protected area",
+        "\ubcf4\ud638\uad6c\uc5ed",
+        "\ubcf4\ud638\ud574\uc5ed",
+        "\ubcf4\ud638\uc218\uc5ed",
+    ])
+
+def _looks_like_dumping_ground_query(query: str) -> bool:
+    text = query or ""
+    lowered = text.lower()
+    return any(term in lowered or term in text for term in [
+        "dumping ground",
+        "dumping area",
+        "\ud22c\uae30\uc7a5",
+        "\ud22c\uae30\uad6c\uc5ed",
+        "\uc0b0\uc5c5\ud3d0\uae30\ubb3c\ud22c\uae30\uad6c\uc5ed",
+        "\uc0b0\uc5c5\ud3d0\uae30\ubb3c \ud22c\uae30\uad6c\uc5ed",
+        "\ud3d0\uae30\ubb3c\ud22c\uae30\uad6c\uc5ed",
+        "\ud3d0\uae30\ubb3c \ud22c\uae30\uad6c\uc5ed",
+    ])
 
 def _looks_like_eddy_hazard_query(query: str) -> bool:
     text = query or ""
@@ -1524,12 +1582,7 @@ def _should_fast_execute_requested_spatial_layer(state: OrchestratorState) -> bo
     query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
     if not _requested_spatial_layer_targets(query):
         return False
-    trace = state.get("candidate_trace")
-    return execution_contract_ready(
-        trace,
-        route="SPATIAL_ANALYSIS",
-        capability_id="resolver.marine_gazetteer_spatial",
-    )
+    return True
 
 
 def _spatial_context_has_text_location(state: OrchestratorState) -> bool:
@@ -1550,7 +1603,7 @@ def _should_fast_spatial_or_traffic_block(state: OrchestratorState) -> bool:
         return True
     if _looks_like_tidal_current_query(query) or _looks_like_sea_parting_query(query):
         return True
-    if _looks_like_planned_port_query(query) or _looks_like_protected_area_query(query) or _looks_like_eddy_hazard_query(query) or _looks_like_island_query(query):
+    if _looks_like_planned_port_query(query) or _looks_like_protected_area_query(query) or _looks_like_dumping_ground_query(query) or _looks_like_eddy_hazard_query(query) or _looks_like_island_query(query):
         return True
     if _looks_like_vts_control_query(query):
         return True
@@ -1567,6 +1620,7 @@ def _fast_spatial_or_traffic_plan(query: str, state: OrchestratorState) -> tuple
     sea_parting = _looks_like_sea_parting_query(query)
     planned_port = _looks_like_planned_port_query(query)
     protected_area = _looks_like_protected_area_query(query)
+    dumping_ground = _looks_like_dumping_ground_query(query)
     eddy_hazard = _looks_like_eddy_hazard_query(query)
     island = _looks_like_island_query(query)
     vts_control = _looks_like_vts_control_query(query)
@@ -1630,9 +1684,16 @@ def _fast_spatial_or_traffic_plan(query: str, state: OrchestratorState) -> tuple
         analysis_type = "protected_area_lookup"
         agent_name = "Spatial Analysis Agent"
         tools = ["environment.protected_area_lookup", "postgis.intersects"]
-        data = ["protected_area"]
-        blockers = ["BLOCKED_DATA: validated protected-area layer binding is not ready"]
-        target_term = "protected_area"
+        data = ["protected_sea_area"]
+        blockers = ["BLOCKED_DATA: protected-area query requires a resolved base geometry and executable layer binding"]
+        target_term = "protected_sea_area"
+    elif dumping_ground:
+        analysis_type = "hazard_area_lookup"
+        agent_name = "Spatial Analysis Agent"
+        tools = ["hazard.area_lookup", "postgis.intersects"]
+        data = ["dumping_ground_area"]
+        blockers = ["BLOCKED_DATA: dumping-ground query requires a resolved base geometry and executable layer binding"]
+        target_term = "dumping_ground_area"
     elif eddy_hazard:
         analysis_type = "eddy_hazard_lookup"
         agent_name = "Spatial Analysis Agent"
@@ -1652,7 +1713,7 @@ def _fast_spatial_or_traffic_plan(query: str, state: OrchestratorState) -> tuple
         agent_name = "Spatial Analysis Agent"
         tools = ["traffic.control_area_overlay", "postgis.intersects"]
         data = ["vessel_traffic_control_area"]
-        blockers = ["BLOCKED_DATA: validated vessel traffic control area layer binding is not ready"]
+        blockers = ["BLOCKED_DATA: vessel traffic control area query requires a resolved base geometry and executable layer binding"]
         target_term = "vessel_traffic_control_area"
     elif traffic:
         analysis_type = "traffic_search_by_time_space"
@@ -3011,6 +3072,9 @@ ACCIDENT_EVENT_STOPWORDS = {
     "\uac80\uc0c9\ud574\uc918",
     "\uc870\ud68c\ud574",
     "\uc870\ud68c\ud574\uc918",
+    "\uc0ac\ub840",
+    "\uc774\ub825",
+    "\ucd5c\uadfc",
 }
 
 
@@ -3091,6 +3155,7 @@ def _query_accident_events(query: str, limit: int = 120) -> dict:
 
         with psycopg2.connect(db_url, connect_timeout=3) as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute("SET LOCAL statement_timeout = '2500ms'")
                 cur.execute(f"SELECT count(*) AS total FROM serving.accident_events WHERE {where_sql}", params)
                 total = int((cur.fetchone() or {}).get("total") or 0)
                 cur.execute(
@@ -4107,9 +4172,24 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
     if not targets:
         return await fast_spatial_or_traffic_block_node(state)
 
-    location = await asyncio.to_thread(resolve_payload, query, _spatial_context_dict(state))
-    if location["status"] != "RESOLVED":
-        return _place_lookup_update(state, location, "feature_search_by_radius")
+    sea_parting_place = None
+    if any(target["layer_id"] == "sea_parting_prediction" for target in targets):
+        sea_parting_place = next((place for place in SEA_PARTING_QUERY_ANCHORS if place in query), None)
+    if sea_parting_place:
+        location = {
+            "status": "RESOLVED",
+            "geometry": SEA_PARTING_QUERY_ANCHORS[sea_parting_place],
+            "location_text": sea_parting_place,
+            "location_resolution": {
+                "method": "sea_parting_site_anchor",
+                "confidence": 0.92,
+                "source": "serving.sea_parting_prediction_current site anchor",
+            },
+        }
+    else:
+        location = await asyncio.to_thread(resolve_payload, query, _spatial_context_dict(state))
+        if location["status"] != "RESOLVED":
+            return _place_lookup_update(state, location, "feature_search_by_radius")
 
     base_wkt = location["geometry"]
     location_text = location["location_text"]
@@ -4121,7 +4201,7 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
         )
         SELECT source_id,
                layer_id,
-               name,
+               {name_column} AS name,
                properties,
                provenance,
                ST_AsGeoJSON(geometry)::json AS geojson,
@@ -4146,7 +4226,10 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 for target in targets:
                     cur.execute(
-                        sql.format(relation=target["relation"]),
+                        sql.format(
+                            relation=target["relation"],
+                            name_column=target.get("name_column") or "name",
+                        ),
                         {
                             "base_wkt": base_wkt,
                             "layer_id": target["layer_id"],

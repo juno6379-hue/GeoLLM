@@ -165,7 +165,7 @@ def read_cpg(path: Path) -> str | None:
 
 
 def open_shapefile(path: Path) -> shapefile.Reader:
-    encodings = [read_cpg(path.with_suffix(".cpg")), "utf-8", "cp949", "euc-kr"]
+    encodings = [read_cpg(path.with_suffix(".cpg")), "cp949", "euc-kr", "utf-8"]
     last_error: Exception | None = None
     attempts = [(encoding, "replace") for encoding in [item for item in dict.fromkeys(encodings) if item]]
     for encoding, errors in attempts:
