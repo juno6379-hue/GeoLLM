@@ -269,3 +269,35 @@ A learning-loop change is complete only when:
 - benchmark regression passes
 - at least one smoke query proves the corrected path
 - fine-tuning, if proposed, remains a reviewed candidate and is not automatically executed
+
+## Implemented Runner
+
+The operational runner is:
+
+```bash
+python scripts/run_ragops_learning_loop.py
+```
+
+It performs the six RAGOps/LLMOps stages as executable work:
+
+1. reads failed query sources from `data/feedback` and benchmark failure outputs
+2. labels intent, slot, tool, evidence, output, and performance errors
+3. writes registry/KG/capability improvement candidates for human review
+4. regenerates capability embeddings with `scripts/build_capability_embeddings.py`
+5. upserts capability/document embeddings into pgvector and validates live rows
+6. runs benchmark regression and benchmark failure analysis
+
+It also writes fine-tuning candidate artifacts without launching training:
+
+- `outputs/model_learning/training_dataset_candidate.jsonl`
+- `outputs/model_learning/training_candidate_report.md`
+
+Main reports:
+
+- `outputs/learning/ragops_failed_queries.jsonl`
+- `outputs/learning/ragops_error_labels.jsonl`
+- `outputs/learning/ragops_improvement_candidates.jsonl`
+- `outputs/reports/ragops_learning_loop_report.json`
+- `outputs/reports/ragops_learning_loop_report.md`
+
+The runner is deliberately review-gated. Registry/KG candidates are not automatically promoted, and fine-tuning candidates are emitted as `NEEDS_REVIEW`.
