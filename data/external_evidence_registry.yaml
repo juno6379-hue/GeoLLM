@@ -1,0 +1,110 @@
+version: '0.1'
+status: candidate_review_required
+description: >
+  External evidence gap-fill registry. This registry is used when local ENC/S-101
+  or serving spatial layers do not contain the requested object. It separates
+  authoritative public sources from supplemental OSM/RAG candidates and never
+  promotes external evidence without review.
+policies:
+  local_authoritative_first: true
+  public_authoritative_second: true
+  osm_is_supplemental_only: true
+  rag_is_supplemental_only: true
+  auto_promotion_allowed: false
+  geometry_review_required: true
+source_tiers:
+  local_authoritative_registry:
+    authority_level: local_authoritative
+    examples:
+      - data/spatial_layer_registry.yaml
+      - data/place_geometry_registry.yaml
+      - serving.protected_area_current
+      - projection.s101_feature_current
+  public_authoritative:
+    authority_level: public_authoritative
+    examples:
+      - 국가유산포털
+      - 국가유산청
+      - 해양수산부
+      - 환경부
+  osm_supplemental:
+    authority_level: supplemental
+    examples:
+      - OpenStreetMap
+      - Nominatim
+      - Overpass
+  rag_supplemental:
+    authority_level: supplemental
+    examples:
+      - web_rag_candidate
+      - document_candidate
+gap_domains:
+  natural_heritage_protected_area:
+    label: 천연보호구역/천연기념물 보호구역
+    routes:
+      - SPATIAL_ANALYSIS
+      - PLACE_LOOKUP
+      - EXTERNAL_EVIDENCE_GAP_FILL
+      - DATASET_PROVENANCE
+    query_signals:
+      - 천연보호구역
+      - 천연 보호구역
+      - 천연기념물
+      - 국가유산
+      - 문화재
+      - 자연유산
+      - natural heritage
+      - natural monument
+      - protected area
+    local_layers_checked:
+      - protected_sea_area
+      - GBENC_S101_feature
+      - hazard_area_current
+    authoritative_public_sources:
+      - source_id: national_heritage_portal
+        source_name: 국가유산포털
+        authority: 국가유산청
+        source_url: https://www.heritage.go.kr/
+        use_when:
+          - local ENC/S-101 has no matching natural heritage object
+          - local protected_area layer has no matching feature
+    osm_candidate_rules:
+      - source_id: osm_overpass_protected_area
+        source_name: OpenStreetMap Overpass
+        authority: OpenStreetMap contributors
+        tags:
+          - boundary=protected_area
+          - protect_class=*
+          - heritage=*
+          - natural=*
+        use_as_authority: false
+seed_candidates:
+  - candidate_id: extgap.dokdo_natural_heritage_protected_area
+    domain: natural_heritage_protected_area
+    name: 독도 천연보호구역
+    category: 천연기념물/천연보호구역
+    anchor_place_id: dokdo
+    source_tier: public_authoritative
+    authority_level: public_authoritative
+    source_name: 국가유산포털
+    authority: 국가유산청
+    source_url: https://www.heritage.go.kr/
+    designation: 천연기념물
+    designated_on: '1982-11-16'
+    area_m2: 187554
+    location_text: 경상북도 울릉군 울릉읍 독도리 독도 일원
+    geometry_strategy: point_fallback_from_place_registry
+    geometry_status: needs_official_polygon
+    promotion_status: NEEDS_GEOMETRY_REVIEW
+    review_required: true
+places:
+  dokdo:
+    canonical_name: 독도
+    aliases:
+      - 독도
+      - 독도 부근
+      - 독도 주변
+      - Dokdo
+      - Liancourt Rocks
+    geometry_wkt: POINT(131.864444 37.241389)
+    srid: 4326

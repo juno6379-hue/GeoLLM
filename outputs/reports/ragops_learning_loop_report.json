@@ -1,34 +1,31 @@
 {
   "status": "OK",
-  "generated_at": "2026-09-18T01:43:42.524038+00:00",
-  "failed_queries_collected": 72,
-  "labelled_issues": 72,
+  "generated_at": "2026-09-18T03:34:31.918723+00:00",
+  "failed_queries_collected": 78,
+  "labelled_issues": 78,
   "improvement_candidates": 9,
-  "training_candidates": 7,
+  "training_candidates": 8,
   "rejected_training_candidates": 1,
   "label_counts": {
-    "execution.readiness": 16,
-    "evidence.quality_metrics_missing": 22,
-    "kg.low_similarity": 13,
-    "evidence.low_or_missing": 12,
+    "execution.readiness": 18,
+    "evidence.quality_metrics_missing": 23,
+    "kg.low_similarity": 14,
+    "evidence.low_or_missing": 13,
     "normalization.encoding": 1,
     "quality.low_estimated_accuracy": 2,
-    "slot.spatial_relation_or_anchor": 1,
+    "slot.spatial_relation_or_anchor": 2,
     "output.map_table_evidence_consistency": 1,
     "intent.routing": 4
   },
   "stage_counts": {
-    "3.registry_capability_kg_improvement": 55,
-    "4.embedding_regeneration": 12,
-    "2.error_labeling_and_slot_fix": 2,
+    "3.registry_capability_kg_improvement": 59,
+    "4.embedding_regeneration": 13,
+    "2.error_labeling_and_slot_fix": 3,
     "6.benchmark_regression": 3
   },
   "command_status": {
-    "capability_embedding_regeneration_and_upsert": "OK",
     "document_chunk_pgvector_upsert": "OK",
-    "dataset_embedding_live_validation": "OK",
-    "benchmark_regression": "OK",
-    "benchmark_failure_analysis": "OK"
+    "dataset_embedding_live_validation": "OK"
   },
   "outputs": {
     "failed_queries": "outputs/learning/ragops_failed_queries.jsonl",

@@ -286,6 +286,38 @@ capabilities:
   - standard_term
   - evidence_domain_standard_or_legal
   - not_dataset_provenance
+- capability_id: resolver.external_evidence_gap_fill
+  object_type: resolver_description
+  label: External Evidence Gap-Fill Resolver
+  routes:
+  - EXTERNAL_EVIDENCE_GAP_FILL
+  - SPATIAL_ANALYSIS
+  - PLACE_LOOKUP
+  - DATASET_PROVENANCE
+  role: primary_or_supporting
+  description: 'When local ENC/S-101 or serving spatial layers do not contain the requested object, create a conservative gap-fill plan: local authoritative registry first, public authoritative source candidates second, OSM/RAG supplemental candidates third, then validation and review-gated promotion.
+
+    '
+  input_slots:
+  - query_text
+  - gap_domain
+  - anchor_place
+  - radius_m
+  output_slots:
+  - local_gap_report
+  - external_candidates
+  - evidence_candidates
+  - promotion_candidates
+  authority_ref: data/external_evidence_registry.yaml
+  registry_ref: outputs/external_evidence/gap_fill_candidates.jsonl
+  deterministic_hints:
+  - external_evidence_gap
+  - no_local_s101_match
+  - public_authoritative_source
+  - natural_heritage_protected_area
+  - osm_supplemental_only
+  - promotion_review_required
+  - protected_area_gap_fill
 - capability_id: agent.spatial_analysis
   object_type: agent_description
   label: Spatial Analysis Agent
