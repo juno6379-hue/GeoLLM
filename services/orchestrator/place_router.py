@@ -35,6 +35,24 @@ LOCAL_PLACE_REGISTRY: dict[str, dict[str, Any]] = {
         "authority_level": "local_curated",
         "confidence": 0.88,
     },
+    "해운대 해수욕장": {
+        "label": "해운대 해수욕장",
+        "geometry": "POINT(129.1604 35.1587)",
+        "place_id": "local-poi-place:haeundae-beach",
+        "place_type": "beach",
+        "source_ref": "data/place_geometry_registry.yaml#curated_poi_fallback",
+        "authority_level": "local_curated",
+        "confidence": 0.9,
+    },
+    "해운대해수욕장": {
+        "label": "해운대 해수욕장",
+        "geometry": "POINT(129.1604 35.1587)",
+        "place_id": "local-poi-place:haeundae-beach",
+        "place_type": "beach",
+        "source_ref": "data/place_geometry_registry.yaml#curated_poi_fallback",
+        "authority_level": "local_curated",
+        "confidence": 0.9,
+    },
     "독도": {
         "label": "독도",
         "geometry": "POINT(131.8644 37.2411)",
@@ -85,7 +103,7 @@ def place_navigation_target(query: str) -> str:
     patterns = [
         r"^(?P<place>.+?)(?:으로|로)?\s*이동(?:해줘|해|하기)?[.!?]?$",
         r"^(?P<place>.+?)(?:으로|로)?\s*가줘[.!?]?$",
-        r"^(?P<place>.+?)(?:을|를)?\s*보여줘[.!?]?$",
+        r"^(?P<place>.+?)(?:을|를)?\s*(?:찾아줘|보여줘|표시해줘)[.!?]?$",
     ]
     for pattern in patterns:
         match = re.match(pattern, text)

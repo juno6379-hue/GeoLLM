@@ -120,7 +120,7 @@ PRESET_QUERIES: list[dict[str, Any]] = [
     {"query": "해운대구로이동", "category": "normalizer_spacing", "expected_status": ["COMPLETED", "NEEDS_CLARIFICATION"], "max_elapsed_ms": 10000},
     {"query": "부산항입구위험객체", "category": "normalizer_spacing_clarify", "expected_status": ["NEEDS_CLARIFICATION", "BLOCKED", "COMPLETED"], "max_elapsed_ms": 30000},
     {"query": "Dokdo nearby marine gazetteer", "category": "mixed_language", "expected_status": ["COMPLETED", "BLOCKED", "NEEDS_CLARIFICATION"], "max_elapsed_ms": 30000},
-    {"query": "Haeundae-gu move map", "category": "mixed_language", "expected_status": ["COMPLETED", "BLOCKED", "NEEDS_CLARIFICATION"], "max_elapsed_ms": 30000},
+    {"query": "해운대 해수욕장을 찾아줘", "category": "place_fast_path", "expected_status": ["COMPLETED"], "max_elapsed_ms": 6000, "expected_nodes": ["instant_place_lookup"], "forbidden_nodes": ["parse_intent"]},
     {"query": "부산항 obstruction 3km", "category": "mixed_language", "expected_status": ["COMPLETED", "BLOCKED", "NEEDS_CLARIFICATION"], "max_elapsed_ms": 30000},
     {"query": "내일 인천 앞바다 파고 예보를 알려줘", "category": "unsupported_weather_or_external", "expected_status": ["COMPLETED", "BLOCKED", "NEEDS_CLARIFICATION"], "max_elapsed_ms": 30000},
     {"query": "9월 인천 대조기 일정을 알려줘", "category": "unsupported_tide_or_external", "expected_status": ["COMPLETED", "BLOCKED", "NEEDS_CLARIFICATION"], "max_elapsed_ms": 30000},
