@@ -13,7 +13,7 @@ import uuid
 import yaml
 
 from shared.schemas.agent import AgentStatus
-from services.orchestrator.fast_path_policy import is_instant_place_navigation_allowed
+from services.orchestrator.fast_path_policy import instant_place_navigation_decision, is_instant_place_navigation_allowed
 from services.orchestrator.graph import orchestrator_graph
 from services.orchestrator.place_router import place_navigation_target, resolve_payload
 from services.orchestrator.state import OrchestratorState
@@ -155,6 +155,7 @@ def _instant_place_final(task_id: str, query: str, payload: dict) -> dict:
         "candidate_contexts": ["place_lookup", "map_navigation"],
         "matched_rules": [f"지도 이동 명령 정규화: '{query}' -> '{target}'"],
     }
+    fast_path_decision = instant_place_navigation_decision(query)
     debug_state = {
         "task_id": task_id,
         "query": query,
@@ -164,6 +165,7 @@ def _instant_place_final(task_id: str, query: str, payload: dict) -> dict:
         "task_plan": route_plan,
         "query_execution_context": qec,
         "extracted_slots": slots,
+        "fast_path_policy": {"instant_place_navigation": fast_path_decision},
         "final_dict": {"structured_result": payload, "orchestrator_v2": {"route_plan": route_plan, "query_execution_context": qec}},
     }
     debug_trace = build_debug_trace(debug_state)
@@ -215,6 +217,7 @@ def _instant_place_final(task_id: str, query: str, payload: dict) -> dict:
             "query_execution_context": qec,
             "embedding_independent": True,
             "fast_path": "instant_place_navigation",
+            "fast_path_policy": {"instant_place_navigation": fast_path_decision},
         },
     }
 
@@ -987,6 +990,12 @@ def build_debug_trace(state_vals: dict) -> dict:
     qec_dict = _as_dict(state_vals.get("query_execution_context")) or final_orch.get("query_execution_context") or {}
     qec_slots = qec_dict.get("slots") if isinstance(qec_dict.get("slots"), dict) else {}
     state_slots = state_vals.get("extracted_slots") if isinstance(state_vals.get("extracted_slots"), dict) else {}
+    candidate_trace = _to_jsonable(state_vals.get("candidate_trace")) or final_orch.get("candidate_trace") or {}
+    if not isinstance(candidate_trace, dict):
+        candidate_trace = {}
+    fast_path_policy = _to_jsonable(state_vals.get("fast_path_policy")) or final_orch.get("fast_path_policy") or {}
+    if not isinstance(fast_path_policy, dict):
+        fast_path_policy = {}
 
     # 2. Rule-based Normalizer Result (무조건 존재함)
     norm_res = state_vals.get("norm_result", {})
@@ -1105,6 +1114,17 @@ def build_debug_trace(state_vals: dict) -> dict:
     }
     mapping_result["KG"] = state_vals.get("graph_context", state_vals.get("graph_rag_context", {}))
     mapping_result["Data Lake"] = state_vals.get("data_discovery_result", {})
+    router_trace = {
+        "semantic_prior": candidate_trace.get("semantic_prior"),
+        "fast_path_policy": fast_path_policy,
+        "route_candidates": (candidate_trace.get("route_candidates") or [])[:5],
+        "capability_candidates": (candidate_trace.get("capability_candidates") or [])[:8],
+        "verified_candidates": (candidate_trace.get("verified_candidates") or [])[:8],
+        "execution_contract": candidate_trace.get("execution_contract") or final_orch.get("execution_contract") or {},
+        "ollama_policy": candidate_trace.get("ollama_policy") or {},
+        "retrieval_mode": candidate_trace.get("mode"),
+        "contract": candidate_trace.get("contract"),
+    }
 
     structured_res = agent_result.structured_result if agent_result and hasattr(agent_result, "structured_result") and agent_result.structured_result else {}
     query_result_summary = {
@@ -1136,7 +1156,7 @@ def build_debug_trace(state_vals: dict) -> dict:
         "provenance": agent_result.provenance if agent_result else {}
     }
 
-    return {
+    debug_trace = {
         "1. 사용자 질의": state_vals.get("query"),
         "2. 질의 정규화": norm_dict,
         "3. 오케스트레이터 의도분석": intent_dict,
@@ -1144,6 +1164,16 @@ def build_debug_trace(state_vals: dict) -> dict:
         "4. 작업계획 수립": task_plan_val.model_dump() if hasattr(task_plan_val, "model_dump") else task_plan_val,
         "5. 공간쿼리 실행": spatial_exec
     }
+    debug_trace.update({
+        "user_query": state_vals.get("query"),
+        "normalization": norm_dict,
+        "normalization_mapping": mapping_result,
+        "orchestrator_intent": intent_dict,
+        "task_plan": task_plan_val.model_dump() if hasattr(task_plan_val, "model_dump") else task_plan_val,
+        "spatial_execution": spatial_exec,
+        "router_trace": router_trace,
+    })
+    return debug_trace
 
 @router.get("/tasks/{task_id}")
 async def get_task_status(task_id: str):
@@ -1151,6 +1181,24 @@ async def get_task_status(task_id: str):
         raise HTTPException(status_code=404, detail="Task not found")
 
     task_data = TASK_STORE.get(task_id, {})
+    stored_final = task_data.get("final_result") if isinstance(task_data.get("final_result"), dict) else {}
+    if task_data.get("instant_fast_path") or (stored_final.get("orchestrator_v2") or {}).get("fast_path") == "instant_place_navigation":
+        return {
+            "task_id": task_id,
+            "status": task_data.get("status"),
+            "query": task_data.get("query"),
+            "error_message": task_data.get("error_message"),
+            "history": task_data.get("state_history", []),
+            "parsed_intent": None,
+            "agent_result": task_data.get("agent_result"),
+            "final_result": stored_final,
+            "normalization_debug": None,
+            "normalized_query": ((stored_final.get("orchestrator_v2") or {}).get("query_execution_context") or {}).get("normalized_query"),
+            "task_plan": (stored_final.get("orchestrator_v2") or {}).get("route_plan"),
+            "debug_trace": stored_final.get("debug_trace"),
+            "persisted": True,
+            "updated_at": task_data.get("updated_at"),
+        }
     # A test client (or a caller immediately after POST) can observe the
     # durable accepted state before a workflow checkpoint exists.
     if task_data.get("status") == AgentStatus.RECEIVED:
@@ -1164,6 +1212,7 @@ async def get_task_status(task_id: str):
             "agent_result": task_data.get("agent_result"),
             "final_result": task_data.get("final_result"),
             "normalization_debug": None,
+            "debug_trace": stored_final.get("debug_trace"),
             "persisted": True,
             "updated_at": task_data.get("updated_at"),
         }
@@ -1173,6 +1222,7 @@ async def get_task_status(task_id: str):
     
     if not state_snapshot or not state_snapshot.values:
         task_data = TASK_STORE.get(task_id, {})
+        stored_final = task_data.get("final_result") if isinstance(task_data.get("final_result"), dict) else {}
         return {
             "task_id": task_id, 
             "status": task_data.get("status", "PENDING_OR_NOT_STARTED"),
@@ -1183,6 +1233,7 @@ async def get_task_status(task_id: str):
             "agent_result": task_data.get("agent_result"),
             "final_result": task_data.get("final_result"),
             "normalization_debug": None,
+            "debug_trace": stored_final.get("debug_trace"),
             "persisted": True,
             "updated_at": task_data.get("updated_at")
         }

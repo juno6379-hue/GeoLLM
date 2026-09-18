@@ -585,6 +585,10 @@
                             <div class="trace-data-box" style="padding: 8px; background: #f8fafc; border: 1px dashed #cbd5e1;">
                                 <pre style="margin: 0; font-size: 11px; line-height: 1.4; color: #334155; font-family: monospace; white-space: pre-wrap;" id="col2-final-summary">대기 중...</pre>
                             </div>
+                            <div style="font-size: 11px; color: #64748b; margin: 10px 0 4px; font-weight: 600;">Router/Semantic Prior Trace</div>
+                            <div class="trace-data-box" style="padding: 8px; background: #f8fafc; border: 1px dashed #cbd5e1;">
+                                <pre style="margin: 0; font-size: 11px; line-height: 1.4; color: #334155; font-family: monospace; white-space: pre-wrap;" id="col2-router-summary">Waiting...</pre>
+                            </div>
                         </div>
                         <div class="trace-debug-section">
                             <div class="trace-debug-title">디버그 로그 (Rule Matches & Normalization)</div>
@@ -641,6 +645,18 @@
                                 <div class="trace-value-row">
                                     <span class="trace-value-label">✓ Route Plan Status</span>
                                     <span class="trace-value-data" id="col3-status">N/A</span>
+                                </div>
+                                <div class="trace-value-row">
+                                    <span class="trace-value-label">Fast Path Gate</span>
+                                    <span class="trace-value-data" id="col3-fast-policy">N/A</span>
+                                </div>
+                                <div class="trace-value-row">
+                                    <span class="trace-value-label">Top Candidates</span>
+                                    <span class="trace-value-data" id="col3-capabilities">N/A</span>
+                                </div>
+                                <div class="trace-value-row">
+                                    <span class="trace-value-label">Execution Contract</span>
+                                    <span class="trace-value-data" id="col3-contract">N/A</span>
                                 </div>
                             </div>
                         </div>
@@ -712,7 +728,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4leaflet/1.0.2/proj4leaflet.min.js"></script>
-    <script src="/query-summary.js?v=20260918-generic-summary"></script>
+    <script src="/query-summary.js?v=20260918-router-trace"></script>
     <script src="/radius-results.js?v=20260917-accident-points-v2"></script>
     
     <script>
@@ -1074,7 +1090,18 @@
                     // 1 & 2. Query
                     if (data.debug_trace) {
                         let dt = data.debug_trace;
-                        document.getElementById('col1-query').textContent = dt["1. 사용자 질의"] || "N/A";
+                        const stableNorm = dt.normalization || dt["2. 질의 정규화"] || {};
+                        const stableMapping = dt.normalization_mapping || dt["질의_정규화_매핑_결과"] || {};
+                        const stableIntent = dt.orchestrator_intent || dt["3. 오케스트레이터 의도분석"] || {};
+                        const stablePlan = dt.task_plan || dt["4. 작업계획 수립"] || {};
+                        const routerTrace = dt.router_trace || {};
+                        const compactJson = value => JSON.stringify(value || {}, null, 2);
+                        const topCandidateNames = (routerTrace.capability_candidates || [])
+                            .slice(0, 5)
+                            .map(row => row.candidate_id || row.id || row.label)
+                            .filter(Boolean);
+
+                        document.getElementById('col1-query').textContent = dt.user_query || dt["1. 사용자 질의"] || "N/A";
                         document.getElementById('col1-traceid').textContent = data.task_id || "N/A";
                         
                         let norm = dt["2. 질의 정규화"] || {};
@@ -1107,8 +1134,19 @@
                         } else {
                             document.getElementById('col2-final-summary').textContent = "매핑 결과 없음";
                         }
+                        if (dt.normalization_mapping) {
+                            document.getElementById('col2-final-summary').textContent = compactJson(stableMapping);
+                        }
+                        document.getElementById('col2-router-summary').textContent = compactJson({
+                            semantic_prior: routerTrace.semantic_prior || null,
+                            retrieval_mode: routerTrace.retrieval_mode || null,
+                            ollama_policy: routerTrace.ollama_policy || null,
+                            top_routes: (routerTrace.route_candidates || []).slice(0, 3),
+                            top_capabilities: (routerTrace.capability_candidates || []).slice(0, 5),
+                            fast_path_policy: routerTrace.fast_path_policy || null
+                        });
 
-                        let intent = dt["3. 오케스트레이터 의도분석"] || {};
+                        let intent = stableIntent || {};
                         document.getElementById('col3-intent').textContent = intent["Intent"] || "N/A";
                         document.getElementById('col3-context').textContent = intent["Context"] || "N/A";
                         document.getElementById('col3-analysis').textContent = intent["Analysis Type"] || "N/A";
@@ -1127,6 +1165,15 @@
                         
                         document.getElementById('col3-ready').textContent = intent["Execution Ready"] !== undefined ? intent["Execution Ready"].toString() : "N/A";
                         document.getElementById('col3-status').textContent = intent["Route Plan Status"] || "N/A";
+                        const instantPolicy = (routerTrace.fast_path_policy || {}).instant_place_navigation || {};
+                        const contract = routerTrace.execution_contract || {};
+                        document.getElementById('col3-fast-policy').textContent = instantPolicy.allowed !== undefined
+                            ? `${instantPolicy.allowed ? "ALLOW" : "PASS_TO_ROUTER"} (${instantPolicy.reason || instantPolicy.matched_signal || "-"})`
+                            : "N/A";
+                        document.getElementById('col3-capabilities').textContent = topCandidateNames.length ? topCandidateNames.join(", ") : "N/A";
+                        document.getElementById('col3-contract').textContent = contract.status
+                            ? `${contract.status}${contract.reason ? `: ${contract.reason}` : ""}`
+                            : (contract.readiness || "N/A");
                         
                         let col3Debug = "";
                         if (intent["Execution Ready"] === false || data.status === 'NEEDS_CLARIFICATION') {
@@ -1134,14 +1181,23 @@
                         } else {
                             col3Debug += `<li>✓ 실행 가능 (상태: ${intent["Route Plan Status"]})</li>`;
                         }
+                        if (instantPolicy.reason || instantPolicy.matched_signal) {
+                            col3Debug += `<li>Fast path gate: ${escapeHtml(instantPolicy.reason || instantPolicy.matched_signal)}</li>`;
+                        }
+                        if (topCandidateNames.length) {
+                            col3Debug += `<li>Capability top-k: ${escapeHtml(topCandidateNames.join(", "))}</li>`;
+                        }
+                        if (contract.status || contract.reason) {
+                            col3Debug += `<li>Execution contract: ${escapeHtml(contract.status || contract.reason)}</li>`;
+                        }
                         
                         document.getElementById('col3-debug-list').innerHTML = col3Debug || "<li>대기 중...</li>";
                         
                         // 4. Plan
                         let planText = "Waiting for plan...";
                         let col4Debug = `<li>대기 중...</li>`;
-                        if (dt["4. 작업계획 수립"]) {
-                            let p = dt["4. 작업계획 수립"];
+                        if (stablePlan && Object.keys(stablePlan).length) {
+                            let p = stablePlan;
                             planText = JSON.stringify(p, null, 2);
                             col4Debug = `<li>✓ Task ID: ${p.task_id}</li>
                                          <li>✓ Intent: ${p.intent}</li>
@@ -1260,6 +1316,7 @@
             document.getElementById('col1-traceid').textContent = "-";
             document.getElementById('col2-slots').textContent = "-";
             document.getElementById('col2-final-summary').textContent = "대기 중...";
+            document.getElementById('col2-router-summary').textContent = "Waiting...";
             document.getElementById('col2-debug-list').innerHTML = "<li>대기 중...</li>";
             document.getElementById('col3-intent').textContent = "-";
             document.getElementById('col3-context').textContent = "-";
@@ -1271,6 +1328,9 @@
             document.getElementById('col3-data').textContent = "-";
             document.getElementById('col3-ready').textContent = "-";
             document.getElementById('col3-status').textContent = "-";
+            document.getElementById('col3-fast-policy').textContent = "-";
+            document.getElementById('col3-capabilities').textContent = "-";
+            document.getElementById('col3-contract').textContent = "-";
             document.getElementById('col3-debug-list').innerHTML = "<li>대기 중...</li>";
             document.getElementById('col4-plan').textContent = "Waiting for plan...";
             document.getElementById('col4-debug-list').innerHTML = "<li>대기 중...</li>";

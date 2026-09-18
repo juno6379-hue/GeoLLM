@@ -74,7 +74,10 @@
 
     function renderGeneric(result, originalQuery, geojsonData) {
         const structured = result?.structured_result || {};
-        const route = result?.orchestrator_v2?.route_plan || {};
+        const orch = result?.orchestrator_v2 || {};
+        const route = orch.route_plan || {};
+        const trace = orch.candidate_trace || {};
+        const contract = orch.execution_contract || trace.execution_contract || {};
         const status = result?.status || structured.status || "UNKNOWN";
         const query = structured.original_query || originalQuery || node("querySummaryQuery").textContent;
         const summary = result?.answer_text || result?.summary || structured.summary || "";
@@ -99,6 +102,22 @@
         if (q.kg_similarity !== undefined) fact("KG 유사도", percent(q.kg_similarity));
         if (q.evidence_similarity !== undefined) fact("근거 유사도", percent(q.evidence_similarity));
         if (q.estimated_accuracy !== undefined) fact("추정 정확도", percent(q.estimated_accuracy));
+        if (trace.semantic_prior?.place_type_candidates?.length) {
+            fact("Semantic Prior", trace.semantic_prior.place_type_candidates
+                .slice(0, 3)
+                .map(item => `${item.type}:${percent(item.confidence)}`)
+                .join(", "));
+        }
+        if (trace.capability_candidates?.length) {
+            fact("Capability top-k", trace.capability_candidates
+                .slice(0, 3)
+                .map(item => item.candidate_id || item.id || item.label)
+                .filter(Boolean)
+                .join(", "));
+        }
+        if (contract.status || contract.readiness || contract.reason) {
+            fact("Execution Contract", `${contract.status || contract.readiness || "-"}${contract.reason ? `: ${contract.reason}` : ""}`);
+        }
         if (structured.location_resolution?.method) fact("위치 해석", structured.location_resolution.method);
         if (structured.location_resolution?.source_ref || features[0]?.properties?.source_ref) {
             fact("근거", structured.location_resolution?.source_ref || features[0].properties.source_ref);
