@@ -1,11 +1,12 @@
 # RAGOps/LLMOps Learning Loop Report
 
-- generated_at: `2026-09-18T01:07:27.598252+00:00`
+- generated_at: `2026-09-18T01:43:42.524038+00:00`
 - status: `OK`
 - failed_queries_collected: `72`
 - labelled_issues: `72`
 - improvement_candidates: `9`
-- fine_tuning_candidates: `8`
+- fine_tuning_candidates: `7`
+- rejected_fine_tuning_candidates: `1`
 
 ## Stage Counts
 
@@ -36,6 +37,6 @@
 
 ## Fine-Tuning Gate
 
-Fine-tuning candidates were generated only as `NEEDS_REVIEW` records.
+Fine-tuning candidates were generated only as `REVIEW_ELIGIBLE` records.
 No model training job is executed by this loop.
 Authority-sensitive facts must remain in RAG/KG/Registry/serving tables.

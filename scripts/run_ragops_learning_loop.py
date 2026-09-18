@@ -27,6 +27,7 @@ LEARNING = OUTPUTS / "learning"
 REPORTS = OUTPUTS / "reports"
 MODEL_LEARNING = OUTPUTS / "model_learning"
 RAG = OUTPUTS / "rag"
+REJECTED_TRAINING_CANDIDATES: list[dict[str, Any]] = []
 
 
 def utc_now() -> str:
@@ -239,6 +240,40 @@ def build_improvement_candidates(labels: list[dict[str, Any]]) -> list[dict[str,
         key = (row.get("recommended_stage") or "unknown", row.get("primary_label") or "unknown")
         grouped.setdefault(key, []).append(row)
 
+    applied_controls = {
+        "evidence.quality_metrics_missing": [
+            "fast_path_default_quality_metrics",
+            "authoritative_no_evidence_quality_metrics",
+        ],
+        "execution.readiness": [
+            "blocked_route_not_counted_as_readiness_error",
+            "unsafe_execution_ready_without_bindings_detection",
+        ],
+        "kg.low_similarity": [
+            "capability_registry_hints_expanded",
+            "capability_embeddings_regenerated",
+        ],
+        "evidence.low_or_missing": [
+            "dataset_evidence_domain_precedence",
+            "document_chunk_pgvector_upsert_validation",
+        ],
+        "intent.routing": [
+            "registry_driven_hints_for_hazard_gazetteer_accident_routes",
+            "capability_embeddings_regenerated",
+        ],
+        "normalization.encoding": [
+            "raw_and_normalized_query_preservation_candidate",
+        ],
+        "slot.spatial_relation_or_anchor": [
+            "spatial_relation_not_concept_registry_hint",
+        ],
+        "quality.low_estimated_accuracy": [
+            "benchmark_regression_required",
+        ],
+        "output.map_table_evidence_consistency": [
+            "canonical_object_id_regression_required",
+        ],
+    }
     candidates: list[dict[str, Any]] = []
     for index, ((stage, label), rows) in enumerate(sorted(grouped.items()), start=1):
         queries = [row.get("query") for row in rows if row.get("query")]
@@ -252,7 +287,7 @@ def build_improvement_candidates(labels: list[dict[str, Any]]) -> list[dict[str,
             candidate_type = "normalizer_or_slot_candidate"
         candidates.append({
             "candidate_id": f"RAGOPS-CAND-{index:04d}",
-            "status": "PROPOSED",
+            "status": "APPLIED_PENDING_FRESH_LOG_VALIDATION" if applied_controls.get(label) else "PROPOSED",
             "candidate_type": candidate_type,
             "stage": stage,
             "primary_label": label,
@@ -265,6 +300,7 @@ def build_improvement_candidates(labels: list[dict[str, Any]]) -> list[dict[str,
                 for row in rows
                 for treatment in row.get("recommended_treatments") or []
             )),
+            "applied_controls": applied_controls.get(label, []),
             "authority_gate": "human_review_required_before_registry_or_kg_promotion",
             "created_at": utc_now(),
         })
@@ -296,14 +332,25 @@ def build_training_candidates(labels: list[dict[str, Any]]) -> list[dict[str, An
             continue
         text = json.dumps(row, ensure_ascii=False, default=str)
         authority_sensitive = _contains_any(text, blocked_terms)
+        if authority_sensitive:
+            REJECTED_TRAINING_CANDIDATES.append({
+                "candidate_id": f"FT-REJECT-{len(REJECTED_TRAINING_CANDIDATES) + 1:04d}",
+                "status": "REJECTED_AUTHORITY_SENSITIVE",
+                "source_issue_id": row.get("issue_id"),
+                "query": query,
+                "primary_label": row.get("primary_label"),
+                "reason": "Authority-sensitive facts must be fixed in RAG/KG/Registry/serving tables, not model weights.",
+                "created_at": utc_now(),
+            })
+            continue
         rows.append({
             "candidate_id": f"FT-CAND-{len(rows) + 1:04d}",
-            "status": "NEEDS_REVIEW",
+            "status": "REVIEW_ELIGIBLE",
             "source_issue_id": row.get("issue_id"),
             "query": query,
             "primary_label": row.get("primary_label"),
             "allowed_use": "linguistic_intent_slot_style_only",
-            "authority_sensitive": authority_sensitive,
+            "authority_sensitive": False,
             "exclude_from_training_until_reviewed": True,
             "reason": (
                 "Candidate may improve linguistic routing/slot behavior. "
@@ -372,6 +419,7 @@ def write_reports(
         "labelled_issues": len(labels),
         "improvement_candidates": len(improvement_candidates),
         "training_candidates": len(training_candidates),
+        "rejected_training_candidates": len(REJECTED_TRAINING_CANDIDATES),
         "label_counts": dict(label_counts),
         "stage_counts": dict(stage_counts),
         "command_status": command_status,
@@ -380,6 +428,7 @@ def write_reports(
             "error_labels": "outputs/learning/ragops_error_labels.jsonl",
             "improvement_candidates": "outputs/learning/ragops_improvement_candidates.jsonl",
             "training_candidates": "outputs/model_learning/training_dataset_candidate.jsonl",
+            "rejected_training_candidates": "outputs/model_learning/training_dataset_rejected.jsonl",
             "training_report": "outputs/model_learning/training_candidate_report.md",
             "report_json": "outputs/reports/ragops_learning_loop_report.json",
             "report_md": "outputs/reports/ragops_learning_loop_report.md",
@@ -396,6 +445,7 @@ def write_reports(
         f"- labelled_issues: `{len(labels)}`",
         f"- improvement_candidates: `{len(improvement_candidates)}`",
         f"- fine_tuning_candidates: `{len(training_candidates)}`",
+        f"- rejected_fine_tuning_candidates: `{len(REJECTED_TRAINING_CANDIDATES)}`",
         "",
         "## Stage Counts",
         "",
@@ -412,7 +462,7 @@ def write_reports(
         "",
         "## Fine-Tuning Gate",
         "",
-        "Fine-tuning candidates were generated only as `NEEDS_REVIEW` records.",
+        "Fine-tuning candidates were generated only as `REVIEW_ELIGIBLE` records.",
         "No model training job is executed by this loop.",
         "Authority-sensitive facts must remain in RAG/KG/Registry/serving tables.",
     ])
@@ -423,7 +473,8 @@ def write_reports(
         "",
         f"- generated_at: `{report['generated_at']}`",
         f"- candidate_count: `{len(training_candidates)}`",
-        "- status: `NEEDS_REVIEW`",
+        "- status: `REVIEW_ELIGIBLE`",
+        f"- rejected_authority_sensitive_candidates: `{len(REJECTED_TRAINING_CANDIDATES)}`",
         "",
         "## Policy",
         "",
@@ -437,6 +488,13 @@ def write_reports(
     ft_counts = Counter(row.get("primary_label") for row in training_candidates)
     for label, count in ft_counts.most_common():
         training_lines.append(f"- `{label}`: `{count}`")
+    training_lines.extend(["", "## Rejected Authority-Sensitive Candidates", ""])
+    rejected_counts = Counter(row.get("primary_label") for row in REJECTED_TRAINING_CANDIDATES)
+    if rejected_counts:
+        for label, count in rejected_counts.most_common():
+            training_lines.append(f"- `{label}`: `{count}`")
+    else:
+        training_lines.append("- none")
     (MODEL_LEARNING / "training_candidate_report.md").parent.mkdir(parents=True, exist_ok=True)
     (MODEL_LEARNING / "training_candidate_report.md").write_text("\n".join(training_lines) + "\n", encoding="utf-8")
     return report
@@ -465,6 +523,7 @@ def main() -> int:
     write_jsonl(LEARNING / "ragops_error_labels.jsonl", labels)
     write_jsonl(LEARNING / "ragops_improvement_candidates.jsonl", improvement_candidates)
     write_jsonl(MODEL_LEARNING / "training_dataset_candidate.jsonl", training_candidates)
+    write_jsonl(MODEL_LEARNING / "training_dataset_rejected.jsonl", REJECTED_TRAINING_CANDIDATES)
 
     command_results: list[dict[str, Any]] = []
     if not args.skip_embeddings:
@@ -513,4 +572,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

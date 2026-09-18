@@ -1,8 +1,9 @@
 # Fine-Tuning Candidate Report
 
-- generated_at: `2026-09-18T01:07:27.598252+00:00`
-- candidate_count: `8`
-- status: `NEEDS_REVIEW`
+- generated_at: `2026-09-18T01:43:42.524038+00:00`
+- candidate_count: `7`
+- status: `REVIEW_ELIGIBLE`
+- rejected_authority_sensitive_candidates: `1`
 
 ## Policy
 
@@ -13,6 +14,10 @@
 ## Candidates By Label
 
 - `intent.routing`: `4`
-- `quality.low_estimated_accuracy`: `2`
 - `normalization.encoding`: `1`
+- `quality.low_estimated_accuracy`: `1`
 - `slot.spatial_relation_or_anchor`: `1`
+
+## Rejected Authority-Sensitive Candidates
+
+- `quality.low_estimated_accuracy`: `1`

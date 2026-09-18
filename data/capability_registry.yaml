@@ -140,6 +140,11 @@ capabilities:
   - provenance_request
   - dataset_term
   - ingestion_status
+  - evidence_domain_dataset
+  - knowledge_document_chunks
+  - gazetteer_provenance
+  - source_file_basis
+  - embedding_coverage
 - capability_id: resolver.marine_gazetteer_spatial
   object_type: resolver_description
   label: Marine Gazetteer Spatial Resolver
@@ -167,6 +172,10 @@ capabilities:
   - place_name
   - nearby_search
   - marine_gazetteer_target
+  - undersea_place_name
+  - seabed_name
+  - dokdo_nearby_gazetteer
+  - typo_normalized_nearby
 - capability_id: resolver.s101_feature_dictionary
   object_type: feature_class_description
   label: S-101 Feature Dictionary Resolver
@@ -193,6 +202,12 @@ capabilities:
   - feature_term
   - hazard_target
   - s101_term
+  - obstruction
+  - wreck
+  - buoy
+  - beacon
+  - navigation_aid
+  - candidate_only_until_verified
 - capability_id: tool.spatial_radius_search
   object_type: tool_description
   label: Spatial Radius Search Tool
@@ -217,6 +232,10 @@ capabilities:
   - radius_slot
   - nearby_search
   - spatial_relation
+  - execution_validator_required
+  - verified_anchor_geometry
+  - verified_tool_binding
+  - positive_radius_required
 - capability_id: tool.dynamic_traffic_aggregation
   object_type: tool_description
   label: Dynamic AIS/V-PASS Traffic Aggregation Tool
@@ -265,6 +284,8 @@ capabilities:
   - definition_request
   - evidence_request
   - standard_term
+  - evidence_domain_standard_or_legal
+  - not_dataset_provenance
 - capability_id: agent.spatial_analysis
   object_type: agent_description
   label: Spatial Analysis Agent
@@ -331,6 +352,12 @@ capabilities:
   deterministic_hints:
   - hazard_target
   - feature_term
+  - obstruction
+  - wreck
+  - buoy
+  - beacon
+  - navigation_aid
+  - candidate_only_until_verified
 - capability_id: term.marine_obstruction
   object_type: marine_term
   label: Obstruction
@@ -402,6 +429,8 @@ capabilities:
   - accident_cause
   - accident_type
   - structured_event_lookup
+  - event_row_authority
+  - accident_term_dictionary
 - capability_id: tool.accident_event_lookup
   object_type: tool_description
   label: Structured Accident Event Lookup Tool
@@ -430,6 +459,9 @@ capabilities:
   - accident_cause
   - accident_type
   - structured_event_lookup
+  - event_row_authority
+  - not_rag_authority
+  - verified_tool_binding
 - capability_id: tool.accident_spatial_history_lookup
   object_type: tool_description
   label: Structured Accident Spatial History Lookup Tool
@@ -458,6 +490,10 @@ capabilities:
   - accident_history
   - nearby_search
   - place_name
+  - verified_anchor_geometry
+  - spatial_relation_not_concept
+  - event_row_authority
+  - positive_radius_required
 - capability_id: dataset.accident_events
   object_type: dataset_metadata
   label: Coast Guard Accident Events Serving Layer

@@ -1,10 +1,11 @@
 {
   "status": "OK",
-  "generated_at": "2026-09-18T01:07:27.598252+00:00",
+  "generated_at": "2026-09-18T01:43:42.524038+00:00",
   "failed_queries_collected": 72,
   "labelled_issues": 72,
   "improvement_candidates": 9,
-  "training_candidates": 8,
+  "training_candidates": 7,
+  "rejected_training_candidates": 1,
   "label_counts": {
     "execution.readiness": 16,
     "evidence.quality_metrics_missing": 22,
@@ -34,6 +35,7 @@
     "error_labels": "outputs/learning/ragops_error_labels.jsonl",
     "improvement_candidates": "outputs/learning/ragops_improvement_candidates.jsonl",
     "training_candidates": "outputs/model_learning/training_dataset_candidate.jsonl",
+    "rejected_training_candidates": "outputs/model_learning/training_dataset_rejected.jsonl",
     "training_report": "outputs/model_learning/training_candidate_report.md",
     "report_json": "outputs/reports/ragops_learning_loop_report.json",
     "report_md": "outputs/reports/ragops_learning_loop_report.md"
