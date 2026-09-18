@@ -1,6 +1,6 @@
 # External Evidence Gap-Fill Report
 
-- generated_at: `2026-09-18T03:36:20.531002+00:00`
+- generated_at: `2026-09-18T03:46:45.628702+00:00`
 - query: `독도 부근 천연보호구역을 찾아줘`
 - domain: `natural_heritage_protected_area`
 - anchor: `독도`
@@ -8,8 +8,11 @@
 - local_gap_confirmed: `True`
 - external_candidate_generation_allowed: `True`
 - external_candidate_generation_reason: `no_positive_local_match`
+- ollama_ambiguity_review: `skipped`
+- osm_fetch: `skipped`
 - public_authoritative_candidates: `1`
 - supplemental_candidates: `1`
+- osm_live_candidates: `0`
 - promotion_candidates: `1`
 
 ## Local Checks

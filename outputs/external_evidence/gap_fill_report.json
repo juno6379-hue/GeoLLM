@@ -1,6 +1,6 @@
 {
   "status": "OK",
-  "generated_at": "2026-09-18T03:36:20.531002+00:00",
+  "generated_at": "2026-09-18T03:46:45.628702+00:00",
   "query": "독도 부근 천연보호구역을 찾아줘",
   "domain_id": "natural_heritage_protected_area",
   "domain_label": "천연보호구역/천연기념물 보호구역",
@@ -52,10 +52,21 @@
   "local_gap_confirmed": true,
   "external_candidate_generation_allowed": true,
   "external_candidate_generation_reason": "no_positive_local_match",
+  "ollama_ambiguity_review": {
+    "enabled": false,
+    "status": "skipped",
+    "reason": "ask_ollama_disabled"
+  },
+  "osm_fetch_diagnostics": {
+    "enabled": false,
+    "status": "skipped",
+    "reason": "fetch_osm_disabled"
+  },
   "candidate_counts": {
     "total": 2,
     "public_authoritative": 1,
     "supplemental": 1,
+    "osm_live": 0,
     "promotion": 1
   },
   "candidates": [

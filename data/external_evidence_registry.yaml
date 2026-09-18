@@ -12,6 +12,12 @@ policies:
   rag_is_supplemental_only: true
   auto_promotion_allowed: false
   geometry_review_required: true
+  ollama_role: ambiguity_resolver_only
+  ollama_must_not_assert_authority: true
+  public_osm_api_default: disabled
+  public_osm_api_requires_explicit_fetch: true
+  public_osm_api_requires_user_agent: true
+  public_osm_api_cache_required: true
 source_tiers:
   local_authoritative_registry:
     authority_level: local_authoritative
@@ -33,6 +39,23 @@ source_tiers:
       - OpenStreetMap
       - Nominatim
       - Overpass
+    usage_policy:
+      nominatim:
+        endpoint: https://nominatim.openstreetmap.org/search
+        max_rate: 1 request/second
+        requirements:
+          - valid application User-Agent or Referer
+          - cache repeated results
+          - attribution required
+          - no autocomplete
+          - no systematic/bulk geocoding
+      overpass:
+        endpoint: https://overpass-api.de/api/interpreter
+        requirements:
+          - small candidate queries only
+          - cache repeated results
+          - no parallel bulk jobs
+          - use self-hosted or paid service for regular/heavy use
   rag_supplemental:
     authority_level: supplemental
     examples:

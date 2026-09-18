@@ -13,6 +13,8 @@ S-101 전자해도나 로컬 serving 레이어에 객체가 없을 때 `없음`�
 3. OSM/RAG candidate
    - OSM, Nominatim, Overpass, 웹/RAG 후보는 보조 후보로만 사용한다.
    - `authority_level=supplemental` 후보는 근거 발견과 비교에는 쓸 수 있지만, authoritative 객체로 자동 승격하지 않는다.
+   - 공용 OSM API는 기본 비활성이다. live 후보 수집은 `--fetch-osm`과 `GEOLLM_OSM_USER_AGENT`가 있을 때만 실행한다.
+   - Nominatim은 지명/주소 후보 검색에, Overpass는 주변 OSM tag 후보 검색에만 사용한다.
 
 4. Validation and promotion
    - 후보는 `outputs/external_evidence/gap_fill_candidates.jsonl`에 기록한다.
@@ -26,8 +28,31 @@ S-101 전자해도나 로컬 serving 레이어에 객체가 없을 때 `없음`�
 - DB 체크가 실행되지 않았거나 일부 레이어가 막혔으면 `local_gap_confirmed=false`로 둔다. 다만 양성 로컬 매치가 없으면 외부 후보 생성은 허용하고, 답변에는 미확인 상태를 함께 표시한다.
 - 동종 authoritative 레이어만 외부 후보 생성을 막을 수 있다. 예를 들어 `natural_heritage_protected_area` 질의에서 S-101 일반 피처가 주변에 있다는 사실은 context check이며, `protected_area` 결측 보완을 막는 blocking match가 아니다.
 - OSM/RAG 후보는 “보조 후보”로 표시한다.
+- Ollama는 애매한 의도/슬롯 검토에만 사용한다. 지명 좌표, 법령, 지정일, 면적, 건수 같은 사실의 authority로 사용하지 않는다.
+- OSM/Nominatim/Overpass 결과는 지명·주소·tag 후보 생성에만 사용한다. 공공 authoritative source 또는 로컬 registry 검증 전에는 승격하지 않는다.
 - 지도 표시는 검토 전에는 point fallback 또는 후보 레이어로만 표시한다.
 - `execution_ready=true`는 로컬 객체, 검증된 geometry, 실행 가능한 tool binding이 모두 있을 때만 가능하다.
+
+## Optional Live Candidate Fetch
+
+기본 실행은 외부 API를 호출하지 않는다.
+
+```powershell
+python scripts\run_external_evidence_gap_fill.py --query "독도 부근 천연보호구역을 찾아줘" --fetch-osm
+```
+
+live OSM 후보 수집을 켜려면 정책상 식별 가능한 User-Agent가 필요하다.
+
+```powershell
+$env:GEOLLM_OSM_USER_AGENT="GeoLLM/0.1 contact@example.com"
+python scripts\run_external_evidence_gap_fill.py --query "독도 부근 천연보호구역을 찾아줘" --fetch-osm
+```
+
+Ollama는 다음처럼 ambiguity review에만 사용한다.
+
+```powershell
+python scripts\run_external_evidence_gap_fill.py --query "독도 부근 천연보호구역을 찾아줘" --ask-ollama
+```
 
 ## Dokdo Natural Heritage Example
 
