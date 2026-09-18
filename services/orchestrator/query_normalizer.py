@@ -80,6 +80,14 @@ class QueryNormalizer:
             "\uc9c4\uc785\uc81c\ud55c",
             "\uc18d\ub3c4\uc81c\ud55c",
             "\ud1b5\ud56d\ub7c9",
+            "\uc0ac\uace0\uc774\ub825",
+            "\uc0ac\uace0\ub0b4\uc5ed",
+            "\uc0ac\uace0",
+            "\uc774\ub825",
+            "\ud574\uc0c1\uc870\ub09c",
+            "\uc870\ub09c\uc0ac\uace0",
+            "\ud574\uc591\uc0ac\uace0",
+            "\uc120\ubc15\uc0ac\uace0",
         }
         terms = set(seed_terms)
         terms.update(str(term) for term in self.synonyms.keys())
@@ -243,6 +251,9 @@ class QueryNormalizer:
             "\ud574\uc800\uc9c0\uba85",
             "\ud574\uc591\uc9c0\uba85",
             "\ub3c4\uc11c\uc9c0\uba85",
+            "\uc0ac\uace0\uc774\ub825",
+            "\uc0ac\uace0",
+            "\uc774\ub825",
         ]
         tokens = set(normalized_query.split())
         result = []

@@ -84,3 +84,26 @@ def test_place_query_revision_is_preserved(graph):
 def test_area_and_feature_queries_are_not_replaced_by_place_lookup(graph, query):
     module, _ = graph
     assert not module._looks_like_place_lookup(query)
+
+
+def test_accident_spatial_history_extracts_registry_anchor(graph, monkeypatch):
+    module, _ = graph
+    monkeypatch.setattr(
+        module,
+        "_load_yaml_registry",
+        lambda _filename: {
+            "entries": {
+                "dokdo": {
+                    "label": "독도",
+                    "aliases": ["독도"],
+                    "geometry": "POINT(131.8644 37.2411)",
+                    "crs": "EPSG:4326",
+                }
+            }
+        },
+    )
+
+    query = "독도 부근 사고이력"
+    assert module._registered_place_aliases()["독도"]["place_id"] == "dokdo"
+    assert module._accident_spatial_anchor_query(query, {}) == "독도"
+    assert module._looks_like_accident_spatial_history_query(query)

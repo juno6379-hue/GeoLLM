@@ -410,10 +410,11 @@ def _looks_like_s101_nearest_feature_query(query: str) -> bool:
 def _registered_place_aliases() -> dict[str, dict]:
     registry_data = _load_yaml_registry("place_geometry_registry.yaml")
     aliases: dict[str, dict] = {}
-    for place_id, place in (registry_data.get("places") or {}).items():
+    place_entries = registry_data.get("entries") or registry_data.get("places") or {}
+    for place_id, place in place_entries.items():
         if not isinstance(place, dict):
             continue
-        names = [place.get("canonical_name"), *(place.get("aliases") or [])]
+        names = [place.get("canonical_name"), place.get("label"), *(place.get("aliases") or [])]
         for name in names:
             if name:
                 aliases[str(name).lower()] = {"place_id": place_id, **place}
@@ -1176,6 +1177,59 @@ def _looks_like_accident_spatial_history_query(query: str) -> bool:
         and (has_place or has_spatial_context)
         and (has_spatial_relation or has_place or has_spatial_context)
     )
+
+def _accident_spatial_anchor_query(query: str, state: OrchestratorState | None = None) -> str:
+    """Extract only the place anchor from an accident spatial-history query."""
+    text = re.sub(r"\s+", " ", str(query or "").strip())
+    if not text:
+        return text
+    spatial = _spatial_context_dict(state or {})
+    if spatial.get("geometry") and (spatial.get("base_location") or spatial.get("location_text")):
+        return str(spatial.get("base_location") or spatial.get("location_text")).strip()
+
+    aliases = _registered_place_aliases()
+    alias_matches = [
+        (alias, payload)
+        for alias, payload in aliases.items()
+        if alias and (alias in text.lower() or alias in text)
+    ]
+    if alias_matches:
+        alias, payload = max(alias_matches, key=lambda item: len(item[0]))
+        return str(payload.get("canonical_name") or alias).strip()
+
+    anchor = text
+    removable_terms = [
+        "사고이력",
+        "사고 이력",
+        "사고내역",
+        "사고 내역",
+        "해상조난",
+        "조난사고",
+        "해양사고",
+        "선박사고",
+        "사고",
+        "이력",
+        "부근",
+        "근처",
+        "주변",
+        "반경",
+        "이내",
+        "인근",
+        "해역",
+        "앞바다",
+        "찾아줘",
+        "찾아",
+        "보여줘",
+        "표시해줘",
+        "조회해줘",
+        "알려줘",
+        "분석해줘",
+    ]
+    for term in removable_terms:
+        anchor = re.sub(re.escape(term), " ", anchor, flags=re.IGNORECASE)
+    anchor = re.sub(r"\d+(?:\.\d+)?\s*(?:km|m|킬로미터|킬로|미터)", " ", anchor, flags=re.IGNORECASE)
+    anchor = re.sub(r"\s+", " ", anchor).strip(" ,.;:!?")
+    return anchor if len(anchor) >= 2 else text
 
 def _should_fast_execute_accident_spatial_history(state: OrchestratorState) -> bool:
     query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
@@ -3300,25 +3354,27 @@ def _query_accident_events_near_geometry(
 async def fast_accident_spatial_history_lookup_node(state: OrchestratorState) -> OrchestratorState:
     """Answer nearby accident history from serving.accident_events using a resolved place geometry."""
     import asyncio
+    from services.orchestrator.place_router import resolve_payload
 
-    query = state.get("query") or state.get("normalized_query") or ""
+    original_query = state.get("query") or ""
+    query = state.get("normalized_query") or original_query
+    anchor_query = _accident_spatial_anchor_query(query, state)
     task_id = str(state.get("task_id") or "local")
     generated_at = datetime.utcnow().isoformat() + "Z"
     radius_m = _requested_distance_m(state, query) or 10000.0
-    try:
-        geometry_wkt, location_text, crs, resolution = await asyncio.to_thread(
-            resolve_location,
-            query,
-            _spatial_context_dict(state),
-        )
-    except PlaceResolutionProblem as exc:
-        payload = {
-            "status": "NEEDS_CLARIFICATION" if exc.status == "NEEDS_USER_INPUT" else "BLOCKED",
-            "error_code": exc.code,
-            "summary": str(exc),
-            "location_candidates": exc.candidates,
+    location_payload = await asyncio.to_thread(resolve_payload, anchor_query, _spatial_context_dict(state))
+    if not isinstance(location_payload, dict) or location_payload.get("status") != "RESOLVED":
+        payload = location_payload if isinstance(location_payload, dict) else {
+            "status": "NEEDS_CLARIFICATION",
+            "error_code": "LOCATION_UNCONFIRMED",
+            "summary": "지명을 찾지 못했습니다. 정확한 지명이나 경도·위도를 알려 주세요.",
+            "location_candidates": [],
         }
         return _place_lookup_update(state, payload, "accident_spatial_history_lookup")
+    geometry_wkt = location_payload.get("geometry")
+    location_text = location_payload.get("location_text") or anchor_query
+    crs = location_payload.get("crs") or "EPSG:4326"
+    resolution = location_payload.get("location_resolution") or {}
 
     result = _query_accident_events_near_geometry(geometry_wkt, radius_m=radius_m)
     rows = result.get("rows") or []
@@ -3372,7 +3428,7 @@ async def fast_accident_spatial_history_lookup_node(state: OrchestratorState) ->
         "summary_ko": f"{location_text} 기준 반경 {radius_m:g}m 이내 사고 이력 {total}건",
         "detail_label": "상세정보",
         "detail_text": "사고 좌표와 기준점 거리, 관할해경서, 발생해역, 발생원인, 발생유형은 serving.accident_events에서 직접 조회했습니다.",
-        "provenance": {"method": "structured_accident_spatial_history_lookup", "retrieved_at": generated_at, "radius_m": radius_m, "location_resolution": resolution},
+        "provenance": {"method": "structured_accident_spatial_history_lookup", "retrieved_at": generated_at, "radius_m": radius_m, "location_resolution": resolution, "anchor_query": anchor_query},
     }]
     plan_status = "BLOCKED_DATA" if result.get("error") else "EXECUTION_READY"
     route_plan = {
@@ -3405,14 +3461,14 @@ async def fast_accident_spatial_history_lookup_node(state: OrchestratorState) ->
     qec_model = QueryExecutionContext(
         request_id=task_id,
         task_id=task_id,
-        original_query=query,
+        original_query=original_query or query,
         normalized_query=state.get("normalized_query"),
         route_plan=route_plan,
         slots=ExecutionSlots.from_payload(route_plan["slots"]),
         spatial={"spatial_context": {"base_location": location_text, "geometry": geometry_wkt, "crs": crs, "buffer_distance": radius_m}},
         blockers=[result["error"]] if result.get("error") else [],
         warnings=["기본 반경은 질의에 거리 표현이 없을 때만 10,000m로 적용됩니다."],
-        provenance={"location_resolution": resolution},
+        provenance={"location_resolution": resolution, "anchor_query": anchor_query},
     )
     qec_model = validate_execution_context(qec_model)
     route_plan["status"] = qec_model.readiness.value
@@ -3434,6 +3490,7 @@ async def fast_accident_spatial_history_lookup_node(state: OrchestratorState) ->
             "location_text": location_text,
             "radius_m": radius_m,
             "location_resolution": resolution,
+            "anchor_query": anchor_query,
             "events": [{key: value for key, value in row.items() if key != "geometry_geojson"} for row in rows],
             "geojson": collection,
             "quality_metrics": quality_metrics,

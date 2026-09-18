@@ -2,6 +2,7 @@ from services.orchestrator.query_candidate_broker import (
     execution_contract_ready,
     query_candidate_broker,
 )
+from services.orchestrator.query_normalizer import normalizer
 from shared.schemas.agent import ExecutionSlots
 
 
@@ -45,7 +46,27 @@ def test_nearby_accident_history_prefers_spatial_history_tool(monkeypatch):
 
     signals = {row["signal_id"] for row in trace["deterministic_signals"]}
     assert {"accident_event", "accident_history", "nearby_search"} <= signals
-    assert trace["capability_candidates"][0]["candidate_id"] == "tool.accident_spatial_history_lookup"
+    candidate_ids = [row["candidate_id"] for row in trace["capability_candidates"][:4]]
+    assert "resolver.place_registry" in candidate_ids
+    assert "tool.accident_spatial_history_lookup" in candidate_ids
+    assert execution_contract_ready(
+        trace,
+        route="ACCIDENT_ANALYSIS",
+        capability_id="tool.accident_spatial_history_lookup",
+    )
+
+
+def test_compacted_nearby_accident_history_normalizes_to_accident_route(monkeypatch):
+    monkeypatch.setenv("GEOLLM_CAPABILITY_PGVECTOR", "false")
+
+    normalized = normalizer.normalize("독도부근사고이력")
+    trace = query_candidate_broker.build_trace("독도부근사고이력", normalized_query=normalized)
+
+    assert normalized == "독도 부근 사고이력"
+    assert trace["execution_contract"]["execution_route"] == "ACCIDENT_ANALYSIS"
+    candidate_ids = [row["candidate_id"] for row in trace["capability_candidates"][:4]]
+    assert "resolver.place_registry" in candidate_ids
+    assert "tool.accident_spatial_history_lookup" in candidate_ids
     assert execution_contract_ready(
         trace,
         route="ACCIDENT_ANALYSIS",
@@ -61,7 +82,9 @@ def test_place_accident_history_uses_spatial_history_tool_without_nearby_word(mo
     signals = {row["signal_id"] for row in trace["deterministic_signals"]}
     assert {"accident_event", "accident_history", "place_name"} <= signals
     assert trace["execution_contract"]["execution_route"] == "ACCIDENT_ANALYSIS"
-    assert trace["capability_candidates"][0]["candidate_id"] == "tool.accident_spatial_history_lookup"
+    candidate_ids = [row["candidate_id"] for row in trace["capability_candidates"][:4]]
+    assert "resolver.place_registry" in candidate_ids
+    assert "tool.accident_spatial_history_lookup" in candidate_ids
     assert execution_contract_ready(
         trace,
         route="ACCIDENT_ANALYSIS",
