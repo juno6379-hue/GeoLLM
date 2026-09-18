@@ -1424,6 +1424,8 @@ def _should_fast_execute_s101_hazard_radius(state: OrchestratorState) -> bool:
         return False
     if _looks_like_standard_rag_query(query) and not _looks_like_s101_hazard_radius_query(query):
         return False
+    if _looks_like_s101_hazard_radius_query(query):
+        return True
     # Incomplete radius requests enter the same handler to obtain real clarification.
     return _contract_ready_any(
         state,
@@ -4561,11 +4563,12 @@ async def create_plan_node(state: OrchestratorState) -> OrchestratorState:
                 slots[key] = value
 
     # 동적 라우팅 플랜 생성
+    resolved_context = _context_value(ctx_res, "selected_context") or "clarification_required"
     plan_dict = route_planner.generate_plan(
         normalized_query=state.get("normalized_query", ""),
         slots=slots,
         derived_concept=derived_concept,
-        context=_context_value(ctx_res, "selected_context", "clarification_required"),
+        context=resolved_context,
         analysis_type=analysis_type or "clarification_required",
         intent=intent_val,
         graph_context=state.get("graph_context", {}),
@@ -4576,7 +4579,7 @@ async def create_plan_node(state: OrchestratorState) -> OrchestratorState:
     task_plan = TaskPlan(
         task_id=f"TASK-HAZARD-SEARCH-{state['task_id'][:3].upper()}",
         intent=plan_dict["intent"],
-        context=plan_dict["context"],
+        context=plan_dict.get("context") or resolved_context,
         analysis_type=plan_dict["analysis_type"],
         derived_concept=plan_dict["derived_concept"],
         primary_agent=plan_dict["primary_agent"] or "Standard RAG Agent",

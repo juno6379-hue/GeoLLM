@@ -295,16 +295,16 @@
                 <div class="panel chat-panel">
                     <div class="panel-header">💬 대화형 GeoLLM 질의창</div>
                     <div class="preset-prompts" id="chatHistory">
+                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">해운대구로 이동</div>
+                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">위험객체</div>
                         <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">부산항 입구 3km 이내 위험객체를 찾아줘</div>
-                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">부산항 입구 10km 이내 위험객체를 종류별로 요약해줘</div>
-                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">부산항 입구에서 가장 가까운 침선 5개를 찾아줘</div>
+                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">독도 부근 사고 이력</div>
+                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">독도 부근 해저지명을 찾아줘</div>
+                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">독도 부근 천연보호구역을 찾아줘</div>
+                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">해양지명 gazetteer와 도서지명 gazetteer가 어떤 근거로 적재되었는지 설명해줘</div>
+                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">S-101 2.0 Obstruction 정의와 DCEG 근거를 알려줘</div>
                         <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">최근 1년간 AIS/V-PASS 통항량을 분석해줘</div>
                         <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">AIS와 V-PASS 데이터는 어느 기간까지 적재되어 있어?</div>
-                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">최근 1년 통항량이 가장 높은 격자와 월을 알려줘</div>
-                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">통항량 지도 셀을 클릭했을 때 보여줄 AIS/V-PASS 세부정보를 설명해줘</div>
-                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">부산항 입구 주변 정박지와 항로표지를 같이 조회해줘</div>
-                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">진입제한구역과 속도제한구역 레이어가 적재되어 있는지 확인해줘</div>
-                        <div class="preset-btn" onclick="document.getElementById('query').value=this.innerText">법령/사고/표준 문서 근거까지 포함해서 부산항 항행위험 원인을 설명해줘</div>
                     </div>
                     <div class="chat-input-area">
                         <div class="chat-input-wrapper">
@@ -1576,16 +1576,16 @@
         }
         function setupPresetPrompts() {
             const prompts = [
-                "Dataset supplemental embedding에 AIS 위치정보 통계 데이터셋 근거가 들어갔는지 찾아줘",
-                "AIS/V-PASS 주요통항로분석 데이터셋의 출처와 임베딩 근거를 보여줘",
+                "해운대구로 이동",
+                "위험객체",
+                "부산항 입구 3km 이내 위험객체를 찾아줘",
+                "독도 부근 사고 이력",
+                "독도 부근 해저지명을 찾아줘",
+                "독도 부근 천연보호구역을 찾아줘",
                 "해양지명 gazetteer와 도서지명 gazetteer가 어떤 근거로 적재되었는지 설명해줘",
-                "항로표지정보_20250623 CSV는 임베딩 대상인지 공간 적재 대상인지 근거와 함께 확인해줘",
-                "속도제한구역과 진입제한구역 Dataset 레이어의 evidence 후보를 찾아줘",
-                "SOLAS와 해양안전백서 supplemental 문서가 검색 근거 후보로 잡히는지 확인해줘",
-                "S-101 2.0 Obstruction 정의와 DCEG 근거를 찾아줘",
-                "부산항 입구 3km 이내 위험객체를 찾고 S-101 문서 근거도 같이 보여줘",
-                "최근 1년 AIS/V-PASS 통항량 분석 결과와 Dataset 출처 근거를 함께 설명해줘",
-                "새로 병합된 dataset_profile evidence 후보 중 검토가 필요한 항목을 요약해줘"
+                "S-101 2.0 Obstruction 정의와 DCEG 근거를 알려줘",
+                "최근 1년간 AIS/V-PASS 통항량을 분석해줘",
+                "AIS와 V-PASS 데이터는 어느 기간까지 적재되어 있어?"
             ];
             const container = document.getElementById("chatHistory");
             if (!container) return;
