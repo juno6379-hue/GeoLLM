@@ -4653,6 +4653,12 @@ async def execute_agent_node(state: OrchestratorState) -> OrchestratorState:
 
     if req.agent_name == "ClarificationAgent":
         route_plan = state.get("task_plan") or {}
+        extracted_slots = state.get("extracted_slots") or req.previous_agent_outputs.get("extracted_slots") or {}
+        qec_payload = req.query_execution_context.model_dump(mode="json") if req.query_execution_context else {}
+        qec_slots = qec_payload.get("slots", {}) if isinstance(qec_payload, dict) else {}
+        derived_concept = (
+            route_plan.get("derived_concept") if isinstance(route_plan, dict) else None
+        ) or qec_slots.get("derived_concept") or qec_slots.get("concept_id")
         unresolved = []
         if isinstance(route_plan, dict):
             unresolved = route_plan.get("unresolved_slots") or []
@@ -4675,6 +4681,14 @@ async def execute_agent_node(state: OrchestratorState) -> OrchestratorState:
             answer_text=summary,
             structured_result={
                 "analysis_type": route_plan.get("analysis_type") if isinstance(route_plan, dict) else None,
+                "normalization": state.get("norm_result") or {},
+                "extracted_slots": extracted_slots,
+                "derived_concept_mapping": {
+                    "derived_concept": derived_concept,
+                    "mapping_source": "query_execution_context",
+                    "candidate_canonical_terms": (state.get("norm_result") or {}).get("canonical_terms", []),
+                },
+                "query_execution_context": qec_payload,
                 "unresolved_slots": unresolved,
                 "blockers": blockers,
                 "route_plan": route_plan,
@@ -4685,6 +4699,11 @@ async def execute_agent_node(state: OrchestratorState) -> OrchestratorState:
         )
         return {
             "agent_result": agent_result,
+            "norm_result": state.get("norm_result"),
+            "normalization_debug": state.get("normalization_debug"),
+            "extracted_slots": extracted_slots,
+            "query_execution_context": qec_payload,
+            "task_plan": route_plan,
             "status": AgentStatus.NEEDS_CLARIFICATION,
             "state_history": log_transition(AgentStatus.PLAN_CREATED, AgentStatus.NEEDS_CLARIFICATION, reason="Clarification terminal state")
         }

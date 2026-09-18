@@ -29,6 +29,25 @@ EVIDENCE_CANDIDATE_FILES = [
 ]
 
 
+def _valid_debug_derived_concept(value):
+    text = str(value or "").strip()
+    if not text:
+        return None
+    for name in ("derived_concept_registry_v2.yaml", "derived_concept_registry.yaml"):
+        path = ROOT / "data" / name
+        if not path.exists():
+            continue
+        try:
+            concepts = (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("derived_concepts") or {}
+        except Exception:
+            concepts = {}
+        for key, payload in concepts.items():
+            concept_id = payload.get("concept_id") if isinstance(payload, dict) else None
+            if text in {str(key), str(concept_id or "")}:
+                return concept_id or key
+    return None
+
+
 def _is_instant_place_navigation(query: str) -> bool:
     text = str(query or "").strip()
     if not text:
@@ -78,6 +97,7 @@ def _place_candidate_features(candidates: list[dict]) -> dict:
 
 def _instant_place_final(task_id: str, query: str, payload: dict) -> dict:
     resolved = payload.get("status") == "RESOLVED"
+    target = place_navigation_target(query)
     coords = _point_coordinates(payload.get("geometry"))
     candidates = payload.get("location_candidates") or []
     features = (
@@ -97,6 +117,66 @@ def _instant_place_final(task_id: str, query: str, payload: dict) -> dict:
     summary = payload.get("summary") or ""
     if not resolved and features.get("features"):
         summary = summary or "외부 보조 지명 후보를 찾았습니다. 후보를 확인해 주세요."
+    slots = {
+        "location_text": target,
+        "target_term": "place",
+        "derived_concept": "place_lookup",
+        "analysis_type": "place_lookup",
+        "operation": "map_navigation",
+        "reference_geometry": payload.get("geometry"),
+        "crs": payload.get("crs"),
+        "resolution_status": payload.get("status"),
+        "unresolved_slots": [] if resolved else ["location_confirmation"],
+    }
+    route_plan = {
+        "intent": "PLACE_LOOKUP",
+        "context": "map_navigation",
+        "analysis_type": "place_lookup",
+        "derived_concept": "place_lookup",
+        "primary_agent": "Spatial Analysis Agent",
+        "required_tools": ["place.resolve"],
+        "required_data": ["local_place_registry", "external_evidence_registry"],
+        "execution_ready": resolved,
+        "status": "EXECUTION_READY" if resolved else "NEEDS_USER_INPUT",
+        "route_plan_status": "EXECUTION_READY" if resolved else "NEEDS_USER_INPUT",
+        "slots": slots,
+    }
+    qec = {
+        "request_id": task_id,
+        "task_id": task_id,
+        "original_query": query,
+        "normalized_query": target,
+        "slots": slots,
+        "readiness": "EXECUTION_READY" if resolved else "NEEDS_USER_INPUT",
+        "blockers": [] if resolved else ["location requires user confirmation"],
+        "warnings": [] if resolved else ["external place candidate is not promoted into the local authoritative registry yet"],
+        "data_bindings": [{"dataset_id": "place_registry", "status": "available"}],
+        "tool_bindings": [{"tool_id": "place.resolve", "status": "available"}],
+        "route_plan": route_plan,
+        "provenance": {
+            "fast_path": "instant_place_navigation",
+            "normalizer": "services.orchestrator.place_router.place_navigation_target",
+            "resolver": "services.orchestrator.place_router.resolve_payload",
+        },
+    }
+    norm_result = {
+        "normalized_query": target,
+        "canonical_terms": [target],
+        "candidate_contexts": ["place_lookup", "map_navigation"],
+        "matched_rules": [f"지도 이동 명령 정규화: '{query}' -> '{target}'"],
+    }
+    debug_state = {
+        "task_id": task_id,
+        "query": query,
+        "normalized_query": target,
+        "normalization_debug": norm_result["matched_rules"],
+        "norm_result": norm_result,
+        "task_plan": route_plan,
+        "query_execution_context": qec,
+        "extracted_slots": slots,
+        "final_dict": {"structured_result": payload, "orchestrator_v2": {"route_plan": route_plan, "query_execution_context": qec}},
+    }
+    debug_trace = build_debug_trace(debug_state)
     return {
         "task_id": task_id,
         "request_id": task_id,
@@ -109,6 +189,13 @@ def _instant_place_final(task_id: str, query: str, payload: dict) -> dict:
             **payload,
             "analysis_type": "place_lookup",
             "original_query": query,
+            "normalization": norm_result,
+            "extracted_slots": slots,
+            "derived_concept_mapping": {
+                "derived_concept": "place_lookup",
+                "mapping_source": "instant_place_navigation_fast_path",
+                "verified_by": ["place_router", "execution_context"],
+            },
             "count": len(features.get("features", [])),
             "returned_count": len(features.get("features", [])),
             "geojson": features,
@@ -121,6 +208,7 @@ def _instant_place_final(task_id: str, query: str, payload: dict) -> dict:
                 "method": "instant_place_navigation_fast_path",
             },
         },
+        "debug_trace": debug_trace,
         "clarification_questions": [summary] if status == "NEEDS_CLARIFICATION" else [],
         "clarification_options": candidates,
         "features": features,
@@ -133,12 +221,8 @@ def _instant_place_final(task_id: str, query: str, payload: dict) -> dict:
             "feature_count": len(features.get("features", [])),
         }] if features.get("features") else [],
         "orchestrator_v2": {
-            "route_plan": {
-                "analysis_type": "place_lookup",
-                "primary_agent": "Spatial Analysis Agent",
-                "execution_ready": resolved,
-                "status": "EXECUTION_READY" if resolved else "NEEDS_USER_INPUT",
-            },
+            "route_plan": route_plan,
+            "query_execution_context": qec,
             "embedding_independent": True,
             "fast_path": "instant_place_navigation",
         },
@@ -558,6 +642,11 @@ def _compact_final_result_for_stream(final_result):
         },
         "evidence_counts": evidence_counts,
     }
+    if isinstance(result.get("debug_trace"), dict):
+        compact["debug_trace"] = result["debug_trace"]
+    for key in ("normalization", "extracted_slots", "derived_concept_mapping"):
+        if key in structured:
+            compact["structured_result"][key] = structured[key]
     _preserve_spatial_stream_payload(result, compact)
     return compact
 
@@ -887,6 +976,9 @@ async def stream_task(req: TaskCreateRequest):
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 def build_debug_trace(state_vals: dict) -> dict:
+    def _as_dict(value):
+        return value.model_dump(mode="json") if hasattr(value, "model_dump") else (value if isinstance(value, dict) else {})
+
     agent_result = state_vals.get("agent_result")
     task_plan_val = state_vals.get("task_plan")
     
@@ -900,12 +992,25 @@ def build_debug_trace(state_vals: dict) -> dict:
             pi = agent_req.get("parsed_intent")
     pi_dict = pi.model_dump(mode='json') if hasattr(pi, "model_dump") else (pi if isinstance(pi, dict) else {})
     
+    final_dict = _to_jsonable(state_vals.get("final_dict")) or {}
+    final_orch = final_dict.get("orchestrator_v2") if isinstance(final_dict.get("orchestrator_v2"), dict) else {}
+    qec_dict = _as_dict(state_vals.get("query_execution_context")) or final_orch.get("query_execution_context") or {}
+    qec_slots = qec_dict.get("slots") if isinstance(qec_dict.get("slots"), dict) else {}
+    state_slots = state_vals.get("extracted_slots") if isinstance(state_vals.get("extracted_slots"), dict) else {}
+
     # 2. Rule-based Normalizer Result (무조건 존재함)
     norm_res = state_vals.get("norm_result", {})
     
     # 추출 Slot 병합 (LLM Slot 파싱 결과가 있으면 쓰고, 없으면 빈 배열)
+    fallback_spatial = []
+    slot_location = qec_slots.get("location_text") or qec_slots.get("location") or state_slots.get("location_text") or state_slots.get("location")
+    slot_relation = qec_slots.get("spatial_relation") or state_slots.get("spatial_relation")
+    slot_distance = qec_slots.get("distance_m") or state_slots.get("distance_m")
+    if slot_location or slot_relation or slot_distance:
+        parts = [str(item) for item in (slot_location, slot_relation, f"{slot_distance:g}m" if isinstance(slot_distance, (int, float)) else slot_distance) if item]
+        fallback_spatial = [" ".join(parts)]
     extracted_slots = {
-        "공간조건": pi_dict.get("spatial_conditions", []),
+        "공간조건": pi_dict.get("spatial_conditions", []) or fallback_spatial,
         "시간조건": pi_dict.get("temporal_conditions", [])
     }
     
@@ -913,43 +1018,60 @@ def build_debug_trace(state_vals: dict) -> dict:
         "정제된 질의": norm_res.get("normalized_query", state_vals.get("normalized_query", "")),
         "표준 용어": norm_res.get("canonical_terms", []),
         "추출 Slot": extracted_slots,
+        "확정 Slot": qec_slots or state_slots,
         "후보 Context/Intent": norm_res.get("candidate_contexts", []),
         "상세 로그": state_vals.get("normalization_debug", [])
     }
     
     ctx_res = state_vals.get("context_result")
-    print("DEBUG ctx_res:", type(ctx_res), ctx_res)
     if isinstance(ctx_res, dict):
         ctx_dict = ctx_res
     else:
         ctx_dict = ctx_res.__dict__ if ctx_res else {}
         
     tp = task_plan_val if isinstance(task_plan_val, dict) else (task_plan_val.__dict__ if task_plan_val else {})
+    if not tp and isinstance(final_orch.get("route_plan"), dict):
+        tp = final_orch["route_plan"]
+    canonical_list = norm_res.get("canonical_terms", [])
+    derived_from_qec = (
+        qec_slots.get("derived_concept")
+        or qec_slots.get("concept_id")
+        or (qec_dict.get("semantic_resolution") or {}).get("derived_concept")
+    )
+    derived_from_norm = next(
+        (valid for item in canonical_list for valid in [_valid_debug_derived_concept(item)] if valid),
+        None,
+    )
+    derived_from_context = next(
+        (valid for item in ctx_dict.get("derived_concepts", []) for valid in [_valid_debug_derived_concept(item)] if valid),
+        None,
+    )
+    verified_derived = tp.get("derived_concept") or _valid_debug_derived_concept(derived_from_qec) or derived_from_context or derived_from_norm or "None"
     intent_dict = {
         "Intent": tp.get("intent", ctx_dict.get("intent", "None")),
         "Context": tp.get("context", ctx_dict.get("selected_context", "None")),
         "Analysis Type": tp.get("analysis_type", ctx_dict.get("analysis_type", "None")),
-        "Derived Concept": tp.get("derived_concept", ctx_dict.get("derived_concepts", ["None"])[0] if ctx_dict.get("derived_concepts") else "None"),
+        "Derived Concept": verified_derived,
         "Slot Check": ctx_dict.get("debug_scores", {}).get("slot_check_result", {}),
         "Target Agent": tp.get("primary_agent", "None"),
-        "Required Tools": tp.get("tools", []),
-        "Required Data": tp.get("data", []),
-        "Execution Ready": tp.get("execution_ready", False),
+        "Required Tools": tp.get("tools", tp.get("required_tools", [])),
+        "Required Data": tp.get("data", tp.get("required_data", [])),
+        "Execution Ready": tp.get("execution_ready", qec_dict.get("readiness") == "EXECUTION_READY"),
         "Route Plan Status": tp.get("route_plan_status", "UNKNOWN")
     }
 
-    loc = ""
-    dist_m = 0
+    loc = slot_location or ""
+    dist_m = slot_distance or 0
     if extracted_slots["공간조건"]:
         sp = extracted_slots["공간조건"][0]
-        if isinstance(sp, dict):
+        if isinstance(sp, dict) and not loc:
             loc = sp.get("location", "")
             val = sp.get("value", 0)
             if val:
                 dist_m = val if sp.get("distance_unit") == "m" else val * 1000
             elif sp.get("distance") == "3km":
                 dist_m = 3000
-        elif isinstance(sp, str):
+        elif isinstance(sp, str) and not loc:
             # parse from string like '부산항입구 반경 3000m'
             import re
             loc_match = re.search(r'^(.+?)\s*(?:반경|기준)', sp)
@@ -960,29 +1082,36 @@ def build_debug_trace(state_vals: dict) -> dict:
                 dist_m = int(dist_match.group(1))
                 
     tgt_list = pi_dict.get("target_objects", [])
-    if tgt_list and isinstance(tgt_list, list) and len(tgt_list) > 0:
+    if qec_slots.get("target_term") or state_slots.get("target_term"):
+        tgt = qec_slots.get("target_term") or state_slots.get("target_term")
+    elif tgt_list and isinstance(tgt_list, list) and len(tgt_list) > 0:
         tgt = tgt_list[0]
     else:
         tgt = "None"
         
-    canonical_list = norm_res.get("canonical_terms", [])
-            
     plan_tools = []
     if task_plan_val:
         if isinstance(task_plan_val, dict):
-            plan_tools = task_plan_val.get("tools", [])
+            plan_tools = task_plan_val.get("tools", task_plan_val.get("required_tools", []))
         elif hasattr(task_plan_val, "tools"):
             plan_tools = task_plan_val.tools
+    if not plan_tools and isinstance(tp, dict):
+        plan_tools = tp.get("tools", tp.get("required_tools", []))
             
     mapping_result = {
         "location_text": loc,
         "distance_m": dist_m,
         "target_term": tgt,
-        "derived_concept": canonical_list[0] if canonical_list else "",
+        "spatial_relation": qec_slots.get("spatial_relation") or state_slots.get("spatial_relation"),
+        "derived_concept": verified_derived if verified_derived != "None" else "",
+        "candidate_canonical_terms": canonical_list,
         "context": ctx_dict.get("analysis_type") or ctx_dict.get("selected_context", ""),
         "agent": ctx_dict.get("selected_agents", [""])[0] if ctx_dict.get("selected_agents") else "",
         "tools": plan_tools or ([ctx_dict.get("selected_tool")] if ctx_dict.get("selected_tool") else []),
-        "execution_ready": ctx_dict.get("status") == "RESOLVED"
+        "execution_ready": bool(tp.get("execution_ready")) or qec_dict.get("readiness") == "EXECUTION_READY",
+        "readiness": qec_dict.get("readiness") or tp.get("route_plan_status"),
+        "blockers": qec_dict.get("blockers", []),
+        "warnings": qec_dict.get("warnings", []),
     }
     mapping_result["KG"] = state_vals.get("graph_context", state_vals.get("graph_rag_context", {}))
     mapping_result["Data Lake"] = state_vals.get("data_discovery_result", {})
