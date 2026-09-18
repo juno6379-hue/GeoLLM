@@ -14,6 +14,7 @@ import yaml
 
 from shared.schemas.agent import AgentStatus
 from services.orchestrator.graph import orchestrator_graph
+from services.orchestrator.place_router import place_navigation_target, resolve_payload
 from services.orchestrator.state import OrchestratorState
 from services.orchestrator.task_store import PersistentTaskStore
 
@@ -26,6 +27,122 @@ EVIDENCE_CANDIDATE_FILES = [
     ROOT / "outputs" / "evidence" / "rag_evidence_candidates.jsonl",
     ROOT / "outputs" / "evidence" / "regulatory_evidence_candidates.jsonl",
 ]
+
+
+def _is_instant_place_navigation(query: str) -> bool:
+    text = str(query or "").strip()
+    if not text:
+        return False
+    target = place_navigation_target(text)
+    if not target or target == text:
+        return False
+    lowered = text.lower()
+    blocked_terms = {
+        "사고", "위험", "침선", "장애물", "통항", "ais", "v-pass", "vpass",
+        "교통", "항로", "정박지", "보호구역", "천연보호구역",
+    }
+    return not any(term in lowered or term in text for term in blocked_terms)
+
+
+def _point_coordinates(wkt: str | None) -> list[float] | None:
+    match = re.match(r"\s*POINT\s*\(\s*([0-9.+-]+)\s+([0-9.+-]+)\s*\)\s*$", str(wkt or ""), re.I)
+    if not match:
+        return None
+    return [float(match.group(1)), float(match.group(2))]
+
+
+def _place_candidate_features(candidates: list[dict]) -> dict:
+    features = []
+    for candidate in candidates or []:
+        coords = _point_coordinates(candidate.get("geometry"))
+        geojson = candidate.get("geometry_geojson")
+        geometry = geojson if isinstance(geojson, dict) else ({"type": "Point", "coordinates": coords} if coords else None)
+        if not geometry:
+            continue
+        features.append({
+            "type": "Feature",
+            "id": candidate.get("place_id"),
+            "geometry": geometry,
+            "properties": {
+                "name": candidate.get("label") or candidate.get("base_location"),
+                "place_id": candidate.get("place_id"),
+                "place_version": candidate.get("place_version"),
+                "authority_level": candidate.get("authority_level"),
+                "promotion_status": candidate.get("promotion_status"),
+                "review_required": candidate.get("review_required", True),
+                "source_ref": candidate.get("source_ref"),
+            },
+        })
+    return {"type": "FeatureCollection", "features": features}
+
+
+def _instant_place_final(task_id: str, query: str, payload: dict) -> dict:
+    resolved = payload.get("status") == "RESOLVED"
+    coords = _point_coordinates(payload.get("geometry"))
+    candidates = payload.get("location_candidates") or []
+    features = (
+        {"type": "FeatureCollection", "features": [{
+            "type": "Feature",
+            "id": payload.get("place_id") or f"place:{task_id}",
+            "geometry": {"type": "Point", "coordinates": coords},
+            "properties": {
+                "name": payload.get("location_text"),
+                "place_id": payload.get("place_id"),
+                "place_version": payload.get("place_version"),
+                "source_ref": (payload.get("location_resolution") or {}).get("source_ref"),
+            },
+        }]} if resolved and coords else _place_candidate_features(candidates)
+    )
+    status = "COMPLETED" if resolved else payload.get("status", "BLOCKED")
+    summary = payload.get("summary") or ""
+    if not resolved and features.get("features"):
+        summary = summary or "외부 보조 지명 후보를 찾았습니다. 후보를 확인해 주세요."
+    return {
+        "task_id": task_id,
+        "request_id": task_id,
+        "status": status,
+        "agent_name": "Spatial Analysis Agent",
+        "summary": summary,
+        "answer_text": summary,
+        "error_code": payload.get("error_code"),
+        "structured_result": {
+            **payload,
+            "analysis_type": "place_lookup",
+            "original_query": query,
+            "count": len(features.get("features", [])),
+            "returned_count": len(features.get("features", [])),
+            "geojson": features,
+            "quality_metrics": {
+                "intent_similarity": 1.0,
+                "kg_similarity": 0.7 if not resolved else 1.0,
+                "evidence_similarity": 0.7 if not resolved else 1.0,
+                "estimated_accuracy": 0.72 if not resolved else 1.0,
+                "confidence_band": "medium" if not resolved else "high",
+                "method": "instant_place_navigation_fast_path",
+            },
+        },
+        "clarification_questions": [summary] if status == "NEEDS_CLARIFICATION" else [],
+        "clarification_options": candidates,
+        "features": features,
+        "map_layers": [{
+            "layer_id": f"place:{task_id}",
+            "title": place_navigation_target(query),
+            "source_type": "geojson",
+            "geometry_type": "MIXED",
+            "inline_geojson": features,
+            "feature_count": len(features.get("features", [])),
+        }] if features.get("features") else [],
+        "orchestrator_v2": {
+            "route_plan": {
+                "analysis_type": "place_lookup",
+                "primary_agent": "Spatial Analysis Agent",
+                "execution_ready": resolved,
+                "status": "EXECUTION_READY" if resolved else "NEEDS_USER_INPUT",
+            },
+            "embedding_independent": True,
+            "fast_path": "instant_place_navigation",
+        },
+    }
 
 # MVP 에서는 DB 대신 인메모리 딕셔너리로 최상위 메타 정보만 들고 있고, 
 # 실제 세부 상태는 LangGraph의 Checkpointer(MemorySaver)가 Thread ID 단위로 관리합니다.
@@ -626,6 +743,8 @@ async def stream_task(req: TaskCreateRequest):
             "spatial_context": req.spatial_context,
             "state_history": []
         }
+
+    instant_place_navigation = (not is_resume) and _is_instant_place_navigation(req.query)
     
     config = {"configurable": {"thread_id": task_id}}
     
@@ -648,6 +767,36 @@ async def stream_task(req: TaskCreateRequest):
     async def event_generator():
         # 시작 이벤트
         yield f"data: {json.dumps({'event': 'started', 'task_id': task_id})}\n\n"
+        if instant_place_navigation:
+            yield f"data: {json.dumps({'event': 'progress', 'status': 'FAST_PLACE_LOOKUP', 'message': '지명 후보를 바로 확인하는 중...'})}\n\n"
+            try:
+                payload = await asyncio.to_thread(resolve_payload, req.query, req.spatial_context or {})
+                final_result = _instant_place_final(task_id, req.query, payload)
+                status = final_result["status"]
+                snapshot = {
+                    "task_id": task_id,
+                    "query": req.query,
+                    "status": status,
+                    "final_dict": final_result,
+                    "task_plan": final_result["orchestrator_v2"]["route_plan"],
+                    "instant_fast_path": True,
+                }
+                TASK_STORE.update(
+                    task_id,
+                    status=status,
+                    final_result=final_result,
+                    result=final_result,
+                    snapshot=snapshot,
+                    agent_result=None,
+                    error_message=None,
+                )
+                yield f"data: {json.dumps({'event': 'node_finished', 'node': 'instant_place_lookup', 'status': status}, default=str)}\n\n"
+                yield f"data: {json.dumps({'event': 'completed', 'status': status, 'final_result': _compact_final_result_for_stream(final_result)}, default=str)}\n\n"
+                return
+            except Exception as e:
+                TASK_STORE.update(task_id, status=AgentStatus.FAILED, error_message=str(e))
+                yield f"data: {json.dumps({'event': 'error', 'message': str(e)}, default=str)}\n\n"
+                return
         
         # 콜드 스타트 시 UI가 멈추지 않도록 진행 상황 사전 알림
         yield f"data: {json.dumps({'event': 'progress', 'status': 'INTENT_PARSING', 'message': '지능형 라우팅 및 시맨틱 캐시 확인 중...'})}\n\n"

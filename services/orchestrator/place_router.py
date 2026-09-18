@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import json
 import os
+import re
 from typing import Any
 
 from fastapi import APIRouter
@@ -18,6 +19,20 @@ router = APIRouter(tags=["places"])
 class PlaceResolveRequest(BaseModel):
     query: str = Field(min_length=1, max_length=1000)
     spatial_context: dict[str, Any] = Field(default_factory=dict)
+
+
+def place_navigation_target(query: str) -> str:
+    text = str(query or "").strip()
+    patterns = [
+        r"^(?P<place>.+?)(?:으로|로)?\s*이동(?:해줘|해|하기)?[.!?]?$",
+        r"^(?P<place>.+?)(?:으로|로)?\s*가줘[.!?]?$",
+        r"^(?P<place>.+?)(?:을|를)?\s*보여줘[.!?]?$",
+    ]
+    for pattern in patterns:
+        match = re.match(pattern, text)
+        if match:
+            return match.group("place").strip()
+    return text
 
 
 def _candidate_version(candidate: dict[str, Any]) -> str:
@@ -60,8 +75,9 @@ def _external_candidate_to_place(candidate: dict[str, Any]) -> dict[str, Any]:
 
 
 def external_place_fallback(query: str) -> dict[str, Any] | None:
+    place_query = place_navigation_target(query)
     report = run_gap_fill(
-        query,
+        place_query,
         fetch_osm=bool(os.getenv("GEOLLM_OSM_USER_AGENT")),
         ask_ollama=bool(os.getenv("GEOLLM_PLACE_FALLBACK_OLLAMA")),
     )
@@ -95,8 +111,9 @@ def external_place_fallback(query: str) -> dict[str, Any] | None:
 
 
 def resolve_payload(query, spatial_context):
+    place_query = place_navigation_target(query)
     try:
-        geometry, label, crs, resolution = resolve_location(query, spatial_context)
+        geometry, label, crs, resolution = resolve_location(place_query, spatial_context)
         return {
             "status": "RESOLVED", "geometry": geometry, "location_text": label, "crs": crs,
             "place_id": resolution.get("place_id"), "place_version": resolution.get("place_version"),
