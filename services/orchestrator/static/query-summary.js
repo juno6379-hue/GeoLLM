@@ -61,6 +61,50 @@
         node("querySummaryFacts").append(term, description);
     }
 
+    function percent(value) {
+        const n = Number(value);
+        return Number.isFinite(n) ? `${(n * 100).toFixed(1)}%` : "-";
+    }
+
+    function quality(result) {
+        const structured = result?.structured_result || {};
+        const orch = result?.orchestrator_v2 || {};
+        return result?.quality_metrics || structured.quality_metrics || orch.quality_metrics || {};
+    }
+
+    function renderGeneric(result, originalQuery, geojsonData) {
+        const structured = result?.structured_result || {};
+        const route = result?.orchestrator_v2?.route_plan || {};
+        const status = result?.status || structured.status || "UNKNOWN";
+        const query = structured.original_query || originalQuery || node("querySummaryQuery").textContent;
+        const summary = result?.answer_text || result?.summary || structured.summary || "";
+        const features = Array.isArray(geojsonData?.features)
+            ? geojsonData.features.filter(feature => !(feature.properties && (feature.properties.is_buffer || feature.properties.role === "search_buffer")))
+            : [];
+        const count = structured.returned_count ?? structured.count ?? features.length;
+        const q = quality(result);
+        const titleName = structured.location_text || route.slots?.location_text || route.slots?.target_term || route.analysis_type || result?.agent_name || "결과";
+
+        show(status === "COMPLETED" ? "분석 완료" : status, summary || "질의 처리 결과를 확인했습니다.", query);
+        node("querySummaryTitle").textContent = status === "COMPLETED"
+            ? `${titleName} 질의 결과`
+            : `${titleName} 처리 상태`;
+
+        if (route.intent) fact("의도", route.intent);
+        if (route.analysis_type || structured.analysis_type) fact("분석 유형", route.analysis_type || structured.analysis_type);
+        if (structured.location_text) fact("기준 위치", structured.location_text);
+        if (structured.geometry || structured.reference_geometry) fact("기준 좌표", structured.geometry || structured.reference_geometry);
+        if (Number.isFinite(Number(count))) fact("지도 표시 객체", `${Number(count).toLocaleString("ko-KR")}건`);
+        if (q.intent_similarity !== undefined) fact("의도 유사도", percent(q.intent_similarity));
+        if (q.kg_similarity !== undefined) fact("KG 유사도", percent(q.kg_similarity));
+        if (q.evidence_similarity !== undefined) fact("근거 유사도", percent(q.evidence_similarity));
+        if (q.estimated_accuracy !== undefined) fact("추정 정확도", percent(q.estimated_accuracy));
+        if (structured.location_resolution?.method) fact("위치 해석", structured.location_resolution.method);
+        if (structured.location_resolution?.source_ref || features[0]?.properties?.source_ref) {
+            fact("근거", structured.location_resolution?.source_ref || features[0].properties.source_ref);
+        }
+    }
+
     function renderRadius(result, originalQuery) {
         const data = result.structured_result || {};
         const query = data.original_query || originalQuery;
@@ -98,5 +142,5 @@
         if (data.exclusions?.length) fact("제외 조건", data.exclusions.map(featureName).join(", "));
     }
 
-    window.QuerySummary = { reset, show, renderRadius, featureName, distanceText };
+    window.QuerySummary = { reset, show, renderGeneric, renderRadius, featureName, distanceText };
 })();

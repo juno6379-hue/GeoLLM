@@ -712,7 +712,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4leaflet/1.0.2/proj4leaflet.min.js"></script>
-    <script src="/query-summary.js?v=20260916-scale-all-features"></script>
+    <script src="/query-summary.js?v=20260918-generic-summary"></script>
     <script src="/radius-results.js?v=20260917-accident-points-v2"></script>
     
     <script>
@@ -1006,6 +1006,10 @@
 
         function renderAnalysisResult(data, geojsonData) {
             const finalResult = data.final_result || {};
+            const structuredForMap = finalResult.structured_result || {};
+            if (!geojsonData && structuredForMap.geojson && Array.isArray(structuredForMap.geojson.features)) {
+                geojsonData = structuredForMap.geojson;
+            }
             const actualFeatures = getActualFeatures(geojsonData);
             const count = actualFeatures.length;
             const summary = finalResult.answer_text || finalResult.summary || (count > 0
@@ -1038,6 +1042,9 @@
             warnings.forEach(w => evidenceItems.push(`경고: ${w}`));
 
             setAnalysisPanel("분석 완료", summary, evidenceItems);
+            if (window.QuerySummary && typeof QuerySummary.renderGeneric === "function") {
+                QuerySummary.renderGeneric(finalResult, data.query || structured.original_query || "", geojsonData);
+            }
         }
 
         const stepsArray = ['routing', 'discovery', 'spatial', 'ais', 'knowledge', 'reasoning', 'validation', 'report'];
@@ -1344,6 +1351,7 @@
                                 
                                 fetchTraceData(currentTaskId);
                             } else if (data.event === 'completed') {
+                                data.query = query;
                                 fetchTraceData(currentTaskId);
                                 if (RadiusResults.isRadius(data.final_result)) {
                                     RadiusResults.render(data.final_result, { map, activeLayers, originalQuery: query, submit: sendQuery });
