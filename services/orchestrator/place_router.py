@@ -16,6 +16,64 @@ from services.spatial_analysis_agent.place_resolver import PlaceResolutionProble
 router = APIRouter(tags=["places"])
 
 
+LOCAL_PLACE_REGISTRY: dict[str, dict[str, Any]] = {
+    "해운대구": {
+        "label": "해운대구",
+        "geometry": "POINT(129.1636 35.1631)",
+        "place_id": "local-admin-place:haeundae-gu",
+        "place_type": "administrative_district",
+        "source_ref": "data/place_geometry_registry.yaml#curated_admin_fallback",
+        "authority_level": "local_curated",
+        "confidence": 0.92,
+    },
+    "해운대": {
+        "label": "해운대구",
+        "geometry": "POINT(129.1636 35.1631)",
+        "place_id": "local-admin-place:haeundae-gu",
+        "place_type": "administrative_district",
+        "source_ref": "data/place_geometry_registry.yaml#curated_admin_fallback",
+        "authority_level": "local_curated",
+        "confidence": 0.88,
+    },
+    "독도": {
+        "label": "독도",
+        "geometry": "POINT(131.8644 37.2411)",
+        "place_id": "local-place:dokdo",
+        "place_type": "island",
+        "source_ref": "data/place_geometry_registry.yaml#curated_place_fallback",
+        "authority_level": "local_curated",
+        "confidence": 0.94,
+    },
+    "부산항 입구": {
+        "label": "부산항 입구",
+        "geometry": "POINT(129.075 35.075)",
+        "place_id": "local-marine-place:busan-port-entrance",
+        "place_type": "marine_reference_point",
+        "source_ref": "data/place_geometry_registry.yaml#curated_marine_fallback",
+        "authority_level": "local_curated",
+        "confidence": 0.9,
+    },
+    "부산항": {
+        "label": "부산항",
+        "geometry": "POINT(129.0756 35.1028)",
+        "place_id": "local-marine-place:busan-port",
+        "place_type": "port",
+        "source_ref": "data/place_geometry_registry.yaml#curated_marine_fallback",
+        "authority_level": "local_curated",
+        "confidence": 0.88,
+    },
+    "인천항": {
+        "label": "인천항",
+        "geometry": "POINT(126.604 37.456)",
+        "place_id": "local-marine-place:incheon-port",
+        "place_type": "port",
+        "source_ref": "data/place_geometry_registry.yaml#curated_marine_fallback",
+        "authority_level": "local_curated",
+        "confidence": 0.88,
+    },
+}
+
+
 class PlaceResolveRequest(BaseModel):
     query: str = Field(min_length=1, max_length=1000)
     spatial_context: dict[str, Any] = Field(default_factory=dict)
@@ -23,6 +81,7 @@ class PlaceResolveRequest(BaseModel):
 
 def place_navigation_target(query: str) -> str:
     text = str(query or "").strip()
+    text = re.sub(r"\s+", " ", text)
     patterns = [
         r"^(?P<place>.+?)(?:으로|로)?\s*이동(?:해줘|해|하기)?[.!?]?$",
         r"^(?P<place>.+?)(?:으로|로)?\s*가줘[.!?]?$",
@@ -32,7 +91,39 @@ def place_navigation_target(query: str) -> str:
         match = re.match(pattern, text)
         if match:
             return match.group("place").strip()
+    compact_match = re.match(r"^(?P<place>.+?)(?:으로|로)?이동$", text)
+    if compact_match:
+        return compact_match.group("place").strip()
     return text
+
+
+def _registry_place_lookup(place_query: str) -> dict[str, Any] | None:
+    normalized = re.sub(r"\s+", " ", str(place_query or "").strip())
+    compact = normalized.replace(" ", "")
+    record = LOCAL_PLACE_REGISTRY.get(normalized) or LOCAL_PLACE_REGISTRY.get(compact)
+    if not record:
+        return None
+    place_version = _candidate_version(record)
+    resolution = {
+        "method": "local_curated_place_registry",
+        "place_id": record["place_id"],
+        "place_version": place_version,
+        "source_ref": record["source_ref"],
+        "authority_level": record["authority_level"],
+        "confidence": record["confidence"],
+        "place_type": record["place_type"],
+    }
+    return {
+        "status": "RESOLVED",
+        "geometry": record["geometry"],
+        "location_text": record["label"],
+        "crs": "EPSG:4326",
+        "place_id": record["place_id"],
+        "place_version": place_version,
+        "location_resolution": resolution,
+        "location_candidates": [],
+        "summary": f"{record['label']} 기준 위치를 로컬 지명 레지스트리에서 확인했습니다.",
+    }
 
 
 def _candidate_version(candidate: dict[str, Any]) -> str:
@@ -112,6 +203,9 @@ def external_place_fallback(query: str) -> dict[str, Any] | None:
 
 def resolve_payload(query, spatial_context):
     place_query = place_navigation_target(query)
+    registry_payload = _registry_place_lookup(place_query)
+    if registry_payload:
+        return registry_payload
     try:
         geometry, label, crs, resolution = resolve_location(place_query, spatial_context)
         return {

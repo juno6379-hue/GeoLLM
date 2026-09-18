@@ -26,7 +26,7 @@ FORBIDDEN_TEXT = [
 ]
 
 PRESET_QUERIES: list[dict[str, Any]] = [
-    {"query": "해운대구로 이동", "category": "place_fast_path", "expected_status": ["COMPLETED", "NEEDS_CLARIFICATION"], "max_elapsed_ms": 6000, "expected_nodes": ["instant_place_lookup"], "forbidden_nodes": ["parse_intent"]},
+    {"query": "해운대구로 이동", "category": "place_fast_path", "expected_status": ["COMPLETED"], "max_elapsed_ms": 6000, "expected_nodes": ["instant_place_lookup"], "forbidden_nodes": ["parse_intent"]},
     {"query": "독도를 찾아줘", "category": "place_lookup", "expected_status": ["COMPLETED", "BLOCKED", "NEEDS_CLARIFICATION"], "max_elapsed_ms": 12000},
     {"query": "부산항 입구로 이동", "category": "place_fast_path", "expected_status": ["COMPLETED", "NEEDS_CLARIFICATION"], "max_elapsed_ms": 8000},
     {"query": "인천항으로 이동", "category": "place_fast_path", "expected_status": ["COMPLETED", "NEEDS_CLARIFICATION"], "max_elapsed_ms": 8000},

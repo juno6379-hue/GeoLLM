@@ -1,43 +1,77 @@
-version: '1.0'
-places:
-  busan_port_entrance:
-    canonical_name: 부산항 입구
+version: '0.1'
+status: local_curated_seed
+description: >
+  Curated seed registry for fast place navigation and place anchoring. Entries
+  here are used only when an authoritative local serving gazetteer cannot
+  resolve an administrative or operational reference point quickly enough for
+  interactive map navigation. They should be promoted, replaced, or refined by
+  authoritative public boundary/place datasets during the external evidence
+  gap-fill review loop.
+policies:
+  local_authoritative_first: true
+  curated_seed_requires_review_for_analysis: true
+  use_for_map_navigation: true
+  use_for_distance_analysis: allowed_with_source_disclosure
+entries:
+  haeundae-gu:
+    label: 해운대구
     aliases:
-      - 부산항 입구
-      - 부산항입구
-      - 부산항
-      - Busan Port Entrance
-      - busan port entrance
-      - Busan Port
-      - busan port
-    geometry_wkt: POINT(129.075 35.075)
-    srid: 4326
-    status: approved
-    provenance: local_curated_binding
-  incheon_port:
-    canonical_name: 인천항
-    aliases:
-      - 인천항
-      - 인천
-      - Incheon Port
-      - incheon port
-      - Incheon
-      - incheon
-    geometry_wkt: POINT(126.592 37.456)
-    srid: 4326
-    status: approved
-    provenance: local_curated_binding
+      - 해운대구
+      - 해운대
+    geometry: POINT(129.1636 35.1631)
+    crs: EPSG:4326
+    place_type: administrative_district
+    authority_level: local_curated
+    confidence: 0.92
+    provenance:
+      method: curated_admin_fallback
+      review_status: seed_registry
+      note: Centroid-like navigation anchor for interactive place lookup.
   dokdo:
-    canonical_name: 독도
+    label: 독도
     aliases:
       - 독도
-      - 독도를
-      - 독도의
-      - Dokdo
-      - dokdo
-      - Liancourt Rocks
-      - liancourt rocks
-    geometry_wkt: POINT(131.864444 37.241389)
-    srid: 4326
-    status: approved
-    provenance: local_curated_korean_island_reference
+    geometry: POINT(131.8644 37.2411)
+    crs: EPSG:4326
+    place_type: island
+    authority_level: local_curated
+    confidence: 0.94
+    provenance:
+      method: curated_place_fallback
+      review_status: seed_registry
+  busan-port-entrance:
+    label: 부산항 입구
+    aliases:
+      - 부산항 입구
+    geometry: POINT(129.075 35.075)
+    crs: EPSG:4326
+    place_type: marine_reference_point
+    authority_level: local_curated
+    confidence: 0.9
+    provenance:
+      method: curated_marine_fallback
+      review_status: seed_registry
+  busan-port:
+    label: 부산항
+    aliases:
+      - 부산항
+    geometry: POINT(129.0756 35.1028)
+    crs: EPSG:4326
+    place_type: port
+    authority_level: local_curated
+    confidence: 0.88
+    provenance:
+      method: curated_marine_fallback
+      review_status: seed_registry
+  incheon-port:
+    label: 인천항
+    aliases:
+      - 인천항
+    geometry: POINT(126.604 37.456)
+    crs: EPSG:4326
+    place_type: port
+    authority_level: local_curated
+    confidence: 0.88
+    provenance:
+      method: curated_marine_fallback
+      review_status: seed_registry
