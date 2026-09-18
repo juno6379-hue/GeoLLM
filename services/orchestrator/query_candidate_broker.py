@@ -13,6 +13,7 @@ from typing import Any
 import yaml
 
 from shared.observability.logger import get_logger
+from services.orchestrator.semantic_prior import build_semantic_prior, semantic_prior_signals
 
 logger = get_logger("orchestrator.query_candidate_broker")
 
@@ -209,6 +210,16 @@ def _registry_signal_scan(query: str) -> list[Signal]:
             if term in lowered or _compact_text(term) in compacted:
                 signals.append(Signal(signal_id=signal_id, routes=list(routes), value=term))
                 break
+    return signals
+
+
+def _semantic_prior_signal_scan(prior: dict[str, Any]) -> list[Signal]:
+    signals: list[Signal] = []
+    for item in semantic_prior_signals(prior):
+        signal_id = str(item.get("signal_id") or "")
+        routes = [str(route) for route in item.get("routes") or [] if route]
+        if signal_id and routes:
+            signals.append(Signal(signal_id=signal_id, routes=routes, value=item.get("value")))
     return signals
 
 
@@ -720,7 +731,12 @@ def execution_contract_ready(trace: dict[str, Any] | None, *, route: str | None 
 class QueryCandidateBroker:
     def build_trace(self, query: str, normalized_query: str | None = None, norm_result: dict[str, Any] | None = None) -> dict[str, Any]:
         combined = " ".join(part for part in [query, normalized_query] if part)
-        signals = _dedupe_signals(_signal_scan(combined) + _registry_signal_scan(combined))
+        semantic_prior = build_semantic_prior(query, normalized_query)
+        signals = _dedupe_signals(
+            _signal_scan(combined)
+            + _registry_signal_scan(combined)
+            + _semantic_prior_signal_scan(semantic_prior)
+        )
         routes = _route_candidates(combined, signals)
         capabilities = _capability_candidates(combined, routes, signals)
         pgvector_used = bool(capabilities and capabilities[0].get("retrieval_source") == "pgvector")
@@ -738,6 +754,7 @@ class QueryCandidateBroker:
                 {"signal_id": signal.signal_id, "value": signal.value, "routes": signal.routes}
                 for signal in signals
             ],
+            "semantic_prior": semantic_prior,
             "route_candidates": routes,
             "capability_candidates": capabilities,
             "verified_candidates": verified,

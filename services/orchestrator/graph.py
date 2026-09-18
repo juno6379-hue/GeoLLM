@@ -1578,6 +1578,31 @@ def _requested_layer_distance_m(query: str, state: OrchestratorState) -> float:
     return 3000.0
 
 
+def _requested_layer_anchor_query(query: str, targets: list[dict]) -> str:
+    """Extract only the location anchor from a requested spatial layer query."""
+    text = re.sub(r"\s+", " ", str(query or "").strip())
+    if not text:
+        return text
+    anchor = text
+    target_terms = sorted(
+        {
+            str(term)
+            for target in targets or []
+            for term in (target.get("terms") or [])
+            if str(term or "").strip()
+        },
+        key=len,
+        reverse=True,
+    )
+    for term in target_terms:
+        anchor = re.sub(re.escape(term), " ", anchor, flags=re.IGNORECASE)
+    anchor = re.sub(r"\d+(?:\.\d+)?\s*(?:km|m|킬로미터|킬로|미터)", " ", anchor, flags=re.IGNORECASE)
+    anchor = re.sub(r"(?:부근|주변|근처|반경|이내|인근|앞바다|해역|에서|의)", " ", anchor)
+    anchor = re.sub(r"(?:을|를|은|는|이|가)?\s*(?:찾아줘|찾아|보여줘|표시해줘|조회해줘|알려줘|검색해줘|분석해줘)\s*$", " ", anchor)
+    anchor = re.sub(r"\s+", " ", anchor).strip(" ,.;:!?")
+    return anchor if len(anchor) >= 2 else text
+
+
 def _should_fast_execute_requested_spatial_layer(state: OrchestratorState) -> bool:
     query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
     if not _requested_spatial_layer_targets(query):
@@ -4168,9 +4193,11 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
     from services.orchestrator.place_router import resolve_payload
 
     query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
+    primary_query = str(state.get("normalized_query") or state.get("query") or "")
     targets = _requested_spatial_layer_targets(query)
     if not targets:
         return await fast_spatial_or_traffic_block_node(state)
+    anchor_query = _requested_layer_anchor_query(primary_query, targets)
 
     sea_parting_place = None
     if any(target["layer_id"] == "sea_parting_prediction" for target in targets):
@@ -4187,13 +4214,13 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
             },
         }
     else:
-        location = await asyncio.to_thread(resolve_payload, query, _spatial_context_dict(state))
+        location = await asyncio.to_thread(resolve_payload, anchor_query, _spatial_context_dict(state))
         if location["status"] != "RESOLVED":
             return _place_lookup_update(state, location, "feature_search_by_radius")
 
     base_wkt = location["geometry"]
     location_text = location["location_text"]
-    distance_m = _requested_layer_distance_m(query, state)
+    distance_m = _requested_layer_distance_m(primary_query, state)
     limit_per_layer = 100
     sql = """
         WITH base AS (

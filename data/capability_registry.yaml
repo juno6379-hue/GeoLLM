@@ -116,6 +116,93 @@ capabilities:
   - place_name
   - location_text
   - nearby_search
+  - semantic_place_like
+  - semantic_place_type:administrative_area
+  - semantic_place_type:island
+  - semantic_place_type:port
+  - semantic_place_type:address
+  - administrative_place_lookup
+- capability_id: resolver.poi_beach_place
+  object_type: resolver_description
+  label: POI and Beach Place Resolver
+  routes:
+  - PLACE_LOOKUP
+  - SPATIAL_ANALYSIS
+  role: primary_or_supporting
+  description: 'Resolve place-like Korean POI queries for beaches, tourism POIs, landmarks, parks, and named coastal facilities. This resolver classifies terms such as 해수욕장, 해변, 관광지, 명소, 공원, and beach as POI place targets before geometry authority is checked.
+
+    '
+  input_slots:
+  - query_text
+  - place_name
+  - place_type
+  output_slots:
+  - canonical_name
+  - place_type
+  - candidate_geometry
+  - source_ref
+  - authority_level
+  authority_ref: data/place_geometry_registry.yaml
+  registry_ref: data/external_evidence_registry.yaml
+  deterministic_hints:
+  - semantic_place_type:poi_beach
+  - semantic_place_type:tourism_poi
+  - poi_beach
+  - tourism_poi
+  - beach
+- capability_id: resolver.osm_supplemental_place
+  object_type: resolver_description
+  label: OSM Supplemental Place Candidate Resolver
+  routes:
+  - PLACE_LOOKUP
+  - EXTERNAL_EVIDENCE_GAP_FILL
+  role: supporting
+  description: 'Generate OSM/Nominatim or Overpass supplemental place candidates when local authoritative and curated place registries do not resolve a place-like query. OSM candidates are never authoritative by themselves and require registry/KG review before promotion.
+
+    '
+  input_slots:
+  - query_text
+  - place_name
+  - place_type
+  output_slots:
+  - supplemental_candidates
+  - candidate_geometry
+  - source_url
+  - review_required
+  authority_ref: data/external_evidence_registry.yaml
+  registry_ref: data/external_evidence_registry.yaml
+  deterministic_hints:
+  - osm_supplemental
+  - external_gap_fill
+  - poi_beach
+  - administrative_place_lookup
+- capability_id: tool.external_evidence_gap_fill
+  object_type: tool_description
+  label: External Evidence Gap-Fill Tool
+  routes:
+  - PLACE_LOOKUP
+  - SPATIAL_ANALYSIS
+  - EXTERNAL_EVIDENCE_GAP_FILL
+  role: supporting
+  description: 'Run the external evidence gap-fill loop: local authoritative registry first, public authoritative candidates second, OSM/RAG supplemental candidates third, then review-gated promotion candidates. This tool returns candidates only unless registry authority is verified.
+
+    '
+  input_slots:
+  - query_text
+  - domain_id
+  - anchor_geometry
+  output_slots:
+  - local_checks
+  - public_authoritative_candidates
+  - supplemental_candidates
+  - promotion_candidates
+  authority_ref: data/external_evidence_registry.yaml
+  registry_ref: scripts/run_external_evidence_gap_fill.py
+  deterministic_hints:
+  - external_gap_fill
+  - osm_supplemental
+  - rag_supplemental
+  - candidate_only_until_verified
 - capability_id: resolver.dataset_provenance_registry
   object_type: resolver_description
   label: Dataset Provenance Resolver

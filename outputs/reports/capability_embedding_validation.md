@@ -1,10 +1,10 @@
 # Capability Embedding Validation
 
 - status: `OK`
-- generated_at: `2026-09-18T03:31:38.724718+00:00`
-- chunks: `18`
-- embeddings: `18`
+- generated_at: `2026-09-18T07:01:54.131534+00:00`
+- chunks: `21`
+- embeddings: `21`
 - model: `bge-m3`
 - dimension: `1024`
-- live_total: `18`
+- live_total: `21`
 - live_null_embeddings: `0`

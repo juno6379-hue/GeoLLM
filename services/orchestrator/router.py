@@ -57,6 +57,7 @@ def _is_instant_place_navigation(query: str) -> bool:
     blocked_terms = {
         "사고", "위험", "침선", "장애물", "통항", "ais", "v-pass", "vpass",
         "교통", "항로", "정박지", "보호구역", "천연보호구역",
+        "해저지명", "해양지명", "부근", "주변", "근처", "이내",
     }
     if any(term in lowered or term in text for term in blocked_terms):
         return False
