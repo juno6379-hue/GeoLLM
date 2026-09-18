@@ -66,3 +66,34 @@ async def test_dispatch_preserves_gate_status_with_unresolved_geometry(
     context = QueryExecutionContext.model_validate(result["query_execution_context"])
     assert context.readiness == expected_readiness
     assert any(item.startswith("NEEDS_USER_INPUT") for item in context.blockers)
+
+
+@pytest.mark.asyncio
+async def test_clarification_agent_is_terminal_state_not_dispatched(monkeypatch):
+    dispatch = Mock(side_effect=AssertionError("ClarificationAgent must not be dynamically dispatched"))
+    monkeypatch.setattr(graph.registry, "get_execute_function", dispatch)
+    request = AgentRequest(
+        task_id="fixture-clarification-terminal",
+        trace_id="fixture-trace",
+        user_id="fixture-user",
+        organization_id="fixture-org",
+        agent_name="ClarificationAgent",
+        original_query="ambiguous place query",
+        security_context=SecurityContext(clearance_level="PUBLIC"),
+        query_execution_context=QueryExecutionContext(
+            route_plan={"analysis_type": "clarification_required"},
+            slots=ExecutionSlots(unresolved_slots=["location", "target_term"]),
+            blockers=["NEEDS_USER_INPUT: location or target term is missing"],
+        ),
+    )
+
+    result = await graph.execute_agent_node({
+        "task_id": request.task_id,
+        "agent_request": request,
+        "task_plan": {"analysis_type": "clarification_required", "unresolved_slots": ["location", "target_term"]},
+    })
+
+    dispatch.assert_not_called()
+    assert result["status"] == AgentStatus.NEEDS_CLARIFICATION
+    assert result["agent_result"].agent_name == "ClarificationAgent"
+    assert result["agent_result"].error_code == PlanStatus.NEEDS_USER_INPUT.value

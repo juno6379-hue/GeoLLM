@@ -4651,6 +4651,44 @@ async def execute_agent_node(state: OrchestratorState) -> OrchestratorState:
     if req.previous_agent_outputs.get("location_resolution_problem"):
         return _place_lookup_update(state, req.previous_agent_outputs["location_resolution_problem"], "place_lookup")
 
+    if req.agent_name == "ClarificationAgent":
+        route_plan = state.get("task_plan") or {}
+        unresolved = []
+        if isinstance(route_plan, dict):
+            unresolved = route_plan.get("unresolved_slots") or []
+        blockers = []
+        if req.query_execution_context:
+            blockers = req.query_execution_context.blockers or []
+        summary = "추가 정보가 필요합니다."
+        if unresolved:
+            summary = "다음 항목을 확인해 주세요: " + ", ".join(str(item) for item in unresolved)
+        elif blockers:
+            summary = "실행 전 확인이 필요합니다: " + "; ".join(str(item) for item in blockers)
+        agent_result = AgentResult(
+            task_id=req.task_id,
+            trace_id=req.trace_id,
+            agent_name="ClarificationAgent",
+            agent_version="orchestrator-clarification-gate",
+            status=AgentStatus.NEEDS_CLARIFICATION,
+            error_code=PlanStatus.NEEDS_USER_INPUT.value,
+            summary=summary,
+            answer_text=summary,
+            structured_result={
+                "analysis_type": route_plan.get("analysis_type") if isinstance(route_plan, dict) else None,
+                "unresolved_slots": unresolved,
+                "blockers": blockers,
+                "route_plan": route_plan,
+            },
+            clarification_questions=[summary],
+            warnings=["ClarificationAgent is a terminal state, not a dynamically dispatched executable agent."],
+            provenance={"clarification_gate": "services.orchestrator.graph.execute_agent_node"},
+        )
+        return {
+            "agent_result": agent_result,
+            "status": AgentStatus.NEEDS_CLARIFICATION,
+            "state_history": log_transition(AgentStatus.PLAN_CREATED, AgentStatus.NEEDS_CLARIFICATION, reason="Clarification terminal state")
+        }
+
     contract_required_agents = {"Spatial Analysis Agent", "Accident/Risk Agent", "AIS Analysis Agent", "Time-Series Agent", "Time-Series Forecast Agent"}
     if req.agent_name in contract_required_agents and not req.query_execution_context:
         agent_result = AgentResult(
