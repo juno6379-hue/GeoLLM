@@ -12,7 +12,7 @@ def main():
     graph.mkdir(parents=True, exist_ok=True); reports.mkdir(parents=True, exist_ok=True)
     (graph / "deferred_edges_status.jsonl").write_text("".join(json.dumps(x, ensure_ascii=False) + "\n" for x in result["blocked_relations"]), encoding="utf-8")
     (graph / "candidate_edges_from_discovery.jsonl").write_text("".join(json.dumps(x, ensure_ascii=False) + "\n" for x in result["candidate_data"]), encoding="utf-8")
-    (graph / "verified_edges_from_discovery.jsonl").write_text("", encoding="utf-8")
+    (graph / "verified_edges_from_discovery.jsonl").touch(exist_ok=True)
     (reports / "08_data_discovery_agent_integration.md").write_text(f'''# Data Discovery Agent 통합 보고서
 
 ## 현재 판정

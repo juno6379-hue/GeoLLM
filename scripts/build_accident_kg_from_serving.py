@@ -214,6 +214,22 @@ def build() -> dict[str, Any]:
             "status": "VERIFIED",
             "provenance": provenance,
         },
+        {
+            "id": "tool.accident_spatial_history_lookup|usesTable|serving.accident_events",
+            "subject_id": "tool.accident_spatial_history_lookup",
+            "predicate": "usesTable",
+            "object_id": "serving.accident_events",
+            "status": "VERIFIED",
+            "provenance": provenance,
+        },
+        {
+            "id": "tool.accident_spatial_history_lookup|implementsTemplate|query_template:accident_spatial_history_lookup",
+            "subject_id": "tool.accident_spatial_history_lookup",
+            "predicate": "implementsTemplate",
+            "object_id": "query_template:accident_spatial_history_lookup",
+            "status": "VERIFIED",
+            "provenance": provenance,
+        },
     ]
 
     write_jsonl(GRAPH / "nodes_accident_events.jsonl", event_nodes)

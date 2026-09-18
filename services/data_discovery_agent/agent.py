@@ -350,7 +350,7 @@ async def execute_data_discovery(request: AgentRequest) -> AgentResult:
     graph_dir.mkdir(parents=True, exist_ok=True)
     (graph_dir / "deferred_edges_status.jsonl").write_text("".join(json.dumps(item, ensure_ascii=False) + "\n" for item in discovery["blocked_relations"]), encoding="utf-8")
     (graph_dir / "candidate_edges_from_discovery.jsonl").write_text("".join(json.dumps(item, ensure_ascii=False) + "\n" for item in discovery["candidate_data"]), encoding="utf-8")
-    (graph_dir / "verified_edges_from_discovery.jsonl").write_text("", encoding="utf-8")
+    (graph_dir / "verified_edges_from_discovery.jsonl").touch(exist_ok=True)
     summary = f"Total {len(available_datasets)} datasets discovered. Discovery level: {discovery['execution_level']}. Spatial execution: {discovery['can_execute_spatial_query']}."
     next_actions = list(discovery["required_next_actions"])
     external_sources = external_hint.get("evidence", {}).get("recommended_sources") or []

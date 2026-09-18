@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-17T06:56:54.227740Z",
+  "generated_at": "2026-09-18T00:46:50.481160Z",
   "source_ref": "serving.accident_events",
   "db_event_rows": 4636,
   "event_nodes": 4636,
@@ -9,6 +9,6 @@
   "sea_area_nodes": 6,
   "event_dimension_edges": 18544,
   "concept_edges": 53,
-  "verified_edges_promoted": 4,
+  "verified_edges_promoted": 6,
   "sync_status": "PASS"
 }
