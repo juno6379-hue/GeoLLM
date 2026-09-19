@@ -51,10 +51,47 @@
       selection.textContent = `선택한 S-101 선석 피처 ${id} · 데이터셋 ${dataset} · 점유 상태 정보 없음`;
     })
   }).addTo(map);
+  // Agent results live in a separate overlay. Panning reloads the viewport
+  // berth collection, but must not silently remove a verified result.
+  const resultOverlay = L.geoJSON(null, {
+    pointToLayer: (_feature, latlng) => L.circleMarker(latlng, {
+      radius: 10, color: "#ec6b19", weight: 3, fillColor: "#ffd468", fillOpacity: 1
+    }),
+    style: { color: "#ec6b19", weight: 6 }
+  }).addTo(map);
 
   let activeRequest = null;
   let debounceTimer = null;
   let chartReady = false;
+
+  function focusVerifiedFeature(feature) {
+    // The execution API returns source-attributed S-101 GeoJSON. Require the
+    // same identity fields the map selection sends, and ignore malformed
+    // events instead of treating an arbitrary UI string as map geometry.
+    if (!feature || feature.type !== "Feature" || !feature.geometry ||
+        !feature.id || !feature.properties?.dataset_id ||
+        !feature.properties?.dataset_version_id) return;
+    try {
+      resultOverlay.clearLayers();
+      resultOverlay.addData(feature);
+      const bounds = resultOverlay.getBounds();
+      if (bounds.isValid()) map.fitBounds(bounds.pad(0.25), { maxZoom: 16 });
+      const context = {
+        domain: "uport", entity_type: "s101_berth", feature_id: String(feature.id),
+        dataset_id: String(feature.properties.dataset_id),
+        dataset_version_id: String(feature.properties.dataset_version_id)
+      };
+      window.uportMapContext = context;
+      window.dispatchEvent(new CustomEvent("uport:map-selection", { detail: context }));
+      selection.textContent = `검증된 S-101 선석 피처 ${context.feature_id} 강조 · 데이터셋 ${context.dataset_id}`;
+    } catch (_error) {
+      selection.textContent = "결과 피처의 지도 형식을 확인할 수 없습니다.";
+    }
+  }
+
+  // Agent → Map, Table → Map, Alert → Map share one verified feature event.
+  // An alert with no source feature simply cannot create a map marker.
+  window.addEventListener("uport:focus-feature", event => focusVerifiedFeature(event.detail?.feature));
 
   chart.on("tileload", () => {
     chartReady = true;
@@ -107,6 +144,7 @@
       if (activeRequest) activeRequest.abort();
       map.removeLayer(berths);
       window.uportMapContext = null;
+      window.dispatchEvent(new CustomEvent("uport:map-selection", { detail: null }));
       selection.textContent = "S-101 선석 레이어가 꺼져 있습니다.";
     }
   });

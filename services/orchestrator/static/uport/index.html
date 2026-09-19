@@ -51,19 +51,20 @@
           <div id="map-selection" class="selection" aria-live="polite">선석 피처를 선택하면 ID와 데이터 출처가 표시됩니다.</div>
         </article>
         <article class="card agent-panel">
-          <div class="panel-head"><div><p class="eyebrow">CONVERSATIONAL AGENT</p><h2>U-Port AI</h2></div><span class="badge">준비 중</span></div>
-          <div class="agent-empty"><strong>항만 운영 AI 패널</strong><p>자연어 질의와 근거가 있는 분석 결과는 Agent 연결 후 사용할 수 있습니다.</p></div>
-          <!-- Disabled controls make the unfinished action explicit and prevent
-               users from assuming that a query was submitted successfully. -->
-          <label for="agent-query">질문</label><textarea id="agent-query" rows="3" placeholder="항만 운영에 대해 질문해 주세요" disabled></textarea>
-          <button type="button" disabled>질문 보내기</button>
-          <p class="muted">현재는 질의를 실행하지 않습니다.</p>
+          <div class="panel-head"><div><p class="eyebrow">CONVERSATIONAL AGENT</p><h2>U-Port AI</h2></div><span class="badge">S-101 조회</span></div>
+          <div class="agent-empty"><strong>검증된 선석 피처 조회</strong><p>지도에서 S-101 선석을 선택한 뒤 질문하세요. 실시간 점유·AIS·최적화 실행은 아직 연결되지 않았습니다.</p></div>
+          <p id="agent-context" class="agent-context" aria-live="polite">선택한 지도 객체 없음</p>
+          <form id="agent-form">
+            <label for="agent-query">질문</label><textarea id="agent-query" rows="3" maxlength="2000" placeholder="선택한 선석 피처의 정보를 보여줘" required></textarea>
+            <button id="agent-submit" type="submit">질문 보내기</button>
+          </form>
+          <div id="agent-result" class="agent-result" role="status" aria-live="polite">질의 결과가 여기에 표시됩니다.</div>
         </article>
       </section>
       <!-- The lower cards match the operational groups in U-Port_UI.png. -->
       <section class="details" aria-label="운영 상세">
         <article class="card detail"><h2>선박 일정 타임라인</h2><p>입출항 일정 데이터 연결 대기 중</p></article>
-        <article class="card detail"><h2>선석 운영 현황</h2><p>선석·점유 데이터 연결 대기 중</p></article>
+        <article class="card detail"><h2>선석 운영 현황</h2><p>점유 데이터 연결 대기 중</p><div id="agent-feature-list" class="feature-list" aria-label="검증된 선석 조회 결과"></div></article>
         <article class="card detail"><h2>주요 알림</h2><p>운영 알림 데이터 연결 대기 중</p></article>
         <article class="card detail"><h2>예측 결과 요약</h2><p>검증된 예측 모델 연결 대기 중</p></article>
       </section>
@@ -71,5 +72,6 @@
   </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="/uport/map.js"></script>
+  <script src="/uport/agent.js"></script>
 </body>
 </html>
