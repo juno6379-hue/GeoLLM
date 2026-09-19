@@ -35,6 +35,9 @@ def test_arrival_agreement_and_chronological_voyage_split(tmp_path):
         db.commit()
         blocked, _, _ = dataset.build(db, minimum_voyages=5)
         assert blocked["eligible_sequences"] == 5
+        assert blocked["voyages_with_repeated_position_times"] == 5
+        assert blocked["voyages_with_prearrival_fix"] == 5
+        assert blocked["arrival_rows_with_equal_valid_clocks"] == 5
         assert blocked["export_ready"] is False
         still_blocked, _, _ = dataset.build(db, "Asia/Seoul", minimum_voyages=5)
         assert still_blocked["export_ready"] is False
@@ -62,5 +65,23 @@ def test_disagreeing_arrival_clocks_cannot_label_a_sequence(tmp_path):
         report, train, holdout = dataset.build(
             db, "Asia/Seoul", minimum_voyages=1, arrival_definition_verified=True)
         assert report["eligible_sequences"] == 0
+        assert report["arrival_rows_with_equal_valid_clocks"] == 0
         assert report["excluded"]["arrival_time_disagreement"] == 1
         assert (train, holdout) == ([], [])
+
+
+def test_same_timestamp_from_two_vessels_is_rejected(tmp_path):
+    """Timestamp deduplication must not hide a conflicting MMSI."""
+    with collector.connect(tmp_path / "history.sqlite3") as db:
+        db.execute("INSERT INTO events (callsgn,arrival_year,voyage,event_name,job_at_raw,port_entry_at_raw,collected_at_utc) VALUES (?,?,?,?,?,?,?)",
+                   ("A", "2026", "01", dataset.ARRIVAL, "20260918120000",
+                    "20260918120000", "2026-09-19T00:00:00Z"))
+        for mmsi, hour in (("111", 9), ("222", 9), ("111", 10)):
+            db.execute("INSERT INTO positions (mmsi,callsgn,arrival_year,voyage,observed_at_raw,latitude,longitude,sog,collected_at_utc) VALUES (?,?,?,?,?,?,?,?,?)",
+                       (mmsi, "A", "2026", "01", f"20260918{hour:02d}0000",
+                        "35", "129", "4", "2026-09-19T00:00:00Z"))
+        db.commit()
+        report, _, _ = dataset.build(
+            db, "Asia/Seoul", minimum_voyages=1, arrival_definition_verified=True)
+        assert report["eligible_sequences"] == 0
+        assert report["excluded"]["insufficient_or_mixed_vessel_history"] == 1

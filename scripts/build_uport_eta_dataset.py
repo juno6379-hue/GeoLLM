@@ -32,20 +32,33 @@ def build(db: sqlite3.Connection, provider_timezone: str | None = None,
     """
     reasons = defaultdict(int)
     arrivals = defaultdict(list)
+    arrival_event_rows = 0
+    agreeing_arrival_clocks = 0
     for callsgn, year, voyage, name, job, entry in db.execute(
             "SELECT callsgn, arrival_year, voyage, event_name, job_at_raw, port_entry_at_raw FROM events"):
         if name == ARRIVAL:
+            arrival_event_rows += 1
+            if parse_clock(job) is not None and parse_clock(job) == parse_clock(entry):
+                agreeing_arrival_clocks += 1
             arrivals[(callsgn, year, voyage)].append((job, entry))
     positions = defaultdict(list)
+    stored_positions = 0
     for row in db.execute("""SELECT mmsi, callsgn, arrival_year, voyage,
         observed_at_raw, latitude, longitude, sog FROM positions"""):
+        stored_positions += 1
         mmsi, callsgn, year, voyage, observed, lat, lon, sog = row
         if not all((mmsi, callsgn, year, voyage)):
             reasons["incomplete_identity"] += 1
             continue
         positions[(callsgn, year, voyage)].append((mmsi, observed, lat, lon, sog))
     sequences = []
+    repeated_voyages = 0
+    voyages_with_prearrival_fix = 0
     for key, fixes in positions.items():
+        # Diagnose whether repeated provider updates are accumulating even
+        # before an unambiguous arrival event is available for the voyage.
+        if len({parse_clock(fix[1]) for fix in fixes if parse_clock(fix[1])}) >= 2:
+            repeated_voyages += 1
         evidence = arrivals.get(key, [])
         if len(evidence) != 1:
             reasons["missing_or_ambiguous_arrival"] += 1
@@ -72,8 +85,13 @@ def build(db: sqlite3.Connection, provider_timezone: str | None = None,
                 reasons["invalid_coordinate"] += 1
                 continue
             earlier.append((timestamp, mmsi, latitude, longitude, sog))
+        if earlier:
+            voyages_with_prearrival_fix += 1
+        # Check the vessel identity before collapsing duplicate timestamps;
+        # otherwise a same-time fix from a different MMSI could disappear.
+        mixed_vessel = len({fix[1] for fix in earlier}) != 1
         earlier = sorted({fix[0]: fix for fix in earlier}.values())
-        if len(earlier) < 2 or len({fix[1] for fix in earlier}) != 1:
+        if len(earlier) < 2 or mixed_vessel:
             reasons["insufficient_or_mixed_vessel_history"] += 1
             continue
         sequences.append((arrival, key, earlier))
@@ -89,7 +107,12 @@ def build(db: sqlite3.Connection, provider_timezone: str | None = None,
             else ZoneInfo(provider_timezone) if timezone_verified else None)
     ready = (timezone_verified and arrival_definition_verified
              and len(sequences) >= minimum_voyages)
-    report = {"stored_voyages": len(positions), "eligible_sequences": len(sequences),
+    report = {"stored_positions": stored_positions, "stored_voyages": len(positions),
+              "voyages_with_repeated_position_times": repeated_voyages,
+              "arrival_event_rows": arrival_event_rows,
+              "arrival_rows_with_equal_valid_clocks": agreeing_arrival_clocks,
+              "voyages_with_prearrival_fix": voyages_with_prearrival_fix,
+              "eligible_sequences": len(sequences),
               "minimum_voyages": minimum_voyages, "timezone_verified": timezone_verified,
               "provider_timezone": provider_timezone,
               "arrival_definition_verified": arrival_definition_verified,
