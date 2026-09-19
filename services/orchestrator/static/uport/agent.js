@@ -34,16 +34,20 @@
       : "선택한 지도 객체 없음";
   });
 
-  function renderFeatures(features) {
+  function renderFeatures(features, kind = "berth") {
     featureList.replaceChildren();
     for (const feature of features) {
-      if (feature.type !== "Feature" || !feature.id || !feature.geometry ||
-          !feature.properties?.dataset_id || !feature.properties?.dataset_version_id) continue;
+      if (feature.type !== "Feature" || !feature.id || !feature.geometry) continue;
+      if (kind === "berth" &&
+          (!feature.properties?.dataset_id || !feature.properties?.dataset_version_id)) continue;
       const button = document.createElement("button");
       button.type = "button";
-      button.textContent = `S-101 선석 ${feature.id} · 지도에서 보기`;
+      button.textContent = kind === "hazard"
+        ? `${String(feature.properties?.feature_name || "S-101 위험객체")} ${feature.id} · 지도에서 보기`
+        : `S-101 선석 ${feature.id} · 지도에서 보기`;
       button.addEventListener("click", () => {
-        window.dispatchEvent(new CustomEvent("uport:focus-feature", { detail: { feature } }));
+        const eventName = kind === "hazard" ? "uport:focus-hazard" : "uport:focus-feature";
+        window.dispatchEvent(new CustomEvent(eventName, { detail: { feature } }));
       });
       featureList.appendChild(button);
     }
@@ -53,23 +57,64 @@
     event.preventDefault();
     const prompt = query.value.trim();
     if (!prompt) return;
-    if (!selection) {
-      resultLabel.textContent = "먼저 지도에서 S-101 선석 피처를 선택해 주세요.";
-      return;
-    }
-    const ids = [selection.feature_id, selection.dataset_id, selection.dataset_version_id]
-      .map(value => Number(value));
-    if (ids.some(value => !Number.isSafeInteger(value) || value <= 0)) {
-      resultLabel.textContent = "선택한 피처의 ID가 유효하지 않습니다. 다시 선택해 주세요.";
-      return;
-    }
     if (activeRequest) activeRequest.abort();
     activeRequest = new AbortController();
     const thisRequest = activeRequest;
     submit.disabled = true;
-    resultLabel.textContent = "질의 계획과 S-101 데이터 검증 중…";
+    resultLabel.textContent = "Capability 선택과 S-101 데이터 검증 중…";
     renderFeatures([]);
     try {
+      // The backend Registry chooses the implemented capability. Browser
+      // keywords never bypass the shared Agent execution validation path.
+      const routeResponse = await fetch("/api/v1/uport/query/route", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: prompt, map_selection: selection }),
+        signal: thisRequest.signal
+      });
+      if (!routeResponse.ok) throw new Error(`Capability HTTP ${routeResponse.status}`);
+      const route = await routeResponse.json();
+      if (route.mode === "s101_hazard_viewport") {
+        const bbox = window.uportGetMapBbox?.();
+        if (!bbox) {
+          resultLabel.textContent = "지도 범위를 확인할 수 없습니다.";
+          return;
+        }
+        const response = await fetch("/api/v1/uport/s101/hazards/query", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: prompt, bbox }), signal: thisRequest.signal
+        });
+        if (!response.ok) {
+          const failure = await response.json();
+          resultLabel.textContent = `${failure.detail?.code || "DATASET_NOT_AVAILABLE"}: ${failure.detail?.message || "위험객체 조회에 실패했습니다."}`;
+          return;
+        }
+        const result = await response.json();
+        const features = result.geojson?.features;
+        const evidence = result.evidence_bundle?.spatial_feature_evidence;
+        if (result.status !== "success" || !Array.isArray(features) ||
+            !Array.isArray(evidence) || evidence.length !== features.length ||
+            features.length !== result.returned_count) {
+          throw new Error("Invalid hazard evidence or GeoJSON response");
+        }
+        resultLabel.textContent = `${result.narrative} · 피처 근거 ${evidence.length}건`;
+        renderFeatures(features, "hazard");
+        window.dispatchEvent(new CustomEvent("uport:hazard-query-result", { detail: result }));
+        return;
+      }
+      if (route.mode !== "s101_berth") {
+        resultLabel.textContent = "현재 실행 가능한 U-Port 전문 기능이 없습니다. 필요한 데이터·모델 연결 상태를 확인해 주세요.";
+        return;
+      }
+      if (!selection) {
+        resultLabel.textContent = "먼저 지도에서 S-101 선석 피처를 선택해 주세요.";
+        return;
+      }
+      const ids = [selection.feature_id, selection.dataset_id, selection.dataset_version_id]
+        .map(value => Number(value));
+      if (ids.some(value => !Number.isSafeInteger(value) || value <= 0)) {
+        resultLabel.textContent = "선택한 피처의 ID가 유효하지 않습니다. 다시 선택해 주세요.";
+        return;
+      }
       const response = await fetch("/api/v1/uport/query/execute", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

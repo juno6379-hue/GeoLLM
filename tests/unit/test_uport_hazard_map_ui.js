@@ -51,6 +51,8 @@ async function setup(hazardResponse) {
 test("hazard toggle requests the current bbox and labels source features", async () => {
   const ui = await setup({ ok: true, json: async () => ({ status: "success",
     total_count: 1, returned_count: 1, truncated: false,
+    source_layer: { physical_table: "projection.s101_feature_valid" },
+    evidence_bundle: { spatial_feature_evidence: [{ evidence_id: "source-101" }] },
     geojson: { type: "FeatureCollection", features: [{ type: "Feature", id: "101",
       geometry: { type: "Point", coordinates: [129.4, 35.5] },
       properties: { feature_name: "Wreck" } }] },

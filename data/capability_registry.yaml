@@ -214,6 +214,20 @@ capabilities:
   tool: uport.s101.hazard.search
   agent: S101Agent
   status: unavailable
+- capability_id: uport.s101.hazard.viewport
+  <<: *uport_capability_defaults
+  name: S-101 hazard viewport search
+  domain: uport
+  object_type: tool_description
+  label: Charted hazards in current map bounds
+  description: Search approved S-101 navigational hazards in a validated WGS84 map viewport.
+  cue_terms: [지도 범위 위험객체, 지도 범위의 위험객체, 현재 범위 위험객체, 지도 위험객체, map hazards]
+  required_entities: []
+  required_dataset: [s101_current]
+  depends_on: []
+  tool: postgis.intersects
+  agent: Spatial Analysis Agent
+  status: available
 - capability_id: uport.ais.search
   <<: *uport_capability_defaults
   name: Live AIS search

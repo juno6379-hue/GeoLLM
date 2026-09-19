@@ -73,11 +73,60 @@
       hazardStatus.textContent = `${type} · S-101 피처 ${String(feature.id || "식별자 없음")} · 선박 위험도 판정 아님`;
     })
   });
+  const hazardFocus = L.geoJSON(null, {
+    pointToLayer: (_feature, latlng) => L.circleMarker(latlng, {
+      radius: 11, color: "#8e1c1c", weight: 3, fillColor: "#ffd468", fillOpacity: 1
+    }),
+    style: { color: "#8e1c1c", weight: 6 }
+  }).addTo(map);
 
   let activeRequest = null;
   let debounceTimer = null;
   let chartReady = false;
   let hazardRequest = null;
+
+  // The Agent reads the current extent at submit time. It never reuses a
+  // stale bbox saved before the user panned or zoomed the Leaflet map.
+  window.uportGetMapBbox = () => {
+    const bounds = map.getBounds();
+    return [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()]
+      .map(value => value.toFixed(6)).join(",");
+  };
+
+  function showHazards(result) {
+    if (result.status !== "success" || result.geojson?.type !== "FeatureCollection" ||
+        !Array.isArray(result.geojson.features) ||
+        !Array.isArray(result.evidence_bundle?.spatial_feature_evidence) ||
+        result.evidence_bundle.spatial_feature_evidence.length !== result.geojson.features.length ||
+        !result.source_layer || result.geojson.features.length !== result.returned_count) {
+      throw new Error("Invalid S-101 hazard response");
+    }
+    hazards.clearLayers();
+    hazards.addData(result.geojson);
+    hazardToggle.checked = true;
+    if (!map.hasLayer(hazards)) hazards.addTo(map);
+    hazardStatus.textContent = `현재 범위 위험객체 ${result.total_count}건 중 ${result.returned_count}건 표시 · S-101 근거 제공${result.truncated ? " · 범위를 좁혀 더 보기" : ""}`;
+  }
+
+  // Agent → Map and result table → Map reuse the same verified GeoJSON. A
+  // charted hazard never becomes a selected berth or a live vessel position.
+  window.addEventListener("uport:hazard-query-result", event => {
+    try { showHazards(event.detail); }
+    catch (_error) { hazardStatus.textContent = "위험객체 결과 형식을 확인할 수 없습니다."; }
+  });
+  window.addEventListener("uport:focus-hazard", event => {
+    const feature = event.detail?.feature;
+    if (!feature || feature.type !== "Feature" || !feature.geometry || !feature.id) return;
+    try {
+      hazardFocus.clearLayers();
+      hazardFocus.addData(feature);
+      const bounds = hazardFocus.getBounds();
+      if (bounds.isValid()) map.fitBounds(bounds.pad(0.25), { maxZoom: 16 });
+      hazardStatus.textContent = `${String(feature.properties?.feature_name || "S-101 위험객체")} · 피처 ${String(feature.id)} 강조`;
+    } catch (_error) {
+      hazardStatus.textContent = "위험객체 위치를 지도에 표시할 수 없습니다.";
+    }
+  });
 
   function focusVerifiedFeature(feature) {
     // The execution API returns source-attributed S-101 GeoJSON. Require the
@@ -120,9 +169,7 @@
     if (!berthToggle.checked) return;
     if (activeRequest) activeRequest.abort();
     activeRequest = new AbortController();
-    const bounds = map.getBounds();
-    const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()]
-      .map(value => value.toFixed(6)).join(",");
+    const bbox = window.uportGetMapBbox();
     try {
       const response = await fetch(`/api/v1/uport/map/berths?bbox=${encodeURIComponent(bbox)}`, {
         signal: activeRequest.signal
@@ -148,9 +195,7 @@
     if (hazardRequest) hazardRequest.abort();
     hazardRequest = new AbortController();
     const thisRequest = hazardRequest;
-    const bounds = map.getBounds();
-    const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()]
-      .map(value => value.toFixed(6)).join(",");
+    const bbox = window.uportGetMapBbox();
     hazardStatus.textContent = "현재 지도 범위의 S-101 위험객체 검색 중…";
     try {
       const response = await fetch("/api/v1/uport/s101/hazards/viewport", {
@@ -159,15 +204,7 @@
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const result = await response.json();
-      if (result.status !== "success" || result.geojson?.type !== "FeatureCollection" ||
-          !Array.isArray(result.geojson.features) ||
-          result.geojson.features.length !== result.returned_count) {
-        throw new Error("Invalid S-101 hazard response");
-      }
-      hazards.clearLayers();
-      hazards.addData(result.geojson);
-      if (!map.hasLayer(hazards)) hazards.addTo(map);
-      hazardStatus.textContent = `현재 범위 위험객체 ${result.total_count}건 중 ${result.returned_count}건 표시 · S-101 근거 제공${result.truncated ? " · 범위를 좁혀 더 보기" : ""}`;
+      showHazards(result);
     } catch (error) {
       if (error.name === "AbortError") return;
       hazards.clearLayers();

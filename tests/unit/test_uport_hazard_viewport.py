@@ -5,6 +5,9 @@ from fastapi.testclient import TestClient
 
 import services.uport.hazard_router as hazard_router
 from services.orchestrator.s101_radius_execution import prepare_bounds_request
+from services.uport.planning_router import route_dashboard_query
+from services.uport.planning_router import router as planning_router
+from services.uport.planning import UportPlanRequest
 
 
 def _client():
@@ -25,6 +28,27 @@ def test_shared_catalogue_preflight_accepts_uport_viewport_without_db():
     assert context.slots.analysis_type == "feature_search_by_area"
     assert {"Wreck", "Obstruction", "UnderwaterAwashRock"} <= set(context.slots.target_features)
     assert context.provenance["location_resolution"]["status"] == "MAP_BOUNDS"
+
+
+def test_registry_routes_map_hazards_without_turning_vessel_search_into_viewport():
+    """Missing AIS must remain a blocked vessel-centered capability."""
+
+    assert route_dashboard_query(UportPlanRequest(
+        query="지도 범위 위험객체를 보여줘",
+    )).mode == "s101_hazard_viewport"
+    assert route_dashboard_query(UportPlanRequest(
+        query="이 선박 주변의 S-101 항행 위험 객체를 찾아줘",
+    )).mode == "unavailable"
+    assert route_dashboard_query(UportPlanRequest(
+        query="선석을 보여줘",
+    )).mode == "s101_berth"
+    app = FastAPI()
+    app.include_router(planning_router, prefix="/api/v1")
+    routed = TestClient(app).post("/api/v1/uport/query/route", json={
+        "query": "지도 범위 위험객체를 보여줘",
+    })
+    assert routed.status_code == 200
+    assert routed.json()["mode"] == "s101_hazard_viewport"
 
 
 def test_viewport_uses_shared_pipeline_and_preserves_evidence(monkeypatch):
@@ -52,6 +76,23 @@ def test_viewport_uses_shared_pipeline_and_preserves_evidence(monkeypatch):
     assert calls[0]["spatial_context"]["context"] == "navigation_safety"
     assert response.json()["geojson"]["features"][0]["id"] == "101"
     assert response.json()["evidence_bundle"]["spatial_feature_evidence"][0]["evidence_id"] == "source-101"
+
+    natural = _client().post("/api/v1/uport/s101/hazards/query", json={
+        "query": "지도 범위 위험객체를 보여줘", "bbox": "129.25,35.35,129.55,35.65",
+    })
+    assert natural.status_code == 200
+    assert calls[1]["query"] == "지도 범위 위험객체를 보여줘"
+
+
+def test_vessel_centered_hazard_query_cannot_use_viewport_fallback(monkeypatch):
+    calls = []
+    monkeypatch.setattr(hazard_router, "execute_radius_request", lambda state: calls.append(state))
+    response = _client().post("/api/v1/uport/s101/hazards/query", json={
+        "query": "이 선박 주변의 S-101 항행 위험 객체를 찾아줘",
+        "bbox": "129.25,35.35,129.55,35.65",
+    })
+    assert response.status_code == 422
+    assert calls == []
 
 
 def test_invalid_bounds_and_blocked_search_do_not_return_features(monkeypatch):
