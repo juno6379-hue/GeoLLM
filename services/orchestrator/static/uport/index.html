@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>U-Port Agent | GeoLLM</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="/uport/dashboard.css">
 </head>
 <body>
@@ -38,9 +39,16 @@
       </section>
       <section class="workspace" aria-label="지도와 AI">
         <article class="card map-panel">
-          <div class="panel-head"><div><p class="eyebrow">S-101 / AIS / BERTH</p><h2>항만 공간 상황도</h2></div><span class="badge">지도 연결 준비 중</span></div>
-          <div class="map-empty" role="status"><span aria-hidden="true">◎</span><strong>항만 지도를 준비하고 있습니다</strong><p>S-101, AIS, 선석 레이어는 실제 데이터 연결 후 표시됩니다.</p></div>
-          <div class="layers" aria-label="계획된 지도 레이어"><span>S-101 해도</span><span>AIS 선박</span><span>선석</span><span>알림</span></div>
+          <div class="panel-head"><div><p class="eyebrow">S-101 / AIS / BERTH</p><h2>항만 공간 상황도</h2></div><span class="badge" id="map-status" role="status">지도 연결 확인 중</span></div>
+          <!-- Leaflet reuses GeoLLM's map stack. The chart WMS and berth API
+               come from the existing S-101 source; no vessel marker is faked. -->
+          <div id="port-map" class="port-map" aria-label="울산항 S-101 지도"></div>
+          <div class="layers" aria-label="지도 레이어">
+            <label><input id="layer-s101" type="checkbox" checked> S-101 해도</label>
+            <label><input id="layer-berths" type="checkbox" checked> S-101 선석</label>
+            <label class="unavailable"><input type="checkbox" disabled> AIS 선박 · 데이터 미연결</label>
+          </div>
+          <div id="map-selection" class="selection" aria-live="polite">선석 피처를 선택하면 ID와 데이터 출처가 표시됩니다.</div>
         </article>
         <article class="card agent-panel">
           <div class="panel-head"><div><p class="eyebrow">CONVERSATIONAL AGENT</p><h2>U-Port AI</h2></div><span class="badge">준비 중</span></div>
@@ -61,5 +69,7 @@
       </section>
     </main>
   </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/uport/map.js"></script>
 </body>
 </html>
