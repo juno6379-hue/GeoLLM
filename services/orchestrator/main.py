@@ -39,6 +39,14 @@ from services.uport.planning_router import router as uport_planning_router
 app.include_router(uport_planning_router, prefix="/api/v1")
 from services.uport.prediction.router import router as uport_prediction_router
 app.include_router(uport_prediction_router, prefix="/api/v1")
+# The vessel-navigation proxy keeps the public-data credential on the server;
+# prediction training remains separate until arrival labels are verified.
+from services.uport.prediction.vessel_navigation import router as uport_vessel_navigation_router
+app.include_router(uport_vessel_navigation_router, prefix="/api/v1")
+# Cargo uses the same constrained public-data client and a separate documented
+# operation, so its response can never be mistaken for vessel movement records.
+from services.uport.prediction.vessel_navigation import cargo_router as uport_cargo_router
+app.include_router(uport_cargo_router, prefix="/api/v1")
 from services.uport.optimization.router import router as uport_optimization_router
 app.include_router(uport_optimization_router, prefix="/api/v1")
 from services.uport.operations.router import router as uport_operations_router
