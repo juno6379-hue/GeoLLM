@@ -86,6 +86,11 @@ def _rag_profile_available(qec: QueryExecutionContext) -> bool:
 
 def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=None) -> QueryExecutionContext:
     """공유 실행계약을 검증하는 결정론적 실행 gate."""
+    if qec.route_plan.get("analysis_type") == "uport_query_plan":
+        # Keep domain validation behind the same public gate as GeoLLM tools.
+        # Planning remains non-executable until later binding verification.
+        from services.uport.validation import validate_uport_plan
+        return validate_uport_plan(qec)
     current = qec.model_copy(deep=True)
     blockers: List[str] = list(current.blockers or [])
     warnings: List[str] = list(current.warnings or [])

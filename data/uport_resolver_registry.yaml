@@ -1,0 +1,10 @@
+# Candidate identity mappings. These entries establish ontology class names,
+# not live DB existence or permission to execute a Tool.
+version: 1
+resolvers:
+  - id: uport.resolver.s101_berth
+    entity_type: s101_berth
+    ontology_class: S101.Berth
+    dataset: s101_current
+    id_field: feature_instance_id
+    source: projection.s101_feature_valid

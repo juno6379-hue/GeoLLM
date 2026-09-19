@@ -42,9 +42,9 @@
       const id = String(feature.id ?? "unknown");
       const dataset = String(feature.properties?.dataset_id ?? "unknown");
       const context = {
-        domain: "uport", entityType: "s101_berth", featureId: id,
-        datasetId: dataset,
-        datasetVersionId: String(feature.properties?.dataset_version_id ?? "unknown")
+        domain: "uport", entity_type: "s101_berth", feature_id: id,
+        dataset_id: dataset,
+        dataset_version_id: String(feature.properties?.dataset_version_id ?? "unknown")
       };
       window.uportMapContext = context;
       window.dispatchEvent(new CustomEvent("uport:map-selection", { detail: context }));

@@ -293,6 +293,10 @@ def _registry_capability_candidates(
     signal_ids = {signal.signal_id for signal in signals}
     scored: list[tuple[float, dict[str, Any]]] = []
     for capability in capabilities:
+        # Domain entries use the dedicated domain retrieval call. Keeping them
+        # out of the existing GeoLLM top-k preserves current routing behavior.
+        if capability.get("domain") not in (None, "geollm"):
+            continue
         hint_overlap = signal_ids & set(capability.get("deterministic_hints") or [])
         if require_signal_match and not hint_overlap:
             continue
@@ -729,6 +733,40 @@ def execution_contract_ready(trace: dict[str, Any] | None, *, route: str | None 
 
 
 class QueryCandidateBroker:
+    def domain_capability_definitions(self, domain: str) -> dict[str, dict[str, Any]]:
+        """Expose one domain's Registry metadata to its dependency planner."""
+        return {
+            entry["capability_id"]: entry
+            for entry in _load_registry().get("capabilities") or []
+            if entry.get("domain") == domain and entry.get("capability_id")
+        }
+
+    def retrieve_domain_capabilities(self, query: str, domain: str, *, top_k: int = 8) -> list[dict[str, Any]]:
+        """Rank Registry entries in one domain without granting execution authority.
+
+        Domain cue terms are metadata, not a query-specific if/else router.
+        The existing Registry remains the only candidate source; dataset and
+        entity checks are performed later by ExecutionValidator.
+        """
+        registry = _load_registry()
+        normalized = query.casefold()
+        candidates = []
+        for entry in registry.get("capabilities") or []:
+            if entry.get("domain") != domain:
+                continue
+            matched = [term for term in entry.get("cue_terms") or [] if str(term).casefold() in normalized]
+            if not matched:
+                continue
+            candidates.append({
+                "candidate_id": entry["capability_id"],
+                "score": round(min(len(matched) / max(len(entry.get("cue_terms") or []), 1), 1.0), 3),
+                "matched_terms": matched,
+                "verification_status": "pending",
+                "retrieval_source": "registry_domain_cues",
+            })
+        candidates.sort(key=lambda row: (-row["score"], row["candidate_id"]))
+        return candidates[:top_k]
+
     def build_trace(self, query: str, normalized_query: str | None = None, norm_result: dict[str, Any] | None = None) -> dict[str, Any]:
         combined = " ".join(part for part in [query, normalized_query] if part)
         semantic_prior = build_semantic_prior(query, normalized_query)

@@ -175,7 +175,82 @@ lexical_signals:
   - 해양지명
   - 해양 지명
   - 지명
+uport_capability_defaults: &uport_capability_defaults
+  input_schema: {type: object}
+  output_schema: {type: object}
+  resolver: []
+  agent: null
+  validation_rules: [QEC_REQUIRED, DATASET_AUTHORITY_REQUIRED]
+  permission: read
+  timeout_ms: 5000
+  fallback: none
+  examples: []
 capabilities:
+- capability_id: uport.s101.berth.search
+  <<: *uport_capability_defaults
+  name: Charted berth search
+  domain: uport
+  object_type: tool_description
+  label: S-101 charted berth lookup
+  description: Search charted berth features in the S-101 valid projection.
+  cue_terms: [선석, 부두, berth, 접안]
+  required_entities: []
+  required_dataset: [s101_current]
+  depends_on: []
+  tool: uport.map.berths
+  status: available
+- capability_id: uport.ais.search
+  <<: *uport_capability_defaults
+  name: Live AIS search
+  domain: uport
+  object_type: tool_description
+  label: Live AIS vessel lookup
+  description: Find timestamped live vessel positions for a selected port.
+  cue_terms: [선박, AIS, ais, vessel, 입항]
+  required_entities: [port]
+  required_dataset: [live_ais]
+  depends_on: []
+  tool: uport.map.vessels
+  status: unavailable
+- capability_id: uport.eta.predict
+  <<: *uport_capability_defaults
+  name: ETA prediction
+  domain: uport
+  object_type: agent_description
+  label: Vessel ETA prediction
+  description: Predict arrival time from validated AIS observations.
+  cue_terms: [ETA, eta, 도착, 지연]
+  required_entities: [vessel]
+  required_dataset: [live_ais, eta_model]
+  depends_on: [uport.ais.search]
+  tool: uport.eta.predict
+  status: unavailable
+- capability_id: uport.berth.optimize
+  <<: *uport_capability_defaults
+  name: Berth optimization recommendation
+  domain: uport
+  object_type: agent_description
+  label: Berth assignment recommendation
+  description: Recommend a berth plan from validated schedules and constraints.
+  cue_terms: [재배정, 최적화, 배정안, 대기시간]
+  required_entities: [port]
+  required_dataset: [port_operations]
+  depends_on: [uport.s101.berth.search, uport.eta.predict]
+  tool: uport.berth.optimize
+  status: unavailable
+- capability_id: uport.map.visualize
+  <<: *uport_capability_defaults
+  name: Map visualization
+  domain: uport
+  object_type: tool_description
+  label: Map focus and highlight
+  description: Focus verified result features on the existing port map.
+  cue_terms: [지도, 표시, 보여줘, highlight]
+  required_entities: []
+  required_dataset: []
+  depends_on: []
+  tool: uport.map.visualize
+  status: available
 - capability_id: resolver.place_registry
   object_type: resolver_description
   label: Place Registry Resolver
