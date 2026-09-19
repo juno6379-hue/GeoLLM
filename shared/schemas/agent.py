@@ -48,6 +48,7 @@ class SpatialContext(BaseModel):
     place_id: Optional[str] = None
     place_version: Optional[str] = None
     location_resolution: Optional[Dict[str, Any]] = None
+    selected_place_evidence: Optional[Dict[str, Any]] = None
     geometry: Optional[str] = None
     buffer_distance: Optional[float] = None
     map_bounds: Optional[List[float]] = None

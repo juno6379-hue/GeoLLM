@@ -60,6 +60,36 @@ def test_ambiguous_place_query_and_explicit_selection(graph):
     assert selected["final_dict"]["structured_result"]["location_resolution"]["status"] == "CONFIRMED_SELECTION"
 
 
+def test_selected_place_evidence_survives_coordinate_confirmation(graph):
+    module, catalog = graph
+    evidence = {
+        "place_id": catalog["candidates"][0]["place_id"],
+        "place_version": catalog["candidates"][0]["place_version"],
+        "label": "테스트항",
+        "source_ref": "fixture",
+        "source_url": "https://example.test/place",
+        "evidence_summary": "공식 지명 후보 근거 요약",
+        "source_records": [{"source_ref": "fixture", "source_id": "fixture"}],
+    }
+    selected = invoke(
+        module,
+        "테스트항 위치",
+        spatial_context={
+            key: catalog["candidates"][0][key]
+            for key in ("place_id", "place_version", "geometry", "crs")
+        } | {"selected_place_evidence": evidence},
+    )
+
+    final = selected["final_dict"]
+    assert selected["status"] == AgentStatus.COMPLETED
+    assert final["structured_result"]["selected_place_evidence"]["evidence_summary"] == "공식 지명 후보 근거 요약"
+    assert final["structured_result"]["location_resolution"]["selected_place_evidence"] == evidence
+    feature = final["features"]["features"][0]
+    assert feature["properties"]["evidence_summary"] == "공식 지명 후보 근거 요약"
+    evidence_row = final["evidence_bundle"]["spatial_feature_evidence"][0]
+    assert evidence_row["data"]["selected_place_evidence"] == evidence
+
+
 def test_nearest_query_does_not_auto_approve_curated_reference(graph):
     module, _ = graph
     result = invoke(module, "부산항 입구에서 가장 가까운 정박지를 찾아줘")

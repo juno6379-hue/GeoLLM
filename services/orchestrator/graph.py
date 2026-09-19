@@ -1438,7 +1438,14 @@ def _place_lookup_update(state, payload, analysis_type="place_lookup"):
 
     resolved = payload["status"] == "RESOLVED"
     status = AgentStatus.COMPLETED if resolved else AgentStatus(payload["status"])
+    spatial = _spatial_context_dict(state)
+    selected_evidence = spatial.get("selected_place_evidence") if isinstance(spatial.get("selected_place_evidence"), dict) else {}
     resolution = payload.get("location_resolution") or {}
+    if selected_evidence:
+        resolution = {**resolution, "selected_place_evidence": selected_evidence}
+        for key in ("evidence_summary", "source_url", "authority_level", "promotion_status", "review_required", "category"):
+            if selected_evidence.get(key) is not None and resolution.get(key) is None:
+                resolution[key] = selected_evidence[key]
     collection = {"type": "FeatureCollection", "features": []}
     evidence = {"spatial_feature_evidence": [], "spatial_layer_evidence": []}
     text = payload["summary"]
@@ -1446,15 +1453,27 @@ def _place_lookup_update(state, payload, analysis_type="place_lookup"):
         point = wkt.loads(payload["geometry"])
         identifier = payload.get("place_id") or f"reference:{state['task_id']}"
         evidence_id = f"place:{identifier}:{payload.get('place_version') or 'input'}"
-        properties = {"place_id": identifier, "place_version": payload.get("place_version"), "name": payload["location_text"], "evidence_id": evidence_id}
+        properties = {
+            "place_id": identifier,
+            "place_version": payload.get("place_version"),
+            "name": payload["location_text"],
+            "evidence_id": evidence_id,
+            "evidence_summary": selected_evidence.get("evidence_summary") or resolution.get("evidence_summary"),
+            "source_ref": selected_evidence.get("source_ref") or resolution.get("source_ref"),
+            "source_url": selected_evidence.get("source_url") or resolution.get("source_url"),
+            "authority_level": selected_evidence.get("authority_level") or resolution.get("authority_level"),
+            "coordinate_text": f"경도 {point.x:.6f}, 위도 {point.y:.6f} · EPSG:4326",
+        }
+        properties = {key: value for key, value in properties.items() if value is not None}
         collection["features"] = [{"type": "Feature", "id": identifier, "geometry": {"type": "Point", "coordinates": [point.x, point.y]}, "properties": properties}]
-        evidence["spatial_feature_evidence"] = [{"evidence_id": evidence_id, "evidence_type": "place_reference", "source_ref": resolution["source_ref"], "data": {**properties, "location_resolution": resolution}}]
+        evidence["spatial_feature_evidence"] = [{"evidence_id": evidence_id, "evidence_type": "place_reference", "source_ref": resolution.get("source_ref"), "data": {**properties, "location_resolution": resolution, "selected_place_evidence": selected_evidence or None}}]
         text = f"{payload['location_text']}: 경도 {point.x:.6f}, 위도 {point.y:.6f} (EPSG:4326)."
-    spatial = _spatial_context_dict(state)
-    safe_spatial = {key: value for key, value in spatial.items() if key in {"base_location", "location_text", "place_id", "place_version", "geometry", "crs", "buffer_distance", "target_features", "exclusions", "context", "result_limit", "offset", "k"}}
+    safe_spatial = {key: value for key, value in spatial.items() if key in {"base_location", "location_text", "place_id", "place_version", "geometry", "crs", "buffer_distance", "target_features", "exclusions", "context", "result_limit", "offset", "k", "selected_place_evidence"}}
     structured = {**payload, "analysis_type": analysis_type, "original_query": state["query"], "spatial_context": safe_spatial, "count": 1 if resolved else None, "returned_count": int(resolved), "geojson": collection}
+    if selected_evidence:
+        structured["selected_place_evidence"] = selected_evidence
     plan = {"analysis_type": analysis_type, "primary_agent": "Spatial Analysis Agent", "execution_ready": resolved, "status": "EXECUTION_READY" if resolved else ("NEEDS_USER_INPUT" if status == AgentStatus.NEEDS_CLARIFICATION else "BLOCKED_DATA")}
-    context = QueryExecutionContext(request_id=state["task_id"], revision=state.get("execution_revision") or 1, original_query=state["query"], route_plan=plan, provenance={"location_resolution": resolution})
+    context = QueryExecutionContext(request_id=state["task_id"], revision=state.get("execution_revision") or 1, original_query=state["query"], route_plan=plan, provenance={"location_resolution": resolution, "selected_place_evidence": selected_evidence or None})
     context.plan_hash = hashlib.sha256(json.dumps({"query": state["query"], "geometry": payload.get("geometry"), "location_resolution": resolution}, sort_keys=True).encode()).hexdigest()
     context.readiness = PlanStatus(plan["status"])
     if resolved:

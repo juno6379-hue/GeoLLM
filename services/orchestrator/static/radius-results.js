@@ -408,7 +408,26 @@
         delete values.place_id;
         delete values.place_version;
         delete values.location_resolution;
+        delete values.selected_place_evidence;
         return values;
+    }
+
+    function selectedPlaceEvidence(candidate) {
+        if (!candidate || typeof candidate !== "object") return null;
+        return {
+            place_id: candidate.place_id,
+            place_version: candidate.place_version,
+            label: candidate.label || candidate.base_location || candidate.place_id,
+            authority_level: candidate.authority_level,
+            promotion_status: candidate.promotion_status,
+            review_required: candidate.review_required,
+            source_ref: candidate.source_ref,
+            source_url: candidate.source_url,
+            category: candidate.category,
+            evidence_summary: candidate.evidence_summary,
+            evidence_detail: candidate.evidence_detail,
+            source_records: candidate.source_records || [],
+        };
     }
 
     function renderCandidates(result, originalQuery, submit) {
@@ -451,6 +470,7 @@
                         base_location: candidate.base_location || candidate.label,
                         geometry: candidate.geometry,
                         crs: candidate.crs,
+                        selected_place_evidence: selectedPlaceEvidence(candidate),
                         ...(structured.distance_m != null ? { buffer_distance: structured.distance_m } : {}),
                     },
                 });
@@ -554,10 +574,15 @@
     function placeProvenance(place, resolution) {
         const details = element("details", undefined, "evidence-technical");
         details.append(element("summary", "지명 출처 상세"));
+        const selectedEvidence = resolution.selected_place_evidence || {};
+        const evidenceSummary = place.evidence_summary || resolution.evidence_summary || selectedEvidence.evidence_summary;
+        const sourceUrl = place.source_url || resolution.source_url || selectedEvidence.source_url;
+        if (evidenceSummary) details.append(element("div", `근거 요약: ${evidenceSummary}`, "radius-meta"));
+        if (sourceUrl) details.append(element("div", `출처 URL: ${sourceUrl}`, "radius-meta"));
         if (place.place_id) details.append(element("div", `지명 ID: ${place.place_id}`));
         if (place.place_version) details.append(element("div", `데이터 버전: ${place.place_version}`));
         if (resolution.source_ref) details.append(element("div", `원본 출처: ${resolution.source_ref}`));
-        for (const record of resolution.source_records || []) details.append(element("div", compactJson(record), "radius-meta"));
+        for (const record of [...(resolution.source_records || []), ...(selectedEvidence.source_records || [])]) details.append(element("div", compactJson(record), "radius-meta"));
         return details;
     }
 
@@ -630,7 +655,10 @@
         const entry = element("div", undefined, "evidence-item");
         entry.dataset.placeId = place.place_id || "";
         entry.dataset.evidenceId = place.evidence_id || "";
-        entry.append(element("strong", label), placeProvenance(place, resolution));
+        entry.append(element("strong", label));
+        const evidenceSummary = place.evidence_summary || resolution.evidence_summary || resolution.selected_place_evidence?.evidence_summary;
+        if (evidenceSummary) entry.append(element("div", `근거: ${evidenceSummary}`, "radius-meta"));
+        entry.append(placeProvenance(place, resolution));
         evidence.append(entry);
         const layer = L.geoJSON(collection, {
             pointToLayer: (_feature, latlng) => L.circleMarker(latlng, { radius: 7, color: "#0f766e", fillColor: "#14b8a6", fillOpacity: 0.9, weight: 2 }),
