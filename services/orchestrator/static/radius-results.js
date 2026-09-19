@@ -360,10 +360,12 @@
     function isRadiusAnalysis(result) {
         const structured = result?.structured_result || {};
         return structured.analysis_type === "feature_search_by_radius"
+            || structured.analysis_type === "feature_search_by_area"
             || structured.analysis_type === "traffic_search_by_time_space"
             || structured.analysis_type === "accident_spatial_history_lookup"
             || structured.analysis_type === "accident_event_lookup"
             || result?.orchestrator_v2?.route_plan?.analysis_type === "feature_search_by_radius"
+            || result?.orchestrator_v2?.route_plan?.analysis_type === "feature_search_by_area"
             || result?.orchestrator_v2?.route_plan?.analysis_type === "traffic_search_by_time_space"
             || result?.orchestrator_v2?.route_plan?.analysis_type === "accident_spatial_history_lookup"
             || result?.orchestrator_v2?.route_plan?.analysis_type === "accident_event_lookup";

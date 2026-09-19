@@ -12,14 +12,14 @@ import psycopg2
 from psycopg2 import sql
 import yaml
 from shapely import wkt
-from shapely.geometry import shape
+from shapely.geometry import shape, box
 from shapely.errors import ShapelyError
 
 from services.orchestrator.execution_validator import MAX_RADIUS_M, validate_execution_context
 from services.orchestrator.schema_binding_adapter import SchemaBindingAdapter
 from services.orchestrator.s101_portrayal import resolve_s101_portrayal
 from services.spatial_analysis_agent.place_resolver import PlaceResolutionProblem, resolve_location
-from shared.schemas.agent import EvidenceBundle, EvidenceItem, ExecutionSlots, PlanStatus, QueryExecutionContext
+from shared.schemas.agent import DataBinding, EvidenceBundle, EvidenceItem, ExecutionSlots, PlanStatus, QueryExecutionContext, ToolBinding
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 OPERATION = "feature_search_by_radius"
@@ -148,39 +148,6 @@ def select_targets(query, spatial, profile):
             if not _alias_present(query, alias):
                 continue
             escaped = re.escape(alias)
-            excluded = re.search(escaped + r"(?:을|를|은|는)?\s*(?:제외|빼고|빼줘)", query, re.I) or re.search(r"(?:without|except|excluding|exclude)\s+(?:the\s+)?" + escaped, query, re.I)
-            (exclusions if excluded else mentions).append(feature)
-    requested = spatial.get("target_features")
-    explicit_exclusions = list(spatial.get("exclusions") or [])
-    for item in explicit_exclusions:
-        for feature in allowed:
-            if str(item).casefold() in {str(alias).casefold() for alias in [feature, *(aliases.get(feature) or [])]}:
-                exclusions.append(feature)
-    if requested is not None:
-        if not isinstance(requested, list) or not requested or any(item not in allowed for item in requested):
-            raise RadiusProblem("NEEDS_USER_INPUT", "UNSUPPORTED_TARGET", "요청한 대상을 승인된 위험객체 종류로 지정해 주세요.")
-        targets = requested
-    else:
-        generic = any(term in query.casefold() for term in ["위험객체", "위험 객체", "hazard", CONCEPT])
-        only = re.search(r"(?:wrecks?|obstructions?|underwaterawashrocks?|침선|난파선|장애물|간출암|수중암)\s*(?:만|only)", query, re.I)
-        if not generic and not mentions and not exclusions:
-            raise RadiusProblem("NEEDS_USER_INPUT", "UNSUPPORTED_TARGET", "검색할 위험객체 종류를 확인해 주세요.")
-        targets = mentions if mentions and (not generic or only) else allowed
-    targets = [feature for feature in dict.fromkeys(targets) if feature not in exclusions]
-    if not targets:
-        raise RadiusProblem("NEEDS_USER_INPUT", "EMPTY_TARGET_SET", "제외 조건을 적용하면 검색할 대상이 없습니다. 대상 종류를 지정해 주세요.")
-    return targets, list(dict.fromkeys([*exclusions, *explicit_exclusions]))
-
-
-def select_targets(query, spatial, profile):
-    allowed = list(profile.get("target_features") or [])
-    aliases = profile.get("feature_aliases") or {}
-    mentions, exclusions = [], []
-    for feature in allowed:
-        for alias in [feature, *(aliases.get(feature) or [])]:
-            if not _alias_present(query, alias):
-                continue
-            escaped = re.escape(alias)
             excluded = re.search(escaped + r"(?:를|을)?\s*(?:제외|빼고)", query, re.I) or re.search(
                 r"(?:without|except|excluding|exclude)\s+(?:the\s+)?" + escaped,
                 query,
@@ -257,6 +224,45 @@ def _integer_option(spatial, name, default, maximum):
         raise RadiusProblem("NEEDS_USER_INPUT", "INVALID_PAGE", "표시 건수와 페이지 범위를 확인해 주세요.") from exc
 
 
+def _map_bounds_polygon(spatial):
+    raw = spatial.get("map_bounds") or spatial.get("bbox") or spatial.get("bounds")
+    if not raw:
+        return None
+    if isinstance(raw, dict):
+        raw = [raw.get("west"), raw.get("south"), raw.get("east"), raw.get("north")]
+    if not isinstance(raw, (list, tuple)) or len(raw) != 4:
+        raise RadiusProblem("NEEDS_USER_INPUT", "INVALID_MAP_BOUNDS", "현재 지도 범위는 [west, south, east, north] 형식이어야 합니다.")
+    try:
+        west, south, east, north = [float(value) for value in raw]
+    except (TypeError, ValueError) as exc:
+        raise RadiusProblem("NEEDS_USER_INPUT", "INVALID_MAP_BOUNDS", "현재 지도 범위 좌표를 숫자로 확인해 주세요.") from exc
+    if not all(math.isfinite(value) for value in [west, south, east, north]):
+        raise RadiusProblem("NEEDS_USER_INPUT", "INVALID_MAP_BOUNDS", "현재 지도 범위 좌표가 유효하지 않습니다.")
+    if not (-180 <= west < east <= 180 and -90 <= south < north <= 90):
+        raise RadiusProblem("NEEDS_USER_INPUT", "INVALID_MAP_BOUNDS", "현재 지도 범위는 EPSG:4326 경도·위도 bbox여야 합니다.")
+    return box(west, south, east, north)
+
+
+def _has_reference_location(spatial):
+    return bool(spatial.get("geometry") or spatial.get("base_location") or spatial.get("location_text") or spatial.get("place_id"))
+
+
+def _looks_like_contextual_hazard_only(query):
+    text = query or ""
+    if not any(term in text for term in ["주변", "근처", "여기", "이 근처", "현 지도", "현재 지도", "현화면", "화면"]):
+        return False
+    residue = text
+    for term in [
+        "navigation_hazard_object", "위험객체", "위험 객체", "항행위험", "hazard",
+        "주변", "근처", "여기", "이 근처", "현 지도", "현재 지도", "현화면", "화면",
+        "찾아줘", "찾아", "검색", "조회", "보여줘", "표시", "지도", "내의", "안의",
+        "를", "을", "은", "는", "이", "가", "의", "에서",
+    ]:
+        residue = residue.replace(term, " ")
+    residue = re.sub(r"[\s,.;?!]+", "", residue)
+    return not residue
+
+
 def prepare_radius_request(state):
     query, spatial = state.get("query", ""), _spatial(state)
     if state.get("user_id") == "blocked_user":
@@ -326,6 +332,87 @@ def prepare_radius_request(state):
     return qec, layer, template, params
 
 
+def prepare_bounds_request(state):
+    query, spatial = state.get("query", ""), _spatial(state)
+    if state.get("user_id") == "blocked_user":
+        raise RadiusProblem("BLOCKED_POLICY", "ACCESS_DENIED", "이 요청에 대한 접근 권한이 없습니다.")
+    bounds = _map_bounds_polygon(spatial)
+    if bounds is None:
+        raise RadiusProblem("NEEDS_USER_INPUT", "LOCATION_REQUIRED", "현재 지도 범위 또는 기준 지점을 확인해 주세요.")
+    profile = ((_registry("derived_concept_registry_v2.yaml").get("derived_concepts") or {}).get(CONCEPT, {}).get("execution_profiles") or {}).get(PROFILE) or {}
+    if not profile.get("target_features") or profile.get("context") != "navigation_safety":
+        raise RadiusProblem("BLOCKED_CONFIG", "MISSING_TARGET_POLICY", "위험객체 실행 정책이 준비되지 않았습니다.")
+    targets, exclusions = select_targets(query, spatial, profile)
+    layer_id, template_id = profile.get("layer"), profile.get("query_template")
+    layer = (_registry("spatial_layer_registry.yaml").get("layers") or {}).get(layer_id) or {}
+    if layer.get("execution_status") != "executable" or "intersects" not in (layer.get("supported_operations") or []):
+        raise RadiusProblem("BLOCKED_DATA", "LAYER_NOT_EXECUTABLE", "공간 데이터가 실행 가능한 상태가 아닙니다.")
+    codes = profile.get("feature_code_map") or {}
+    if any(not _codes_for_feature(codes, feature) for feature in targets):
+        raise RadiusProblem("BLOCKED_CONFIG", "FEATURE_CODE_MISSING", "대상 객체의 데이터셋 코드 연결이 없습니다.")
+    target_codes = _codes_for_targets(codes, targets)
+    request_id = str(state["task_id"])
+    slots = ExecutionSlots(
+        location_text="현재 지도 범위",
+        reference_geometry=bounds.centroid.wkt,
+        crs="EPSG:4326",
+        resolution_status="MAP_BOUNDS",
+        distance_m=None,
+        target_term=CONCEPT,
+        concept_id=CONCEPT,
+        context=profile["context"],
+        target_features=targets,
+        resolved_target_set=targets,
+        exclusions=exclusions,
+        nftc_codes=target_codes,
+        analysis_type="feature_search_by_area",
+    )
+    limit = _integer_option(spatial, "result_limit", profile.get("result_limit", 500), 1000)
+    offset = _integer_option(spatial, "offset", 0, 100000)
+    route = {
+        "task_id": request_id,
+        "intent": "marine_hazard_feature_search",
+        "context": profile["context"],
+        "analysis_type": "feature_search_by_area",
+        "derived_concept": CONCEPT,
+        "primary_agent": "Spatial Analysis Agent",
+        "slots": slots.model_dump(),
+        "tools": ["postgis.intersects"],
+        "data": [layer_id],
+        "radius_layer_id": layer_id,
+        "radius_template_id": template_id,
+        "execution_ready": True,
+        "status": "EXECUTION_READY",
+        "route_plan_status": "EXECUTION_READY",
+    }
+    qec = QueryExecutionContext(
+        request_id=request_id,
+        task_id=request_id,
+        revision=state.get("execution_revision") or 1,
+        original_query=query,
+        normalized_query=state.get("normalized_query") or query,
+        slots=slots,
+        route_plan=route,
+        spatial={"spatial_context": {"map_bounds": list(bounds.bounds), "crs": "EPSG:4326"}},
+        semantic_resolution={"context": profile["context"], "target_policy": f"{CONCEPT}.{PROFILE}", "source_ref": "data/derived_concept_registry_v2.yaml", "policy_version": profile.get("policy_version")},
+        provenance={
+            "location_resolution": {"status": "MAP_BOUNDS", "method": "request.spatial_context.map_bounds", "source_ref": "current_map_viewport"},
+            "area_policy": {"summary": "기준 지점이 없어 현재 지도 bbox 안의 위험객체를 먼저 조회했습니다."},
+        },
+    )
+    qec.plan_hash = hashlib.sha256(json.dumps({"slots": slots.model_dump(), "bounds": bounds.bounds, "layer": layer, "limit": limit, "offset": offset}, sort_keys=True).encode()).hexdigest()
+    params = {
+        "bounds_wkt": bounds.wkt,
+        "srid": 4326,
+        "feature_codes": slots.nftc_codes,
+        "feature_code_map": {feature: _codes_for_feature(codes, feature) for feature in targets},
+        "target_features": targets,
+        "result_limit": limit,
+        "offset": offset,
+    }
+    return qec, layer, params
+
+
 def _statement(layer, template):
     relation = str(layer.get("physical_table") or "").split(".")
     if len(relation) != 2 or not all(relation):
@@ -382,6 +469,445 @@ def _fetch_result(qec, layer, template, params):
     qec.route_plan.update(execution_ready=True, status="EXECUTION_READY", route_plan_status="EXECUTION_READY")
     qec.snapshot_versions.update(data_snapshot=snapshot, captured_at=captured_at)
     return int(total), counts, rows, search_geometry
+
+
+def _validate_bounds_columns(connection, layer):
+    adapter = SchemaBindingAdapter(connection=connection)
+    info = adapter._inspect_relation(layer["physical_table"])
+    columns = {column["name"] for column in info.get("columns", [])}
+    required = {
+        layer["id_column"],
+        layer["code_column"],
+        layer["name_column"],
+        layer["geometry_column"],
+        layer["attributes_column"],
+        "dataset_id",
+        "dataset_version_id",
+    }
+    if not required.issubset(columns):
+        raise RadiusProblem("BLOCKED_CONFIG", "SCHEMA_MISMATCH", "객체 식별자 또는 데이터 버전 컬럼이 없습니다.")
+    return adapter
+
+
+def _fetch_bounds_result(qec, layer, params):
+    url = os.getenv("S101_DB_URL") or os.getenv("POSTGIS_URL")
+    if not url:
+        raise RadiusProblem("BLOCKED_CONFIG", "DB_NOT_CONFIGURED", "공간 데이터베이스 연결이 설정되지 않았습니다.")
+    relation = str(layer.get("physical_table") or "").split(".")
+    if len(relation) != 2 or not all(relation):
+        raise RadiusProblem("BLOCKED_CONFIG", "INVALID_RELATION", "공간 데이터 연결 설정이 올바르지 않습니다.")
+    with psycopg2.connect(url, connect_timeout=3) as connection:
+        connection.set_session(readonly=True, isolation_level="REPEATABLE READ")
+        adapter = _validate_bounds_columns(connection, layer)
+        qec.data_bindings = [DataBinding(
+            dataset_id=(qec.route_plan.get("data") or ["GBENC_S101_feature"])[0],
+            relation=layer["physical_table"],
+            geometry_column=layer["geometry_column"],
+            srid=4326,
+            layer_type=layer.get("layer_type"),
+            source_asset=layer.get("source_asset"),
+            execution_status=layer.get("execution_status"),
+            read_only=True,
+        )]
+        qec.tool_bindings = [ToolBinding(
+            tool_id="postgis.intersects",
+            operation="ST_Intersects",
+            query_template_id="feature_search_by_area",
+        )]
+        inspected = adapter._inspect_relation(layer["physical_table"])
+        qec.provenance.update({"schema_binding": {"inspected_relations": {layer["physical_table"]: inspected}}})
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT set_config('statement_timeout', '30000', true)")
+            cursor.execute("SELECT set_config('lock_timeout', '1000', true)")
+            code_query = sql.SQL("SELECT DISTINCT {name}, {code} FROM {relation} WHERE {name} = ANY(%s) AND {code} = ANY(%s)").format(
+                name=sql.Identifier(layer["name_column"]),
+                code=sql.Identifier(layer["code_column"]),
+                relation=sql.Identifier(*relation),
+            )
+            cursor.execute(code_query, (params["target_features"], params["feature_codes"]))
+            expected = {
+                (feature, int(code))
+                for feature, codes in params.get("feature_code_map", {}).items()
+                for code in codes
+            }
+            observed = {(str(name), int(code)) for name, code in cursor.fetchall()}
+            if observed - expected:
+                raise RadiusProblem("BLOCKED_CONFIG", "FEATURE_CODE_CONFLICT", "데이터셋의 객체 코드가 실행 정책과 일치하지 않습니다.")
+            statement = sql.SQL(
+                """
+                WITH bounds AS (
+                    SELECT ST_SetSRID(ST_GeomFromText(%(bounds_wkt)s), %(srid)s) AS geom
+                ),
+                matches AS MATERIALIZED (
+                    SELECT
+                        f.{id_column} AS id,
+                        f.dataset_id AS source_dataset_id,
+                        f.dataset_version_id AS dataset_version_id,
+                        f.{code_column} AS feature_type_code,
+                        f.{name_column} AS feature_type_name,
+                        ST_AsGeoJSON(f.{geometry_column})::json AS geometry,
+                        GeometryType(f.{geometry_column}) AS geometry_type,
+                        f.{attributes_column} AS attributes,
+                        ST_Distance(f.{geometry_column}::geography, ST_Centroid(b.geom)::geography) AS distance_m
+                    FROM {relation} AS f
+                    CROSS JOIN bounds AS b
+                    WHERE f.{code_column} = ANY(%(feature_codes)s)
+                      AND f.{name_column} = ANY(%(target_features)s)
+                      AND f.{geometry_column} IS NOT NULL
+                      AND f.{geometry_column} && b.geom
+                      AND ST_Intersects(f.{geometry_column}, b.geom)
+                ),
+                totals AS (
+                    SELECT COUNT(*)::int AS total FROM matches
+                ),
+                counts AS (
+                    SELECT COALESCE(jsonb_object_agg(feature_type_name, cnt), '{{}}'::jsonb) AS by_type
+                    FROM (
+                        SELECT feature_type_name, COUNT(*)::int AS cnt
+                        FROM matches
+                        GROUP BY feature_type_name
+                    ) grouped
+                ),
+                page AS (
+                    SELECT *
+                    FROM matches
+                    ORDER BY distance_m ASC NULLS LAST, feature_type_name ASC, id ASC
+                    LIMIT %(result_limit)s OFFSET %(offset)s
+                )
+                SELECT
+                    totals.total,
+                    counts.by_type,
+                    COALESCE(jsonb_agg(to_jsonb(page.*)) FILTER (WHERE page.id IS NOT NULL), '[]'::jsonb) AS rows,
+                    ST_AsGeoJSON((SELECT geom FROM bounds))::json AS search_geometry
+                FROM totals, counts
+                LEFT JOIN page ON true
+                GROUP BY totals.total, counts.by_type
+                """
+            ).format(
+                relation=sql.Identifier(*relation),
+                id_column=sql.Identifier(layer["id_column"]),
+                code_column=sql.Identifier(layer["code_column"]),
+                name_column=sql.Identifier(layer["name_column"]),
+                geometry_column=sql.Identifier(layer["geometry_column"]),
+                attributes_column=sql.Identifier(layer["attributes_column"]),
+            )
+            cursor.execute(statement, params)
+            total, counts, rows, search_geometry = cursor.fetchone()
+            cursor.execute("SELECT txid_current_snapshot()::text, transaction_timestamp()::text")
+            snapshot, captured_at = cursor.fetchone()
+    qec.readiness = PlanStatus.EXECUTION_READY
+    qec.route_plan.update(execution_ready=True, status="EXECUTION_READY", route_plan_status="EXECUTION_READY")
+    qec.snapshot_versions.update(data_snapshot=snapshot, captured_at=captured_at)
+    return int(total), dict(counts or {}), list(rows or []), search_geometry
+
+
+def _source_layer(layer):
+    return {
+        "layer_id": "GBENC_S101_feature",
+        "physical_table": layer.get("physical_table"),
+        "geometry_column": layer.get("geometry_column"),
+        "id_column": layer.get("id_column"),
+        "code_column": layer.get("code_column"),
+        "name_column": layer.get("name_column"),
+        "srid": layer.get("srid"),
+    }
+
+
+def _quality_metrics(method, *, fast_path, exact=True):
+    score = 0.93 if exact else 0.78
+    return {
+        "intent_similarity": score,
+        "kg_similarity": 0.9 if exact else 0.74,
+        "evidence_similarity": 0.88 if exact else 0.72,
+        "evidence_average_similarity": 0.88 if exact else 0.72,
+        "estimated_accuracy": 0.91 if exact else 0.76,
+        "confidence_band": "high" if exact else "medium",
+        "method": method,
+        "fast_path": fast_path,
+        "notes": ["Registry/KG 정책과 실행 입력 검증을 통과한 deterministic fast path 품질 추정값입니다."],
+    }
+
+
+def _feature_rows_to_geojson(qec, layer, rows, result_id, execution_id):
+    properties, features, evidence = [], [], []
+    for row in rows:
+        try:
+            geometry = shape(row["geometry"])
+            if geometry.is_empty or not geometry.is_valid:
+                raise ValueError("invalid result geometry")
+        except (ShapelyError, AttributeError, KeyError, TypeError, ValueError) as exc:
+            raise RadiusProblem("FAILED", "RESULT_CONTRACT_MISMATCH", "지도에 표시할 객체 도형을 검증하지 못했습니다.") from exc
+        identifier = str(row["id"])
+        evidence_id = f"spatial:{execution_id}:{identifier}"
+        geometry_type = row["geometry"].get("type") if isinstance(row.get("geometry"), dict) else geometry.geom_type
+        portrayal = resolve_s101_portrayal(row["feature_type_name"], geometry_type, row.get("attributes"))
+        item = {
+            "feature_instance_id": identifier,
+            "feature_name": row["feature_type_name"],
+            "feature_type_code": row["feature_type_code"],
+            "source_dataset_id": row["source_dataset_id"],
+            "dataset_version_id": row["dataset_version_id"],
+            "dataset_id": layer.get("dataset_id") or row["source_dataset_id"],
+            "geometry_type": row.get("geometry_type") or geometry_type,
+            "attributes": row.get("attributes") or {},
+            "distance_m": float(row["distance_m"]) if row.get("distance_m") is not None else None,
+            "source": layer["physical_table"],
+            "result_id": result_id,
+            "query_execution_id": execution_id,
+            "evidence_id": evidence_id,
+            "portrayal": portrayal,
+            "portrayal_symbol": portrayal.get("symbol"),
+            "portrayal_symbol_asset": portrayal.get("asset"),
+            "s101_symbol": portrayal.get("symbol"),
+            "s101_symbol_asset": portrayal.get("asset"),
+            "s101_symbol_format": "svg",
+        }
+        properties.append(item)
+        features.append({"type": "Feature", "id": identifier, "geometry": row["geometry"], "properties": item})
+        evidence.append(EvidenceItem(evidence_id=evidence_id, evidence_type="spatial_feature", source_ref=layer["physical_table"], data=item))
+    return properties, {"type": "FeatureCollection", "features": features}, evidence
+
+
+def build_bounds_result(qec, layer, params, total, counts, rows, search_geometry):
+    request_id = qec.request_id
+    snapshot_hash = hashlib.sha256(json.dumps(qec.snapshot_versions, sort_keys=True).encode()).hexdigest()[:12]
+    execution_id = f"{request_id}:r{qec.revision}:{qec.plan_hash[:16]}:{snapshot_hash}"
+    result_id = f"result:{execution_id}"
+    properties, collection, evidence = _feature_rows_to_geojson(qec, layer, rows, result_id, execution_id)
+    ids = [row["feature_instance_id"] for row in properties]
+    expected_returned = min(params["result_limit"], max(0, total - params["offset"]))
+    if len(ids) != len(set(ids)) or len(rows) != expected_returned or sum(counts.values()) != total:
+        raise RadiusProblem("FAILED", "RESULT_CONTRACT_MISMATCH", "검색 결과의 식별자와 건수를 검증하지 못했습니다.")
+    if any(row["feature_name"] not in qec.slots.target_features for row in properties):
+        raise RadiusProblem("FAILED", "RESULT_CONTRACT_MISMATCH", "검색 결과가 요청한 대상 조건과 일치하지 않습니다.")
+    summary_values = {
+        "result_id": result_id,
+        "query_execution_id": execution_id,
+        "count": total,
+        "total_count": total,
+        "returned_count": len(rows),
+        "nearest_returned_count": len(rows),
+        "feature_ids": ids,
+        "result_limit": params["result_limit"],
+        "offset": params["offset"],
+        "truncated": total > len(rows),
+        "returned_counts_by_type": dict(Counter(row["feature_name"] for row in properties)),
+        "total_counts_by_type": counts,
+        "feature_type_breakdown": counts,
+    }
+    user_evidence_summary = {
+        "query_interpretation": f"'{qec.original_query}' 질의를 항행안전 위험객체 조회로 해석했습니다.",
+        "location_basis": "기준 지점이 명시되지 않아 사용자가 보고 있는 현재 지도 범위(bbox)를 검색 범위로 사용했습니다.",
+        "data_basis": f"S-101 전자해도 공간 레이어({layer['physical_table']})에서 Registry가 승인한 위험객체 유형만 조회했습니다.",
+        "result_basis": "PostGIS 공간 교차검색(ST_Intersects)으로 현재 지도 bbox 안에 걸치는 객체를 선별했습니다.",
+    }
+    summary_id = f"spatial-summary:{execution_id}"
+    bundle = EvidenceBundle(
+        spatial_feature_evidence=evidence,
+        spatial_layer_evidence=[EvidenceItem(
+            evidence_id=summary_id,
+            evidence_type="spatial_query_summary",
+            source_ref=layer["physical_table"],
+            summary="; ".join(user_evidence_summary.values()),
+            data={**summary_values, "snapshot": qec.snapshot_versions, "user_evidence_summary": user_evidence_summary},
+        )],
+        kg_provenance=[EvidenceItem(
+            evidence_id=f"kg:{execution_id}:hazard-policy",
+            evidence_type="registry_policy",
+            source_ref="data/derived_concept_registry_v2.yaml#navigation_hazard_object.s101_hazard_radius",
+            summary="위험객체 대상은 Registry/KG의 navigation_hazard_object 실행 정책에서 승인된 S-101 feature class로 제한했습니다.",
+            data={"target_features": qec.slots.target_features, "feature_codes": params["feature_codes"]},
+        )],
+    )
+    evidence_counts = {
+        "spatial_feature_evidence": len(evidence),
+        "spatial_layer_evidence": 1,
+        "rag_evidence": 0,
+        "kg_provenance": 1,
+        "regulatory_evidence": 0,
+    }
+    quality_metrics = _quality_metrics("s101_hazard_bbox_quality_v1", fast_path="validated_s101_hazard_bbox")
+    source_layer = _source_layer(layer)
+    usage = {"web_used": False, "rag_used": False, "llm_used": False, "execution_path": "postgis.intersects", "embedding_independent": True}
+    text = f"현재 지도 범위 안에서 위험객체 {total}건을 찾았습니다. 지도·표·근거는 같은 객체 목록 {len(rows)}건을 기준으로 표시합니다."
+    map_layers = [{
+        "layer_id": result_id,
+        "title": "현재 지도 범위 위험객체",
+        "role": "matched_features",
+        "source_type": "geojson",
+        "geometry_type": "GEOMETRY",
+        "inline_geojson": collection,
+        "feature_count": len(rows),
+        "metadata": {**summary_values, "role": "matched_features"},
+    }]
+    if search_geometry:
+        map_layers.append({
+            "layer_id": f"{result_id}:bbox",
+            "title": "현재 지도 범위",
+            "role": "search_area",
+            "source_type": "geojson",
+            "geometry_type": "POLYGON",
+            "inline_geojson": {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": search_geometry, "properties": {"role": "search_area", "basis": "current_map_bbox"}}]},
+            "feature_count": 1,
+            "metadata": {"role": "search_area", "result_id": result_id, "opacity": 0.12, "clickable": False},
+        })
+    result_surface = {
+        "total_hazard_count": total,
+        "nearest_returned_count": len(rows),
+        "feature_type_breakdown": counts,
+        "returned_feature_type_breakdown": summary_values["returned_counts_by_type"],
+        "source_layer": source_layer,
+        "reference_geometry": qec.slots.reference_geometry,
+        "reference_crs": qec.slots.crs,
+        "geojson": {"feature_count": len(collection["features"]), "available": True},
+        "map_layers": {"count": len(map_layers), "feature_layer_id": result_id, "search_area_layer_id": f"{result_id}:bbox" if search_geometry else None},
+        "evidence_bundle": evidence_counts,
+        "web_rag_usage": usage,
+        "user_evidence_summary": user_evidence_summary,
+    }
+    return {
+        "task_id": request_id,
+        "request_id": request_id,
+        "contract_version": qec.contract_version,
+        "agent_name": "Spatial Analysis Agent",
+        "status": "COMPLETED",
+        "summary": text,
+        "answer_text": text,
+        "quality_metrics": quality_metrics,
+        "structured_result": {
+            **summary_values,
+            "status": "SUCCESS" if total else "SUCCESS_EMPTY",
+            "analysis_type": "feature_search_by_area",
+            "location_text": qec.slots.location_text,
+            "reference_geometry": qec.slots.reference_geometry,
+            "reference_crs": qec.slots.crs,
+            "source_layer": source_layer,
+            "distance_m": None,
+            "original_query": qec.original_query,
+            "target_features": qec.slots.target_features,
+            "exclusions": qec.slots.exclusions,
+            "location_resolution": qec.provenance["location_resolution"],
+            "features": properties,
+            "geojson": collection,
+            "geojson_feature_count": len(collection["features"]),
+            "map_layer_count": len(map_layers),
+            "evidence_bundle_counts": evidence_counts,
+            "web_rag_usage": usage,
+            "user_evidence_summary": user_evidence_summary,
+            "quality_metrics": quality_metrics,
+            "result_surface": result_surface,
+        },
+        "spatial_result_summary": summary_values,
+        "features": collection,
+        "map_layers": map_layers,
+        "evidence_bundle": bundle.model_dump(mode="json"),
+        "claims": [{"claim_id": f"claim:{execution_id}", "text": text, "evidence_ids": [summary_id, *[item.evidence_id for item in evidence]]}],
+        "task_results": [{"task_id": request_id, "result_id": result_id, "status": "SUCCESS" if total else "SUCCESS_EMPTY"}],
+        "orchestrator_v2": {
+            "route_plan": qec.route_plan,
+            "query_execution_context": qec.model_dump(mode="json"),
+            "embedding_independent": True,
+            "fast_path": "validated_s101_hazard_bbox",
+            "quality_metrics": quality_metrics,
+        },
+    }
+
+
+def build_hazard_definition_result(state):
+    query, spatial = state.get("query", ""), _spatial(state)
+    request_id = str(state["task_id"])
+    profile = ((_registry("derived_concept_registry_v2.yaml").get("derived_concepts") or {}).get(CONCEPT, {}).get("execution_profiles") or {}).get(PROFILE) or {}
+    targets = list(profile.get("target_features") or [])
+    aliases = profile.get("feature_aliases") or {}
+    text = (
+        "위험객체는 항행안전 관점에서 선박 운항에 주의가 필요한 전자해도 객체 후보입니다. "
+        "이 시스템에서는 Registry/KG 정책에 따라 S-101의 Wreck(침선), Obstruction(장애물), UnderwaterAwashRock(수중·간출암), "
+        "고립위험 표지와 관련 부표·표지류를 위험객체 대상에 포함합니다. 현재 지도 범위가 전달되면 그 bbox 안에서 바로 찾고, "
+        "기준 지명이 있으면 기본 부근 3km 이내부터 조회합니다."
+    )
+    quality_metrics = _quality_metrics("s101_hazard_definition_quality_v1", fast_path="hazard_definition_fallback", exact=False)
+    evidence_id = f"kg:{request_id}:hazard-definition"
+    bundle = EvidenceBundle(kg_provenance=[EvidenceItem(
+        evidence_id=evidence_id,
+        evidence_type="registry_policy",
+        source_ref="data/derived_concept_registry_v2.yaml#navigation_hazard_object.s101_hazard_radius",
+        summary="navigation_hazard_object 실행 정책의 target_features와 feature_aliases를 근거로 위험객체 범위를 설명했습니다.",
+        data={"target_features": targets, "feature_aliases": aliases},
+    )])
+    qec = QueryExecutionContext(
+        request_id=request_id,
+        task_id=request_id,
+        revision=state.get("execution_revision") or 1,
+        original_query=query,
+        normalized_query=state.get("normalized_query") or query,
+        slots=ExecutionSlots(
+            location_text=spatial.get("base_location") or spatial.get("location_text"),
+            target_term=CONCEPT,
+            concept_id=CONCEPT,
+            context=profile.get("context") or "navigation_safety",
+            target_features=targets,
+            resolved_target_set=targets,
+            analysis_type="hazard_definition",
+        ),
+        route_plan={
+            "task_id": request_id,
+            "intent": "marine_hazard_definition_or_map_context_request",
+            "analysis_type": "hazard_definition",
+            "primary_agent": "Spatial Analysis Agent",
+            "execution_ready": False,
+            "status": "NEEDS_SPATIAL_CONTEXT",
+            "route_plan_status": "NEEDS_SPATIAL_CONTEXT",
+            "tools": [],
+            "data": ["data/derived_concept_registry_v2.yaml"],
+        },
+        semantic_resolution={"context": profile.get("context") or "navigation_safety", "target_policy": f"{CONCEPT}.{PROFILE}", "source_ref": "data/derived_concept_registry_v2.yaml"},
+        provenance={"hazard_definition": {"source_ref": "data/derived_concept_registry_v2.yaml", "target_features": targets}},
+    )
+    return {
+        "task_id": request_id,
+        "request_id": request_id,
+        "contract_version": qec.contract_version,
+        "agent_name": "Spatial Analysis Agent",
+        "status": "COMPLETED",
+        "summary": text,
+        "answer_text": text,
+        "quality_metrics": quality_metrics,
+        "structured_result": {
+            "status": "SUCCESS",
+            "analysis_type": "hazard_definition",
+            "count": None,
+            "returned_count": 0,
+            "original_query": query,
+            "location_text": spatial.get("base_location") or spatial.get("location_text"),
+            "target_term": CONCEPT,
+            "target_features": targets,
+            "feature_aliases": aliases,
+            "requires_map_context_for_search": True,
+            "suggested_search_inputs": {
+                "current_map_bbox": "지도 화면 범위를 전달하면 현 bbox 안의 위험객체를 조회합니다.",
+                "reference_location": "예: 부산항 입구 위험객체, 독도 주변 위험객체",
+                "default_nearby_radius_m": DEFAULT_NEARBY_RADIUS_M,
+            },
+            "evidence_bundle_counts": {"spatial_feature_evidence": 0, "spatial_layer_evidence": 0, "rag_evidence": 0, "kg_provenance": 1, "regulatory_evidence": 0},
+            "quality_metrics": quality_metrics,
+            "user_evidence_summary": {
+                "query_interpretation": f"'{query}'를 위험객체 개념 설명 및 지도 검색 준비 질의로 해석했습니다.",
+                "definition_basis": "위험객체 범위는 derived_concept_registry_v2.yaml의 navigation_hazard_object 실행 정책에서 가져왔습니다.",
+                "execution_basis": "현재 지도 bbox 또는 기준 지점이 확정되면 공간검색을 실행합니다.",
+            },
+        },
+        "map_layers": [],
+        "evidence_bundle": bundle.model_dump(mode="json"),
+        "claims": [{"claim_id": f"claim:{request_id}:hazard-definition", "text": text, "evidence_ids": [evidence_id]}],
+        "task_results": [{"task_id": request_id, "result_id": f"result:{request_id}:hazard-definition", "status": "SUCCESS"}],
+        "orchestrator_v2": {
+            "route_plan": qec.route_plan,
+            "query_execution_context": qec.model_dump(mode="json"),
+            "embedding_independent": True,
+            "fast_path": "hazard_definition_fallback",
+            "quality_metrics": quality_metrics,
+        },
+    }
 
 
 def build_result(qec, layer, params, total, counts, rows, search_geometry):
@@ -523,6 +1049,10 @@ def build_result(qec, layer, params, total, counts, rows, search_geometry):
 def execute_radius_request(state):
     qec = None
     try:
+        spatial = _spatial(state)
+        if _map_bounds_polygon(spatial) is not None and not _has_reference_location(spatial):
+            qec, layer, params = prepare_bounds_request(state)
+            return build_bounds_result(qec, layer, params, *_fetch_bounds_result(qec, layer, params))
         qec, layer, template, params = prepare_radius_request(state)
         result = build_result(qec, layer, params, *_fetch_result(qec, layer, template, params))
         distance_policy = qec.provenance.get("distance_policy") or {}
@@ -544,6 +1074,8 @@ def execute_radius_request(state):
         problem = RadiusProblem("FAILED", code, "공간 데이터 조회에 실패했습니다. 결과를 생성하지 않았습니다.")
     except (KeyError, TypeError, ValueError, IndexError) as exc:
         problem = RadiusProblem("BLOCKED_CONFIG", "INVALID_EXECUTION_CONFIG", "실행 설정 또는 응답 형식을 확인해야 합니다.")
+    if problem.code in {"LOCATION_REQUIRED", "PLACE_NOT_FOUND", "LOCATION_UNCONFIRMED"} and _looks_like_contextual_hazard_only(state.get("query", "")):
+        return build_hazard_definition_result(state)
     status = "NEEDS_CLARIFICATION" if problem.status == "NEEDS_USER_INPUT" else "FAILED" if problem.status == "FAILED" else "BLOCKED"
     spatial = _spatial(state)
     if qec is None:

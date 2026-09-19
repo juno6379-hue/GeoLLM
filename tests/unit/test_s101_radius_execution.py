@@ -106,6 +106,35 @@ def test_missing_radius_defaults_to_nearby_three_km_for_hazard_search(state):
     assert "기본 부근 범위" in context.provenance["distance_policy"]["summary"]
 
 
+def test_current_map_bounds_prepare_area_search_without_place_resolution(state):
+    state["query"] = "주변 위험객체를 찾아줘"
+    state["spatial_context"] = {"map_bounds": [129.0, 35.0, 129.2, 35.2], "crs": "EPSG:4326"}
+
+    context, layer, params = radius.prepare_bounds_request(state)
+
+    assert context.slots.analysis_type == "feature_search_by_area"
+    assert context.slots.location_text == "현재 지도 범위"
+    assert context.route_plan["tools"] == ["postgis.intersects"]
+    assert params["bounds_wkt"].startswith("POLYGON")
+    assert layer["physical_table"]
+
+
+def test_contextual_hazard_without_map_bounds_returns_definition_not_place_error(state, monkeypatch):
+    state["query"] = "주변 위험객체를 찾아줘"
+    state["spatial_context"] = {}
+    connect = Mock(side_effect=AssertionError("Definition fallback must not query DB"))
+    monkeypatch.setattr(radius.psycopg2, "connect", connect)
+
+    result = radius.execute_radius_request(state)
+
+    connect.assert_not_called()
+    assert result["status"] == "COMPLETED"
+    assert result["structured_result"]["analysis_type"] == "hazard_definition"
+    assert result["structured_result"]["requires_map_context_for_search"] is True
+    assert "지명을 찾지 못했습니다" not in result["summary"]
+    assert "위험객체" in result["summary"]
+
+
 @pytest.mark.parametrize("value", [0, -1, True, float("nan"), float("inf"), "invalid"])
 def test_invalid_explicit_radius_is_not_defaulted(value):
     with pytest.raises(radius.RadiusProblem):

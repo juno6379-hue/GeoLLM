@@ -1758,6 +1758,11 @@ def _should_fast_execute_s101_hazard_radius(state: OrchestratorState) -> bool:
         return False
     if not _looks_like_s101_hazard_target(query):
         return False
+    spatial = _spatial_context_dict(state)
+    if spatial.get("map_bounds") or spatial.get("bbox") or spatial.get("bounds"):
+        return True
+    if any(term in query for term in ["주변", "근처", "여기", "현 지도", "현재 지도", "현화면", "화면"]):
+        return True
     nearest_request = any(term in query.lower() for term in ["nearest", "closest", "가까운", "가까이"])
     if nearest_request and not _looks_like_s101_hazard_radius_query(query):
         return False

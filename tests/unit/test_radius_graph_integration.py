@@ -135,3 +135,51 @@ def test_hazard_definition_question_does_not_enter_spatial_or_place_route(graph_
     assert graph_module._looks_like_definition_question("위험객체란")
     assert graph_module._should_fast_execute_s101_hazard_radius(state) is False
     assert graph_module.check_intent_parsed(state) == "create_plan"
+
+
+def test_contextual_hazard_query_uses_s101_route_not_place_lookup(graph_module):
+    state = {
+        "query": "주변 위험객체를 찾아줘",
+        "status": AgentStatus.INTENT_PARSED,
+        "spatial_context": {},
+    }
+
+    assert graph_module._should_fast_execute_s101_hazard_radius(state) is True
+    assert graph_module.check_intent_parsed(state) == "fast_s101_hazard_radius_execute"
+
+
+def test_map_bounds_hazard_query_uses_bbox_execution_route(graph_module, monkeypatch):
+    def fetch_bounds_fixture(context, layer, params):
+        context.snapshot_versions = {"data_snapshot": "bbox-fixture-snapshot"}
+        return 1, {"Wreck": 1}, [{
+            "id": 7,
+            "source_dataset_id": "fixture-dataset",
+            "dataset_version_id": "fixture-version",
+            "feature_type_code": 101,
+            "feature_type_name": "Wreck",
+            "distance_m": 10.0,
+            "geometry": {"type": "Point", "coordinates": [129.1, 35.1]},
+            "geometry_type": "ST_Point",
+            "attributes": {},
+        }], {
+            "type": "Polygon",
+            "coordinates": [[[129.0, 35.0], [129.2, 35.0], [129.2, 35.2], [129.0, 35.2], [129.0, 35.0]]],
+        }
+
+    fetch = Mock(side_effect=fetch_bounds_fixture)
+    monkeypatch.setattr(radius, "_fetch_bounds_result", fetch)
+
+    result = invoke_graph(
+        graph_module,
+        query="주변 위험객체를 찾아줘",
+        spatial_context={"map_bounds": [129.0, 35.0, 129.2, 35.2], "crs": "EPSG:4326"},
+    )
+
+    fetch.assert_called_once()
+    assert result["status"] == AgentStatus.COMPLETED
+    final = result["final_dict"]
+    assert final["structured_result"]["analysis_type"] == "feature_search_by_area"
+    assert final["orchestrator_v2"]["fast_path"] == "validated_s101_hazard_bbox"
+    assert final["structured_result"]["total_count"] == 1
+    assert final["map_layers"][0]["role"] == "matched_features"
+    assert final["map_layers"][1]["metadata"]["clickable"] is False
