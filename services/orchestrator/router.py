@@ -83,6 +83,9 @@ def _place_candidate_features(candidates: list[dict]) -> dict:
                 "source_url": candidate.get("source_url"),
                 "category": candidate.get("category"),
                 "evidence_summary": candidate.get("evidence_summary"),
+                "longitude": coords[0] if coords else candidate.get("longitude"),
+                "latitude": coords[1] if coords else candidate.get("latitude"),
+                "coordinate_text": f"경도 {coords[0]:.6f}, 위도 {coords[1]:.6f} · EPSG:4326" if coords else None,
             },
         })
     return {"type": "FeatureCollection", "features": features}

@@ -1625,7 +1625,7 @@
                                                                     coords = coords[0];
                                                                 }
                                                                 if (Array.isArray(coords) && coords.length >= 2 && typeof coords[0] === 'number') {
-                                                                    return `${coords[1].toFixed(5)}°N ${coords[0].toFixed(5)}°E (WGS 84)`;
+                                                                    return `경도 ${coords[0].toFixed(6)}, 위도 ${coords[1].toFixed(6)} · EPSG:4326<br>${coords[1].toFixed(5)}°N ${coords[0].toFixed(5)}°E (WGS 84)`;
                                                                 }
                                                                 return '좌표 정보 없음';
                                                             } catch (e) {

@@ -12,6 +12,30 @@
         ? value.toLocaleString("ko-KR") : "-";
     const yesNo = value => value ? "사용" : "미사용";
 
+    function coordinatePairFromWkt(wkt) {
+        const match = String(wkt || "").match(/POINT\s*\(\s*([0-9.+-]+)\s+([0-9.+-]+)\s*\)/i);
+        if (!match) return null;
+        const lon = Number(match[1]);
+        const lat = Number(match[2]);
+        return Number.isFinite(lon) && Number.isFinite(lat) ? [lon, lat] : null;
+    }
+
+    function coordinateTextFromPair(coordinates) {
+        if (!Array.isArray(coordinates) || coordinates.length < 2) return "";
+        const lon = Number(coordinates[0]);
+        const lat = Number(coordinates[1]);
+        if (!Number.isFinite(lon) || !Number.isFinite(lat)) return "";
+        return `경도 ${lon.toFixed(6)}, 위도 ${lat.toFixed(6)} · EPSG:4326`;
+    }
+
+    function coordinateTextFromFeature(feature, fallback) {
+        const props = feature?.properties || {};
+        if (props.coordinate_text) return props.coordinate_text;
+        if (props.longitude != null && props.latitude != null) return coordinateTextFromPair([props.longitude, props.latitude]);
+        const coordinates = feature?.geometry?.type === "Point" ? feature.geometry.coordinates : null;
+        return coordinateTextFromPair(coordinates) || fallback || "";
+    }
+
     function compactJson(value) {
         if (value === undefined || value === null || value === "") return "-";
         if (typeof value === "string") return value;
@@ -396,11 +420,14 @@
             section.dataset.placeId = candidate.place_id || "";
             section.dataset.placeVersion = candidate.place_version || "";
             section.append(element("strong", candidate.label || candidate.base_location || candidate.place_id));
-            section.append(element("div", `${candidate.geometry || "좌표 미확정"} · ${candidate.crs || "좌표계 미확정"}`, "radius-meta"));
+            const candidateCoordinates = coordinatePairFromWkt(candidate.geometry);
+            const candidateCoordinateText = coordinateTextFromPair(candidateCoordinates);
+            section.append(element("div", candidateCoordinateText || `${candidate.geometry || "좌표 미확정"} · ${candidate.crs || "좌표계 미확정"}`, "radius-meta"));
             const candidateStatus = candidate.status === "curated" ? "로컬 등록 후보" : candidate.status === "test" ? "테스트 후보" : candidate.status;
             const candidateSource = candidate.source_ref === "local_curated_binding" ? "로컬 등록 정보" : candidate.source_ref;
             if (candidateStatus) section.append(element("div", candidateStatus, "radius-meta"));
             if (candidateSource) section.append(element("div", candidateSource, "radius-meta"));
+            if (candidate.evidence_summary) section.append(element("div", `근거: ${candidate.evidence_summary}`, "radius-meta"));
             if (candidate.place_id || candidate.place_version || candidate.source_records?.length) {
                 const sourceDetails = element("details", undefined, "evidence-technical");
                 sourceDetails.append(element("summary", "지명 출처 상세"));
@@ -537,10 +564,16 @@
     function renderPlaceResult(result, options) {
         const structured = result.structured_result || {};
         const collection = structured.geojson || result.map_layers?.find(layer => layer.inline_geojson)?.inline_geojson;
-        const feature = collection?.features?.length === 1 ? collection.features[0] : null;
+        const pointFeatures = Array.isArray(collection?.features)
+            ? collection.features.filter(feature => {
+                const coordinates = feature?.geometry?.coordinates;
+                return feature?.geometry?.type === "Point" && Array.isArray(coordinates) && coordinates.length === 2
+                    && coordinates.every(Number.isFinite) && Math.abs(coordinates[0]) <= 180 && Math.abs(coordinates[1]) <= 90;
+            })
+            : [];
+        const feature = pointFeatures.length === 1 ? pointFeatures[0] : null;
         const coordinates = feature?.geometry?.coordinates;
-        const valid = feature?.geometry?.type === "Point" && Array.isArray(coordinates) && coordinates.length === 2
-            && coordinates.every(Number.isFinite) && Math.abs(coordinates[0]) <= 180 && Math.abs(coordinates[1]) <= 90;
+        const valid = pointFeatures.length > 0;
         const query = structured.original_query || options.originalQuery;
         const details = document.getElementById("radiusDetails");
         const evidence = document.getElementById("answerEvidence");
@@ -552,10 +585,42 @@
             evidence.append(element("div", "유효한 기준점이 반환되지 않았습니다.", "radius-warning"));
             return;
         }
+        if (!feature) {
+            document.getElementById("answerStatus").textContent = "후보 확인 필요";
+            document.getElementById("returnedCount").textContent = `후보 위치 ${pointFeatures.length}곳`;
+            window.QuerySummary.show("후보 확인 필요", result.answer_text || result.summary || `후보 위치 ${pointFeatures.length}곳을 지도에 표시했습니다.`, query);
+            details.append(element("strong", `후보 위치 ${pointFeatures.length}곳`), element("div", "지도 마커를 클릭하면 각 후보의 경도/위도와 근거를 확인할 수 있습니다.", "radius-meta"));
+            const candidateCollection = { type: "FeatureCollection", features: pointFeatures };
+            const layer = L.geoJSON(candidateCollection, {
+                pointToLayer: (_feature, latlng) => L.circleMarker(latlng, { radius: 7, color: "#0f766e", fillColor: "#14b8a6", fillOpacity: 0.9, weight: 2 }),
+                onEachFeature: (candidateFeature, marker) => {
+                    const props = candidateFeature.properties || {};
+                    const label = props.name || props.label || "후보 위치";
+                    const coordinateText = coordinateTextFromFeature(candidateFeature);
+                    const popup = element("div", undefined, "radius-popup");
+                    popup.dataset.placeId = props.place_id || "";
+                    popup.append(element("strong", label));
+                    if (coordinateText) popup.append(element("div", coordinateText, "radius-meta"));
+                    if (props.evidence_summary) popup.append(element("div", `근거: ${props.evidence_summary}`, "radius-meta"));
+                    if (props.source_url) popup.append(element("div", `출처: ${props.source_url}`, "radius-meta"));
+                    marker.bindPopup(popup, { maxWidth: 340 });
+                    const entry = element("div", undefined, "evidence-item");
+                    entry.dataset.placeId = props.place_id || "";
+                    entry.dataset.evidenceId = props.evidence_id || "";
+                    entry.append(element("strong", label));
+                    if (coordinateText) entry.append(element("div", coordinateText, "radius-meta"));
+                    if (props.evidence_summary) entry.append(element("div", `근거: ${props.evidence_summary}`, "radius-meta"));
+                    evidence.append(entry);
+                },
+            }).addTo(options.map);
+            options.activeLayers.push(layer);
+            if (layer.getBounds().isValid()) options.map.fitBounds(layer.getBounds(), { padding: [24, 24], maxZoom: 16 });
+            return;
+        }
         const place = { ...feature.properties, place_id: structured.place_id || feature.properties?.place_id, place_version: structured.place_version || feature.properties?.place_version };
         const resolution = structured.location_resolution || {};
         const label = structured.location_text || place.name || "확인된 위치";
-        const coordinateText = `경도 ${coordinates[0]}, 위도 ${coordinates[1]} · EPSG:4326`;
+        const coordinateText = coordinateTextFromPair(coordinates);
         document.getElementById("answerStatus").textContent = "위치 확인 완료";
         document.getElementById("returnedCount").textContent = "확인된 위치 1곳";
         details.dataset.placeId = place.place_id || "";
@@ -572,7 +637,7 @@
             onEachFeature: (_feature, marker) => {
                 const popup = element("div", undefined, "radius-popup");
                 popup.dataset.placeId = place.place_id || "";
-                popup.append(element("strong", label), element("div", coordinateText), placeProvenance(place, resolution));
+                popup.append(element("strong", label), element("div", coordinateText, "radius-meta"), placeProvenance(place, resolution));
                 marker.bindPopup(popup, { maxWidth: 340 });
             },
         }).addTo(options.map);
@@ -830,6 +895,8 @@
                     popup.append(element("div", `기준점에서 ${window.QuerySummary.distanceText(row.distance_m)}`));
                     popup.replaceChildren();
                     appendFeatureDetails(popup, row, referenceLabel);
+                    const featureCoordinateText = coordinateTextFromFeature(feature);
+                    if (featureCoordinateText) popup.append(element("div", featureCoordinateText, "radius-meta"));
                     popup.append(technicalEvidence(row, row.evidence_id, row.source || row.dataset_id));
                     layer.bindPopup(popup, { maxWidth: 340 });
                     if (layer.on) {
