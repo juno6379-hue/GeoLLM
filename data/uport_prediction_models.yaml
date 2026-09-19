@@ -1,0 +1,25 @@
+# No ETA model is executable until trained artifacts, data lineage and holdout
+# evaluation have been registered and independently checked.
+version: 1
+task: eta_prediction
+minimum_holdout_samples: 30
+evaluations: []
+models:
+  - model_id: uport.eta.lstm
+    family: LSTM
+    version: untrained
+    status: unavailable
+    artifact_path: null
+    evaluation_dataset_id: null
+  - model_id: uport.eta.gru
+    family: GRU
+    version: untrained
+    status: unavailable
+    artifact_path: null
+    evaluation_dataset_id: null
+  - model_id: uport.eta.tft
+    family: TFT
+    version: untrained
+    status: unavailable
+    artifact_path: null
+    evaluation_dataset_id: null
