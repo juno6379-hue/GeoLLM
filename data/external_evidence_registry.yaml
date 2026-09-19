@@ -143,7 +143,67 @@ gap_domains:
           - heritage=*
           - natural=*
         use_as_authority: false
+  marine_named_place_lookup:
+    label: 해양/도서 지형 지명 후보
+    routes:
+      - PLACE_LOOKUP
+      - EXTERNAL_EVIDENCE_GAP_FILL
+      - DATASET_PROVENANCE
+    query_signals:
+      - 바위
+      - 여
+      - 초
+      - 섬
+      - 암
+      - rock
+      - reef
+      - islet
+    local_layers_checked:
+      - marine_gazetteer
+      - island_gazetteer_current
+    authoritative_public_sources:
+      - source_id: public_named_place_sources
+        source_name: 국가/공공 지명 자료 및 공공기록
+        authority: 국토지리정보원/지명위원회/공공기록
+        use_when:
+          - local marine or island gazetteer has no exact place match
+          - query is a named natural feature or small islet/rock
+    osm_candidate_rules:
+      - source_id: osm_nominatim_natural_place
+        source_name: OpenStreetMap Nominatim
+        authority: OpenStreetMap contributors
+        tags:
+          - natural=rock
+          - place=islet
+          - place=island
+        use_as_authority: false
 seed_candidates:
+  - candidate_id: extgap.dokdo_dakbawi_named_rock
+    domain: marine_named_place_lookup
+    name: 닭바위
+    aliases:
+      - 닭바위
+      - 독도 닭바위
+      - 독도 동도 닭바위
+      - Dakbawi
+    category: 독도 부속 지형물/바위
+    anchor_place_id: dokdo
+    source_tier: public_authoritative
+    authority_level: public_authoritative
+    source_name: 국립중앙도서관 디지털컬렉션/공공 지명 표준화 기록
+    authority: 공공기록
+    source_url: https://www.nl.go.kr/NL/contents/N20103000000.do?schIdSub=CO0000004027&schM=contView
+    location_text: 경상북도 울릉군 울릉읍 독도리 독도 동도 주변
+    description: 독도 주요 바위 지명 중 하나로, 닭이 알을 품고 있는 모습과 흡사하여 붙여진 지명으로 설명됨.
+    geometry:
+      type: Point
+      coordinates:
+        - 131.864444
+        - 37.241389
+    geometry_strategy: anchor_place_point_until_official_feature_geometry
+    geometry_status: needs_official_feature_geometry_review
+    promotion_status: NEEDS_GEOMETRY_REVIEW
+    review_required: true
   - candidate_id: extgap.dokdo_natural_heritage_protected_area
     domain: natural_heritage_protected_area
     name: 독도 천연보호구역

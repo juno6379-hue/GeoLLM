@@ -155,6 +155,7 @@ def _external_candidate_to_place(candidate: dict[str, Any]) -> dict[str, Any]:
     wkt = None
     if isinstance(coordinates, list) and len(coordinates) >= 2 and all(value is not None for value in coordinates[:2]):
         wkt = f"POINT({coordinates[0]} {coordinates[1]})"
+    authority_level = candidate.get("authority_level")
     result = {
         "place_id": candidate.get("candidate_id"),
         "place_version": _candidate_version(candidate),
@@ -163,7 +164,7 @@ def _external_candidate_to_place(candidate: dict[str, Any]) -> dict[str, Any]:
         "geometry": wkt,
         "geometry_geojson": geometry.get("geojson"),
         "crs": "EPSG:4326",
-        "status": "supplemental_external_candidate",
+        "status": "public_authoritative_candidate" if authority_level == "public_authoritative" else "supplemental_external_candidate",
         "source_ref": candidate.get("source_name") or candidate.get("source_tier"),
         "source_records": [{
             "source_ref": candidate.get("source_name") or candidate.get("source_tier"),
@@ -173,7 +174,7 @@ def _external_candidate_to_place(candidate: dict[str, Any]) -> dict[str, Any]:
             "review_required": candidate.get("review_required", True),
         }],
         "requires_confirmation": True,
-        "authority_level": candidate.get("authority_level"),
+        "authority_level": authority_level,
         "promotion_status": candidate.get("promotion_status"),
         "review_required": candidate.get("review_required", True),
     }
@@ -193,7 +194,7 @@ def external_place_fallback(query: str) -> dict[str, Any] | None:
     raw_candidates = [
         candidate
         for candidate in report.get("candidates") or []
-        if candidate.get("authority_level") == "supplemental"
+        if candidate.get("authority_level") in {"public_authoritative", "supplemental"}
     ]
     with_geometry = [
         candidate for candidate in raw_candidates
@@ -205,10 +206,16 @@ def external_place_fallback(query: str) -> dict[str, Any] | None:
     ]
     if not candidates:
         return None
+    has_public = any(candidate.get("authority_level") == "public_authoritative" for candidate in raw_candidates)
     return {
         "status": "NEEDS_CLARIFICATION",
         "error_code": "EXTERNAL_PLACE_CANDIDATES",
-        "summary": "로컬 해양 지명사전에는 없지만 외부 보조 후보를 찾았습니다. authoritative 승격 전이므로 후보를 확인해 주세요.",
+        "summary": (
+            "로컬 해양 지명사전에는 없지만 공공 근거 기반 후보를 찾았습니다. "
+            "정확한 feature geometry 승격 전이므로 후보를 확인해 주세요."
+            if has_public
+            else "로컬 해양 지명사전에는 없지만 외부 보조 후보를 찾았습니다. authoritative 승격 전이므로 후보를 확인해 주세요."
+        ),
         "location_candidates": candidates,
         "external_evidence_report": {
             "domain_id": report.get("domain_id"),
@@ -233,7 +240,7 @@ def resolve_payload(query, spatial_context):
             "summary": f"{label}의 기준 위치를 확인했습니다.",
         }
     except PlaceResolutionProblem as exc:
-        if exc.code == "GAZETTEER_UNAVAILABLE":
+        if exc.code in {"GAZETTEER_UNAVAILABLE", "LOCATION_UNCONFIRMED"}:
             fallback = external_place_fallback(query)
             if fallback:
                 return fallback

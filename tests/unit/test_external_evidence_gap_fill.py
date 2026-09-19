@@ -92,6 +92,23 @@ def test_administrative_place_query_routes_to_external_place_candidates(monkeypa
     assert report["candidate_counts"]["supplemental"] >= 1
 
 
+def test_dakbawi_routes_to_marine_named_place_gap_candidate(monkeypatch):
+    monkeypatch.delenv("GEOLLM_OSM_USER_AGENT", raising=False)
+
+    report = run_gap_fill("\ub2ed\ubc14\uc704", fetch_osm=True)
+
+    assert report["status"] == "OK"
+    assert report["domain_id"] == "marine_named_place_lookup"
+    public_candidates = [
+        row for row in report["candidates"]
+        if row["authority_level"] == "public_authoritative"
+    ]
+    assert public_candidates
+    assert public_candidates[0]["candidate_id"] == "extgap.dokdo_dakbawi_named_rock"
+    assert public_candidates[0]["geometry"]["status"] == "needs_official_feature_geometry_review"
+    assert report["osm_fetch_diagnostics"]["status"] == "blocked"
+
+
 def test_unsupported_gap_domain_report_is_markdown_safe():
     report = run_gap_fill("completely unrelated phrase")
 

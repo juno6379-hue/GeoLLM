@@ -224,12 +224,20 @@ def public_authoritative_candidates(query: str, domain_id: str, anchor: dict[str
     for item in registry.get("seed_candidates") or []:
         if item.get("domain") != domain_id:
             continue
+        names = [item.get("name"), *(item.get("aliases") or [])]
+        if not any(name and str(name).lower() in query.lower() for name in names):
+            if not anchor or item.get("anchor_place_id") != anchor.get("place_id"):
+                continue
         if anchor and item.get("anchor_place_id") != anchor.get("place_id"):
             continue
+        item_geometry = item.get("geometry") if isinstance(item.get("geometry"), dict) else {}
+        coordinates = item_geometry.get("coordinates")
+        if not coordinates and anchor:
+            coordinates = [anchor.get("lon"), anchor.get("lat")]
         geometry = {
-            "type": "Point",
-            "coordinates": [anchor.get("lon"), anchor.get("lat")] if anchor else None,
-            "source": anchor.get("source") if anchor else None,
+            "type": item_geometry.get("type") or "Point",
+            "coordinates": coordinates,
+            "source": anchor.get("source") if anchor else item.get("source_name"),
             "status": item.get("geometry_status") or "needs_review",
             "strategy": item.get("geometry_strategy"),
         }
@@ -251,6 +259,7 @@ def public_authoritative_candidates(query: str, domain_id: str, anchor: dict[str
                 "designated_on": item.get("designated_on"),
                 "area_m2": item.get("area_m2"),
                 "location_text": item.get("location_text"),
+                "description": item.get("description"),
             },
             "review_required": bool(item.get("review_required", True)),
             "promotion_status": item.get("promotion_status") or "NEEDS_REVIEW",
