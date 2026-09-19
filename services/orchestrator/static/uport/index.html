@@ -64,7 +64,7 @@
       <!-- The lower cards match the operational groups in U-Port_UI.png. -->
       <section class="details" aria-label="운영 상세">
         <article class="card detail"><h2>선박 일정 타임라인</h2><p>입출항 일정 데이터 연결 대기 중</p></article>
-        <article class="card detail"><h2>선석 운영 현황</h2><p>점유 데이터 연결 대기 중</p><div id="agent-feature-list" class="feature-list" aria-label="검증된 선석 조회 결과"></div></article>
+        <article class="card detail"><h2>선석 운영 현황</h2><p id="berth-reference-status">점유 데이터 연결 대기 중 · 선석 제원 자료 확인 중</p><div id="agent-feature-list" class="feature-list" aria-label="검증된 선석 조회 결과"></div></article>
         <article class="card detail"><h2>주요 알림</h2><p>운영 알림 데이터 연결 대기 중</p></article>
         <article class="card detail"><h2>예측 결과 요약</h2><p>검증된 예측 모델 연결 대기 중</p></article>
       </section>
@@ -73,5 +73,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="/uport/map.js"></script>
   <script src="/uport/agent.js"></script>
+  <script src="/uport/reference.js"></script>
 </body>
 </html>

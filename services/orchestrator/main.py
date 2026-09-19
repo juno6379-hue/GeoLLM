@@ -41,6 +41,8 @@ from services.uport.prediction.router import router as uport_prediction_router
 app.include_router(uport_prediction_router, prefix="/api/v1")
 from services.uport.optimization.router import router as uport_optimization_router
 app.include_router(uport_optimization_router, prefix="/api/v1")
+from services.uport.operations.router import router as uport_operations_router
+app.include_router(uport_operations_router, prefix="/api/v1")
 from services.orchestrator.place_router import router as place_router
 app.include_router(place_router, prefix="/api/v1")
 
