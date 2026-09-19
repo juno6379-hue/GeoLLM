@@ -63,6 +63,27 @@ router_policies:
       - ais
       - v-pass
       - vpass
+    - signal_id: document_or_authority_query
+      reason: legal, notice, standard, definition, or evidence requests must use document/RAG routing
+      terms:
+      - 고시
+      - 법령
+      - 규정
+      - 표준
+      - 문서
+      - 근거
+      - 정의
+      - 설명
+      - 뜻
+      - 의미
+      - 이란
+      - 란
+      - notice
+      - law
+      - legal
+      - standard
+      - definition
+      - evidence
     suppress_when_semantic_place_types:
     - marine_gazetteer
 lexical_signals:

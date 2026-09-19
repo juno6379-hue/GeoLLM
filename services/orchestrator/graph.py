@@ -1397,7 +1397,9 @@ def _resolve_known_marine_place_wkt(query: str, state: OrchestratorState) -> tup
 def _looks_like_place_lookup(query: str) -> bool:
     import re
 
-    if any(term in query.lower() for term in ["nearest", "closest", "가까운", "반경", "이내", "위험", "hazard", "침선", "목록", "법령", "규정", "위치 추적", "항적", "정박지", "anchorage", "선박", "구역", "교통량", "유속", "시설"]):
+    if _looks_like_definition_question(query) or _looks_like_legal_rag_query(query):
+        return False
+    if any(term in query.lower() for term in ["nearest", "closest", "가까운", "반경", "이내", "위험", "hazard", "침선", "목록", "법령", "고시", "규정", "위치 추적", "항적", "정박지", "anchorage", "선박", "구역", "교통량", "유속", "시설"]):
         return False
     return bool(re.search(r"(?:위치|좌표|어디)(?:를|가|는|을|에|인지|야|입니까|\s|[?.!]|$)|\b(?:where is|where are|coordinates of|location of)\b", query, re.I))
 
@@ -1406,6 +1408,8 @@ def _looks_like_known_place_search(query: str, state: OrchestratorState | None =
     text = query or ""
     lowered = text.lower()
     if not text.strip():
+        return False
+    if _looks_like_definition_question(text) or _looks_like_legal_rag_query(text):
         return False
     if any(term in lowered or term in text for term in [
         "nearest",
@@ -4738,8 +4742,14 @@ async def create_plan_node(state: OrchestratorState) -> OrchestratorState:
     elif valid_slot_derived:
         derived_concept = valid_slot_derived
 
+    query_text = state.get("query", "")
+    document_like_query = (
+        _looks_like_standard_rag_query(query_text)
+        or _looks_like_legal_rag_query(query_text)
+        or _looks_like_no_evidence_document_query(query_text)
+    )
     analysis_type = _context_value(ctx_res, "analysis_type")
-    if not analysis_type and _looks_like_standard_rag_query(state.get("query", "")):
+    if not analysis_type and document_like_query:
         analysis_type = "document_search"
         slots["analysis_type"] = analysis_type
     if not analysis_type and _looks_like_external_tide_query(state.get("query", "")):
@@ -4799,7 +4809,7 @@ async def create_plan_node(state: OrchestratorState) -> OrchestratorState:
     
     # Resolve the named place before dispatch so every Agent implementation
     # receives a concrete spatial reference, not only a display label.
-    if req.spatial_context and (req.spatial_context.place_id or req.spatial_context.base_location):
+    if req.spatial_context and (req.spatial_context.place_id or req.spatial_context.base_location) and not document_like_query:
         try:
             import asyncio
 
@@ -4854,7 +4864,11 @@ async def execute_agent_node(state: OrchestratorState) -> OrchestratorState:
     req.previous_agent_outputs["graph_context"] = state.get("graph_context", {})
     req.previous_agent_outputs["data_discovery_result"] = state.get("data_discovery_result", {})
 
-    if req.previous_agent_outputs.get("location_resolution_problem"):
+    if req.previous_agent_outputs.get("location_resolution_problem") and not (
+        _looks_like_standard_rag_query(state.get("query", ""))
+        or _looks_like_legal_rag_query(state.get("query", ""))
+        or _looks_like_no_evidence_document_query(state.get("query", ""))
+    ):
         return _place_lookup_update(state, req.previous_agent_outputs["location_resolution_problem"], "place_lookup")
 
     if req.agent_name == "ClarificationAgent":
@@ -5417,11 +5431,11 @@ def check_intent_parsed(state: OrchestratorState) -> str:
         return "fast_dynamic_traffic_execute"
     if _should_fast_spatial_or_traffic_block(state):
         return "fast_spatial_or_traffic_block"
+    if _looks_like_legal_rag_query(query) or _looks_like_no_evidence_document_query(query):
+        return "fast_document_answer"
     if (
         _exact_s101_feature_match(query)
         or _exact_s100_s101_relation_match(query)
-        or _looks_like_legal_rag_query(query)
-        or _looks_like_no_evidence_document_query(query)
     ) and _contract_ready_any(
         state,
         route="STANDARD_RAG",

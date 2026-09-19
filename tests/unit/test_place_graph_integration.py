@@ -110,10 +110,29 @@ def test_place_query_revision_is_preserved(graph):
     assert result["query_execution_context"]["plan_hash"]
 
 
-@pytest.mark.parametrize("query", ["해양보호구역 위치", "부산항 주변 정박지 위치", "선박 위치 추적"])
+@pytest.mark.parametrize("query", ["해양보호구역 위치", "부산항 주변 정박지 위치", "선박 위치 추적", "부산항 고시"])
 def test_area_and_feature_queries_are_not_replaced_by_place_lookup(graph, query):
     module, _ = graph
     assert not module._looks_like_place_lookup(query)
+    assert not module._looks_like_known_place_search(query)
+
+
+def test_notice_query_is_legal_rag_not_place_lookup(graph):
+    module, _ = graph
+    query = "부산항 고시"
+    state = {"query": query, "status": AgentStatus.INTENT_PARSED, "spatial_context": {}}
+    assert module._looks_like_legal_rag_query(query)
+    assert not module._looks_like_place_lookup(query)
+    assert not module._looks_like_known_place_search(query)
+    assert module.check_intent_parsed(state) == "fast_document_answer"
+
+
+def test_notice_query_plan_does_not_resolve_place_problem(graph):
+    module, _ = graph
+    result = invoke(module, "부산항 고시", spatial_context={"base_location": "부산항"})
+
+    assert result["final_dict"]["structured_result"]["analysis_type"] != "place_lookup"
+    assert result["final_dict"].get("error_code") != "EXTERNAL_PLACE_CANDIDATES"
 
 
 def test_accident_spatial_history_extracts_registry_anchor(graph, monkeypatch):
