@@ -59,6 +59,25 @@ services:
       - ../scripts:/app/scripts
       - ../services/orchestrator/static:/app/services/orchestrator/static
 
+  # Poll the public current-position API every six hours. The ignored host
+  # volume retains history across container recreation; the backend proxy
+  # keeps the provider credential out of this collector's request URLs.
+  eta-history-collector:
+    image: docker-backend
+    container_name: geollm_eta_history_collector
+    working_dir: /app
+    command: ["python", "-m", "scripts.collect_uport_eta_history", "--loop", "--interval-hours", "6"]
+    environment:
+      - UPORT_PROXY_URL=http://backend:8000/api/v1/uport
+      - UPORT_ETA_DB_PATH=/app/eta_history/uport_eta_history.sqlite3
+      - PYTHONIOENCODING=utf-8
+    depends_on:
+      - backend
+    restart: unless-stopped
+    volumes:
+      - eta_history_data:/app/eta_history
+      - ../scripts:/app/scripts
+
   tile-server:
     image: geollm-container-1:latest
     container_name: geollm-container-1
@@ -85,3 +104,4 @@ services:
 
 volumes:
   postgis_data:
+  eta_history_data:
