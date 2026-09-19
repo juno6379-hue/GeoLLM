@@ -36,6 +36,21 @@ registries:
       jurisdiction: KR
       source_url: https://www.law.go.kr/LSW/lsInfoP.do?lsId=010298
       verification_status: VERIFIED
+    port_act:
+      title_ko: 항만법
+      jurisdiction: KR
+      source_url: https://www.law.go.kr
+      verification_status: VERIFIED
+    ship_entry_departure_act:
+      title_ko: 선박의 입항 및 출항 등에 관한 법률
+      jurisdiction: KR
+      source_url: https://www.law.go.kr
+      verification_status: VERIFIED
+    maritime_traffic_safety_act:
+      title_ko: 해상교통안전법
+      jurisdiction: KR
+      source_url: https://www.law.go.kr
+      verification_status: VERIFIED
   authorities:
     mof:
       name_ko: 해양수산부
@@ -55,7 +70,109 @@ registries:
       jurisdiction: KR
       source_url: https://www.khoa.go.kr
       verification_status: VERIFIED
+    busan_mof:
+      name_ko: 부산지방해양수산청
+      name_en: Busan Regional Office of Oceans and Fisheries
+      jurisdiction: KR
+      source_url: https://busan.mof.go.kr
+      verification_status: VERIFIED
   legal_notices:
+    busan_port_navigation_rules_2026_124:
+      title_ko: 부산항 항법 등에 관한 규칙
+      notice_no: 부산지방해양수산청고시 제2026-124호
+      notice_date: '2026-07-01'
+      effective_date: '2026-07-01'
+      notice_type: 고시
+      authority_id: busan_mof
+      source_url: https://www.law.go.kr/admRulLsInfoP.do?admRulId=2088785&efYd=0
+      basis_laws:
+        - ship_entry_departure_act
+        - maritime_traffic_safety_act
+      governs_layers:
+        - anchorage_area
+        - fairway_area
+        - speed_restriction_area
+        - vessel_traffic_control_area
+      scope_keywords:
+        - 부산항
+        - 항법
+        - 항로
+        - 정박지
+        - 정박금지구역
+        - 속력 제한
+        - 운항금지구역
+        - 해양사고 조치
+      summary_ko: 부산항과 관련 항로·정박지를 입출항하는 선박에 적용되는 항법, 정박지, 정박금지구역, 항로, 가덕수도 입출항항로, 항행 최고 속력, 운항금지구역 및 해양사고 조치 기준을 정한다.
+      verification_status: VERIFIED
+    busan_port_tug_operation_rules_2025_104:
+      title_ko: 부산항예선운영세칙
+      notice_no: 부산지방해양수산청고시 제2025-104호
+      notice_date: '2025-05-21'
+      effective_date: '2025-05-21'
+      notice_type: 고시
+      authority_id: busan_mof
+      source_url: https://www.law.go.kr/admRulInfoP.do?admRulSeq=2100000259272
+      basis_laws:
+        - ship_entry_departure_act
+      governs_layers:
+        - tug_operation
+        - berth_operation
+      scope_keywords:
+        - 부산항
+        - 예선
+        - 예선운영
+        - 접안
+        - 이안
+        - 계류시설
+        - 예선사용
+      summary_ko: 부산항 예선업과 예선 지도·감독, 예선사용 의무, 예선사용 기준, 예항력 기준 및 예선 대기장소 등 부산항 예선 운영 세부사항을 정한다.
+      verification_status: VERIFIED
+    busan_port_basic_plan_change_notice_2024_124:
+      title_ko: 항만기본계획 변경 고시(부산항)
+      notice_no: 해양수산부 고시 제2024-124호
+      notice_date: '2024-11-12'
+      effective_date: '2024-11-12'
+      notice_type: 고시
+      authority_id: mof
+      source_url: https://www.mof.go.kr/doc/ko/selectDoc.do?bbsSeq=9&docSeq=59237&menuSeq=375
+      basis_laws:
+        - port_act
+      governs_layers:
+        - port_basic_plan
+        - planned_port_area
+      scope_keywords:
+        - 부산항
+        - 항만기본계획
+        - 기본계획
+        - 항만법
+        - 변경 고시
+        - 개발 예정
+      summary_ko: 항만법 제8조에 따라 부산항 항만기본계획 변경 사항을 고시한 문서다.
+      verification_status: VERIFIED
+    busan_port_facility_operation_rules_2014_153:
+      title_ko: 부산항 항만시설 운영세칙
+      notice_no: 부산지방해양항만청고시 제2014-153호
+      notice_date: '2014-07-21'
+      effective_date: '2014-07-21'
+      notice_type: 고시
+      authority_id: busan_mof
+      source_url: https://www.law.go.kr/admRulLsInfoP.do?admRulSeq=2200000040568
+      basis_laws:
+        - port_act
+      governs_layers:
+        - port_facility
+        - anchorage_area
+        - fairway_area
+      scope_keywords:
+        - 부산항
+        - 항만시설
+        - 운영세칙
+        - 해상구역
+        - 항로
+        - 정박지
+        - 계류
+      summary_ko: 부산항 항만시설의 효율적 관리·운영을 위해 부산항 해상구역, 항로, 계선장, 해상교통관제시스템, 항만시설 명칭 및 사용자 준수사항 등을 정한 세칙이다.
+      verification_status: VERIFIED
     new_port_planned_area_map_notice_2025_205:
       title_ko: 신항만건설 예정지역(인천북항) 지형도면 고시
       notice_no: 해양수산부 고시 제2025-205호

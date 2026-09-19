@@ -135,6 +135,42 @@ def test_notice_query_plan_does_not_resolve_place_problem(graph):
     assert result["final_dict"].get("error_code") != "EXTERNAL_PLACE_CANDIDATES"
 
 
+@pytest.mark.parametrize(
+    "query, expected_title",
+    [
+        ("부산항 고시", "부산항 항법 등에 관한 규칙"),
+        ("부산항 항법 고시 근거를 설명해줘", "부산항 항법 등에 관한 규칙"),
+        ("부산항 정박지와 항로 고시 내용", "부산항 항법 등에 관한 규칙"),
+        ("부산항 속력 제한 근거 고시", "부산항 항법 등에 관한 규칙"),
+        ("부산항 예선운영 고시", "부산항예선운영세칙"),
+        ("부산항 항만기본계획 변경 고시", "항만기본계획 변경 고시(부산항)"),
+        ("부산항 항만시설 운영세칙 근거", "부산항 항만시설 운영세칙"),
+    ],
+)
+def test_busan_notice_queries_return_authoritative_registry_docs(graph, query, expected_title):
+    module, _ = graph
+    result = invoke(module, query)
+    final = result["final_dict"]
+
+    assert result["status"] == AgentStatus.COMPLETED
+    assert final["structured_result"]["analysis_type"] == "document_search"
+    assert final["orchestrator_v2"]["fast_path"] == "legal_notice_registry"
+    assert final["structured_result"]["documents"]
+    assert any(expected_title == doc["title"] for doc in final["structured_result"]["documents"])
+    assert final["evidence_bundle"]["regulatory_evidence"]
+    assert "요청한 법령/고시/표준 항목" not in final["summary"]
+
+
+def test_nonexistent_notice_still_blocks_without_inventing_evidence(graph):
+    module, _ = graph
+    result = invoke(module, "존재하지 않는 해양 고시 ABC-999의 내용을 알려줘")
+    final = result["final_dict"]
+
+    assert result["status"] == AgentStatus.BLOCKED
+    assert final["error_code"] == "NO_AUTHORITATIVE_EVIDENCE"
+    assert final["structured_result"]["documents"] == []
+
+
 def test_accident_spatial_history_extracts_registry_anchor(graph, monkeypatch):
     module, _ = graph
     monkeypatch.setattr(

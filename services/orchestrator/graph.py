@@ -996,6 +996,146 @@ def _looks_like_no_evidence_document_query(query: str) -> bool:
         "\uc5c6\ub294",
     ])
 
+LEGAL_NOTICE_STOPWORDS = {
+    "고시",
+    "법령",
+    "규정",
+    "근거",
+    "관련",
+    "내용",
+    "설명",
+    "찾아줘",
+    "알려줘",
+    "보여줘",
+    "요약",
+    "notice",
+    "legal",
+    "law",
+}
+
+
+def _legal_notice_query_terms(query: str) -> list[str]:
+    text = query or ""
+    raw_terms = re.findall(r"[0-9A-Za-z가-힣·ㆍ-]{2,}", text)
+    terms: list[str] = []
+    for term in raw_terms:
+        cleaned = _strip_korean_particles(term).strip("`'\".,;:!?[]{}")
+        cleaned = re.sub(r"(?:은|는|이|가|을|를|로|으로|에서|에게|까지|부터|인지|해줘|해주세요|찾아줘|알려줘|보여줘)$", "", cleaned)
+        if len(cleaned) < 2:
+            continue
+        if cleaned.lower() in LEGAL_NOTICE_STOPWORDS or cleaned in LEGAL_NOTICE_STOPWORDS:
+            continue
+        terms.append(cleaned)
+    return list(dict.fromkeys(terms))[:12]
+
+
+def _legal_notice_documents_for_query(query: str, limit: int = 5) -> list[dict]:
+    if _looks_like_no_evidence_document_query(query):
+        return []
+    registry = _load_yaml_registry("legal_notice_registry.yaml")
+    notices = ((registry.get("registries") or {}).get("legal_notices") or {})
+    laws = ((registry.get("registries") or {}).get("laws") or {})
+    authorities = ((registry.get("registries") or {}).get("authorities") or {})
+    if not isinstance(notices, dict):
+        return []
+    text = query or ""
+    lowered = text.lower()
+    terms = _legal_notice_query_terms(text)
+    wants_busan = any(term in text for term in ["부산", "부산항", "신항", "감천", "다대포", "가덕", "북항"])
+    legal_intent = _looks_like_legal_rag_query(text) or any(term in text for term in ["항법", "항로", "정박지", "속력", "예선", "항만기본계획", "항만시설"])
+    if not legal_intent:
+        return []
+
+    scored: list[tuple[int, str, dict]] = []
+    for notice_id, notice in notices.items():
+        if not isinstance(notice, dict):
+            continue
+        haystack_parts = [
+            notice_id,
+            notice.get("title_ko"),
+            notice.get("notice_no"),
+            notice.get("notice_type"),
+            notice.get("summary_ko"),
+            " ".join(str(item) for item in notice.get("scope_keywords") or []),
+            " ".join(str(item) for item in notice.get("governs_layers") or []),
+        ]
+        haystack = " ".join(str(part or "") for part in haystack_parts)
+        haystack_lower = haystack.lower()
+        score = 0
+        if wants_busan and ("부산" in haystack or "busan" in haystack_lower):
+            score += 8
+        for term in terms:
+            term_lower = term.lower()
+            if term in haystack or term_lower in haystack_lower:
+                score += 4 if term in ("부산항", "항법", "항로", "정박지", "속력", "예선", "항만기본계획", "항만시설") else 2
+        if any(term in text for term in ["해상교통안전", "통항", "항법", "속력", "항로", "정박지"]):
+            if any(layer in (notice.get("governs_layers") or []) for layer in ["fairway_area", "speed_restriction_area", "vessel_traffic_control_area", "anchorage_area"]):
+                score += 3
+        if "예선" in text and "예선" in haystack:
+            score += 6
+        if any(term in text for term in ["기본계획", "개발", "예정"]) and "항만기본계획" in haystack:
+            score += 6
+        if any(term in text for term in ["항만시설", "운영세칙", "시설"]) and "항만시설" in haystack:
+            score += 5
+        if not terms and _looks_like_legal_rag_query(text):
+            score += 1
+        if score > 0:
+            scored.append((score, str(notice_id), notice))
+
+    docs: list[dict] = []
+    seen: set[str] = set()
+    for score, notice_id, notice in sorted(scored, key=lambda item: (item[0], item[1]), reverse=True):
+        if notice_id in seen:
+            continue
+        seen.add(notice_id)
+        authority = authorities.get(notice.get("authority_id") or "", {}) if isinstance(authorities, dict) else {}
+        basis_laws = [
+            (laws.get(law_id) or {}).get("title_ko") or law_id
+            for law_id in notice.get("basis_laws") or []
+            if isinstance(laws, dict)
+        ]
+        excerpt = str(notice.get("summary_ko") or notice.get("title_ko") or "").strip()
+        if basis_laws:
+            excerpt += f" 근거 법령: {', '.join(str(item) for item in basis_laws)}."
+        docs.append({
+            "document_id": f"legal_notice:{notice_id}",
+            "title": notice.get("title_ko") or notice_id,
+            "version": notice.get("notice_no"),
+            "section": "legal_notice_registry",
+            "page": "N/A",
+            "source": "data/legal_notice_registry.yaml",
+            "source_id": notice_id,
+            "source_file": "data/legal_notice_registry.yaml",
+            "source_url": notice.get("source_url"),
+            "document_type": "legal_notice",
+            "notice_no": notice.get("notice_no"),
+            "notice_date": notice.get("notice_date"),
+            "effective_date": notice.get("effective_date"),
+            "authority": authority.get("name_ko") or notice.get("authority_id"),
+            "basis_laws": basis_laws,
+            "governs_layers": notice.get("governs_layers") or [],
+            "scope_keywords": notice.get("scope_keywords") or [],
+            "excerpt_reference": excerpt,
+            "retrieved_at": datetime.utcnow().isoformat() + "Z",
+            "relevance_score": min(1.0, score / 18),
+        })
+        if len(docs) >= limit:
+            break
+    return docs
+
+
+def _legal_notice_answer(query: str, docs: list[dict]) -> str:
+    if not docs:
+        return ""
+    lead = "부산항 관련 고시/행정규칙 근거를 로컬 authoritative registry에서 찾았습니다." if any("부산" in str(doc.get("title") or "") for doc in docs) else "질의와 관련된 법령/고시 근거를 로컬 authoritative registry에서 찾았습니다."
+    rows = []
+    for index, doc in enumerate(docs[:4], start=1):
+        date_text = doc.get("effective_date") or doc.get("notice_date") or "시행일 미상"
+        notice_no = doc.get("notice_no") or "고시번호 미상"
+        summary = str(doc.get("excerpt_reference") or "").strip()
+        rows.append(f"{index}. {doc.get('title')}({notice_no}, 시행 {date_text}): {summary}")
+    return lead + " " + " ".join(rows) + " 상세 조항과 별표는 근거 상세정보의 원문 링크에서 확인할 수 있습니다."
+
 def _looks_like_dataset_evidence_query(query: str) -> bool:
     text = query or ""
     lowered = text.lower()
@@ -2737,7 +2877,8 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
     temporal_window = _extract_temporal_window_from_query(query)
     feature = _exact_s101_feature_match(query)
     relation = _exact_s100_s101_relation_match(query)
-    no_evidence = _looks_like_no_evidence_document_query(query) or _looks_like_legal_rag_query(query)
+    legal_notice_docs = _legal_notice_documents_for_query(query)
+    no_evidence = _looks_like_no_evidence_document_query(query) or (_looks_like_legal_rag_query(query) and not legal_notice_docs)
     if feature:
         code = str(feature.get("code") or "")
         name = str(feature.get("name") or code)
@@ -2867,6 +3008,35 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
             "S-101은 그 S-100 프레임워크를 기반으로 한 ENC 제품 사양입니다. "
             "로컬 매핑 registry에서는 S-100을 framework, S-101을 base_electronic_navigational_chart 역할로 관리합니다."
         )
+    elif legal_notice_docs:
+        target_term = "legal_notice_registry"
+        documents = legal_notice_docs
+        citations = [
+            {
+                "document_id": item["document_id"],
+                "source": item["title"],
+                "source_id": item.get("source_id"),
+                "source_file": item.get("source_file"),
+                "source_url": item.get("source_url"),
+                "section": item.get("section"),
+                "document_type": "legal_notice",
+                "chunk_id": item["document_id"],
+                "notice_no": item.get("notice_no"),
+                "notice_date": item.get("notice_date"),
+                "effective_date": item.get("effective_date"),
+                "authority": item.get("authority"),
+                "basis_laws": item.get("basis_laws") or [],
+                "similarity": item.get("relevance_score"),
+                "summary_ko": item.get("excerpt_reference"),
+                "detail_label": "상세정보",
+                "detail_text": item.get("excerpt_reference"),
+                "provenance": {"method": "legal_notice_registry_lookup", "query": query},
+            }
+            for item in documents
+        ]
+        doc = documents[0]
+        citation = citations[0]
+        answer = _legal_notice_answer(query, documents)
     elif no_evidence:
         target_term = "no_authoritative_evidence"
         doc = {
@@ -2906,15 +3076,16 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
     doc_blocked = target_term == "no_authoritative_evidence"
     quality_metrics = _quality_metrics_from_state(
         state,
-        fast_path="document_no_evidence" if doc_blocked else "authoritative_s101_feature_catalogue",
+        fast_path="document_no_evidence" if doc_blocked else ("legal_notice_registry" if target_term == "legal_notice_registry" else "authoritative_s101_feature_catalogue"),
         exact=not doc_blocked,
         blocked_no_evidence=doc_blocked,
     )
+    data_bindings = ["s101_feature_catalogue", "s101_dceg_2_0_0"] if feature else (["legal_notice_registry"] if target_term == "legal_notice_registry" else ["s101_feature_catalogue"])
     route_plan = {
         "task_id": f"TASK-DOC-FAST-{state['task_id'][:3].upper()}",
         "status": "BLOCKED_DATA" if doc_blocked else "EXECUTION_READY",
         "intent": "KNOWLEDGE_SEARCH",
-        "context": "standard_document",
+        "context": "legal_notice" if target_term == "legal_notice_registry" else "standard_document",
         "analysis_type": "document_search",
         "derived_concept": None,
         "primary_agent": "Standard RAG Agent",
@@ -2925,7 +3096,7 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
             "temporal_window": temporal_window,
         },
         "tools": ["rag.graph_scoped_retrieve"],
-        "data": ["s101_feature_catalogue", "s101_dceg_2_0_0"] if feature else ["s101_feature_catalogue"],
+        "data": data_bindings,
         "outputs": ["StandardDocumentOutput", "EvidenceBundle", "Summary"],
         "clarification_required": False,
         "confidence": 1.0,
@@ -2951,25 +3122,32 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
             "temporal_window": temporal_window,
             "web_rag_usage": {
                 "web_used": False,
-                "rag_used": False,
+                "rag_used": target_term == "legal_notice_registry",
                 "llm_used": False,
                 "execution_path": "document_no_evidence" if doc_blocked else "authoritative_document_fast_path",
                 "local_authoritative_registry_checked": True,
                 "embedding_independent": True,
             },
         },
-        "evidence_bundle": {"rag_evidence": [] if doc_blocked else citations, "kg_provenance": [], "regulatory_evidence": [], "spatial_feature_evidence": [], "spatial_layer_evidence": [], "accident_relation_evidence": []},
+        "evidence_bundle": {
+            "rag_evidence": [] if doc_blocked else citations,
+            "kg_provenance": [],
+            "regulatory_evidence": [] if doc_blocked else (citations if target_term == "legal_notice_registry" else []),
+            "spatial_feature_evidence": [],
+            "spatial_layer_evidence": [],
+            "accident_relation_evidence": [],
+        },
         "orchestrator_v2": {
             "route_plan": route_plan,
             "query_execution_context": {
                 "readiness": "BLOCKED_DATA" if doc_blocked else "READY",
                 "blockers": ["NO_AUTHORITATIVE_EVIDENCE: local legal/standard evidence is not available"] if doc_blocked else [],
                 "warnings": [],
-                "data_bindings": [{"dataset_id": item, "relation": "authoritative_lookup"} for item in (["s101_feature_catalogue", "s101_dceg_2_0_0"] if feature else ["s101_feature_catalogue"])],
-                "tool_bindings": [{"tool_id": "rag.graph_scoped_retrieve", "operation": "exact_catalogue_lookup"}],
+                "data_bindings": [{"dataset_id": item, "relation": "authoritative_lookup"} for item in data_bindings],
+                "tool_bindings": [{"tool_id": "rag.graph_scoped_retrieve", "operation": "legal_notice_registry_lookup" if target_term == "legal_notice_registry" else "exact_catalogue_lookup"}],
             },
             "embedding_independent": True,
-            "fast_path": "document_no_evidence" if doc_blocked else "authoritative_s101_feature_catalogue",
+            "fast_path": "document_no_evidence" if doc_blocked else ("legal_notice_registry" if target_term == "legal_notice_registry" else "authoritative_s101_feature_catalogue"),
             "quality_metrics": quality_metrics,
         },
         "contract_version": "geollm.execution.v1",
