@@ -149,6 +149,7 @@ def test_notice_query_plan_does_not_resolve_place_problem(graph):
         ("인천항 항법과 속력제한 고시", "인천항·경인항 선박통항규칙"),
         ("인천항 항만기본계획 변경 고시", "항만기본계획 변경 고시(인천항)"),
         ("인천항 육상항만구역 지형도면 고시", "인천항 육상항만구역 및 지형도면 변경 고시"),
+        ("인천항 육상항만구역 지형도면", "인천항 육상항만구역 및 지형도면 변경 고시"),
     ],
 )
 def test_busan_notice_queries_return_authoritative_registry_docs(graph, query, expected_title):
@@ -163,6 +164,18 @@ def test_busan_notice_queries_return_authoritative_registry_docs(graph, query, e
     assert any(expected_title == doc["title"] for doc in final["structured_result"]["documents"])
     assert final["evidence_bundle"]["regulatory_evidence"]
     assert "요청한 법령/고시/표준 항목" not in final["summary"]
+
+
+def test_notice_family_extraction_drives_registry_lookup(graph):
+    module, _ = graph
+
+    assert module._requested_notice_families("인천항 육상항만구역 지형도면") == ["port_land_area_map"]
+    docs = module._legal_notice_documents_for_query("인천항 육상항만구역 지형도면")
+
+    assert docs[0]["title"] == "인천항 육상항만구역 및 지형도면 변경 고시"
+    assert docs[0]["notice_family"] == "port_land_area_map"
+    assert docs[0]["ports"] == ["인천항"]
+    assert all("부산항" not in (doc.get("ports") or []) for doc in docs)
 
 
 def test_nonexistent_notice_still_blocks_without_inventing_evidence(graph):

@@ -1029,22 +1029,51 @@ def _legal_notice_query_terms(query: str) -> list[str]:
     return list(dict.fromkeys(terms))[:12]
 
 
+def _requested_notice_families(query: str, families: dict | None = None) -> list[str]:
+    text = query or ""
+    lowered = text.lower()
+    families = families or (((_load_yaml_registry("legal_notice_registry.yaml").get("registries") or {}).get("notice_families") or {}))
+    matched: list[tuple[int, str]] = []
+    if not isinstance(families, dict):
+        return []
+    for family_id, family in families.items():
+        if not isinstance(family, dict):
+            continue
+        aliases = [family.get("label_ko"), *(family.get("aliases") or [])]
+        best = 0
+        for alias in aliases:
+            alias_text = str(alias or "").strip()
+            if not alias_text:
+                continue
+            if alias_text in text or alias_text.lower() in lowered:
+                best = max(best, len(alias_text))
+        if best:
+            matched.append((best, str(family_id)))
+    return [family_id for _, family_id in sorted(matched, key=lambda item: item[0], reverse=True)]
+
+
+def _requested_port_name(query: str) -> str | None:
+    match = re.search(r"([가-힣]{2,12}항)", query or "")
+    return match.group(1) if match else None
+
+
 def _legal_notice_documents_for_query(query: str, limit: int = 5) -> list[dict]:
     if _looks_like_no_evidence_document_query(query):
         return []
     registry = _load_yaml_registry("legal_notice_registry.yaml")
-    notices = ((registry.get("registries") or {}).get("legal_notices") or {})
-    laws = ((registry.get("registries") or {}).get("laws") or {})
-    authorities = ((registry.get("registries") or {}).get("authorities") or {})
+    registries = registry.get("registries") or {}
+    notices = (registries.get("legal_notices") or {})
+    laws = (registries.get("laws") or {})
+    authorities = (registries.get("authorities") or {})
+    families = (registries.get("notice_families") or {})
     if not isinstance(notices, dict):
         return []
     text = query or ""
     lowered = text.lower()
     terms = _legal_notice_query_terms(text)
-    requested_port_match = re.search(r"([가-힣]{2,12}항)", text)
-    requested_port = requested_port_match.group(1) if requested_port_match else None
-    wants_busan = any(term in text for term in ["부산", "부산항", "신항", "감천", "다대포", "가덕", "북항"])
-    legal_intent = _looks_like_legal_rag_query(text) or any(term in text for term in ["항법", "항로", "정박지", "속력", "예선", "항만기본계획", "항만시설"])
+    requested_port = _requested_port_name(text)
+    requested_families = _requested_notice_families(text, families)
+    legal_intent = _looks_like_legal_rag_query(text) or bool(requested_families)
     if not legal_intent:
         return []
 
@@ -1057,30 +1086,30 @@ def _legal_notice_documents_for_query(query: str, limit: int = 5) -> list[dict]:
             notice.get("title_ko"),
             notice.get("notice_no"),
             notice.get("notice_type"),
+            notice.get("notice_family"),
             notice.get("summary_ko"),
+            " ".join(str(item) for item in notice.get("ports") or []),
             " ".join(str(item) for item in notice.get("scope_keywords") or []),
             " ".join(str(item) for item in notice.get("governs_layers") or []),
         ]
         haystack = " ".join(str(part or "") for part in haystack_parts)
         haystack_lower = haystack.lower()
-        if requested_port and requested_port not in haystack:
+        notice_ports = [str(item) for item in notice.get("ports") or []]
+        if requested_port and requested_port not in notice_ports and requested_port not in haystack:
             continue
+        notice_family = str(notice.get("notice_family") or "")
         score = 0
-        if wants_busan and ("부산" in haystack or "busan" in haystack_lower):
+        if requested_port and (requested_port in notice_ports or requested_port in haystack):
             score += 8
+        if requested_families:
+            if notice_family in requested_families:
+                score += 10
+            else:
+                continue
         for term in terms:
             term_lower = term.lower()
             if term in haystack or term_lower in haystack_lower:
-                score += 4 if term in ("부산항", "항법", "항로", "정박지", "속력", "예선", "항만기본계획", "항만시설") else 2
-        if any(term in text for term in ["해상교통안전", "통항", "항법", "속력", "항로", "정박지"]):
-            if any(layer in (notice.get("governs_layers") or []) for layer in ["fairway_area", "speed_restriction_area", "vessel_traffic_control_area", "anchorage_area"]):
-                score += 3
-        if "예선" in text and "예선" in haystack:
-            score += 6
-        if any(term in text for term in ["기본계획", "개발", "예정"]) and "항만기본계획" in haystack:
-            score += 6
-        if any(term in text for term in ["항만시설", "운영세칙", "시설"]) and "항만시설" in haystack:
-            score += 5
+                score += 3 if term == requested_port else 2
         if not terms and _looks_like_legal_rag_query(text):
             score += 1
         if score > 0:
@@ -1116,9 +1145,13 @@ def _legal_notice_documents_for_query(query: str, limit: int = 5) -> list[dict]:
             "notice_date": notice.get("notice_date"),
             "effective_date": notice.get("effective_date"),
             "authority": authority.get("name_ko") or notice.get("authority_id"),
+            "notice_family": notice.get("notice_family"),
+            "notice_family_label": (families.get(notice.get("notice_family") or "", {}) or {}).get("label_ko") if isinstance(families, dict) else None,
+            "ports": notice.get("ports") or [],
             "basis_laws": basis_laws,
             "governs_layers": notice.get("governs_layers") or [],
             "scope_keywords": notice.get("scope_keywords") or [],
+            "spatial_binding_status": notice.get("spatial_binding_status"),
             "excerpt_reference": excerpt,
             "retrieved_at": datetime.utcnow().isoformat() + "Z",
             "relevance_score": min(1.0, score / 18),
@@ -1131,8 +1164,7 @@ def _legal_notice_documents_for_query(query: str, limit: int = 5) -> list[dict]:
 def _legal_notice_answer(query: str, docs: list[dict]) -> str:
     if not docs:
         return ""
-    port_match = re.search(r"([가-힣]{2,12}항)", query or "")
-    port_label = port_match.group(1) if port_match else None
+    port_label = _requested_port_name(query or "")
     if port_label:
         lead = f"{port_label} 관련 고시/행정규칙 근거를 로컬 authoritative registry에서 찾았습니다."
     else:
@@ -1142,7 +1174,13 @@ def _legal_notice_answer(query: str, docs: list[dict]) -> str:
         date_text = doc.get("effective_date") or doc.get("notice_date") or "시행일 미상"
         notice_no = doc.get("notice_no") or "고시번호 미상"
         summary = str(doc.get("excerpt_reference") or "").strip()
-        rows.append(f"{index}. {doc.get('title')}({notice_no}, 시행 {date_text}): {summary}")
+        spatial_status = doc.get("spatial_binding_status")
+        spatial_note = ""
+        if spatial_status == "pending_geometry_ingest":
+            spatial_note = " 현재 로컬 공간 polygon 적재 여부는 별도 확인이 필요합니다."
+        elif spatial_status == "not_spatial_polygon":
+            spatial_note = " 이 항목은 문서/운영 기준 근거이며 독립 polygon 레이어가 아닐 수 있습니다."
+        rows.append(f"{index}. {doc.get('title')}({notice_no}, 시행 {date_text}): {summary}{spatial_note}")
     return lead + " " + " ".join(rows) + " 상세 조항과 별표는 근거 상세정보의 원문 링크에서 확인할 수 있습니다."
 
 def _looks_like_dataset_evidence_query(query: str) -> bool:
@@ -1546,7 +1584,7 @@ def _resolve_known_marine_place_wkt(query: str, state: OrchestratorState) -> tup
 def _looks_like_place_lookup(query: str) -> bool:
     import re
 
-    if _looks_like_definition_question(query) or _looks_like_legal_rag_query(query):
+    if _looks_like_definition_question(query) or _looks_like_legal_rag_query(query) or _requested_notice_families(query):
         return False
     if any(term in query.lower() for term in ["nearest", "closest", "가까운", "반경", "이내", "위험", "hazard", "침선", "목록", "법령", "고시", "규정", "위치 추적", "항적", "정박지", "anchorage", "선박", "구역", "교통량", "유속", "시설"]):
         return False
@@ -1558,7 +1596,7 @@ def _looks_like_known_place_search(query: str, state: OrchestratorState | None =
     lowered = text.lower()
     if not text.strip():
         return False
-    if _looks_like_definition_question(text) or _looks_like_legal_rag_query(text):
+    if _looks_like_definition_question(text) or _looks_like_legal_rag_query(text) or _requested_notice_families(text):
         return False
     if any(term in lowered or term in text for term in [
         "nearest",
@@ -1668,6 +1706,8 @@ async def fast_place_lookup_node(state: OrchestratorState) -> OrchestratorState:
     import asyncio
     from services.orchestrator.place_router import resolve_payload
 
+    if _requested_notice_families(state.get("query", "")):
+        return await fast_document_answer_node(state)
     if state.get("user_id") == "blocked_user":
         payload = {"status": "BLOCKED", "error_code": "ACCESS_DENIED", "summary": "이 요청에 대한 접근 권한이 없습니다."}
     else:
@@ -2286,7 +2326,11 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
     fast_external_weather = _looks_like_external_weather_query(original_query)
     fast_standard_rag = _looks_like_standard_rag_query(original_query)
     fast_dataset_evidence = _looks_like_dataset_evidence_query(original_query)
-    fast_legal_or_no_evidence_rag = _looks_like_legal_rag_query(original_query) or _looks_like_no_evidence_document_query(original_query)
+    fast_legal_or_no_evidence_rag = (
+        _looks_like_legal_rag_query(original_query)
+        or _looks_like_no_evidence_document_query(original_query)
+        or bool(_requested_notice_families(original_query))
+    )
     fast_time_series = _looks_like_time_series_query(original_query)
     fast_known_place = _looks_like_known_place_search(original_query, state)
     combined_fast_query = f"{original_query} {query}"
@@ -2887,7 +2931,8 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
     feature = _exact_s101_feature_match(query)
     relation = _exact_s100_s101_relation_match(query)
     legal_notice_docs = _legal_notice_documents_for_query(query)
-    no_evidence = _looks_like_no_evidence_document_query(query) or (_looks_like_legal_rag_query(query) and not legal_notice_docs)
+    legal_notice_intent = _looks_like_legal_rag_query(query) or bool(_requested_notice_families(query))
+    no_evidence = _looks_like_no_evidence_document_query(query) or (legal_notice_intent and not legal_notice_docs)
     if feature:
         code = str(feature.get("code") or "")
         name = str(feature.get("name") or code)
@@ -3034,7 +3079,11 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
                 "notice_date": item.get("notice_date"),
                 "effective_date": item.get("effective_date"),
                 "authority": item.get("authority"),
+                "notice_family": item.get("notice_family"),
+                "notice_family_label": item.get("notice_family_label"),
+                "ports": item.get("ports") or [],
                 "basis_laws": item.get("basis_laws") or [],
+                "spatial_binding_status": item.get("spatial_binding_status"),
                 "similarity": item.get("relevance_score"),
                 "summary_ko": item.get("excerpt_reference"),
                 "detail_label": "상세정보",
@@ -4934,6 +4983,7 @@ async def create_plan_node(state: OrchestratorState) -> OrchestratorState:
         _looks_like_standard_rag_query(query_text)
         or _looks_like_legal_rag_query(query_text)
         or _looks_like_no_evidence_document_query(query_text)
+        or bool(_requested_notice_families(query_text))
     )
     analysis_type = _context_value(ctx_res, "analysis_type")
     if not analysis_type and document_like_query:
@@ -5055,6 +5105,7 @@ async def execute_agent_node(state: OrchestratorState) -> OrchestratorState:
         _looks_like_standard_rag_query(state.get("query", ""))
         or _looks_like_legal_rag_query(state.get("query", ""))
         or _looks_like_no_evidence_document_query(state.get("query", ""))
+        or bool(_requested_notice_families(state.get("query", "")))
     ):
         return _place_lookup_update(state, req.previous_agent_outputs["location_resolution_problem"], "place_lookup")
 
@@ -5610,16 +5661,16 @@ def check_intent_parsed(state: OrchestratorState) -> str:
         return "fast_accident_spatial_history_lookup"
     if _should_fast_execute_accident_event_lookup(state):
         return "fast_accident_event_lookup"
-    if _looks_like_place_lookup(state.get("query", "")) or _looks_like_known_place_search(state.get("query", ""), state):
-        return "fast_place_lookup"
     if _looks_like_dataset_evidence_query(query):
         return "fast_dataset_evidence_answer"
+    if _looks_like_legal_rag_query(query) or _looks_like_no_evidence_document_query(query) or _requested_notice_families(query):
+        return "fast_document_answer"
+    if _looks_like_place_lookup(state.get("query", "")) or _looks_like_known_place_search(state.get("query", ""), state):
+        return "fast_place_lookup"
     if _should_fast_execute_traffic_query(state):
         return "fast_dynamic_traffic_execute"
     if _should_fast_spatial_or_traffic_block(state):
         return "fast_spatial_or_traffic_block"
-    if _looks_like_legal_rag_query(query) or _looks_like_no_evidence_document_query(query):
-        return "fast_document_answer"
     if (
         _exact_s101_feature_match(query)
         or _exact_s100_s101_relation_match(query)

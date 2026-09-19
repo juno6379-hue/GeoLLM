@@ -82,9 +82,109 @@ registries:
       jurisdiction: KR
       source_url: https://incheon.mof.go.kr
       verification_status: VERIFIED
+  notice_families:
+    port_traffic_rule:
+      label_ko: 항만 항법·통항·속력제한 고시
+      aliases:
+        - 항법
+        - 통항
+        - 선박통항
+        - 선박통항규칙
+        - 항로
+        - 정박지
+        - 정박금지구역
+        - 속력
+        - 속력제한
+        - 해상교통질서
+      expected_layers:
+        - anchorage_area
+        - fairway_area
+        - speed_restriction_area
+        - vessel_traffic_control_area
+    tug_operation_rule:
+      label_ko: 예선운영 고시
+      aliases:
+        - 예선
+        - 예선운영
+        - 예선사용
+        - 예항력
+        - 접안
+        - 이안
+      expected_layers:
+        - tug_operation
+        - berth_operation
+    port_basic_plan:
+      label_ko: 항만기본계획 고시
+      aliases:
+        - 항만기본계획
+        - 기본계획
+        - 개발계획
+        - 항만개발
+        - 개발 예정
+        - 변경 고시
+      expected_layers:
+        - port_basic_plan
+        - planned_port_area
+    port_land_area_map:
+      label_ko: 육상항만구역·지형도면 고시
+      aliases:
+        - 육상항만구역
+        - 지형도면
+        - 항만구역
+        - 지형 도면
+        - 토지이용규제
+        - 구역 조서
+      expected_layers:
+        - port_land_area
+        - planned_port_area
+    port_facility_operation_rule:
+      label_ko: 항만시설 운영세칙
+      aliases:
+        - 항만시설
+        - 운영세칙
+        - 시설 운영
+        - 계선장
+        - 계류
+      expected_layers:
+        - port_facility
+        - anchorage_area
+        - fairway_area
+    vessel_traffic_service_rule:
+      label_ko: 선박교통관제 고시
+      aliases:
+        - 선박교통관제
+        - 관제구역
+        - VTS
+        - vts
+      expected_layers:
+        - vessel_traffic_control_area
+    vpass_device_rule:
+      label_ko: V-PASS 장치 고시
+      aliases:
+        - V-Pass
+        - V-PASS
+        - 브이패스
+        - 선박패스
+      expected_layers:
+        - vpass_route_analysis
+        - vpass_major_route
+    planned_port_area_map:
+      label_ko: 신항만 예정지역 지형도면 고시
+      aliases:
+        - 신항만
+        - 예정지역
+        - 지형도면
+        - 신항만건설
+      expected_layers:
+        - planned_port_area
   legal_notices:
     incheon_gyeongin_ship_traffic_rules_2024_133:
       title_ko: 인천항·경인항 선박통항규칙
+      notice_family: port_traffic_rule
+      ports:
+        - 인천항
+        - 경인항
+      spatial_binding_status: pending_geometry_ingest
       notice_no: 인천지방해양수산청고시 제2024-133호
       notice_date: '2024-10-04'
       effective_date: '2024-10-04'
@@ -111,6 +211,10 @@ registries:
       verification_status: VERIFIED
     incheon_port_basic_plan_change_notice_2025_28:
       title_ko: 항만기본계획 변경 고시(인천항)
+      notice_family: port_basic_plan
+      ports:
+        - 인천항
+      spatial_binding_status: pending_geometry_ingest
       notice_no: 해양수산부 고시 제2025-28호
       notice_date: '2025-02-21'
       effective_date: '2025-02-21'
@@ -133,6 +237,10 @@ registries:
       verification_status: VERIFIED
     incheon_port_land_area_map_notice_2025_10:
       title_ko: 인천항 육상항만구역 및 지형도면 변경 고시
+      notice_family: port_land_area_map
+      ports:
+        - 인천항
+      spatial_binding_status: pending_geometry_ingest
       notice_no: 해양수산부 고시 제2025-10호
       notice_date: '2025-01-21'
       effective_date: '2025-01-21'
@@ -156,6 +264,10 @@ registries:
       verification_status: VERIFIED
     busan_port_navigation_rules_2026_124:
       title_ko: 부산항 항법 등에 관한 규칙
+      notice_family: port_traffic_rule
+      ports:
+        - 부산항
+      spatial_binding_status: pending_geometry_ingest
       notice_no: 부산지방해양수산청고시 제2026-124호
       notice_date: '2026-07-01'
       effective_date: '2026-07-01'
@@ -183,6 +295,10 @@ registries:
       verification_status: VERIFIED
     busan_port_tug_operation_rules_2025_104:
       title_ko: 부산항예선운영세칙
+      notice_family: tug_operation_rule
+      ports:
+        - 부산항
+      spatial_binding_status: not_spatial_polygon
       notice_no: 부산지방해양수산청고시 제2025-104호
       notice_date: '2025-05-21'
       effective_date: '2025-05-21'
@@ -206,6 +322,10 @@ registries:
       verification_status: VERIFIED
     busan_port_basic_plan_change_notice_2024_124:
       title_ko: 항만기본계획 변경 고시(부산항)
+      notice_family: port_basic_plan
+      ports:
+        - 부산항
+      spatial_binding_status: pending_geometry_ingest
       notice_no: 해양수산부 고시 제2024-124호
       notice_date: '2024-11-12'
       effective_date: '2024-11-12'
@@ -228,6 +348,10 @@ registries:
       verification_status: VERIFIED
     busan_port_facility_operation_rules_2014_153:
       title_ko: 부산항 항만시설 운영세칙
+      notice_family: port_facility_operation_rule
+      ports:
+        - 부산항
+      spatial_binding_status: pending_geometry_ingest
       notice_no: 부산지방해양항만청고시 제2014-153호
       notice_date: '2014-07-21'
       effective_date: '2014-07-21'
@@ -252,6 +376,10 @@ registries:
       verification_status: VERIFIED
     new_port_planned_area_map_notice_2025_205:
       title_ko: 신항만건설 예정지역(인천북항) 지형도면 고시
+      notice_family: planned_port_area_map
+      ports:
+        - 인천북항
+      spatial_binding_status: pending_geometry_ingest
       notice_no: 해양수산부 고시 제2025-205호
       notice_date: '2025-12-12'
       notice_type: 고시
@@ -265,6 +393,9 @@ registries:
       verification_status: VERIFIED
     new_port_planned_area_map_notice_2020_76:
       title_ko: 신항만건설 예정지역 지형도면고시
+      notice_family: planned_port_area_map
+      ports: []
+      spatial_binding_status: pending_geometry_ingest
       notice_no: 해양수산부 고시 제2020-76호
       notice_date: '2020-06-02'
       notice_type: 고시
@@ -278,6 +409,9 @@ registries:
       verification_status: VERIFIED
     vessel_traffic_services_rule_2024_5:
       title_ko: 선박교통관제에 관한 규정
+      notice_family: vessel_traffic_service_rule
+      ports: []
+      spatial_binding_status: pending_geometry_ingest
       notice_no: 해양경찰청고시 제2024-5호
       notice_date: '2024-08-29'
       effective_date: '2024-09-01'
@@ -291,6 +425,9 @@ registries:
       verification_status: VERIFIED
     vessel_vpass_device_notice_2017_1:
       title_ko: 선박패스(V-Pass) 장치의 설치기준 및 운영 등에 관한 고시
+      notice_family: vpass_device_rule
+      ports: []
+      spatial_binding_status: not_spatial_polygon
       notice_no: 해양경찰청고시 제2017-1호
       notice_date: '2017-07-26'
       effective_date: '2017-07-26'
