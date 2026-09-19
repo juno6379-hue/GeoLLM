@@ -48,8 +48,10 @@ def arrival_windows(db: sqlite3.Connection, zone_name: str) -> dict[str, list[tu
         if len(evidence) != 1 or len(vessels[key]) != 1:
             continue
         job, entry = evidence[0]
-        clock = parse_clock(job)
-        if clock is None or clock != parse_clock(entry):
+        # ptentDt is labeled as arrival time in the provider's Swagger.
+        # Keep jobDt as an independent consistency check, not the label.
+        clock = parse_clock(entry)
+        if clock is None or clock != parse_clock(job):
             continue
         arrival_utc = clock.replace(tzinfo=zone).astimezone(timezone.utc)
         mmsi = next(iter(vessels[key]))

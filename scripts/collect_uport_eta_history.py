@@ -35,16 +35,10 @@ def connect(path: Path) -> sqlite3.Connection:
         );
         CREATE TABLE IF NOT EXISTS positions (
             id INTEGER PRIMARY KEY, mmsi TEXT, callsgn TEXT, arrival_year TEXT,
-            voyage TEXT, observed_at_raw TEXT, latitude TEXT, longitude TEXT,
+            voyage TEXT, source_updated_at_raw TEXT, latitude TEXT, longitude TEXT,
             sog TEXT, collected_at_utc TEXT NOT NULL,
-            UNIQUE(mmsi, callsgn, arrival_year, voyage, observed_at_raw)
+            UNIQUE(mmsi, callsgn, arrival_year, voyage, source_updated_at_raw)
         );
-        -- SQLite treats NULLs as distinct in a UNIQUE constraint. This
-        -- expression index also deduplicates incomplete provider records.
-        CREATE UNIQUE INDEX IF NOT EXISTS positions_source_key ON positions
-            (COALESCE(mmsi,''), COALESCE(callsgn,''),
-             COALESCE(arrival_year,''), COALESCE(voyage,''),
-             COALESCE(observed_at_raw,''));
         CREATE TABLE IF NOT EXISTS events (
             id INTEGER PRIMARY KEY, callsgn TEXT NOT NULL, arrival_year TEXT NOT NULL,
             voyage TEXT NOT NULL, event_name TEXT NOT NULL,
@@ -52,6 +46,18 @@ def connect(path: Path) -> sqlite3.Connection:
             UNIQUE(callsgn, arrival_year, voyage, event_name, job_at_raw, port_entry_at_raw)
         );
     """)
+    # Phase 18 stored updtTm under an observation-like column name. Swagger
+    # defines it as an update clock. Rename in place so prior rows and unique
+    # constraints survive without recopying or reinterpreting timestamps.
+    columns = {row[1] for row in db.execute("PRAGMA table_info(positions)")}
+    if "observed_at_raw" in columns and "source_updated_at_raw" not in columns:
+        db.execute("ALTER TABLE positions RENAME COLUMN observed_at_raw TO source_updated_at_raw")
+    # SQLite treats NULLs as distinct in a UNIQUE constraint. This expression
+    # index also deduplicates incomplete provider records after migration.
+    db.execute("""CREATE UNIQUE INDEX IF NOT EXISTS positions_source_key ON positions
+        (COALESCE(mmsi,''), COALESCE(callsgn,''), COALESCE(arrival_year,''),
+         COALESCE(voyage,''), COALESCE(source_updated_at_raw,''))""")
+    db.commit()
     return db
 
 
@@ -78,10 +84,11 @@ def collect(db: sqlite3.Connection) -> dict:
         key = source._key(row)
         if key:
             keys.add(key)
-        # Preserve the original provider clock as text. Collection time is
-        # separate and cannot be substituted for the observation timestamp.
+        # Preserve the original update clock as text. The provider does not
+        # define updtTm as an AIS observation timestamp, and collection time
+        # is a separate UTC fact that cannot replace either source field.
         db.execute("""INSERT OR IGNORE INTO positions
-            (mmsi, callsgn, arrival_year, voyage, observed_at_raw,
+            (mmsi, callsgn, arrival_year, voyage, source_updated_at_raw,
              latitude, longitude, sog, collected_at_utc)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (row.get("mmsiNo"), row.get("callsgn"), row.get("ptentYr"),

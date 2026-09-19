@@ -141,11 +141,16 @@ def audit() -> dict:
             if len(arrivals) != 1:
                 metrics["voyages_without_unique_arrival"] += 1
                 continue
-            arrival_at = _time(arrivals[0].get("jobDt"))
-            if arrival_at is None:
+            # Official Swagger labels ptentDt as arrival time and jobDt as
+            # work time. Treat the former as the candidate target and require
+            # the two clocks to agree until the provider confirms semantics.
+            arrival_at = _time(arrivals[0].get("ptentDt"))
+            if arrival_at is None or arrival_at != _time(arrivals[0].get("jobDt")):
                 metrics["voyages_with_invalid_arrival_time"] += 1
                 continue
             metrics["voyages_with_valid_arrival"] += 1
+            # updtTm is described by Swagger as an update time. Comparing it
+            # here diagnoses chronology only; it is not a verified AIS fix.
             prearrival_times: set[datetime] = set()
             for position in grouped[key]:
                 observed_at = _time(position.get("updtTm"))
@@ -182,11 +187,12 @@ def audit() -> dict:
                               if name.startswith("provider_result_") or name == "provider_transport_failure"},
         # Thirty labeled sequences are only a minimum screening gate. Passing
         # it would still require train/holdout separation and license review.
-        "sequence_data_gate_passed": metrics["voyages_with_prearrival_sequence"] >= 30
-                                     and not truncated
-                                     and not any(name.startswith("provider_result_") or name == "provider_transport_failure"
-                                                 for name in metrics),
-        "readiness_reason": "Need at least 30 distinct voyages with repeated pre-arrival observations and verified arrival events",
+        "source_position_clock_kind": "updtTm (provider update time)",
+        "source_position_clock_verified": False,
+        # The one-off audit cannot certify that an update timestamp is the
+        # observation timestamp needed for ETA features, even with 30 rows.
+        "sequence_data_gate_passed": False,
+        "readiness_reason": "Need true pre-arrival AIS observation clocks, verified timezone and arrival semantics",
     }
 
 

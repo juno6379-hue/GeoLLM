@@ -23,7 +23,8 @@ def parse_clock(raw: str | None) -> datetime | None:
 
 def build(db: sqlite3.Connection, provider_timezone: str | None = None,
           minimum_voyages: int = 30,
-          arrival_definition_verified: bool = False) -> tuple[dict, list[dict], list[dict]]:
+          arrival_definition_verified: bool = False,
+          position_clock_verified: bool = False) -> tuple[dict, list[dict], list[dict]]:
     """Require exact identity, unique arrival evidence and two earlier fixes.
 
     The split is chronological by arrival and groups every observation for a
@@ -44,7 +45,7 @@ def build(db: sqlite3.Connection, provider_timezone: str | None = None,
     positions = defaultdict(list)
     stored_positions = 0
     for row in db.execute("""SELECT mmsi, callsgn, arrival_year, voyage,
-        observed_at_raw, latitude, longitude, sog FROM positions"""):
+        source_updated_at_raw, latitude, longitude, sog FROM positions"""):
         stored_positions += 1
         mmsi, callsgn, year, voyage, observed, lat, lon, sog = row
         if not all((mmsi, callsgn, year, voyage)):
@@ -53,7 +54,7 @@ def build(db: sqlite3.Connection, provider_timezone: str | None = None,
         positions[(callsgn, year, voyage)].append((mmsi, observed, lat, lon, sog))
     sequences = []
     repeated_voyages = 0
-    voyages_with_prearrival_fix = 0
+    voyages_with_prearrival_update = 0
     for key, fixes in positions.items():
         # Diagnose whether repeated provider updates are accumulating even
         # before an unambiguous arrival event is available for the voyage.
@@ -64,10 +65,11 @@ def build(db: sqlite3.Connection, provider_timezone: str | None = None,
             reasons["missing_or_ambiguous_arrival"] += 1
             continue
         job, entry = evidence[0]
-        arrival = parse_clock(job)
-        # jobDt is described as work time, whereas ptentDt denotes port
-        # entry. Both must agree before this event is accepted as a label.
-        if arrival is None or arrival != parse_clock(entry):
+        # The provider's Swagger names ptentDt "arrival date/time" and
+        # jobDt "work date/time". Use ptentDt as the candidate arrival clock;
+        # require agreement because their operational meanings still differ.
+        arrival = parse_clock(entry)
+        if arrival is None or arrival != parse_clock(job):
             reasons["arrival_time_disagreement"] += 1
             continue
         earlier = []
@@ -86,7 +88,7 @@ def build(db: sqlite3.Connection, provider_timezone: str | None = None,
                 continue
             earlier.append((timestamp, mmsi, latitude, longitude, sog))
         if earlier:
-            voyages_with_prearrival_fix += 1
+            voyages_with_prearrival_update += 1
         # Check the vessel identity before collapsing duplicate timestamps;
         # otherwise a same-time fix from a different MMSI could disappear.
         mixed_vessel = len({fix[1] for fix in earlier}) != 1
@@ -105,17 +107,22 @@ def build(db: sqlite3.Connection, provider_timezone: str | None = None,
     zone = (timezone(timedelta(hours=9)) if provider_timezone == "Asia/Seoul"
             else timezone.utc if provider_timezone == "UTC"
             else ZoneInfo(provider_timezone) if timezone_verified else None)
+    # updtTm means provider update time, not confirmed AIS observation time.
+    # A separate evidence gate is required even when chronology looks valid.
     ready = (timezone_verified and arrival_definition_verified
+             and position_clock_verified
              and len(sequences) >= minimum_voyages)
     report = {"stored_positions": stored_positions, "stored_voyages": len(positions),
-              "voyages_with_repeated_position_times": repeated_voyages,
+              "voyages_with_repeated_update_times": repeated_voyages,
               "arrival_event_rows": arrival_event_rows,
               "arrival_rows_with_equal_valid_clocks": agreeing_arrival_clocks,
-              "voyages_with_prearrival_fix": voyages_with_prearrival_fix,
-              "eligible_sequences": len(sequences),
+              "voyages_with_prearrival_update": voyages_with_prearrival_update,
+              "structural_prearrival_update_sequences": len(sequences),
               "minimum_voyages": minimum_voyages, "timezone_verified": timezone_verified,
               "provider_timezone": provider_timezone,
               "arrival_definition_verified": arrival_definition_verified,
+              "position_clock_verified": position_clock_verified,
+              "position_clock_source_field": "updtTm (provider update time)",
               "train_voyages": 0,
               "holdout_voyages": 0, "export_ready": ready,
               "excluded": dict(sorted(reasons.items()))}
@@ -146,11 +153,13 @@ def main() -> None:
     parser.add_argument("--db", type=Path, default=DEFAULT_DB)
     parser.add_argument("--provider-timezone")
     parser.add_argument("--arrival-definition-verified", action="store_true")
+    parser.add_argument("--position-clock-verified", action="store_true")
     parser.add_argument("--output", type=Path, default=Path("geollm_results/uport_eta_dataset"))
     args = parser.parse_args()
     with sqlite3.connect(args.db) as db:
         report, train, holdout = build(db, args.provider_timezone,
-                                     arrival_definition_verified=args.arrival_definition_verified)
+                                     arrival_definition_verified=args.arrival_definition_verified,
+                                     position_clock_verified=args.position_clock_verified)
     print(json.dumps(report, ensure_ascii=False, indent=2))
     if not report["export_ready"]:
         return

@@ -32,7 +32,8 @@ def test_audit_excludes_position_after_arrival(monkeypatch):
         "data": {"response": {"header": {"resultCode": "00"},
                               "body": {"totalCount": "2", "items": {"item": positions}}}}})
     monkeypatch.setattr(audit, "_navigation_for", lambda key: (key, [
-        {"ioprtVtsNm": "입항", "jobDt": "20260919070000"}]))
+        {"ioprtVtsNm": "입항", "jobDt": "20260919070000",
+         "ptentDt": "20260919070000"}]))
     result = audit.audit()
     assert result["prearrival_pairs"] == 1
     assert result["at_or_after_arrival_pairs"] == 1

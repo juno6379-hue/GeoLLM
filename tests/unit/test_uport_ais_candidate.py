@@ -26,7 +26,7 @@ def test_historical_tracks_do_not_match_current_arrival_year(tmp_path):
                          "경도": "999", "위도": "35.5"})
     db_path = tmp_path / "arrivals.sqlite3"
     with collector.connect(db_path) as db:
-        db.execute("INSERT INTO positions (mmsi,callsgn,arrival_year,voyage,observed_at_raw,collected_at_utc) VALUES (?,?,?,?,?,?)",
+        db.execute("INSERT INTO positions (mmsi,callsgn,arrival_year,voyage,source_updated_at_raw,collected_at_utc) VALUES (?,?,?,?,?,?)",
                    ("123456789", "A", "2026", "01", "20260919120000", "2026-09-19T00:00:00Z"))
         db.execute("INSERT INTO events (callsgn,arrival_year,voyage,event_name,job_at_raw,port_entry_at_raw,collected_at_utc) VALUES (?,?,?,?,?,?,?)",
                    ("A", "2026", "01", "\uc785\ud56d", "20260919100000",

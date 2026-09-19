@@ -9,7 +9,7 @@ MAPPING = {"mmsi": "MMSI", "observed": "observed_at",
 
 def add_voyage(db, voyage: str, arrival: str) -> None:
     """Create one exact U-Port identity and one agreed arrival event."""
-    db.execute("INSERT INTO positions (mmsi,callsgn,arrival_year,voyage,observed_at_raw,collected_at_utc) VALUES (?,?,?,?,?,?)",
+    db.execute("INSERT INTO positions (mmsi,callsgn,arrival_year,voyage,source_updated_at_raw,collected_at_utc) VALUES (?,?,?,?,?,?)",
                ("123456789", "A", "2026", voyage, arrival, "2026-09-20T00:00:00Z"))
     db.execute("INSERT INTO events (callsgn,arrival_year,voyage,event_name,job_at_raw,port_entry_at_raw,collected_at_utc) VALUES (?,?,?,?,?,?,?)",
                ("A", "2026", voyage, "\uc785\ud56d", arrival, arrival,
