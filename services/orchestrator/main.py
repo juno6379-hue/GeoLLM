@@ -47,6 +47,10 @@ app.include_router(uport_vessel_navigation_router, prefix="/api/v1")
 # operation, so its response can never be mistaken for vessel movement records.
 from services.uport.prediction.vessel_navigation import cargo_router as uport_cargo_router
 app.include_router(uport_cargo_router, prefix="/api/v1")
+# Position observations use their own provider service and operation, and are
+# exposed as source records rather than synthetic AIS or ETA predictions.
+from services.uport.prediction.vessel_navigation import position_router as uport_position_router
+app.include_router(uport_position_router, prefix="/api/v1")
 from services.uport.optimization.router import router as uport_optimization_router
 app.include_router(uport_optimization_router, prefix="/api/v1")
 from services.uport.operations.router import router as uport_operations_router

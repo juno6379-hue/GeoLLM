@@ -15,6 +15,7 @@ def _client() -> TestClient:
     app = FastAPI()
     app.include_router(vessel_navigation.router, prefix="/api/v1")
     app.include_router(vessel_navigation.cargo_router, prefix="/api/v1")
+    app.include_router(vessel_navigation.position_router, prefix="/api/v1")
     return TestClient(app)
 
 
@@ -39,7 +40,7 @@ def test_missing_operation_or_key_blocks_provider_call(monkeypatch):
     monkeypatch.delenv("UPORT_VSL_NVGT_SERVICE_KEY", raising=False)
     monkeypatch.delenv("UPORT_VSL_NVGT_OPERATION", raising=False)
     monkeypatch.setattr(vessel_navigation, "urlopen", lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("called")))
-    response = _client().get("/api/v1/uport/vessel-navigation/records")
+    response = _client().get("/api/v1/uport/vessel-navigation/records?callsgn=150040&ptent_vts_yr=2025")
     assert response.status_code == 503
     assert response.json()["detail"]["code"] == "VESSEL_NAVIGATION_NOT_CONFIGURED"
 
@@ -55,9 +56,10 @@ def test_json_request_limits_and_never_returns_service_key(monkeypatch):
         return _Reply(b'{"response":{"header":{"resultCode":"00"},"body":{"items":[]}}}', "application/json")
 
     monkeypatch.setattr(vessel_navigation, "urlopen", fake_open)
-    response = _client().get("/api/v1/uport/vessel-navigation/records?page_no=2&num_of_rows=5")
+    response = _client().get("/api/v1/uport/vessel-navigation/records?callsgn=150040&ptent_vts_yr=2025&page_no=2&num_of_rows=5")
     assert response.status_code == 200
     assert response.json()["data"]["response"]["body"]["items"] == []
+    assert response.json()["received_format"] == "json"
     assert "private-test-key" not in response.text
     parsed = urlparse(requests[0][0])
     assert parsed.path.endswith("/getVslNvgtInfo")
@@ -72,11 +74,12 @@ def test_xml_items_and_provider_rejection(monkeypatch):
     monkeypatch.setenv("UPORT_VSL_NVGT_OPERATION", "getVslNvgtInfo")
     xml = b"<response><header><resultCode>00</resultCode></header><body><items><item><name>A</name></item><item><name>B</name></item></items></body></response>"
     monkeypatch.setattr(vessel_navigation, "urlopen", lambda *_a, **_k: _Reply(xml, "application/xml"))
-    result = _client().get("/api/v1/uport/vessel-navigation/records?response_format=xml")
+    result = _client().get("/api/v1/uport/vessel-navigation/records?callsgn=150040&ptent_vts_yr=2025&response_format=xml")
     assert result.status_code == 200
+    assert result.json()["received_format"] == "xml"
     assert len(result.json()["data"]["response"]["body"]["items"]["item"]) == 2
     monkeypatch.setattr(vessel_navigation, "urlopen", lambda *_a, **_k: _Reply(b'<response><header><resultCode>03</resultCode></header></response>', "application/xml"))
-    assert _client().get("/api/v1/uport/vessel-navigation/records").status_code == 502
+    assert _client().get("/api/v1/uport/vessel-navigation/records?callsgn=150040&ptent_vts_yr=2025").status_code == 502
 
 
 def test_upstream_exception_does_not_leak_key(monkeypatch):
@@ -84,7 +87,7 @@ def test_upstream_exception_does_not_leak_key(monkeypatch):
     monkeypatch.setenv("UPORT_VSL_NVGT_SERVICE_KEY", "private-test-key")
     monkeypatch.setenv("UPORT_VSL_NVGT_OPERATION", "getVslNvgtInfo")
     monkeypatch.setattr(vessel_navigation, "urlopen", lambda *_a, **_k: (_ for _ in ()).throw(URLError("private-test-key")))
-    result = _client().get("/api/v1/uport/vessel-navigation/records")
+    result = _client().get("/api/v1/uport/vessel-navigation/records?callsgn=150040&ptent_vts_yr=2025")
     assert result.status_code == 502
     assert "private-test-key" not in result.text
 
@@ -101,9 +104,61 @@ def test_cargo_uses_its_own_operation_with_the_shared_key(monkeypatch):
         return _Reply(b'{"response":{"header":{"resultCode":"00"}}}', "application/json")
 
     monkeypatch.setattr(vessel_navigation, "urlopen", fake_open)
-    result = _client().get("/api/v1/uport/cargo/records")
+    result = _client().get("/api/v1/uport/cargo/records?prt_cd=820&ptent_yr=2025&vyg=003&callsgn=3E4724&bzenty_cd=OSL0038")
     assert result.status_code == 200
     assert result.json()["source"] == "B551938/IntgCagInfoService"
     assert urlparse(urls[0]).path.endswith("/IntgCagInfoService/getIntgCagInfo")
     assert parse_qs(urlparse(urls[0]).query)["serviceKey"] == ["shared-private-key"]
+    assert parse_qs(urlparse(urls[0]).query)["resultType"] == ["json"]
+    assert parse_qs(urlparse(urls[0]).query)["bzentyCd"] == ["OSL0038"]
     assert "shared-private-key" not in result.text
+
+
+def test_navigation_uses_documented_operation_and_required_filters(monkeypatch):
+    """Forward the control-based operation and only its documented filters."""
+    monkeypatch.setenv("UPORT_PORT_DATA_SERVICE_KEY", "shared-private-key")
+    monkeypatch.delenv("UPORT_VSL_NVGT_OPERATION", raising=False)
+    urls = []
+
+    def fake_open(request, timeout):
+        urls.append(request.full_url)
+        return _Reply(b'{"response":{"header":{"resultCode":"00"}}}', "application/json")
+
+    monkeypatch.setattr(vessel_navigation, "urlopen", fake_open)
+    assert _client().get("/api/v1/uport/vessel-navigation/records").status_code == 422
+    result = _client().get("/api/v1/uport/vessel-navigation/records?callsgn=150040&ptent_vts_yr=2025")
+    assert result.status_code == 200
+    parsed = urlparse(urls[0])
+    assert parsed.path.endswith("/getVtsBaseVslNvgtInfo")
+    assert parse_qs(parsed.query)["ptentVtsYr"] == ["2025"]
+
+
+def test_position_uses_its_own_documented_operation(monkeypatch):
+    """Vessel positions cannot be silently fetched from navigation or cargo."""
+    monkeypatch.setenv("UPORT_PORT_DATA_SERVICE_KEY", "shared-private-key")
+    monkeypatch.setenv("UPORT_VSL_PSTN_OPERATION", "getVslPstnInfo")
+    urls = []
+
+    def fake_open(request, timeout):
+        urls.append(request.full_url)
+        return _Reply(b'{"response":{"header":{"resultCode":"00"},"body":{"items":[]}}}', "application/json")
+
+    monkeypatch.setattr(vessel_navigation, "urlopen", fake_open)
+    result = _client().get("/api/v1/uport/vessel-position/records")
+    assert result.status_code == 200
+    assert result.json()["source"] == "B551938/VslPstnInfoService"
+    assert urlparse(urls[0]).path.endswith("/VslPstnInfoService/getVslPstnInfo")
+    assert "shared-private-key" not in result.text
+
+
+def test_position_accepts_xml_even_when_json_was_requested(monkeypatch):
+    """The observed provider behavior must not be mistaken for a JSON error."""
+    monkeypatch.setenv("UPORT_PORT_DATA_SERVICE_KEY", "shared-private-key")
+    monkeypatch.delenv("UPORT_VSL_PSTN_OPERATION", raising=False)
+    xml = b"<response><header><resultCode>00</resultCode></header><body><totalCount>529</totalCount><items><item><lot>129.3</lot><lat>35.4</lat></item></items></body></response>"
+    monkeypatch.setattr(vessel_navigation, "urlopen", lambda *_a, **_k: _Reply(xml, "application/json"))
+    result = _client().get("/api/v1/uport/vessel-position/records")
+    assert result.status_code == 200
+    assert result.json()["response_format"] == "json"
+    assert result.json()["received_format"] == "xml"
+    assert result.json()["data"]["response"]["body"]["totalCount"] == "529"
