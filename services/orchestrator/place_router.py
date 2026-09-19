@@ -151,11 +151,13 @@ def _candidate_version(candidate: dict[str, Any]) -> str:
 
 def _external_candidate_to_place(candidate: dict[str, Any]) -> dict[str, Any]:
     geometry = candidate.get("geometry") or {}
+    evidence = candidate.get("evidence") if isinstance(candidate.get("evidence"), dict) else {}
     coordinates = geometry.get("coordinates")
     wkt = None
     if isinstance(coordinates, list) and len(coordinates) >= 2 and all(value is not None for value in coordinates[:2]):
         wkt = f"POINT({coordinates[0]} {coordinates[1]})"
     authority_level = candidate.get("authority_level")
+    evidence_summary = evidence.get("description") or evidence.get("location_text") or candidate.get("category")
     result = {
         "place_id": candidate.get("candidate_id"),
         "place_version": _candidate_version(candidate),
@@ -172,7 +174,13 @@ def _external_candidate_to_place(candidate: dict[str, Any]) -> dict[str, Any]:
             "authority_level": candidate.get("authority_level"),
             "promotion_status": candidate.get("promotion_status"),
             "review_required": candidate.get("review_required", True),
+            "evidence_summary": evidence_summary,
+            "evidence": evidence,
         }],
+        "source_url": candidate.get("source_url"),
+        "category": candidate.get("category"),
+        "evidence_summary": evidence_summary,
+        "evidence_detail": evidence,
         "requires_confirmation": True,
         "authority_level": authority_level,
         "promotion_status": candidate.get("promotion_status"),
@@ -207,12 +215,16 @@ def external_place_fallback(query: str) -> dict[str, Any] | None:
     if not candidates:
         return None
     has_public = any(candidate.get("authority_level") == "public_authoritative" for candidate in raw_candidates)
+    first = candidates[0]
+    evidence_text = first.get("evidence_summary") or first.get("category") or first.get("source_ref")
+    source_text = first.get("source_ref")
     return {
         "status": "NEEDS_CLARIFICATION",
         "error_code": "EXTERNAL_PLACE_CANDIDATES",
         "summary": (
             "로컬 해양 지명사전에는 없지만 공공 근거 기반 후보를 찾았습니다. "
-            "정확한 feature geometry 승격 전이므로 후보를 확인해 주세요."
+            f"대표 후보는 {first.get('label')}이며, 근거 요지는 '{evidence_text}'입니다. "
+            f"출처는 {source_text}입니다. 정확한 feature geometry 승격 전이므로 후보를 확인해 주세요."
             if has_public
             else "로컬 해양 지명사전에는 없지만 외부 보조 후보를 찾았습니다. authoritative 승격 전이므로 후보를 확인해 주세요."
         ),
@@ -222,6 +234,8 @@ def external_place_fallback(query: str) -> dict[str, Any] | None:
             "candidate_counts": report.get("candidate_counts"),
             "osm_fetch_diagnostics": report.get("osm_fetch_diagnostics"),
             "ollama_ambiguity_review": report.get("ollama_ambiguity_review"),
+            "evidence_summary": evidence_text,
+            "primary_source": source_text,
         },
     }
 

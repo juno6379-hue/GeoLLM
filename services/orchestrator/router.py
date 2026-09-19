@@ -80,6 +80,9 @@ def _place_candidate_features(candidates: list[dict]) -> dict:
                 "promotion_status": candidate.get("promotion_status"),
                 "review_required": candidate.get("review_required", True),
                 "source_ref": candidate.get("source_ref"),
+                "source_url": candidate.get("source_url"),
+                "category": candidate.get("category"),
+                "evidence_summary": candidate.get("evidence_summary"),
             },
         })
     return {"type": "FeatureCollection", "features": features}

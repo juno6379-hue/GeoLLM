@@ -6,6 +6,7 @@ from scripts.run_external_evidence_gap_fill import (
     promotion_candidates,
     run_gap_fill,
 )
+from services.orchestrator.place_router import resolve_payload
 
 
 QUERY = "\ub3c5\ub3c4 \ubd80\uadfc \ucc9c\uc5f0\ubcf4\ud638\uad6c\uc5ed\uc744 \ucc3e\uc544\uc918"
@@ -107,6 +108,19 @@ def test_dakbawi_routes_to_marine_named_place_gap_candidate(monkeypatch):
     assert public_candidates[0]["candidate_id"] == "extgap.dokdo_dakbawi_named_rock"
     assert public_candidates[0]["geometry"]["status"] == "needs_official_feature_geometry_review"
     assert report["osm_fetch_diagnostics"]["status"] == "blocked"
+
+
+def test_dakbawi_place_resolution_includes_evidence_summary(monkeypatch):
+    monkeypatch.delenv("GEOLLM_OSM_USER_AGENT", raising=False)
+
+    payload = resolve_payload("\ub2ed\ubc14\uc704 \ucc3e\uc544\uc918", {})
+
+    assert payload["status"] == "NEEDS_CLARIFICATION"
+    assert "\uadfc\uac70 \uc694\uc9c0" in payload["summary"]
+    candidate = payload["location_candidates"][0]
+    assert candidate["place_id"] == "extgap.dokdo_dakbawi_named_rock"
+    assert "\ub2ed\uc774 \uc54c\uc744 \ud488\uace0" in candidate["evidence_summary"]
+    assert candidate["source_records"][0]["source_url"]
 
 
 def test_unsupported_gap_domain_report_is_markdown_safe():
