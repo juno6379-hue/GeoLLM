@@ -198,6 +198,7 @@ capabilities:
   required_dataset: [s101_current]
   depends_on: []
   tool: uport.map.berths
+  agent: S101Agent
   status: available
 - capability_id: uport.ais.search
   <<: *uport_capability_defaults
@@ -211,6 +212,7 @@ capabilities:
   required_dataset: [live_ais]
   depends_on: []
   tool: uport.map.vessels
+  agent: AISAgent
   status: unavailable
 - capability_id: uport.eta.predict
   <<: *uport_capability_defaults
@@ -224,6 +226,7 @@ capabilities:
   required_dataset: [live_ais, eta_model]
   depends_on: [uport.ais.search]
   tool: uport.eta.predict
+  agent: PredictionAgent
   status: unavailable
 - capability_id: uport.berth.optimize
   <<: *uport_capability_defaults
@@ -237,6 +240,7 @@ capabilities:
   required_dataset: [port_operations]
   depends_on: [uport.s101.berth.search, uport.eta.predict]
   tool: uport.berth.optimize
+  agent: BerthOptimizationAgent
   status: unavailable
 - capability_id: uport.map.visualize
   <<: *uport_capability_defaults
@@ -251,6 +255,20 @@ capabilities:
   depends_on: []
   tool: uport.map.visualize
   status: available
+- capability_id: uport.port_knowledge.search
+  <<: *uport_capability_defaults
+  name: Port knowledge search
+  domain: uport
+  object_type: agent_description
+  label: Port operations knowledge retrieval
+  description: Retrieve grounded port operating rules and procedures.
+  cue_terms: [규정, 절차, 문서, 지식, regulation]
+  required_entities: []
+  required_dataset: [port_knowledge]
+  depends_on: []
+  tool: uport.port_knowledge.search
+  agent: PortKnowledgeAgent
+  status: unavailable
 - capability_id: resolver.place_registry
   object_type: resolver_description
   label: Place Registry Resolver

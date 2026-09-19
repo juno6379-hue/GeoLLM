@@ -10,9 +10,9 @@ from shared.schemas.agent import ExecutionSlots, QueryExecutionContext
 class MapSelection(BaseModel):
     """Typed chart feature identity; this is not a live berth occupancy ID."""
     entity_type: str = Field(pattern=r"^s101_berth$")
-    feature_id: str = Field(min_length=1, max_length=120)
-    dataset_id: str = Field(min_length=1, max_length=120)
-    dataset_version_id: str = Field(min_length=1, max_length=120)
+    feature_id: int = Field(gt=0)
+    dataset_id: int = Field(gt=0)
+    dataset_version_id: int = Field(gt=0)
 
 
 class UportPlanRequest(BaseModel):

@@ -29,11 +29,11 @@ def test_map_selection_enters_existing_qec_with_candidate_ontology_binding():
     qec = plan_query(UportPlanRequest(
         query="이 선석을 지도에 보여줘",
         map_selection={
-            "entity_type": "s101_berth", "feature_id": "feature-123",
-            "dataset_id": "dataset-1", "dataset_version_id": "version-2",
+            "entity_type": "s101_berth", "feature_id": 123,
+            "dataset_id": 1, "dataset_version_id": 2,
         },
     ))
-    assert qec.slots.feature_instance_ref["feature_instance_id"] == "feature-123"
+    assert qec.slots.feature_instance_ref["feature_instance_id"] == 123
     assert qec.context["resolved_entity"]["ontology_class"] == "S101.Berth"
     assert qec.context["resolved_entity"]["verification_status"] == "CANDIDATE"
     assert qec.readiness == PlanStatus.PLAN_READY
