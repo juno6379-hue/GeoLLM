@@ -73,16 +73,20 @@ def _candidate(place_id, label, aliases, geometry, records, status="source_backe
 def _registry_candidates(places):
     if places is None:
         try:
-            places = (yaml.safe_load((ROOT / "data/place_geometry_registry.yaml").read_text(encoding="utf-8")) or {}).get("places", {})
+            registry = yaml.safe_load((ROOT / "data/place_geometry_registry.yaml").read_text(encoding="utf-8")) or {}
+            places = registry.get("places") or registry.get("entries") or {}
         except (OSError, ValueError, yaml.YAMLError) as exc:
             raise PlaceResolutionProblem("BLOCKED_CONFIG", "INVALID_REGISTRY", "기준 위치 설정을 읽을 수 없습니다.") from exc
     candidates = []
     for identifier, place in places.items():
-        if not place.get("geometry_wkt"):
+        geometry = place.get("geometry_wkt") or place.get("geometry")
+        crs = place.get("crs") or f"EPSG:{place.get('srid')}"
+        label = place.get("canonical_name") or place.get("label") or identifier
+        if not geometry:
             continue
         record = {"source_ref": "data/place_geometry_registry.yaml", "source_id": identifier, "provenance": place.get("provenance")}
         try:
-            candidates.append(_candidate(identifier, place.get("canonical_name") or identifier, place.get("aliases") or [], place["geometry_wkt"], [record], place.get("status", "candidate"), f"EPSG:{place.get('srid')}"))
+            candidates.append(_candidate(identifier, label, place.get("aliases") or [], geometry, [record], place.get("status", "candidate"), crs))
         except PlaceResolutionProblem as exc:
             raise PlaceResolutionProblem("BLOCKED_CONFIG", "INVALID_REGISTRY", "등록된 기준 위치의 좌표 설정이 올바르지 않습니다.") from exc
     return candidates
@@ -217,8 +221,14 @@ def _matches(text, candidates, *, exact=False):
             if _normalized(alias) not in normalized_text:
                 continue
             pattern = r"(?<![A-Za-z0-9가-힣])" + r"\s*".join(re.escape(part) for part in alias.split()) + suffix
+            match_count = 0
             for match in re.finditer(pattern, text, re.I):
                 hits.append((match.start(), match.end(), candidate))
+                match_count += 1
+            if match_count == 0:
+                start = normalized_text.find(_normalized(alias))
+                if start >= 0:
+                    hits.append((start, start + len(_normalized(alias)), candidate))
     result = {}
     for start, end, candidate in hits:
         if not any(other_start <= start and end <= other_end and (start, end) != (other_start, other_end) for other_start, other_end, _ in hits):

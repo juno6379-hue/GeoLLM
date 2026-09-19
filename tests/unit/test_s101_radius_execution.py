@@ -94,6 +94,18 @@ def test_distance_wording_is_normalized(expression, expected):
     assert radius.parse_distance(f"부산항 입구 {expression} 이내 위험객체", {}) == expected
 
 
+def test_missing_radius_defaults_to_nearby_three_km_for_hazard_search(state):
+    state["query"] = "부산항입구위험객체"
+    state["spatial_context"].pop("buffer_distance")
+
+    context, _, _, params = radius.prepare_radius_request(state)
+
+    assert context.slots.distance_m == 3000
+    assert params["distance_m"] == 3000
+    assert context.provenance["distance_policy"]["default_applied"] is True
+    assert "기본 부근 범위" in context.provenance["distance_policy"]["summary"]
+
+
 @pytest.mark.parametrize("value", [0, -1, True, float("nan"), float("inf"), "invalid"])
 def test_invalid_explicit_radius_is_not_defaulted(value):
     with pytest.raises(radius.RadiusProblem):

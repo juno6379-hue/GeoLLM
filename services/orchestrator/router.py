@@ -579,7 +579,7 @@ def _preserve_spatial_stream_payload(result: dict, compact: dict) -> None:
         "offset", "target_features", "exclusions", "spatial_context",
         "place_id", "place_version", "location_resolution",
         "geojson_feature_count", "map_layer_count", "evidence_bundle_counts",
-        "web_rag_usage", "result_surface",
+        "web_rag_usage", "result_surface", "distance_policy", "user_evidence_summary",
         "result_surface_contract",
         "execution_contract",
         "events", "radius_m",

@@ -143,11 +143,23 @@
         const targets = data.target_features || result.orchestrator_v2?.route_plan?.slots?.target_features || [];
         const target = targets.length === 1 ? featureName(targets[0]) : "주의 대상 객체";
         const range = `${location} 기준 ${distanceText(data.distance_m)} 이내`;
-        show(total ? "조회 완료" : "조회 완료 · 해당 객체 없음", "기준점과 각 객체 사이의 거리가 검색 반경 이내인 결과입니다.", query);
+        const userEvidence = data.user_evidence_summary || data.result_surface?.user_evidence_summary || {};
+        const distancePolicy = data.distance_policy || data.result_surface?.distance_policy || {};
+        const body = [
+            total ? `${range} ${target} ${numberText(total)}건을 찾았습니다.` : `${range}에서 조건에 해당하는 객체를 찾지 못했습니다.`,
+            distancePolicy.default_applied ? "반경이 명시되지 않아 부근 기본 범위 3km를 먼저 적용했습니다." : "",
+            "기준점과 각 객체 사이의 거리가 검색 반경 이내인 결과입니다.",
+        ].filter(Boolean).join(" ");
+        show(total ? "조회 완료" : "조회 완료 · 해당 객체 없음", body, query);
         node("querySummary").dataset.resultId = data.result_id || "";
         node("querySummaryTitle").textContent = total
             ? `${range} ${target} ${numberText(total)}건을 찾았습니다.`
             : `${range}에서 조건에 해당하는 객체를 찾지 못했습니다.`;
+        if (userEvidence.query_interpretation) fact("질의 해석", userEvidence.query_interpretation);
+        if (userEvidence.location_basis) fact("기준 위치", userEvidence.location_basis);
+        if (userEvidence.distance_basis) fact("검색 범위", userEvidence.distance_basis);
+        if (userEvidence.data_basis) fact("데이터 근거", userEvidence.data_basis);
+        if (userEvidence.result_basis) fact("결과 근거", userEvidence.result_basis);
         const offset = countValid(data.offset) ? data.offset : 0;
         fact("현재 표시", returned
             ? `전체 ${numberText(total)}건 중 ${numberText(offset + 1)}~${numberText(offset + returned)}번째 ${numberText(returned)}건 · 지도·목록·근거 공통`

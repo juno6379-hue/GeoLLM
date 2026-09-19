@@ -57,8 +57,10 @@ entries:
     label: 부산항 입구
     aliases:
       - 부산항 입구
+      - 부산항입구
     geometry: POINT(129.075 35.075)
     crs: EPSG:4326
+    status: approved
     place_type: marine_reference_point
     authority_level: local_curated
     confidence: 0.9

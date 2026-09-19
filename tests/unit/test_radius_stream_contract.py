@@ -45,6 +45,8 @@ def radius_result(returned=30):
             "geojson": geojson, "result_id": "result-1", "query_execution_id": "execution-1",
             "returned_counts_by_type": {"Wreck": returned}, "total_counts_by_type": {"Wreck": 119},
             "location_text": "Confirmed place", "distance_m": 3000, "original_query": "Wreck within 3km",
+            "distance_policy": {"default_applied": True, "summary": "부근 기본 반경 3km를 적용했습니다."},
+            "user_evidence_summary": {"distance_basis": "부근 기본 반경 3km를 적용했습니다.", "data_basis": "S-101 전자해도 공간 레이어를 조회했습니다."},
             "offset": 30, "target_features": ["Wreck"], "exclusions": ["Obstruction"], "crs": "EPSG:4326",
             "place_id": "dataset-a:place-1", "place_version": "version-1",
             "spatial_context": {"target_features": ["Wreck"], "exclusions": ["Obstruction"], "result_limit": returned},
@@ -72,6 +74,8 @@ def test_stream_keeps_every_spatial_surface_and_identity(serializers, serializer
     }
     for field in ("map_layers", "evidence_bundle", "spatial_result_summary"):
         assert compact[field] == result[field]
+    assert compact["structured_result"]["distance_policy"] == result["structured_result"]["distance_policy"]
+    assert compact["structured_result"]["user_evidence_summary"] == result["structured_result"]["user_evidence_summary"]
     ids = compact["structured_result"]["feature_ids"]
     assert ids == [item["properties"]["feature_instance_id"] for item in compact["map_layers"][0]["inline_geojson"]["features"]]
     assert ids == [item["data"]["feature_instance_id"] for item in compact["evidence_bundle"]["spatial_feature_evidence"]]

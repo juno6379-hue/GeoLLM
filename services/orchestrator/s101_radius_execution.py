@@ -25,6 +25,7 @@ DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 OPERATION = "feature_search_by_radius"
 PROFILE = "s101_hazard_radius"
 CONCEPT = "navigation_hazard_object"
+DEFAULT_NEARBY_RADIUS_M = 3000.0
 
 
 class RadiusProblem(Exception):
@@ -43,6 +44,11 @@ def _registry(filename):
         return value
     except (OSError, ValueError, yaml.YAMLError) as exc:
         raise RadiusProblem("BLOCKED_CONFIG", "INVALID_REGISTRY", "실행 설정을 읽을 수 없습니다.") from exc
+
+
+def _place_entries():
+    registry = _registry("place_geometry_registry.yaml")
+    return registry.get("places") or registry.get("entries") or {}
 
 
 def _spatial(state):
@@ -96,7 +102,7 @@ def parse_distance(query, spatial):
     except (TypeError, ValueError) as exc:
         raise RadiusProblem("NEEDS_USER_INPUT", "INVALID_RADIUS", "반경을 양의 거리로 지정해 주세요.") from exc
     if not distances:
-        raise RadiusProblem("NEEDS_USER_INPUT", "RADIUS_REQUIRED", "검색 반경을 지정해 주세요. 예: 3km.")
+        distances.add(DEFAULT_NEARBY_RADIUS_M)
     if len(distances) > 1:
         raise RadiusProblem("NEEDS_USER_INPUT", "CONFLICTING_RADIUS", "서로 다른 반경이 지정되어 있습니다. 사용할 반경을 알려 주세요.")
     distance = distances.pop()
@@ -105,6 +111,26 @@ def parse_distance(query, spatial):
     if distance > MAX_RADIUS_M:
         raise RadiusProblem("BLOCKED_POLICY", "RADIUS_LIMIT", f"검색 반경은 {MAX_RADIUS_M / 1000:g}km 이하여야 합니다.")
     return distance
+
+
+def _distance_policy(query, spatial, distance):
+    explicit = _extract_explicit_distance(query) or spatial.get("buffer_distance") is not None
+    if explicit:
+        return {
+            "default_applied": False,
+            "label": f"사용자가 지정한 반경 {distance:g}m",
+            "summary": f"질의 또는 지도 컨텍스트에 지정된 반경 {distance:g}m를 적용했습니다.",
+        }
+    return {
+        "default_applied": True,
+        "label": "부근 기본 반경 3km",
+        "summary": "질의에 반경이 명시되지 않아 해양 위험객체 조회의 기본 부근 범위인 3km 이내를 먼저 적용했습니다. 더 넓거나 좁은 범위가 필요하면 예: 1km, 5km처럼 다시 지정할 수 있습니다.",
+    }
+
+
+def _extract_explicit_distance(query):
+    pattern = r"(?<![\d.])([+-]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|[+-]?\.\d+)\s*(킬로미터|킬로|km|㎞|해리|nm|미터|m)(?![A-Za-z])"
+    return re.search(pattern, query or "", re.I) is not None
 
 
 def _alias_present(text, alias):
@@ -244,7 +270,8 @@ def prepare_radius_request(state):
     ):
         raise RadiusProblem("NEEDS_USER_INPUT", "CONTEXT_CONFIRMATION", "항행안전 기준의 객체 조회인지, 다른 업무 목적의 분석인지 확인해 주세요.")
     distance = parse_distance(query, spatial)
-    geometry, label, crs, resolution = resolve_reference(query, spatial, _registry("place_geometry_registry.yaml").get("places") or {})
+    distance_policy = _distance_policy(query, spatial, distance)
+    geometry, label, crs, resolution = resolve_reference(query, spatial, _place_entries())
     if crs != "EPSG:4326":
         raise RadiusProblem("NEEDS_USER_INPUT", "CRS_REQUIRED", "기준점의 좌표계를 확인해 주세요. EPSG:4326 경도·위도 좌표가 필요합니다.")
     try:
@@ -288,7 +315,7 @@ def prepare_radius_request(state):
         request_id=request_id, task_id=request_id, revision=state.get("execution_revision") or 1, original_query=query, normalized_query=state.get("normalized_query") or query,
         slots=slots, route_plan=route, spatial={"spatial_context": {"geometry": point.wkt, "crs": crs}},
         semantic_resolution={"context": profile["context"], "target_policy": f"{CONCEPT}.{PROFILE}", "source_ref": "data/derived_concept_registry_v2.yaml", "policy_version": profile.get("policy_version")},
-        provenance={"location_resolution": resolution},
+        provenance={"location_resolution": resolution, "distance_policy": distance_policy},
     )
     qec.plan_hash = hashlib.sha256(json.dumps({"slots": slots.model_dump(), "location_resolution": resolution, "layer": layer, "template": template, "limit": limit, "offset": offset}, sort_keys=True).encode()).hexdigest()
     xmin, ymin, xmax, ymax = conservative_envelope(point, distance)
@@ -406,9 +433,30 @@ def build_result(qec, layer, params, total, counts, rows, search_geometry):
     summary_id = f"spatial-summary:{execution_id}"
     bundle = EvidenceBundle(
         spatial_feature_evidence=evidence,
-        spatial_layer_evidence=[EvidenceItem(evidence_id=summary_id, evidence_type="spatial_query_summary", source_ref=layer["physical_table"], data={**summary_values, "query_template_id": qec.route_plan["radius_template_id"], "snapshot": qec.snapshot_versions})],
     )
-    text = f"{qec.slots.location_text} 기준 {qec.slots.distance_m:g}m 이내 주의 후보 객체 {total}건을 찾았습니다. 지도·표·객체 근거에 동일한 {len(rows)}건을 표시합니다."
+    distance_policy = qec.provenance.get("distance_policy") or {}
+    user_evidence_summary = {
+        "query_interpretation": f"'{qec.original_query}' 질의를 항행안전 위험객체 조회로 해석했습니다.",
+        "location_basis": f"기준점은 '{qec.slots.location_text}'이며 좌표는 {qec.slots.reference_geometry} ({qec.slots.crs})입니다.",
+        "distance_basis": distance_policy.get("summary") or f"검색 반경 {qec.slots.distance_m:g}m를 적용했습니다.",
+        "data_basis": f"S-101 전자해도 공간 레이어({layer['physical_table']})에서 승인된 위험객체 유형만 조회했습니다.",
+        "result_basis": f"PostGIS 거리검색(ST_DWithin)으로 기준점에서 {qec.slots.distance_m:g}m 이내인 객체를 선별했습니다.",
+    }
+    bundle.spatial_layer_evidence = [EvidenceItem(
+        evidence_id=summary_id,
+        evidence_type="spatial_query_summary",
+        source_ref=layer["physical_table"],
+        summary="; ".join(user_evidence_summary.values()),
+        data={
+            **summary_values,
+            "query_template_id": qec.route_plan["radius_template_id"],
+            "snapshot": qec.snapshot_versions,
+            "distance_policy": distance_policy,
+            "user_evidence_summary": user_evidence_summary,
+        },
+    )]
+    default_note = " 부근 기본 반경 3km를 먼저 적용했습니다." if distance_policy.get("default_applied") else ""
+    text = f"{qec.slots.location_text} 기준 {qec.slots.distance_m:g}m 이내 위험객체 {total}건을 찾았습니다.{default_note} 지도·표·객체 근거에 동일한 {len(rows)}건을 표시합니다."
     source_layer = {
         "layer_id": qec.route_plan.get("radius_layer_id"),
         "physical_table": layer.get("physical_table"),
@@ -444,6 +492,8 @@ def build_result(qec, layer, params, total, counts, rows, search_geometry):
         "map_layers": {"count": 2 if search_geometry else 1, "feature_layer_id": result_id, "search_area_layer_id": f"{result_id}:range" if search_geometry else None},
         "evidence_bundle": evidence_counts,
         "web_rag_usage": usage,
+        "user_evidence_summary": user_evidence_summary,
+        "distance_policy": distance_policy,
     }
     map_layers = [{"layer_id": result_id, "title": "검색된 객체", "role": "matched_features", "source_type": "geojson", "geometry_type": "GEOMETRY", "inline_geojson": collection, "feature_count": len(rows), "metadata": {**summary_values, "role": "matched_features"}}]
     if search_geometry:
@@ -456,6 +506,7 @@ def build_result(qec, layer, params, total, counts, rows, search_geometry):
                               "reference_crs": qec.slots.crs, "source_layer": source_layer,
                               "distance_m": qec.slots.distance_m, "original_query": qec.original_query,
                               "target_features": qec.slots.target_features, "exclusions": qec.slots.exclusions,
+                              "distance_policy": distance_policy, "user_evidence_summary": user_evidence_summary,
                               "place_id": qec.provenance["location_resolution"].get("place_id"),
                               "place_version": qec.provenance["location_resolution"].get("place_version"),
                               "location_resolution": qec.provenance["location_resolution"], "features": properties, "geojson": collection,
@@ -474,9 +525,11 @@ def execute_radius_request(state):
     try:
         qec, layer, template, params = prepare_radius_request(state)
         result = build_result(qec, layer, params, *_fetch_result(qec, layer, template, params))
+        distance_policy = qec.provenance.get("distance_policy") or {}
+        default_note = " 부근 기본 반경 3km를 먼저 적용했습니다." if distance_policy.get("default_applied") else ""
         text = (
             f"{qec.slots.location_text} 기준 {qec.slots.distance_m:g}m 이내 "
-            f"위험객체 {result['structured_result']['total_count']}건을 찾았습니다. "
+            f"위험객체 {result['structured_result']['total_count']}건을 찾았습니다.{default_note} "
             f"지도에는 객체 {result['structured_result']['returned_count']}건과 검색 범위를 표시합니다."
         )
         result["summary"] = text
