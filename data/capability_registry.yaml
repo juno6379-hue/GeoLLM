@@ -200,6 +200,20 @@ capabilities:
   tool: uport.map.berths
   agent: S101Agent
   status: available
+- capability_id: uport.s101.hazard.search
+  <<: *uport_capability_defaults
+  name: S-101 navigational hazard search
+  domain: uport
+  object_type: agent_description
+  label: S-101 hazards near a vessel
+  description: Find charted navigational hazards around a verified vessel position.
+  cue_terms: [항행 위험, 위험 객체, 위험물, navigational hazard]
+  required_entities: [vessel]
+  required_dataset: [s101_current, live_ais]
+  depends_on: [uport.ais.search]
+  tool: uport.s101.hazard.search
+  agent: S101Agent
+  status: unavailable
 - capability_id: uport.ais.search
   <<: *uport_capability_defaults
   name: Live AIS search
@@ -240,6 +254,20 @@ capabilities:
   required_dataset: [port_operations]
   depends_on: [uport.s101.berth.search, uport.eta.predict]
   tool: uport.berth.optimize
+  agent: BerthOptimizationAgent
+  status: unavailable
+- capability_id: uport.berth.explain
+  <<: *uport_capability_defaults
+  name: Berth recommendation explanation
+  domain: uport
+  object_type: agent_description
+  label: Explain a verified berth recommendation
+  description: Explain optimizer constraints and evidence for a recorded berth recommendation.
+  cue_terms: [추천된 선석, 적합한 이유, 추천 이유]
+  required_entities: [port]
+  required_dataset: [port_operations]
+  depends_on: [uport.berth.optimize]
+  tool: uport.berth.explain
   agent: BerthOptimizationAgent
   status: unavailable
 - capability_id: uport.map.visualize
