@@ -122,3 +122,16 @@ def test_nearest_wreck_without_radius_does_not_enter_radius_route(graph_module, 
 
     assert graph_module._should_fast_execute_s101_hazard_radius(state) is False
     assert graph_module.check_intent_parsed(state) != "fast_s101_hazard_radius_execute"
+
+
+def test_hazard_definition_question_does_not_enter_spatial_or_place_route(graph_module):
+    state = {
+        "query": "위험객체란",
+        "status": AgentStatus.INTENT_PARSED,
+        "spatial_context": {},
+    }
+
+    assert graph_module._looks_like_standard_rag_query("위험객체란")
+    assert graph_module._looks_like_definition_question("위험객체란")
+    assert graph_module._should_fast_execute_s101_hazard_radius(state) is False
+    assert graph_module.check_intent_parsed(state) == "create_plan"

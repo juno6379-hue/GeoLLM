@@ -912,6 +912,8 @@ def _looks_like_standard_rag_query(query: str) -> bool:
     lowered = text.lower()
     if _looks_like_dataset_evidence_query(text):
         return False
+    if _looks_like_definition_question(text):
+        return True
     return any(term in lowered or term in text for term in [
         "s-100",
         "s-101",
@@ -931,6 +933,17 @@ def _looks_like_standard_rag_query(query: str) -> bool:
         "설명",
         "요약",
     ])
+
+
+def _looks_like_definition_question(query: str) -> bool:
+    text = str(query or "").strip()
+    lowered = text.lower()
+    if not text:
+        return False
+    if any(term in lowered or term in text for term in ["definition", "meaning", "what is", "뜻", "의미", "무엇", "뭐야", "뭔가", "개념"]):
+        return True
+    return re.search(r"(?<![가-힣A-Za-z0-9])?[가-힣A-Za-z0-9·\-/ ]+(?:이란|란)\??$", text) is not None
+
 
 def _looks_like_legal_rag_query(query: str) -> bool:
     text = query or ""
@@ -1548,6 +1561,8 @@ def _looks_like_s101_hazard_target(query: str) -> bool:
 
 def _should_fast_execute_s101_hazard_radius(state: OrchestratorState) -> bool:
     query = state.get("query", "")
+    if _looks_like_definition_question(query):
+        return False
     if not _looks_like_s101_hazard_target(query):
         return False
     nearest_request = any(term in query.lower() for term in ["nearest", "closest", "가까운", "가까이"])
@@ -1678,6 +1693,8 @@ def _requested_layer_anchor_query(query: str, targets: list[dict]) -> str:
 
 def _should_fast_execute_requested_spatial_layer(state: OrchestratorState) -> bool:
     query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
+    if _looks_like_definition_question(query):
+        return False
     if not _requested_spatial_layer_targets(query):
         return False
     return True
