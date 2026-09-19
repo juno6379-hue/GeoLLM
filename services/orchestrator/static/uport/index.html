@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>U-Port Agent | GeoLLM</title>
+  <link rel="stylesheet" href="/uport/dashboard.css">
+</head>
+<body>
+  <!-- Phase 3 is a navigation and layout shell. Every operational region uses
+       an explicit empty state so the reference image's figures cannot be read
+       as current port data. Provider-backed views arrive in later phases. -->
+  <div class="shell">
+    <aside class="sidebar" aria-label="U-Port 메뉴">
+      <a class="brand" href="/uport/">U-Port <strong>AI</strong><small>GeoLLM 항만 운영</small></a>
+      <nav aria-label="주요 메뉴">
+        <a class="nav-item selected" href="/uport/" aria-current="page">대시보드</a>
+        <span class="nav-item pending">대화형 AI · 준비 중</span>
+        <span class="nav-item pending">S-101 해도/AIS · 준비 중</span>
+        <span class="nav-item pending">항만 스케줄 예측 · 준비 중</span>
+        <span class="nav-item pending">문서/서식 작성 · 준비 중</span>
+        <span class="nav-item pending">통계·리포트 · 준비 중</span>
+      </nav>
+      <a class="back-link" href="/">← GeoLLM 메인으로</a>
+    </aside>
+    <main class="content">
+      <header class="topbar">
+        <div><p class="eyebrow">U-PORT AGENT / DASHBOARD</p><h1>항만 운영 대시보드</h1><p class="muted">S-101 전자해도 기반 스마트 항만 운영</p></div>
+        <span class="badge">운영 데이터 연결 준비 중</span>
+      </header>
+      <!-- KPI placeholders preserve the reference screen's information order.
+           No count, timestamp, or calculated percentage is invented here. -->
+      <section class="kpis" aria-label="운영 지표">
+        <article class="card kpi"><h2>입항 예정 선박</h2><strong>—</strong><p>일정 데이터 연결 대기 중</p></article>
+        <article class="card kpi"><h2>평균 대기시간</h2><strong>—</strong><p>운영 데이터 연결 대기 중</p></article>
+        <article class="card kpi"><h2>선석 가동률</h2><strong>—</strong><p>선석 데이터 연결 대기 중</p></article>
+        <article class="card kpi"><h2>혼잡도 상태</h2><strong>—</strong><p>검증된 분석 결과 대기 중</p></article>
+      </section>
+      <section class="workspace" aria-label="지도와 AI">
+        <article class="card map-panel">
+          <div class="panel-head"><div><p class="eyebrow">S-101 / AIS / BERTH</p><h2>항만 공간 상황도</h2></div><span class="badge">지도 연결 준비 중</span></div>
+          <div class="map-empty" role="status"><span aria-hidden="true">◎</span><strong>항만 지도를 준비하고 있습니다</strong><p>S-101, AIS, 선석 레이어는 실제 데이터 연결 후 표시됩니다.</p></div>
+          <div class="layers" aria-label="계획된 지도 레이어"><span>S-101 해도</span><span>AIS 선박</span><span>선석</span><span>알림</span></div>
+        </article>
+        <article class="card agent-panel">
+          <div class="panel-head"><div><p class="eyebrow">CONVERSATIONAL AGENT</p><h2>U-Port AI</h2></div><span class="badge">준비 중</span></div>
+          <div class="agent-empty"><strong>항만 운영 AI 패널</strong><p>자연어 질의와 근거가 있는 분석 결과는 Agent 연결 후 사용할 수 있습니다.</p></div>
+          <!-- Disabled controls make the unfinished action explicit and prevent
+               users from assuming that a query was submitted successfully. -->
+          <label for="agent-query">질문</label><textarea id="agent-query" rows="3" placeholder="항만 운영에 대해 질문해 주세요" disabled></textarea>
+          <button type="button" disabled>질문 보내기</button>
+          <p class="muted">현재는 질의를 실행하지 않습니다.</p>
+        </article>
+      </section>
+      <!-- The lower cards match the operational groups in U-Port_UI.png. -->
+      <section class="details" aria-label="운영 상세">
+        <article class="card detail"><h2>선박 일정 타임라인</h2><p>입출항 일정 데이터 연결 대기 중</p></article>
+        <article class="card detail"><h2>선석 운영 현황</h2><p>선석·점유 데이터 연결 대기 중</p></article>
+        <article class="card detail"><h2>주요 알림</h2><p>운영 알림 데이터 연결 대기 중</p></article>
+        <article class="card detail"><h2>예측 결과 요약</h2><p>검증된 예측 모델 연결 대기 중</p></article>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

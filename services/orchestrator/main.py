@@ -234,4 +234,7 @@ class NoCacheStaticFiles(StaticFiles):
 app.mount("/vision", NoCacheStaticFiles(directory="ui", html=True), name="vision")
 
 # 프론트엔드 정적 파일 마운트 (UI 용) - 루트 경로이므로 가장 마지막에 마운트해야 합니다.
+# Mount the U-Port dashboard before the catch-all GeoLLM UI. StaticFiles with
+# html=True serves index.html for /uport/ on direct visits and page reloads.
+app.mount("/uport", NoCacheStaticFiles(directory="services/orchestrator/static/uport", html=True), name="uport")
 app.mount("/", NoCacheStaticFiles(directory="services/orchestrator/static", html=True), name="static")
