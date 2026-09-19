@@ -1041,6 +1041,8 @@ def _legal_notice_documents_for_query(query: str, limit: int = 5) -> list[dict]:
     text = query or ""
     lowered = text.lower()
     terms = _legal_notice_query_terms(text)
+    requested_port_match = re.search(r"([가-힣]{2,12}항)", text)
+    requested_port = requested_port_match.group(1) if requested_port_match else None
     wants_busan = any(term in text for term in ["부산", "부산항", "신항", "감천", "다대포", "가덕", "북항"])
     legal_intent = _looks_like_legal_rag_query(text) or any(term in text for term in ["항법", "항로", "정박지", "속력", "예선", "항만기본계획", "항만시설"])
     if not legal_intent:
@@ -1061,6 +1063,8 @@ def _legal_notice_documents_for_query(query: str, limit: int = 5) -> list[dict]:
         ]
         haystack = " ".join(str(part or "") for part in haystack_parts)
         haystack_lower = haystack.lower()
+        if requested_port and requested_port not in haystack:
+            continue
         score = 0
         if wants_busan and ("부산" in haystack or "busan" in haystack_lower):
             score += 8
@@ -1127,7 +1131,12 @@ def _legal_notice_documents_for_query(query: str, limit: int = 5) -> list[dict]:
 def _legal_notice_answer(query: str, docs: list[dict]) -> str:
     if not docs:
         return ""
-    lead = "부산항 관련 고시/행정규칙 근거를 로컬 authoritative registry에서 찾았습니다." if any("부산" in str(doc.get("title") or "") for doc in docs) else "질의와 관련된 법령/고시 근거를 로컬 authoritative registry에서 찾았습니다."
+    port_match = re.search(r"([가-힣]{2,12}항)", query or "")
+    port_label = port_match.group(1) if port_match else None
+    if port_label:
+        lead = f"{port_label} 관련 고시/행정규칙 근거를 로컬 authoritative registry에서 찾았습니다."
+    else:
+        lead = "질의와 관련된 법령/고시 근거를 로컬 authoritative registry에서 찾았습니다."
     rows = []
     for index, doc in enumerate(docs[:4], start=1):
         date_text = doc.get("effective_date") or doc.get("notice_date") or "시행일 미상"

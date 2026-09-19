@@ -145,6 +145,10 @@ def test_notice_query_plan_does_not_resolve_place_problem(graph):
         ("부산항 예선운영 고시", "부산항예선운영세칙"),
         ("부산항 항만기본계획 변경 고시", "항만기본계획 변경 고시(부산항)"),
         ("부산항 항만시설 운영세칙 근거", "부산항 항만시설 운영세칙"),
+        ("인천항 고시", "인천항·경인항 선박통항규칙"),
+        ("인천항 항법과 속력제한 고시", "인천항·경인항 선박통항규칙"),
+        ("인천항 항만기본계획 변경 고시", "항만기본계획 변경 고시(인천항)"),
+        ("인천항 육상항만구역 지형도면 고시", "인천항 육상항만구역 및 지형도면 변경 고시"),
     ],
 )
 def test_busan_notice_queries_return_authoritative_registry_docs(graph, query, expected_title):

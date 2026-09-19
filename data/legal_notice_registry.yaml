@@ -76,7 +76,84 @@ registries:
       jurisdiction: KR
       source_url: https://busan.mof.go.kr
       verification_status: VERIFIED
+    incheon_mof:
+      name_ko: 인천지방해양수산청
+      name_en: Incheon Regional Office of Oceans and Fisheries
+      jurisdiction: KR
+      source_url: https://incheon.mof.go.kr
+      verification_status: VERIFIED
   legal_notices:
+    incheon_gyeongin_ship_traffic_rules_2024_133:
+      title_ko: 인천항·경인항 선박통항규칙
+      notice_no: 인천지방해양수산청고시 제2024-133호
+      notice_date: '2024-10-04'
+      effective_date: '2024-10-04'
+      notice_type: 고시
+      authority_id: incheon_mof
+      source_url: https://www.law.go.kr/LSW/admRulLsInfoP.do?admRulSeq=2100000247730
+      basis_laws:
+        - ship_entry_departure_act
+      governs_layers:
+        - anchorage_area
+        - fairway_area
+        - speed_restriction_area
+        - vessel_traffic_control_area
+      scope_keywords:
+        - 인천항
+        - 경인항
+        - 선박통항규칙
+        - 항법
+        - 항로
+        - 정박지
+        - 속력제한
+        - 해상교통질서
+      summary_ko: 인천항·경인항 및 부근수역에서 정박지, 항로, 항법, 속력제한 등을 규정하여 선박교통 안전과 해상교통질서 유지를 목적으로 하는 고시다.
+      verification_status: VERIFIED
+    incheon_port_basic_plan_change_notice_2025_28:
+      title_ko: 항만기본계획 변경 고시(인천항)
+      notice_no: 해양수산부 고시 제2025-28호
+      notice_date: '2025-02-21'
+      effective_date: '2025-02-21'
+      notice_type: 고시
+      authority_id: mof
+      source_url: https://www.mof.go.kr/doc/ko/selectDoc.do?bbsSeq=9&docSeq=60612&menuSeq=375
+      basis_laws:
+        - port_act
+      governs_layers:
+        - port_basic_plan
+        - planned_port_area
+      scope_keywords:
+        - 인천항
+        - 항만기본계획
+        - 기본계획
+        - 항만법
+        - 변경 고시
+        - 개발 예정
+      summary_ko: 항만법 제8조에 따라 인천항 항만기본계획 변경 사항을 고시한 문서다.
+      verification_status: VERIFIED
+    incheon_port_land_area_map_notice_2025_10:
+      title_ko: 인천항 육상항만구역 및 지형도면 변경 고시
+      notice_no: 해양수산부 고시 제2025-10호
+      notice_date: '2025-01-21'
+      effective_date: '2025-01-21'
+      notice_type: 고시
+      authority_id: mof
+      source_url: https://www.eum.go.kr/web/gs/gv/gvGosiDet.jsp?seq=618038
+      basis_laws:
+        - port_act
+        - framework_act_on_land_use_regulation
+      governs_layers:
+        - port_land_area
+        - planned_port_area
+      scope_keywords:
+        - 인천항
+        - 육상항만구역
+        - 지형도면
+        - 항만구역
+        - 토지이용규제
+        - 신항
+      summary_ko: 인천항 육상항만구역 조서와 지형도면 변경 사항을 고시한 문서이며, 토지이용규제 기본법상 지형도면 열람 근거와 연결된다.
+      verification_status: VERIFIED
     busan_port_navigation_rules_2026_124:
       title_ko: 부산항 항법 등에 관한 규칙
       notice_no: 부산지방해양수산청고시 제2026-124호
