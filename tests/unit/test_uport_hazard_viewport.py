@@ -1,0 +1,82 @@
+"""U-Port delegates viewport hazards to the existing validated S-101 path."""
+
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+import services.uport.hazard_router as hazard_router
+from services.orchestrator.s101_radius_execution import prepare_bounds_request
+
+
+def _client():
+    app = FastAPI()
+    app.include_router(hazard_router.router, prefix="/api/v1")
+    return TestClient(app)
+
+
+def test_shared_catalogue_preflight_accepts_uport_viewport_without_db():
+    """The reused Agent must bind approved hazard classes before SQL runs."""
+
+    context, _layer, _params = prepare_bounds_request({
+        "task_id": "uport-preflight", "user_id": "uport-dashboard",
+        "query": "현재 지도 범위의 S-101 항행 위험객체를 찾아줘",
+        "spatial_context": {"map_bounds": [129.25, 35.35, 129.55, 35.65],
+                            "crs": "EPSG:4326", "context": "navigation_safety"},
+    })
+    assert context.slots.analysis_type == "feature_search_by_area"
+    assert {"Wreck", "Obstruction", "UnderwaterAwashRock"} <= set(context.slots.target_features)
+    assert context.provenance["location_resolution"]["status"] == "MAP_BOUNDS"
+
+
+def test_viewport_uses_shared_pipeline_and_preserves_evidence(monkeypatch):
+    calls = []
+    feature = {"type": "Feature", "id": "101", "geometry": {
+        "type": "Point", "coordinates": [129.4, 35.5],
+    }, "properties": {"feature_name": "Wreck"}}
+
+    def shared_pipeline(state):
+        calls.append(state)
+        return {
+            "status": "COMPLETED", "summary": "검증된 위험객체 1건",
+            "structured_result": {"total_count": 1, "returned_count": 1,
+                                  "truncated": False, "source_layer": {"physical_table": "projection.s101_feature_valid"}},
+            "features": {"type": "FeatureCollection", "features": [feature]},
+            "evidence_bundle": {"spatial_feature_evidence": [{"evidence_id": "source-101"}]},
+        }
+
+    monkeypatch.setattr(hazard_router, "execute_radius_request", shared_pipeline)
+    response = _client().post("/api/v1/uport/s101/hazards/viewport", json={
+        "bbox": "129.25,35.35,129.55,35.65",
+    })
+    assert response.status_code == 200
+    assert calls[0]["spatial_context"]["map_bounds"] == [129.25, 35.35, 129.55, 35.65]
+    assert calls[0]["spatial_context"]["context"] == "navigation_safety"
+    assert response.json()["geojson"]["features"][0]["id"] == "101"
+    assert response.json()["evidence_bundle"]["spatial_feature_evidence"][0]["evidence_id"] == "source-101"
+
+
+def test_invalid_bounds_and_blocked_search_do_not_return_features(monkeypatch):
+    calls = []
+    monkeypatch.setattr(hazard_router, "execute_radius_request", lambda state: calls.append(state) or {
+        "status": "BLOCKED", "error_code": "DATASET_NOT_AVAILABLE", "summary": "S-101 source unavailable",
+    })
+    invalid = _client().post("/api/v1/uport/s101/hazards/viewport", json={"bbox": "0,0,5,5"})
+    assert invalid.status_code == 422
+    assert calls == []
+    blocked = _client().post("/api/v1/uport/s101/hazards/viewport", json={
+        "bbox": "129.25,35.35,129.55,35.65",
+    })
+    assert blocked.status_code == 503
+    assert blocked.json()["detail"]["code"] == "DATASET_NOT_AVAILABLE"
+
+
+def test_mismatched_shared_result_is_rejected(monkeypatch):
+    monkeypatch.setattr(hazard_router, "execute_radius_request", lambda _state: {
+        "status": "COMPLETED", "structured_result": {"total_count": 3, "returned_count": 2,
+        "source_layer": {"physical_table": "projection.s101_feature_valid"}},
+        "features": {"type": "FeatureCollection", "features": []},
+    })
+    response = _client().post("/api/v1/uport/s101/hazards/viewport", json={
+        "bbox": "129.25,35.35,129.55,35.65",
+    })
+    assert response.status_code == 502
+    assert response.json()["detail"]["code"] == "RESULT_CONTRACT_MISMATCH"

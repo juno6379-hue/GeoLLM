@@ -46,8 +46,10 @@
           <div class="layers" aria-label="지도 레이어">
             <label><input id="layer-s101" type="checkbox" checked> S-101 해도</label>
             <label><input id="layer-berths" type="checkbox" checked> S-101 선석</label>
+            <label><input id="layer-hazards" type="checkbox"> S-101 항행 위험객체</label>
             <label class="unavailable"><input type="checkbox" disabled> AIS 선박 · 데이터 미연결</label>
           </div>
+          <div id="hazard-status" class="selection" role="status" aria-live="polite">항행 위험객체 레이어는 꺼져 있습니다.</div>
           <div id="map-selection" class="selection" aria-live="polite">선석 피처를 선택하면 ID와 데이터 출처가 표시됩니다.</div>
         </article>
         <article class="card agent-panel">

@@ -9,6 +9,8 @@
   const selection = document.getElementById("map-selection");
   const chartToggle = document.getElementById("layer-s101");
   const berthToggle = document.getElementById("layer-berths");
+  const hazardToggle = document.getElementById("layer-hazards");
+  const hazardStatus = document.getElementById("hazard-status");
 
   // A missing CDN must remain an explicit empty state rather than producing
   // an apparently working map with no chart or geographic context.
@@ -59,10 +61,23 @@
     }),
     style: { color: "#ec6b19", weight: 6 }
   }).addTo(map);
+  const hazards = L.geoJSON(null, {
+    // Keep charted hazards visually separate from the selected berth and
+    // verified Agent result. The GeoLLM pipeline supplies the actual objects.
+    pointToLayer: (_feature, latlng) => L.circleMarker(latlng, {
+      radius: 6, color: "#9c2b27", weight: 2, fillColor: "#f69b42", fillOpacity: .9
+    }),
+    style: { color: "#c3442d", weight: 3 },
+    onEachFeature: (feature, layer) => layer.on("click", () => {
+      const type = String(feature.properties?.feature_name || "S-101 위험객체");
+      hazardStatus.textContent = `${type} · S-101 피처 ${String(feature.id || "식별자 없음")} · 선박 위험도 판정 아님`;
+    })
+  });
 
   let activeRequest = null;
   let debounceTimer = null;
   let chartReady = false;
+  let hazardRequest = null;
 
   function focusVerifiedFeature(feature) {
     // The execution API returns source-attributed S-101 GeoJSON. Require the
@@ -128,11 +143,45 @@
     }
   }
 
+  async function loadHazards() {
+    if (!hazardToggle.checked) return;
+    if (hazardRequest) hazardRequest.abort();
+    hazardRequest = new AbortController();
+    const thisRequest = hazardRequest;
+    const bounds = map.getBounds();
+    const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()]
+      .map(value => value.toFixed(6)).join(",");
+    hazardStatus.textContent = "현재 지도 범위의 S-101 위험객체 검색 중…";
+    try {
+      const response = await fetch("/api/v1/uport/s101/hazards/viewport", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bbox }), signal: thisRequest.signal
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const result = await response.json();
+      if (result.status !== "success" || result.geojson?.type !== "FeatureCollection" ||
+          !Array.isArray(result.geojson.features) ||
+          result.geojson.features.length !== result.returned_count) {
+        throw new Error("Invalid S-101 hazard response");
+      }
+      hazards.clearLayers();
+      hazards.addData(result.geojson);
+      if (!map.hasLayer(hazards)) hazards.addTo(map);
+      hazardStatus.textContent = `현재 범위 위험객체 ${result.total_count}건 중 ${result.returned_count}건 표시 · S-101 근거 제공${result.truncated ? " · 범위를 좁혀 더 보기" : ""}`;
+    } catch (error) {
+      if (error.name === "AbortError") return;
+      hazards.clearLayers();
+      hazardStatus.textContent = `S-101 위험객체를 불러오지 못했습니다 (${error.message}).`;
+    } finally {
+      if (hazardRequest === thisRequest) hazardRequest = null;
+    }
+  }
+
   // Debounce viewport requests and cancel stale responses so rapid pans cannot
   // paint geometry from an earlier map extent over the current extent.
   map.on("moveend", () => {
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(loadBerths, 250);
+    debounceTimer = setTimeout(() => { loadBerths(); loadHazards(); }, 250);
   });
   chartToggle.addEventListener("change", () => {
     if (chartToggle.checked) chart.addTo(map);
@@ -146,6 +195,16 @@
       window.uportMapContext = null;
       window.dispatchEvent(new CustomEvent("uport:map-selection", { detail: null }));
       selection.textContent = "S-101 선석 레이어가 꺼져 있습니다.";
+    }
+  });
+  hazardToggle.addEventListener("change", () => {
+    if (hazardToggle.checked) loadHazards();
+    else {
+      if (hazardRequest) hazardRequest.abort();
+      hazardRequest = null;
+      map.removeLayer(hazards);
+      hazards.clearLayers();
+      hazardStatus.textContent = "항행 위험객체 레이어는 꺼져 있습니다.";
     }
   });
   map.whenReady(loadBerths);
