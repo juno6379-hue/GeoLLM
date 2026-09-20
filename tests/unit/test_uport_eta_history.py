@@ -1,9 +1,30 @@
 """Check collection deduplication and ETA split safety on synthetic voyages."""
 
 import sqlite3
+import json
 
 from scripts import build_uport_eta_dataset as dataset
 from scripts import collect_uport_eta_history as collector
+
+
+def test_readiness_report_contains_aggregates_only(tmp_path, monkeypatch):
+    """The dashboard volume receives counts without vessel identifiers."""
+    database_path = tmp_path / "history.sqlite3"
+    report_path = tmp_path / "public" / "eta_readiness.json"
+    monkeypatch.setenv("UPORT_ETA_READINESS_PATH", str(report_path))
+    with collector.connect(database_path) as db:
+        db.execute("""INSERT INTO positions
+            (mmsi,callsgn,arrival_year,voyage,source_updated_at_raw,collected_at_utc)
+            VALUES (?,?,?,?,?,?)""",
+                   ("123456789", "TEST", "2026", "01", "20260919120000",
+                    "2026-09-19T00:00:00Z"))
+        db.commit()
+        assert collector.write_readiness(db, database_path,
+                                         "2026-09-19T00:00:00Z") == report_path
+    raw = report_path.read_text(encoding="utf-8")
+    assert "123456789" not in raw
+    assert "TEST" not in raw
+    assert json.loads(raw)["quality"]["stored_positions"] == 1
 
 
 def test_legacy_update_clock_column_is_renamed_without_losing_rows(tmp_path):

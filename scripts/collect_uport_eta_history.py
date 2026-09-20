@@ -126,6 +126,30 @@ def collect(db: sqlite3.Connection) -> dict:
             "positions_inserted": inserted, "event_lookups_failed": failures}
 
 
+def write_readiness(db: sqlite3.Connection, database_path: Path,
+                    collected_at_utc: str) -> Path:
+    """Publish only aggregate ETA quality facts for the dashboard.
+
+    The public report lives in a separate Docker volume from raw SQLite
+    history. An atomic rename prevents readers from seeing partial JSON.
+    """
+    from scripts.build_uport_eta_dataset import build
+
+    report, _, _ = build(db)
+    payload = {"status": "ready" if report["export_ready"] else "blocked",
+               "last_collection_utc": collected_at_utc, "quality": report}
+    # Local runs keep the report beside their test database. Compose points
+    # this variable to a dedicated volume that contains no vessel records.
+    target = Path(os.getenv("UPORT_ETA_READINESS_PATH",
+                             str(database_path.with_name("eta_readiness.json"))))
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary = target.with_suffix(".json.tmp")
+    temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2),
+                         encoding="utf-8")
+    os.replace(temporary, target)
+    return target
+
+
 def main() -> None:
     """Run once for verification or at a fixed interval in Compose."""
     parser = argparse.ArgumentParser()
@@ -140,13 +164,20 @@ def main() -> None:
             # sqlite3's context manager controls transactions but does not
             # close the handle. Close every cycle in this long-lived service.
             with closing(connect(args.db)) as db:
-                print(json.dumps(collect(db)), flush=True)
+                result = collect(db)
+                write_readiness(db, args.db, result["collected_at_utc"])
+                print(json.dumps(result), flush=True)
         except Exception as exc:
             # URL-bearing transport exceptions can include query secrets.
             # Print only the exception class and retry on the next cycle.
             print(json.dumps({"collection_error_type": type(exc).__name__}), flush=True)
             if not args.loop:
                 raise SystemExit(1) from None
+            # Compose starts the collector after the backend container starts,
+            # which can precede API readiness. Retry failures within five
+            # minutes instead of waiting a full six-hour collection interval.
+            time.sleep(min(args.interval_hours * 3600, 300))
+            continue
         if not args.loop:
             break
         time.sleep(args.interval_hours * 3600)

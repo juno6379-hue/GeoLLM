@@ -43,6 +43,9 @@ services:
       - GBENC_DB_USER=postgres
       - GBENC_DB_PASSWORD=postgres
       - APP_STATE_DB_PATH=/app/geollm_results/geollm_state.sqlite3
+      # The backend reads only aggregate ETA readiness JSON. SQLite raw vessel
+      # history stays with the collector and is never exposed by this mount.
+      - UPORT_ETA_READINESS_PATH=/app/eta_readiness/eta_readiness.json
       - LANG=C.UTF-8
       - LC_ALL=C.UTF-8
       - PYTHONUTF8=1
@@ -58,6 +61,7 @@ services:
       - ../outputs:/app/outputs
       - ../scripts:/app/scripts
       - ../services/orchestrator/static:/app/services/orchestrator/static
+      - eta_readiness_data:/app/eta_readiness:ro
 
   # Poll the public current-position API every six hours. The ignored host
   # volume retains history across container recreation; the backend proxy
@@ -70,12 +74,14 @@ services:
     environment:
       - UPORT_PROXY_URL=http://backend:8000/api/v1/uport
       - UPORT_ETA_DB_PATH=/app/eta_history/uport_eta_history.sqlite3
+      - UPORT_ETA_READINESS_PATH=/app/eta_readiness/eta_readiness.json
       - PYTHONIOENCODING=utf-8
     depends_on:
       - backend
     restart: unless-stopped
     volumes:
       - eta_history_data:/app/eta_history
+      - eta_readiness_data:/app/eta_readiness
       - ../scripts:/app/scripts
 
   tile-server:
@@ -105,3 +111,4 @@ services:
 volumes:
   postgis_data:
   eta_history_data:
+  eta_readiness_data:
