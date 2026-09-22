@@ -52,11 +52,11 @@ RAG checkpoint:
 
 | Item | Count / status |
 |---|---:|
-| S-101 core chunk target | 1,869 chunks |
-| Partial embedding output | 1,333 rows generated |
-| Loaded rows in `knowledge.document_chunks` | 605 rows |
+| Live RAG rows | 8,413 rows |
+| Rows with embedding | 8,413 rows |
+| Null embeddings | 0 rows |
 
-The embedding job may still be running locally. `knowledge.document_chunks` should be treated as partial until the S-101 core embedding file reaches 1,869 rows and the upsert step completes.
+The previous partial embedding checkpoint has been superseded. The live database currently contains 8,413 embedded rows with no null embeddings.
 
 ## Start Runtime
 
