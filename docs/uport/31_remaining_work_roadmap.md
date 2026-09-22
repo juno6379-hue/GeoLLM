@@ -72,6 +72,43 @@
 5. 타임아웃·JSON 오류·검증 실패 시 결정론 경로 또는 clarification으로 복귀한다.
 6. 먼저 shadow mode로 gold-label과 비교하고 기준 통과 후 실행 경로에 반영한다.
 
+### Shadow-mode 후보 점수 결합 실험
+
+Ollama에는 자유 의도 생성을 맡기지 않고 규칙·슬롯·registry가 생성한 동일 후보 2~4개를 전달한다. 각 후보의 의도·문맥 적합도, 필요 근거, 누락 슬롯, reason code를 구조화해 반환받는다.
+
+```text
+combined_score =
+    w_rule      * deterministic_route_score
+  + w_ollama   * calibrated_ollama_score
+  + w_registry * registry_readiness
+  + w_context  * context_completeness
+```
+
+- 초기에는 `w_ollama`를 낮게 제한하고 어떤 가중치도 고정된 정답으로 간주하지 않는다.
+- Ollama 점수는 validation set에서 calibration한 뒤 규칙 점수와 비교한다.
+- 실제 실행은 기존 안전 경로를 유지하고 shadow 결과만 trace와 평가 저장소에 기록한다.
+- 규칙·Ollama·혼합 순위, 최종 실행 순위, disagreement type을 보존한다.
+- 필수 슬롯·권위 근거가 없거나 점수원이 크게 충돌하면 실행에 반영하지 않는다.
+- 규칙 단독, Ollama 단독, 단순 가중합, calibration 결합, registry/context gate 결합을 비교한다.
+- 오류는 정의↔실행, 검색↔분석, 지시어 해소, 복합 근거 선택, 불필요 clarification, 위험한 과잉 실행으로 분류한다.
+
+### 연구 가설과 논문화 조건
+
+연구 가설은 "도메인 규칙, authoritative registry readiness, 공간·대화 문맥, 로컬 LLM 후보 재평가를 결합하면 단일 규칙 또는 단일 LLM보다 해양 GeoLLM의 모호·복합 의도 라우팅을 더 안전하고 정확하게 수행할 수 있다"이다.
+
+논문 기여로 성립하려면 다음이 필요하다.
+
+- 재현 가능한 marine geospatial ambiguity benchmark와 annotation guideline
+- 규칙, embedding router, Ollama, 결합 방식의 공정한 baseline 비교
+- 각 점수원과 gate를 제거하는 ablation study
+- calibration error, selective prediction, clarification 품질, 심각 오류율 평가
+- 미관측 항만·용어에 대한 domain generalization 평가
+- latency, 로컬 배포 비용, privacy, failure-safe 동작 분석
+- QLoRA 전후 비교와 사실 권위 분리 검증
+- seed, prompt, model, registry snapshot, lineage를 포함한 재현성 패키지
+
+논문 작업명은 `Authority-Grounded Hybrid Intent Routing for Maritime GeoLLM`으로 두며, 실제 제목과 기여 주장은 benchmark 결과 후 확정한다.
+
 ### 2단계: 평가 데이터 축적
 
 - 정의/실행 경계, 지시어와 대화 문맥, 복합 분석·근거 선택, 근거 부족, 유사 용어·부정·다중 의도를 hard case로 확대한다.
