@@ -54,6 +54,49 @@
    - `graph.py` helper를 별도 모듈로 분리하고 정의 라우터의 중복 helper를 제거한다.
    - 전용 `navigation_risk_analysis_node`로 복합 분석을 분리한다.
 
+## P1 Ollama 의도 보조와 QLoRA 보강
+
+### 현재 확인된 한계
+
+- `query_candidate_broker`는 Ollama 필요 여부만 계산하고 실제 호출·채택을 수행하지 않는다.
+- 현재 모드는 `dry_run_no_execution_change`여서 Ollama 판단이 실행 경로를 바꾸지 않는다.
+- Ollama semantic prior는 장소 유형 후보에 치우쳐 있고, route vector 초기화도 비활성화돼 있다.
+- 기존 LLM fallback은 위치·거리·대상 슬롯 추출 중심이며 복합 분석과 필요 근거를 판단하지 않는다.
+
+### 1단계: 기반 Ollama 보완
+
+1. Pydantic `IntentAmbiguityJudgement` 계약을 만든다. 출력은 후보 의도, 선택 의도, 분석 유형, 문맥 참조, 필요 근거, 누락 슬롯, reason code, confidence로 제한한다.
+2. 상위 route 점수 차이가 작거나, 지시어가 있거나, 정의·실행 표현이 섞이거나, 복수 근거 결합이 필요하거나, 규칙과 registry/KG가 충돌할 때만 호출한다.
+3. trace에 `needed`, `called`, `used`, `accepted`, `rejected_reason`, `latency_ms`, `model_version`, `prompt_version`을 기록한다.
+4. Ollama 출력은 후보일 뿐이며 registry ID, capability, 필수 슬롯 검증 후에만 최종 경로로 승격한다.
+5. 타임아웃·JSON 오류·검증 실패 시 결정론 경로 또는 clarification으로 복귀한다.
+6. 먼저 shadow mode로 gold-label과 비교하고 기준 통과 후 실행 경로에 반영한다.
+
+### 2단계: 평가 데이터 축적
+
+- 정의/실행 경계, 지시어와 대화 문맥, 복합 분석·근거 선택, 근거 부족, 유사 용어·부정·다중 의도를 hard case로 확대한다.
+- 규칙 결과, Ollama 결과, 최종 채택 결과, 사용자 피드백을 함께 저장한다.
+- 학습/검증/holdout을 lineage로 분리하고 합성 데이터 near-duplicate 오염을 차단한다.
+
+### 3단계: QLoRA 적용 조건
+
+QLoRA는 즉시 적용하지 않고 다음 조건을 모두 만족할 때 진행한다.
+
+- prompt와 few-shot 보완 후에도 반복 오류가 남는다.
+- 사람이 검수한 충분한 gold-label과 독립 holdout이 확보된다.
+- 오류가 지식 부족이 아니라 의도·슬롯·근거 선택 패턴의 일관된 실패다.
+- 기반 모델·라이선스·GPU·양자화·adapter 배포 및 rollback 절차가 확정된다.
+
+학습 목표는 자유 답변이 아니라 intent/analysis type, 문맥 참조, 슬롯, EvidenceBundle 종류, clarification 판정으로 제한한다. 법령 내용, 좌표, 실제 통항량은 adapter가 생성하지 않고 registry·PostGIS·도구 결과로만 확정한다.
+
+### QLoRA 평가·승격 기준
+
+- 규칙 단독, 기반 Ollama, prompt 개선 Ollama, QLoRA adapter를 동일 holdout에서 비교한다.
+- intent macro-F1, slot exact match/F1, evidence-selection F1, clarification precision/recall, schema validity, latency, fallback rate를 측정한다.
+- 정의형→실행형, 분석형→문서검색형 같은 중대 오류를 별도 집계한다.
+- 전체 점수뿐 아니라 중대 오류 감소와 미관측 도메인 일반화를 확인한다.
+- adapter의 base model, dataset snapshot, prompt/schema version, 평가 보고서를 registry에 등록하고 즉시 rollback 가능하게 한다.
+
 ## 다음 실행 순서
 
 1. `docker compose -f docker/docker-compose.yml restart backend`
@@ -63,6 +106,8 @@
 5. P0-2 메타데이터 불일치 수정
 6. P0-3 전국 항만 resolver 확장
 7. P0-4 사고·수심·기상 근거 결합
+8. Ollama ambiguity resolver를 shadow mode로 구현하고 gold-label 평가
+9. prompt 보완 후에도 남는 반복 오류가 확인된 경우에만 QLoRA 실험
 
 ## 검증 시 주의사항
 
