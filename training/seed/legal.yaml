@@ -1,0 +1,5 @@
+domain: legal
+cases:
+  - {case_id: MGEO-SEED-LEG-001, query: "부산항 항법 고시의 근거를 설명해줘", review_status: REVIEW_REQUIRED}
+  - {case_id: MGEO-SEED-LEG-002, query: "인천항 속력 제한의 법적 근거는?", review_status: REVIEW_REQUIRED}
+  - {case_id: MGEO-SEED-LEG-003, query: "정박 금지 구역 관련 고시를 찾아줘", review_status: REVIEW_REQUIRED}

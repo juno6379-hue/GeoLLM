@@ -1,0 +1,5 @@
+domain: port
+cases:
+  - {case_id: MGEO-SEED-PRT-001, query: "부산항 개발 예정 구역을 지도에 표시해줘", review_status: REVIEW_REQUIRED}
+  - {case_id: MGEO-SEED-PRT-002, query: "인천항 근처 섬 목록을 찾아줘", review_status: REVIEW_REQUIRED}
+  - {case_id: MGEO-SEED-PRT-003, query: "울산항 정박지를 검색해줘", review_status: REVIEW_REQUIRED}

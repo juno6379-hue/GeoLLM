@@ -1,0 +1,820 @@
+{
+  "$defs": {
+    "Ambiguity": {
+      "additionalProperties": false,
+      "properties": {
+        "is_ambiguous": {
+          "default": false,
+          "title": "Is Ambiguous",
+          "type": "boolean"
+        },
+        "candidate_interpretations": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Candidate Interpretations",
+          "type": "array"
+        },
+        "clarification_question": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Clarification Question"
+        }
+      },
+      "title": "Ambiguity",
+      "type": "object"
+    },
+    "CanonicalTerm": {
+      "additionalProperties": false,
+      "properties": {
+        "surface_term": {
+          "title": "Surface Term",
+          "type": "string"
+        },
+        "canonical_term": {
+          "title": "Canonical Term",
+          "type": "string"
+        }
+      },
+      "required": [
+        "surface_term",
+        "canonical_term"
+      ],
+      "title": "CanonicalTerm",
+      "type": "object"
+    },
+    "ConversationTurn": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "enum": [
+            "user",
+            "assistant"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "content": {
+          "title": "Content",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "content"
+      ],
+      "title": "ConversationTurn",
+      "type": "object"
+    },
+    "ExecutionFixture": {
+      "additionalProperties": false,
+      "properties": {
+        "fixture_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fixture Id"
+        },
+        "frozen_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frozen At"
+        },
+        "route_plan": {
+          "additionalProperties": true,
+          "title": "Route Plan",
+          "type": "object"
+        },
+        "execution_result": {
+          "additionalProperties": true,
+          "title": "Execution Result",
+          "type": "object"
+        },
+        "evidence_bundle": {
+          "additionalProperties": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "title": "Evidence Bundle",
+          "type": "object"
+        }
+      },
+      "title": "ExecutionFixture",
+      "type": "object"
+    },
+    "ExpectedAnswer": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "reference",
+            "behavioral",
+            "clarification"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "reference_answer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reference Answer"
+        },
+        "required_points": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Points",
+          "type": "array"
+        },
+        "forbidden_claims": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Forbidden Claims",
+          "type": "array"
+        }
+      },
+      "required": [
+        "mode"
+      ],
+      "title": "ExpectedAnswer",
+      "type": "object"
+    },
+    "ExpectedDataBindings": {
+      "additionalProperties": false,
+      "properties": {
+        "datasets": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Datasets",
+          "type": "array"
+        },
+        "layers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Layers",
+          "type": "array"
+        },
+        "required_versions": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Required Versions",
+          "type": "object"
+        }
+      },
+      "title": "ExpectedDataBindings",
+      "type": "object"
+    },
+    "ExpectedEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "required_bundle_fields": {
+          "items": {
+            "enum": [
+              "spatial_feature_evidence",
+              "spatial_layer_evidence",
+              "accident_relation_evidence",
+              "regulatory_evidence",
+              "rag_evidence",
+              "kg_provenance"
+            ],
+            "type": "string"
+          },
+          "title": "Required Bundle Fields",
+          "type": "array"
+        },
+        "execution_trace_required": {
+          "default": false,
+          "title": "Execution Trace Required",
+          "type": "boolean"
+        },
+        "citation_required": {
+          "default": false,
+          "title": "Citation Required",
+          "type": "boolean"
+        }
+      },
+      "title": "ExpectedEvidence",
+      "type": "object"
+    },
+    "ExpectedExecution": {
+      "additionalProperties": false,
+      "properties": {
+        "execution_ready": {
+          "title": "Execution Ready",
+          "type": "boolean"
+        },
+        "orchestration_status": {
+          "items": {
+            "enum": [
+              "COMPLETED",
+              "BLOCKED",
+              "NEEDS_CLARIFICATION",
+              "FAILED"
+            ],
+            "type": "string"
+          },
+          "title": "Orchestration Status",
+          "type": "array"
+        },
+        "execution_outcomes": {
+          "items": {
+            "enum": [
+              "SUCCESS_WITH_RESULTS",
+              "SUCCESS_EMPTY",
+              "PARTIAL",
+              "TOOL_ERROR",
+              "NOT_EXECUTED"
+            ],
+            "type": "string"
+          },
+          "title": "Execution Outcomes",
+          "type": "array"
+        },
+        "blockers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Blockers",
+          "type": "array"
+        },
+        "forbidden_behaviors": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Forbidden Behaviors",
+          "type": "array"
+        }
+      },
+      "required": [
+        "execution_ready",
+        "orchestration_status",
+        "execution_outcomes"
+      ],
+      "title": "ExpectedExecution",
+      "type": "object"
+    },
+    "ExpectedKnowledge": {
+      "additionalProperties": false,
+      "properties": {
+        "ontology_classes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Ontology Classes",
+          "type": "array"
+        },
+        "allowed_relation_types": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowed Relation Types",
+          "type": "array"
+        },
+        "forbidden_relation_types": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Forbidden Relation Types",
+          "type": "array"
+        },
+        "kg_paths_required": {
+          "default": false,
+          "title": "Kg Paths Required",
+          "type": "boolean"
+        }
+      },
+      "title": "ExpectedKnowledge",
+      "type": "object"
+    },
+    "ExpectedRouting": {
+      "additionalProperties": false,
+      "properties": {
+        "fast_path": {
+          "title": "Fast Path",
+          "type": "string"
+        },
+        "required_capabilities": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Capabilities",
+          "type": "array"
+        },
+        "resolver_chain": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Resolver Chain",
+          "type": "array"
+        },
+        "primary_agent": {
+          "title": "Primary Agent",
+          "type": "string"
+        },
+        "secondary_agents": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Secondary Agents",
+          "type": "array"
+        },
+        "tools": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tools",
+          "type": "array"
+        },
+        "query_template": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query Template"
+        }
+      },
+      "required": [
+        "fast_path",
+        "primary_agent"
+      ],
+      "title": "ExpectedRouting",
+      "type": "object"
+    },
+    "ExpectedSemantics": {
+      "additionalProperties": false,
+      "properties": {
+        "normalized_query": {
+          "title": "Normalized Query",
+          "type": "string"
+        },
+        "intent": {
+          "title": "Intent",
+          "type": "string"
+        },
+        "canonical_terms": {
+          "items": {
+            "$ref": "#/$defs/CanonicalTerm"
+          },
+          "title": "Canonical Terms",
+          "type": "array"
+        },
+        "derived_concepts": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Derived Concepts",
+          "type": "array"
+        },
+        "target_feature_classes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Target Feature Classes",
+          "type": "array"
+        },
+        "spatial_relation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spatial Relation"
+        },
+        "temporal_relation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Temporal Relation"
+        },
+        "execution_requested": {
+          "default": false,
+          "title": "Execution Requested",
+          "type": "boolean"
+        },
+        "dynamic_data_required": {
+          "default": false,
+          "title": "Dynamic Data Required",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "normalized_query",
+        "intent"
+      ],
+      "title": "ExpectedSemantics",
+      "type": "object"
+    },
+    "InputContext": {
+      "additionalProperties": false,
+      "properties": {
+        "user_query": {
+          "minLength": 1,
+          "title": "User Query",
+          "type": "string"
+        },
+        "conversation_context": {
+          "items": {
+            "$ref": "#/$defs/ConversationTurn"
+          },
+          "title": "Conversation Context",
+          "type": "array"
+        },
+        "available_context": {
+          "additionalProperties": true,
+          "title": "Available Context",
+          "type": "object"
+        }
+      },
+      "required": [
+        "user_query"
+      ],
+      "title": "InputContext",
+      "type": "object"
+    },
+    "Lineage": {
+      "additionalProperties": false,
+      "properties": {
+        "parent_seed_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Seed Id"
+        },
+        "generation_kind": {
+          "default": "human",
+          "title": "Generation Kind",
+          "type": "string"
+        },
+        "generation_batch_id": {
+          "title": "Generation Batch Id",
+          "type": "string"
+        },
+        "generator": {
+          "title": "Generator",
+          "type": "string"
+        },
+        "prompt_version": {
+          "title": "Prompt Version",
+          "type": "string"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "generation_batch_id",
+        "generator",
+        "prompt_version"
+      ],
+      "title": "Lineage",
+      "type": "object"
+    },
+    "NegativeConstraints": {
+      "additionalProperties": false,
+      "properties": {
+        "forbidden_agents": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Forbidden Agents",
+          "type": "array"
+        },
+        "forbidden_capabilities": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Forbidden Capabilities",
+          "type": "array"
+        },
+        "forbidden_tools": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Forbidden Tools",
+          "type": "array"
+        }
+      },
+      "title": "NegativeConstraints",
+      "type": "object"
+    },
+    "Origin": {
+      "enum": [
+        "human_seed",
+        "synthetic_from_seed",
+        "production_log_reviewed",
+        "adversarial",
+        "regression"
+      ],
+      "title": "Origin",
+      "type": "string"
+    },
+    "Quality": {
+      "additionalProperties": false,
+      "properties": {
+        "human_verified": {
+          "default": false,
+          "title": "Human Verified",
+          "type": "boolean"
+        },
+        "reviewer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewer"
+        },
+        "review_notes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Review Notes",
+          "type": "array"
+        },
+        "validation_checks": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Validation Checks",
+          "type": "array"
+        }
+      },
+      "title": "Quality",
+      "type": "object"
+    },
+    "RegistrySnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "agent_registry": {
+          "title": "Agent Registry",
+          "type": "string"
+        },
+        "capability_registry": {
+          "default": "0.1",
+          "title": "Capability Registry",
+          "type": "string"
+        },
+        "tool_registry": {
+          "title": "Tool Registry",
+          "type": "string"
+        },
+        "data_registry": {
+          "title": "Data Registry",
+          "type": "string"
+        },
+        "spatial_layer_registry": {
+          "title": "Spatial Layer Registry",
+          "type": "string"
+        },
+        "query_template_registry": {
+          "title": "Query Template Registry",
+          "type": "string"
+        },
+        "derived_concept_registry": {
+          "title": "Derived Concept Registry",
+          "type": "string"
+        },
+        "ontology_registry": {
+          "title": "Ontology Registry",
+          "type": "string"
+        },
+        "snapshot_hash": {
+          "title": "Snapshot Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "agent_registry",
+        "tool_registry",
+        "data_registry",
+        "spatial_layer_registry",
+        "query_template_registry",
+        "derived_concept_registry",
+        "ontology_registry",
+        "snapshot_hash"
+      ],
+      "title": "RegistrySnapshot",
+      "type": "object"
+    },
+    "ReviewStatus": {
+      "enum": [
+        "CANDIDATE",
+        "REVIEW_REQUIRED",
+        "APPROVED",
+        "REJECTED"
+      ],
+      "title": "ReviewStatus",
+      "type": "string"
+    },
+    "SlotSource": {
+      "enum": [
+        "user_explicit",
+        "conversation_context",
+        "inferred_from_policy",
+        "resolved_from_registry",
+        "not_provided"
+      ],
+      "title": "SlotSource",
+      "type": "string"
+    },
+    "SlotValue": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "default": null,
+          "title": "Value"
+        },
+        "source": {
+          "$ref": "#/$defs/SlotSource"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "title": "SlotValue",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0",
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "case_id": {
+      "pattern": "^MGEO-[A-Z0-9_-]+$",
+      "title": "Case Id",
+      "type": "string"
+    },
+    "origin": {
+      "$ref": "#/$defs/Origin"
+    },
+    "split": {
+      "enum": [
+        "seed",
+        "train",
+        "validation",
+        "test",
+        "benchmark"
+      ],
+      "title": "Split",
+      "type": "string"
+    },
+    "review_status": {
+      "$ref": "#/$defs/ReviewStatus"
+    },
+    "language": {
+      "enum": [
+        "ko",
+        "en",
+        "mixed"
+      ],
+      "title": "Language",
+      "type": "string"
+    },
+    "domain_labels": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Domain Labels",
+      "type": "array"
+    },
+    "lineage": {
+      "$ref": "#/$defs/Lineage"
+    },
+    "registry_snapshot": {
+      "$ref": "#/$defs/RegistrySnapshot"
+    },
+    "input": {
+      "$ref": "#/$defs/InputContext"
+    },
+    "expected_semantics": {
+      "$ref": "#/$defs/ExpectedSemantics"
+    },
+    "expected_slots": {
+      "additionalProperties": {
+        "$ref": "#/$defs/SlotValue"
+      },
+      "title": "Expected Slots",
+      "type": "object"
+    },
+    "expected_routing": {
+      "$ref": "#/$defs/ExpectedRouting"
+    },
+    "expected_data_bindings": {
+      "$ref": "#/$defs/ExpectedDataBindings"
+    },
+    "expected_execution": {
+      "$ref": "#/$defs/ExpectedExecution"
+    },
+    "expected_knowledge": {
+      "$ref": "#/$defs/ExpectedKnowledge"
+    },
+    "expected_evidence": {
+      "$ref": "#/$defs/ExpectedEvidence"
+    },
+    "execution_fixture": {
+      "$ref": "#/$defs/ExecutionFixture"
+    },
+    "expected_answer": {
+      "$ref": "#/$defs/ExpectedAnswer"
+    },
+    "ambiguity": {
+      "$ref": "#/$defs/Ambiguity"
+    },
+    "negative_constraints": {
+      "$ref": "#/$defs/NegativeConstraints"
+    },
+    "quality": {
+      "$ref": "#/$defs/Quality"
+    }
+  },
+  "required": [
+    "case_id",
+    "origin",
+    "split",
+    "review_status",
+    "language",
+    "domain_labels",
+    "lineage",
+    "registry_snapshot",
+    "input",
+    "expected_semantics",
+    "expected_routing",
+    "expected_data_bindings",
+    "expected_execution",
+    "expected_answer"
+  ],
+  "title": "TrainingCase",
+  "type": "object"
+}

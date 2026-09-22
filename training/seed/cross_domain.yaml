@@ -1,0 +1,4 @@
+domain: cross_domain
+cases:
+  - {case_id: MGEO-SEED-XDM-001, query: "위험객체 검색 결과와 관련 사고 이력을 함께 보여줘", review_status: REVIEW_REQUIRED}
+  - {case_id: MGEO-SEED-XDM-002, query: "보호구역 위치와 적용 고시를 함께 설명해줘", review_status: REVIEW_REQUIRED}

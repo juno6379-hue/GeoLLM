@@ -126,7 +126,11 @@ DETERMINISTIC_PATTERNS: list[tuple[str, re.Pattern[str], list[str]]] = [
     ("radius_slot", re.compile(r"(\d+(?:\.\d+)?)\s*(km|m|킬로|미터)", re.I), ["SPATIAL_ANALYSIS"]),
     ("temporal_window", re.compile(r"최근\s*\d+\s*(년|개월|달)|latest_available_12_months", re.I), ["TRAFFIC_ANALYSIS"]),
     ("provenance_request", re.compile(r"근거|출처|적재|파싱|표준화|임베딩|embedding", re.I), ["DATASET_PROVENANCE", "STANDARD_RAG"]),
-    ("definition_request", re.compile(r"정의|뜻|의미|표준|DCEG|Feature Catalogue|catalogue", re.I), ["STANDARD_RAG"]),
+    (
+        "definition_request",
+        re.compile(r"정의|뜻|의미|표준|DCEG|Feature Catalogue|catalogue|(?:이란|란)\??\s*$", re.I),
+        ["STANDARD_RAG"],
+    ),
     ("traffic_term", re.compile(r"통항량|AIS|V-PASS|vpass|traffic", re.I), ["TRAFFIC_ANALYSIS"]),
     ("nearby_search", re.compile(r"이내|반경|근처|주변|거리", re.I), ["SPATIAL_ANALYSIS"]),
     ("hazard_target", re.compile(r"위험객체|장애물|obstruction|wreck|침선|간출암|노출암|부표", re.I), ["SPATIAL_ANALYSIS", "LAYER_INSPECTION"]),

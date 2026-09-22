@@ -1,0 +1,4 @@
+domain: fisheries
+cases:
+  - {case_id: MGEO-SEED-FSH-001, query: "부산 연안 어업 제한 구역을 보여줘", review_status: REVIEW_REQUIRED}
+  - {case_id: MGEO-SEED-FSH-002, query: "낚시 금지 구역의 근거와 위치를 같이 알려줘", review_status: REVIEW_REQUIRED}

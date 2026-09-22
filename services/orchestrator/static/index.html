@@ -1362,7 +1362,9 @@
                     organization_id: "test",
                     spatial_context: { map_bounds: map_bounds, ...(submission.spatialContext || {}) }
                 };
-                if (currentTaskId && !submission.fresh) reqBody.task_id = currentTaskId;
+                // Reuse a LangGraph checkpoint only for an explicit continuation.
+                // A normal query must always receive a new task ID.
+                if (currentTaskId && submission.resume === true) reqBody.task_id = currentTaskId;
 
                 const response = await fetch('/api/v1/tasks/stream', {
                     method: 'POST',

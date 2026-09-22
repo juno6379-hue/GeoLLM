@@ -1,0 +1,19 @@
+version: "1.0"
+description: Verified static definitions used by the definition-intent fast path.
+terms:
+  tide_prediction:
+    canonical_term: 조석예보
+    aliases: ["조석 예보", "tide prediction", "tidal prediction"]
+    definition_ko: "해당 지역의 매일의 고조·저조 시각과 조위, 시각별 조위 등을 예측하여 알리는 것으로, 관측 자료를 토대로 한 예측과 수치모델 결과를 토대로 한 수치예보 방법 등이 있다."
+    source_title: Marine GeoLLM 검증 정의 레지스트리
+    source_ref: data/definition_term_registry.yaml#tide_prediction
+    context: observation
+    verification_status: VERIFIED
+  s101_feature:
+    canonical_term: S-101 Feature
+    aliases: ["S101 Feature", "S-101 피처", "S-101 객체"]
+    definition_ko: "S-101 전자해도 제품사양에서 현실 세계의 해양·항해 객체나 메타데이터 객체를 정해진 속성 및 공간 표현과 함께 모델링한 지형지물 유형이다. 개별 Feature의 정확한 정의와 허용 속성·공간 원시형은 S-101 Feature Catalogue에서 확인한다."
+    source_title: S-101 Feature Catalogue 2.0.0
+    source_ref: data/s101_feature_dictionary_v2.yaml
+    context: standard
+    verification_status: VERIFIED

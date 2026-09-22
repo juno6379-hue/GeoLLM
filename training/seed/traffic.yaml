@@ -1,0 +1,5 @@
+domain: traffic
+cases:
+  - {case_id: MGEO-SEED-TRF-001, query: "부산항의 최근 선박 통항 밀도를 보여줘", review_status: REVIEW_REQUIRED}
+  - {case_id: MGEO-SEED-TRF-002, query: "인천항 주변 해상교통관제구역을 표시해줘", review_status: REVIEW_REQUIRED}
+  - {case_id: MGEO-SEED-TRF-003, query: "두 항로의 AIS 통항량을 비교해줘", review_status: REVIEW_REQUIRED}

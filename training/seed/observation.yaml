@@ -1,0 +1,4 @@
+domain: observation
+cases:
+  - {case_id: MGEO-SEED-OBS-001, query: "조석예보란 무엇인가?", review_status: REVIEW_REQUIRED}
+  - {case_id: MGEO-SEED-OBS-002, query: "부산항의 어제 관측 조위를 분석해줘", review_status: REVIEW_REQUIRED}

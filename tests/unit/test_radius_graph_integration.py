@@ -137,6 +137,48 @@ def test_hazard_definition_question_does_not_enter_spatial_or_place_route(graph_
     assert graph_module.check_intent_parsed(state) == "create_plan"
 
 
+@pytest.mark.parametrize("query", ["조석예보란", "조석 예보란?", "해상예보란"])
+def test_forecast_definition_question_does_not_require_external_time_series(graph_module, query):
+    state = {
+        "query": query,
+        "normalized_query": query.removesuffix("?").removesuffix("이란").removesuffix("란"),
+        "status": AgentStatus.INTENT_PARSED,
+        "spatial_context": {},
+    }
+
+    assert graph_module._looks_like_definition_question(query)
+    assert graph_module._looks_like_standard_rag_query(query)
+    assert not graph_module._should_fast_external_requirement(query)
+    assert graph_module.check_intent_parsed(state) == "create_plan"
+
+
+@pytest.mark.parametrize("query", ["조석예보", "조석예보란", "조석 예보란?", "해상예보란"])
+def test_dictionary_backed_term_definition_classifier(graph_module, query):
+    assert graph_module._looks_like_definition_question(query)
+    assert not graph_module._has_operational_query_slots(query)
+    assert not graph_module._should_fast_external_requirement(query)
+
+
+@pytest.mark.parametrize("query", ["계란", "파란"])
+def test_definition_suffix_requires_dictionary_term(graph_module, query):
+    assert graph_module._definition_suffix_term(query) is None
+    assert not graph_module._looks_like_definition_question(query)
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "9월 인천 조석예보",
+        "내일 부산항 조석예보",
+        "목포 만조 간조 시간표",
+    ],
+)
+def test_tide_query_with_operational_slots_remains_forecast(graph_module, query):
+    assert graph_module._has_operational_query_slots(query)
+    assert not graph_module._looks_like_definition_question(query)
+    assert graph_module._should_fast_external_requirement(query)
+
+
 def test_contextual_hazard_query_uses_s101_route_not_place_lookup(graph_module):
     state = {
         "query": "주변 위험객체를 찾아줘",

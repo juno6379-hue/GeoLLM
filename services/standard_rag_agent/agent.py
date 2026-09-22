@@ -2,6 +2,7 @@ from datetime import datetime
 import os
 import json
 import urllib.request
+import yaml
 from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Any
@@ -16,6 +17,7 @@ from services.llm_config import llm_api_enabled, ollama_base_url
 logger = get_logger("standard_rag_agent")
 ROOT = Path(__file__).resolve().parents[2]
 S101_DCEG_CHUNKS_PATH = ROOT / "outputs" / "rag" / "s101_dceg_chunks.jsonl"
+MARINE_TERM_DICTIONARY_PATH = ROOT / "outputs" / "dictionaries" / "marine_term_dictionary.yaml"
 S101_FEATURE_QUERY_ALIASES = {
     "AnchorageArea": ["정박지", "정박구역", "투묘지", "anchorage"],
 }
@@ -45,6 +47,62 @@ def _build_document_outputs(retrieved_docs):
             relevance_score=float(doc.get("similarity") or doc.get("score") or 0.0),
         ))
     return docs
+
+
+@lru_cache(maxsize=1)
+def _load_marine_terms() -> dict[str, dict[str, Any]]:
+    if not MARINE_TERM_DICTIONARY_PATH.exists():
+        return {}
+    try:
+        data = yaml.safe_load(MARINE_TERM_DICTIONARY_PATH.read_text(encoding="utf-8")) or {}
+    except Exception as exc:
+        logger.warning("Failed to load marine term dictionary", error=str(exc))
+        return {}
+    terms = data.get("terms", data) if isinstance(data, dict) else {}
+    return {str(key): value for key, value in terms.items() if isinstance(value, dict)}
+
+
+def _exact_marine_term_docs(search_query: str) -> list[dict[str, Any]]:
+    compact_query = "".join(str(search_query or "").split()).rstrip("?")
+    for suffix in ("이란", "란", "의뜻", "뜻", "의미", "정의"):
+        if compact_query.endswith(suffix):
+            compact_query = compact_query[:-len(suffix)]
+            break
+    if not compact_query:
+        return []
+
+    for key, item in _load_marine_terms().items():
+        canonical = str(item.get("canonical_term") or key).strip()
+        aliases = [str(alias).strip() for alias in item.get("aliases") or []]
+        candidates = {"".join(value.split()).lower() for value in [key, canonical, *aliases] if value}
+        if compact_query.lower() not in candidates:
+            continue
+        definitions = [str(value).strip() for value in item.get("definitions") or [] if str(value).strip()]
+        if not definitions:
+            return []
+        definition = definitions[0]
+        provenance = item.get("provenance") or {}
+        source_path = provenance.get("source_path") or "Dataset/용어사전.xls"
+        return [{
+            "doc_id": f"marine_term:{canonical}",
+            "chunk_id": f"marine_term:{canonical}",
+            "title": "해양수산 용어사전",
+            "version": "local",
+            "content": definition,
+            "section": f"용어:{canonical}",
+            "page": "N/A",
+            "source": source_path,
+            "source_id": f"marine_term:{canonical}",
+            "similarity": 1.0,
+            "metadata": {
+                "document_type": "marine_term_dictionary",
+                "source_file": source_path,
+                "canonical_term": canonical,
+                "aliases": aliases,
+                "retrieval_method": "exact_marine_term_lookup",
+            },
+        }]
+    return []
 
 
 @lru_cache(maxsize=1)
@@ -477,6 +535,30 @@ async def execute_rag_search(request: AgentRequest) -> AgentResult:
         
     # 2. Vector DB 검색 수행 (실제 DB 연동 코드 호출, 없으면 내부 Fallback)
     graph_context = getattr(request, "graph_context", None) or request.previous_agent_outputs.get("graph_context", {})
+    exact_term_docs = _exact_marine_term_docs(request.original_query)
+    if exact_term_docs:
+        canonical = str((exact_term_docs[0].get("metadata") or {}).get("canonical_term") or "해양 용어")
+        summary = f"{canonical}란 {exact_term_docs[0]['content']}"
+        graph_result = {
+            "graph_supported": True,
+            "graph_paths": [],
+            "provenance": {
+                "method": "exact_marine_term_lookup",
+                "query": request.original_query,
+                "candidate_document_ids": [exact_term_docs[0]["doc_id"]],
+                "evidence_candidate_counts": {},
+            },
+            "rag_filters": {"document_type": "marine_term_dictionary"},
+            "evidence_candidates": {},
+        }
+        return _build_fast_rag_result(
+            request=request,
+            retrieved_docs=exact_term_docs,
+            evidences=[f"[해양수산 용어사전 - {canonical}] {exact_term_docs[0]['content']}"],
+            graph_result=graph_result,
+            summary=summary,
+            llm_mode="exact_marine_term_lookup",
+        )
     exact_docs = _exact_s101_feature_docs(search_query)
     if exact_docs:
         graph_result = {

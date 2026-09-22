@@ -1,0 +1,10 @@
+version: "1.0"
+protected_sources:
+  - tests/benchmark/benchmark_cases_v1.jsonl
+  - tests/benchmark/geollm_ui_preset_cases_v1.jsonl
+rules:
+  expansion_input_forbidden: true
+  exact_duplicate_forbidden: true
+  near_duplicate_threshold: 0.92
+  seed_family_cross_split_forbidden: true
+  conversation_family_cross_split_forbidden: true

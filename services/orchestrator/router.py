@@ -812,6 +812,17 @@ def create_task(req: TaskCreateRequest, background_tasks: BackgroundTasks):
 async def stream_task(req: TaskCreateRequest):
     """실시간 SSE 스트리밍 엔드포인트"""
     task_id = req.task_id if req.task_id else str(uuid.uuid4())
+    if req.task_id and req.task_id in TASK_STORE:
+        previous = TASK_STORE.get(req.task_id, {})
+        previous_status = str(previous.get("status") or "")
+        resumable_statuses = {
+            AgentStatus.NEEDS_CLARIFICATION.value,
+            AgentStatus.WAITING_FOR_REVIEW.value,
+        }
+        if previous_status not in resumable_statuses:
+            # Completed/blocked/failed tasks are immutable executions. Even an
+            # older UI must not attach a new query to their checkpoints.
+            task_id = str(uuid.uuid4())
     req.task_id = task_id
     req.organization_id = req.organization_id or "default_org"
     req.user_id = req.user_id or "default_user"

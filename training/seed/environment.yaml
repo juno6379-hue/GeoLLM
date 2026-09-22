@@ -1,0 +1,5 @@
+domain: environment
+cases:
+  - {case_id: MGEO-SEED-ENV-001, query: "인천 주변 해양보호구역을 찾아줘", review_status: REVIEW_REQUIRED}
+  - {case_id: MGEO-SEED-ENV-002, query: "부산항 주변 와류 위험 구역을 찾아줘", review_status: REVIEW_REQUIRED}
+  - {case_id: MGEO-SEED-ENV-003, query: "해양보호구역이란 무엇인가?", review_status: REVIEW_REQUIRED}

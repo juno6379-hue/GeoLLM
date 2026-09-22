@@ -1,0 +1,5 @@
+domain: accident
+cases:
+  - {case_id: MGEO-SEED-ACC-001, query: "최근 사고가 있었던 위험객체를 찾아줘", review_status: REVIEW_REQUIRED}
+  - {case_id: MGEO-SEED-ACC-002, query: "부산항 사고 이력과 S-101 객체 관계를 보여줘", review_status: REVIEW_REQUIRED}
+  - {case_id: MGEO-SEED-ACC-003, query: "인천항 주변 해양사고를 기간별로 분석해줘", review_status: REVIEW_REQUIRED}

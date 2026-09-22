@@ -1,0 +1,20 @@
+{
+  "seed_count": 30,
+  "approved_seed_count": 3,
+  "candidate_count": 18,
+  "validated_candidate_count": 18,
+  "validation_errors": [],
+  "leakage_issues": [],
+  "views_generated": true,
+  "registry_snapshot": {
+    "agent_registry": "unversioned",
+    "capability_registry": "0.1",
+    "tool_registry": "2.0",
+    "data_registry": "2.0",
+    "spatial_layer_registry": "2.0",
+    "query_template_registry": "2.0",
+    "derived_concept_registry": "2.0",
+    "ontology_registry": "0.1",
+    "snapshot_hash": "sha256:3d03472053b609ecab98bf56a1bc2722d7bbd3e4aa808d7f8b05595beb62d9e8"
+  }
+}

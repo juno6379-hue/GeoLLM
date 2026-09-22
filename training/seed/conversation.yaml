@@ -1,0 +1,3 @@
+domain: conversation
+cases:
+  - {case_id: MGEO-SEED-CON-001, query: "5km로 넓혀줘", review_status: REVIEW_REQUIRED}

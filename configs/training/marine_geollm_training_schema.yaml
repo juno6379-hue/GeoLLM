@@ -1,0 +1,43 @@
+dataset:
+  name: marine_geollm_training
+  version: "1.0.0"
+  canonical_model: training.models.TrainingCase
+  json_schema: training/schemas/training_case.schema.json
+  encoding: UTF-8
+  languages: [ko, en, mixed]
+  splits: [seed, train, validation, test, benchmark]
+  origins: [human_seed, synthetic_from_seed, production_log_reviewed, adversarial, regression]
+  review_statuses: [CANDIDATE, REVIEW_REQUIRED, APPROVED, REJECTED]
+
+contracts:
+  missing_required_slot_implies_execution_ready_false: true
+  synthetic_case_requires_parent_seed_id: true
+  dynamic_reference_answer_requires_frozen_fixture: true
+  execution_ready_requires_registered_tool: true
+  candidate_auto_approval_forbidden: true
+  holdout_reuse_forbidden: true
+
+training_views:
+  component_teacher_forcing:
+    purpose: component isolation; gold intermediate labels are inputs
+  end_to_end:
+    purpose: production-shaped evaluation; raw input only
+  fastpath_router:
+    input: [input.user_query, input.conversation_context]
+    target: [expected_routing.fast_path, expected_routing.required_capabilities]
+  capability_retriever:
+    input: [input.user_query]
+    target: [expected_routing.required_capabilities]
+    negatives: [negative_constraints.forbidden_capabilities]
+  slot_extractor:
+    input: [input.user_query, input.conversation_context]
+    target: [expected_slots]
+  planner:
+    input: [query_execution_context]
+    target: [resolver_chain, agent_chain, tool_chain, query_template]
+  execution_validator:
+    input: [expected_slots, expected_routing, expected_data_bindings]
+    target: [expected_execution]
+  response_generator:
+    input: [query, resolved_context, route_plan, execution_result, evidence_bundle, answer_policy]
+    target: [expected_answer]
