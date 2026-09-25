@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.metadata
+import json
 import os
 import re
 import threading
@@ -20,9 +21,9 @@ _LOCK = threading.Lock()
 
 @lru_cache(maxsize=1)
 def registry_words() -> tuple[tuple[str, ...], str]:
-    path = ROOT / 'data/marine_term_dictionary.yaml'
-    raw = path.read_bytes()
-    entries = yaml.safe_load(raw).get('terms', {})
+    from services.orchestrator.marine_lexicon import load_terms
+    entries,sources=load_terms()
+    raw=json.dumps(sources,ensure_ascii=False,sort_keys=True).encode('utf-8')
     words = set(entries)
     for entry in entries.values():
         words.update(x for x in entry.get('aliases', []) if isinstance(x, str))

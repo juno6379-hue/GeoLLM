@@ -1,6 +1,8 @@
 """Live SSE contracts for grounded slots -> ontology/KG -> tool bindings."""
 import argparse
 import json
+import time
+import urllib.request
 from pathlib import Path
 from scripts.check_geollm_web_samples import observe
 
@@ -13,6 +15,7 @@ CASES = [
     ('executed_radius', '부산항 반경1해리 이내 침선을 찾아줘'),
     ('duration', '부산항 최근 12개월 AIS 통항량을 구역별로 요약해줘'),
     ('positive_accident', '기관손상 사고 이력을 찾아줘'),
+    ('anchorage_binding', '정박지는 S-101에서 어떤 Feature야?'),
 ]
 
 
@@ -23,6 +26,16 @@ def main():
     if args.output.exists():
         raise ValueError('Use a new run file')
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    for attempt in range(30):
+        try:
+            with urllib.request.urlopen('http://localhost:8000/health',timeout=2) as response:
+                if response.status==200:
+                    break
+        except OSError:
+            pass
+        time.sleep(1)
+    else:
+        raise RuntimeError('API readiness failed; no query cases were evaluated')
     passed = 0
     for case, query in CASES:
         row = observe('http://localhost:8000', case, query)
@@ -56,6 +69,9 @@ def main():
                   and bool(binding.get('kg_relations')) and any(t.get('bound_inputs', {}).get('radius_m', {}).get('evidence', {}).get('normalized_value') == 1852 for t in tools))
         elif case == 'duration':
             ok = any(s.get('normalized_value') == 'P12M' for s in analysis.get('slots', [])) and final.get('error_code') == 'TRAFFIC_PERIOD_NOT_COVERED'
+        elif case == 'anchorage_binding':
+            ok = ('AnchorageArea' in binding.get('target_features',[]) and
+                  any(t.get('registry_ref','').endswith('s101_features/정박지') for t in binding.get('term_bindings',[])))
         elif case == 'executed_radius':
             structured = final.get('structured_result') or {}
             ok = (final.get('status') == 'COMPLETED' and structured.get('distance_m') == 1852

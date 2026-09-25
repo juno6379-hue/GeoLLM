@@ -1,0 +1,14 @@
+{
+  "status": "AI_REVIEW_REQUIRED",
+  "source_id": "mof_standard_terms_3",
+  "page_1based": 1,
+  "relation": "recommended_korean_label",
+  "execution_authorized": false,
+  "pairs": [
+    {"original":"잠제","preferred":"수중 방파제"},
+    {"original":"물양장","preferred":"소형선 부두"},
+    {"original":"예선","preferred":"끌배"},
+    {"original":"선유장","preferred":"소형선 정박장"}
+  ],
+  "limitations": ["Review seeds from the official brochure, not approved query rewrites.","A recommended label is not automatically owl:sameAs or an S-101 Feature mapping."]
+}

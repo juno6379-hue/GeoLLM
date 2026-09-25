@@ -22,7 +22,8 @@ ROOT = Path(__file__).resolve().parents[2]
 def _indexes():
     from services.orchestrator.graph_rag_retriever import _load_graph
     from services.orchestrator.kg_ontology_validator import _status
-    terms = yaml.safe_load((ROOT/'data/marine_term_dictionary.yaml').read_text(encoding='utf-8'))['terms']
+    from services.orchestrator.marine_lexicon import load_terms
+    terms, term_sources = load_terms()
     contract = yaml.safe_load((ROOT/'data/kg_ontology_contract.yaml').read_text(encoding='utf-8'))
     nodes, edges = _load_graph()
     by_name, outgoing = defaultdict(list), defaultdict(list)
@@ -54,7 +55,7 @@ def _indexes():
             patterns.append((re.compile(r'(?<![가-힣A-Za-z0-9_])'+re.escape(alias)+suffix, re.I), label, entry))
     # Hash the loaded objects, not files that may have changed after _load_graph cached them.
     versions = {name: hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
-                for name, value in {'terms': terms, 'ontology': contract, 'kg_nodes': nodes, 'kg_edges': edges}.items()}
+                for name, value in {'terms': term_sources, 'ontology': contract, 'kg_nodes': nodes, 'kg_edges': edges}.items()}
     return patterns, by_name, outgoing, contract.get('contract_id'), versions
 
 
@@ -68,7 +69,10 @@ def bind_semantic_slots(query: str, analysis: dict, capabilities: list[dict]) ->
                            and c['span'][0] <= match.start() < c['span'][1] for c in analysis.get('constraints', []))
             canonical = entry.get('canonical_id')
             terms.append({'raw_text': match[0], 'span': list(match.span()), 'canonical_id': canonical,
-                          'excluded': excluded, 'registry_ref': f'data/marine_term_dictionary.yaml#terms/{label}'})
+                          'excluded': excluded, 'registry_ref': entry['registry_ref'],
+                          'feature_candidates':entry.get('maps_to_features',[]),
+                          'attribute_filters':entry.get('attribute_filters',{}),
+                          'attribute_filter_execution_status':'RUNTIME_VALIDATION_REQUIRED' if entry.get('attribute_filters') else 'NOT_APPLICABLE'})
             if excluded:
                 continue
             values = [canonical, *entry.get('maps_to_concepts', []), *entry.get('maps_to_features', [])]

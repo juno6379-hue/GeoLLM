@@ -28,6 +28,6 @@ docker exec -e PYTHONPATH=/app geollm_backend python scripts/export_korean_revie
 
 현재 평가기는 작업의 허용 기능 조합 포함률, raw 슬롯 일치, 추가 질문, 금지 기능 제안률을 계산한다. 검수된 명확한 intent 라벨의 accuracy/macro-F1, 허용 대안 조합을 고려한 tool-plan F1, raw 슬롯 종류·값 F1 및 clarification F1도 지원한다. 모호한 intent는 단일 intent 지표의 분모와 구분한다. 정규화/원문 span 슬롯 F1, 작업 의존관계의 실제 충족, 실제 도구 실행 완료율, bootstrap 신뢰구간과 calibration 학습은 별도 구현·검증 대상이다. 실패 응답을 분모에서 제거하지 않는다. 이 shadow 실험은 도구를 실행하지 않으므로 실행 완료율을 모델 제안으로 대체하지 않는다.
 
-근거 선정은 [해양 정답 기준](maritime_evaluation_reference_standard.md)을 따른다. 검수 양식의 `reference_bindings`에는 출처 ID·판·locator·hash·최소 주장·적용 조건을 기입한다. 공식 위키는 해당 분야 사전 근거로, 일반 위키는 별칭·질문 다양화·원문 탐색에 활용한다. 새 양식의 참조 필드는 수집 단계이며 평가기가 출처의 진위·적합성을 자동 검증하는 기능은 아직 없다.
+근거 선정은 [해양 정답 기준](maritime_evaluation_reference_standard.md)을 따른다. 검수 양식의 `reference_bindings`에는 출처 ID·판·locator·hash·최소 주장·적용 조건을 기입한다. 공식 위키는 해당 분야 사전 근거로, 일반 위키는 별칭·질문 다양화·원문 탐색에 활용한다. CLI의 `--gold` 평가는 `--reference-index <units.jsonl>`을 필수로 요구하며 색인 hash, 원문 인용, 판, 검수 상태를 검사한다. 이는 출처의 진위나 의미적 적합성에 대한 전문가 검수를 대신하지 않는다. 자동 검색된 `reference_candidates`는 승인된 gold가 아니며, 혼합 평가는 현재 후보 순위만 비교하므로 혼합 슬롯·실행 계획 점수는 null로 남긴다.
 
 QLoRA는 독립 검수 데이터·holdout, 반복 오류, 자원·라이선스·배포·rollback 조건이 모두 충족될 때만 별도 실험한다. 현재 결정은 DEFER다.

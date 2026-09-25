@@ -1,5 +1,14 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-09-26 해양 근거 색인·공통 정규화 사전·혼합 평가 연결
+
+- [후속 보고서](reference_linkage_and_mixed_evaluation_20260926.md): MOF 원문 12개 및 S-101 FC/DCEG의 6,090개 근거 단위에 원천·텍스트 hash와 페이지/문단/코드 locator를 부여했다. fonttools 평가용 설치로 PDF 경고 340개 단위를 해소했으며 빈 텍스트 22개·제어문자 4개와 판 보류 50쪽을 구분한다.
+- query 원문을 유지하며 Kiwi와 semantic binding의 기존 해양/S-101 사전을 통합했다. 정박지→AnchorageArea→기존 KG seed 누락을 실제 API에서 수정 확인했다. 후보 다중성·제외 조건·미존재 Feature 필터는 유지한다.
+- MOF 순화어 4개는 원문 구간과 연결된 AI_REVIEW_REQUIRED 후보다. 새 전체 ontology 구축이나 운영 query 자동 치환 완료가 아니다. 검수 양식 100개 중 18개에 근거 후보를 연결했고 gold 참조의 hash/locator/인용/판/검수 상태를 검사하도록 했다.
+- 기존 1.5B/4B 동일 10문항 응답을 규칙/Qwen/혼합으로 재평가했다. 입력·문항·prompt·추론 설정 일치를 강제하며 실패를 제외하지 않는다. 독립 human gold와 calibration이 없어 의미 accuracy/F1은 null, 혼합 슬롯/계획 점수도 아직 null이다. 신규 Qwen 호출은 없었다.
+- 최종 근거·혼합·사전 단위 테스트 22개와 별도 Kiwi 활성 테스트 1개가 통과했다. API 최초 readiness 실패 0/8을 보존하고 대기 기능을 추가했다. 준비 완료 뒤 실제 API 최종 9/9 통과(침선 실제 도구 실행 및 부정 사례 포함).
+- 다음: 현행 법령/지침 최종본 검증 → MOF 용어·관계 검수와 승인된 정규화 반영 → 독립 gold → Qwen 원문 선택·지연 개선 후 동일 후보 실험 확대. P0 portrayal/복합 작업·부정 조건 실행 및 QLoRA 조건부 보류는 유지한다.
+
 ## 2026-09-26 GitHub push 및 해양수산부 공식 원문 확보
 
 - 사용자 요청으로 기존 커밋을 `origin/main`에 push하고 원격 `453b58a`를 확인했다. 후속 자료 수집 코드·목록·문서는 별도 커밋으로 push한다.
