@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Dict, Any
 
 from shared.schemas.agent import AgentRequest, AgentResult, AgentStatus
-from services.standard_rag_agent.vdb import search_vdb
+from services.standard_rag_agent.vdb import search_vdb, RetrievalUnavailable
 from services.orchestrator.graph_rag_retriever import GraphRAGRetriever
 from services.orchestrator.evidence_builder import build_evidence_bundle
 from shared.observability.logger import get_logger
@@ -527,12 +527,12 @@ async def execute_rag_search(request: AgentRequest) -> AgentResult:
     사용자 질의를 기반으로 Vector DB를 검색하고 근거(Evidence)로 추가합니다.
     """
     logger.info("Starting RAG search", task_id=request.task_id)
-    
+
     # 1. 쿼리 추출 (명시적 Intent 객체가 있으면 사용, 없으면 원본 쿼리 사용)
     search_query = request.original_query
     if request.parsed_intent and request.parsed_intent.target_objects:
         search_query += " " + " ".join(request.parsed_intent.target_objects)
-        
+
     # 2. Vector DB 검색 수행 (실제 DB 연동 코드 호출, 없으면 내부 Fallback)
     graph_context = getattr(request, "graph_context", None) or request.previous_agent_outputs.get("graph_context", {})
     exact_term_docs = _exact_marine_term_docs(request.original_query)
@@ -586,20 +586,28 @@ async def execute_rag_search(request: AgentRequest) -> AgentResult:
 
     graph_result = GraphRAGRetriever().retrieve(search_query, graph_context)
     clearance_level = request.security_context.clearance_level if request.security_context else "PUBLIC"
-    retrieved_docs = search_vdb(
-        query=search_query, 
-        top_k=2,
-        user_id=request.user_id,
-        clearance_level=clearance_level,
-        rag_filters=graph_result["rag_filters"]
-    )
-    
+    try:
+        retrieved_docs = search_vdb(
+            query=search_query,
+            top_k=2,
+            user_id=request.user_id,
+            clearance_level=clearance_level,
+            rag_filters=graph_result["rag_filters"]
+        )
+    except RetrievalUnavailable as exc:
+        return AgentResult(task_id=request.task_id, trace_id=request.trace_id,
+                           agent_name="standard-rag-agent", agent_version="2.0.0-structured",
+                           status=AgentStatus.BLOCKED, summary=str(exc), answer_text=str(exc),
+                           structured_result={"error_code": "RAG_SOURCE_UNAVAILABLE", "data_available": False},
+                           warnings=[str(exc)])
+
+
     # 3. Evidence 및 Provenance 구성 (Raw Text)
     evidences = []
     for doc in retrieved_docs:
         evidence_text = f"[{doc['title']} v{doc['version']} - {doc['section']}] {doc['content']}"
         evidences.append(evidence_text)
-        
+
     structured_result: Dict[str, Any] = {
         "retrieved_count": len(retrieved_docs),
         "rag_results": retrieved_docs,
@@ -610,7 +618,7 @@ async def execute_rag_search(request: AgentRequest) -> AgentResult:
         "rag_filters": graph_result["rag_filters"]
     }
     summary = "관련된 표준/법령 문서를 찾지 못했습니다."
-    
+
     if retrieved_docs:
         if os.environ.get("RAG_SUMMARY_MODE", "deterministic").lower() == "deterministic":
             summary = _deterministic_rag_summary(search_query, retrieved_docs)
@@ -739,14 +747,14 @@ async def execute_rag_search(request: AgentRequest) -> AgentResult:
         from langchain_openai import ChatOpenAI
         from langchain_core.messages import SystemMessage, HumanMessage
         from services.standard_rag_agent.schemas import RagAgentResponse, StandardDocumentOutput
-        
+
         sys_msg = """당신은 해양 표준 및 법령 전문 RAG 에이전트입니다.
-사용자의 질의와 아래 제공된 검색 문서(Context)들을 분석하여, 법령 적용 조건 설명과 함께 
+사용자의 질의와 아래 제공된 검색 문서(Context)들을 분석하여, 법령 적용 조건 설명과 함께
 반드시 지정된 Pydantic JSON 규격(document_id, title, version, section, page, source, excerpt_reference, retrieved_at, relevance_score)으로 출력하세요.
 """
         context_str = "\n---\n".join(evidences)
         user_msg = f"질의: {search_query}\n검색 문서:\n{context_str}"
-        
+
         try:
             if not llm_api_enabled():
                 raise ValueError("No API Key")
@@ -761,29 +769,16 @@ async def execute_rag_search(request: AgentRequest) -> AgentResult:
             structured_result["retrieved_count"] = len(retrieved_docs)
             summary = llm_result.summary
         except Exception as e:
-            logger.warning("LLM extraction failed (e.g. Quota Exceeded), using Hardcoded Fallback Mock", error=str(e))
-            # Fallback (OpenAI 크레딧 초과 시에도 정상 포맷 반환)
-            mock_docs = []
-            for doc in retrieved_docs:
-                mock_docs.append(StandardDocumentOutput(
-                    document_id=doc.get("doc_id", "N/A"),
-                    title=doc.get("title", "N/A"),
-                    version=doc.get("version", "N/A"),
-                    section=doc.get("section", "N/A"),
-                    page=doc.get("page", "N/A"),
-                    source=doc.get("source", "N/A"),
-                    excerpt_reference=doc.get("content", "N/A"),
-                    retrieved_at=datetime.utcnow().isoformat() + "Z",
-                    relevance_score=0.95
-                ))
+            logger.warning("LLM summary unavailable; returning retrieved source excerpts", error=str(e))
             fallback_res = RagAgentResponse(
-                documents=mock_docs,
-                summary=f"검색된 {len(mock_docs)}개의 법령/표준 문서에 기반하여 사용자 질문과 일치하는 규정을 확인했습니다. (LLM 크레딧 초과로 인한 텍스트 요약 Fallback 동작중)"
+                documents=_build_document_outputs(retrieved_docs),
+                summary=f"검색된 문서 {len(retrieved_docs)}건의 원문 발췌를 제공합니다. 자동 요약에 실패하여 질의에 대한 규정 적용 여부는 확정하지 않았습니다."
             )
             structured_result = fallback_res.model_dump()
             structured_result["retrieved_count"] = len(retrieved_docs)
+            structured_result["summary_status"] = "SOURCE_EXCERPTS_ONLY"
             summary = fallback_res.summary
-            
+
     structured_result["rag_results"] = retrieved_docs
     structured_result["citations"] = [
         {"document_id": doc.get("doc_id", doc.get("document_id", "N/A")),

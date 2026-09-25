@@ -16,7 +16,9 @@ def parse_las_header(file_path: str) -> dict:
             header = fh.header
             
             metadata = {
-                "point_count": header.point_count,
+                "point_count": int(header.point_count),
+                "has_rgb": all(name in header.point_format.dimension_names for name in ("red", "green", "blue")),
+                "has_intensity": "intensity" in header.point_format.dimension_names,
                 "point_format": header.point_format.id,
                 "min_x": header.x_min,
                 "max_x": header.x_max,
@@ -44,7 +46,10 @@ def parse_las_header(file_path: str) -> dict:
             dx = metadata["max_x"] - metadata["min_x"]
             dy = metadata["max_y"] - metadata["min_y"]
             area = dx * dy
-            metadata["average_density"] = metadata["point_count"] / area if area > 0 else 0
+            crs = header.parse_crs()
+            metadata["crs"] = crs.to_string() if crs else None
+            metric_crs = crs is not None and crs.is_projected and all(axis.unit_name == "metre" for axis in crs.axis_info[:2])
+            metadata["average_density"] = metadata["point_count"] / area if metric_crs and area > 0 else None
             
             return metadata
             
@@ -63,12 +68,9 @@ def process_ingestion(file_path: str, user_metadata: dict = None) -> dict:
     extracted_metadata = {}
     if ext in ['.las', '.laz']:
         extracted_metadata = parse_las_header(file_path)
-        extracted_metadata["has_rgb"] = True # Need to check point format in detail, simplified here
-        extracted_metadata["has_intensity"] = True
-    elif ext in ['.tif', '.tiff', '.png', '.jpg']:
-        # Raster header extraction logic (e.g. rasterio) would go here
-        pass
-        
+    else:
+        raise ValueError("Only LAS/LAZ ingestion is implemented")
+
     # Generate Dataset ID
     now = datetime.now()
     unique_short_id = str(uuid.uuid4().hex)[:6].upper()

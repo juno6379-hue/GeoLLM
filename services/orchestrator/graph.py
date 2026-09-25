@@ -203,27 +203,6 @@ REQUESTED_SPATIAL_LAYER_TARGETS = {
         "terms": ["\ubc14\ub2e4\uac08\ub77c\uc9d0", "\ubc14\ub2f7\uae38", "sea parting"],
     },
 }
-SEA_PARTING_QUERY_ANCHORS = {
-    "\ub3d9\uc12c": "POINT(126.9360 33.4590)",
-    "\ubb34\ucc3d\ud3ec": "POINT(126.5350 36.2440)",
-    "\uc11c\uac74\ub3c4": "POINT(126.5080 33.2290)",
-    "\uc18c\uc57c\ub3c4": "POINT(126.1780 37.2290)",
-    "\uc2e4\ubbf8\ub3c4": "POINT(126.4030 37.4040)",
-    "\uc6b0\ub3c4": "POINT(126.9540 33.5050)",
-    "\uc6c5\ub3c4": "POINT(126.3520 36.8760)",
-    "\uc81c\ubd80\ub3c4": "POINT(126.6220 37.1700)",
-    "\uc9c4\ub3c4": "POINT(126.3230 34.4350)",
-    "\ud558\uc12c": "POINT(126.4690 35.6120)",
-}
-KNOWN_MARINE_PLACE_WKT = {
-    "부산항 입구": "POINT(129.075 35.075)",
-    "부산항": "POINT(129.075 35.075)",
-    "busan port entrance": "POINT(129.075 35.075)",
-    "busan port": "POINT(129.075 35.075)",
-    "인천항": "POINT(126.592 37.456)",
-    "인천": "POINT(126.592 37.456)",
-}
-
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 ROOT_DIR = Path(__file__).resolve().parents[2]
 S101_DCEG_CHUNKS_PATH = ROOT_DIR / "outputs" / "rag" / "s101_dceg_chunks.jsonl"
@@ -1051,18 +1030,6 @@ def _looks_like_exact_marine_term(query: str) -> bool:
     return bool(text and "".join(text.split()).lower() in _marine_term_names())
 
 
-def _looks_like_definition_question(query: str) -> bool:
-    text = str(query or "").strip()
-    lowered = text.lower()
-    if not text:
-        return False
-    if _looks_like_exact_marine_term(text):
-        return True
-    if any(term in lowered or term in text for term in ["definition", "meaning", "what is", "뜻", "의미", "무엇", "뭐야", "뭔가", "개념"]):
-        return True
-    return re.search(r"(?<![가-힣A-Za-z0-9])?[가-힣A-Za-z0-9·\-/ ]+(?:이란|란)\??$", text) is not None
-
-
 def _has_operational_query_slots(query: str) -> bool:
     text = str(query or "").strip()
     lowered = text.lower()
@@ -1087,13 +1054,13 @@ def _definition_suffix_term(query: str) -> str | None:
     if not match:
         return None
     candidate = match.group(1).strip()
-    return candidate if _looks_like_exact_marine_term(candidate) else None
+    return candidate if len(candidate) > 1 and _looks_like_exact_marine_term(candidate) else None
 
 
 # Final combined definition classifier: morphology + dictionary authority +
 # absence of temporal, spatial, numeric, or executable-analysis slots.
 def _looks_like_definition_question(query: str) -> bool:
-    return is_definition_query(query)
+    return is_definition_query(query) or (not _has_operational_query_slots(query) and _definition_suffix_term(query) is not None)
 
 
 def _looks_like_legal_rag_query(query: str) -> bool:
@@ -1234,41 +1201,12 @@ def _legal_query_with_spatial_context(state: OrchestratorState, query: str) -> t
 
 
 def _nearest_port_from_map_context(spatial: dict) -> tuple[str | None, str | None, float | None]:
-    """Resolve the nearest curated port from the current map centre or request point."""
-    import math
-
-    lon = lat = None
-    bounds = spatial.get("map_bounds") or spatial.get("bbox") or spatial.get("bounds")
-    if isinstance(bounds, (list, tuple)) and len(bounds) == 4:
-        try:
-            lon = (float(bounds[0]) + float(bounds[2])) / 2.0
-            lat = (float(bounds[1]) + float(bounds[3])) / 2.0
-        except (TypeError, ValueError):
-            lon = lat = None
-    if lon is None:
-        match = re.search(r"POINT\s*\(\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*\)", str(spatial.get("geometry") or ""), re.I)
-        if match:
-            lon, lat = float(match.group(1)), float(match.group(2))
-    if lon is None or lat is None:
+    from services.orchestrator.port_context import resolve_port_context, PortContextError
+    try:
+        result = resolve_port_context("", spatial)
+        return result["port"], result["port_geometry"], result["distance_m"]
+    except PortContextError:
         return None, None, None
-
-    registry = _load_yaml_registry("place_geometry_registry.yaml")
-    candidates = []
-    for entry in (registry.get("entries") or {}).values():
-        if not isinstance(entry, dict) or entry.get("place_type") != "port":
-            continue
-        match = re.search(r"POINT\s*\(\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*\)", str(entry.get("geometry") or ""), re.I)
-        if not match:
-            continue
-        port_lon, port_lat = float(match.group(1)), float(match.group(2))
-        mean_lat = math.radians((lat + port_lat) / 2.0)
-        dx = (port_lon - lon) * 111320.0 * math.cos(mean_lat)
-        dy = (port_lat - lat) * 110540.0
-        candidates.append((math.hypot(dx, dy), str(entry.get("label") or ""), str(entry.get("geometry") or "")))
-    if not candidates:
-        return None, None, None
-    distance_m, label, geometry = min(candidates, key=lambda item: item[0])
-    return label or None, geometry or None, round(distance_m, 1)
 
 
 def _legal_notice_documents_for_query(query: str, limit: int = 5) -> list[dict]:
@@ -2568,6 +2506,8 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
     
     # 0. Fast deterministic intent gates. These avoid expensive semantic-cache
     # lookups for well-scoped external-data and document/RAG queries.
+    fast_definition = is_definition_query(original_query) and bool(resolve_definition(original_query))
+    fast_navigation_risk = _looks_like_navigation_risk_analysis(original_query) and not fast_definition
     fast_external_tide = _looks_like_external_tide_query(original_query)
     fast_external_weather = _looks_like_external_weather_query(original_query)
     fast_standard_rag = _looks_like_standard_rag_query(original_query)
@@ -2601,8 +2541,20 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         or _looks_like_eddy_hazard_query(combined_fast_query)
         or _looks_like_island_query(combined_fast_query)
     )
-    cached_intent = None if (fast_external_tide or fast_external_weather or fast_standard_rag or fast_dataset_evidence or fast_legal_or_no_evidence_rag or fast_time_series or fast_spatial_or_traffic or fast_known_place) else cache.check_cache(query)
-    if fast_external_tide:
+    cached_intent = None if (fast_definition or fast_navigation_risk or fast_external_tide or fast_external_weather or fast_standard_rag or fast_dataset_evidence or fast_legal_or_no_evidence_rag or fast_time_series or fast_spatial_or_traffic or fast_known_place) else cache.check_cache(query)
+    if fast_definition:
+        intent_type = "DEFINITION"
+        target_objects = [resolve_definition(original_query)["canonical_term"]]
+        output_format = "SUMMARY"
+        intent_understanding = "등록된 출처에서 용어 정의를 조회합니다."
+        execution_plan = "정의 registry와 원문 출처를 확인하여 정의를 반환합니다."
+    elif fast_navigation_risk:
+        intent_type = "ANALYSIS"
+        target_objects = ["navigation_risk_explanation"]
+        output_format = "SUMMARY"
+        intent_understanding = "위치 문맥과 실제 통항자료·고시 근거로 위험 요인을 분석합니다."
+        execution_plan = "분석 범위 확인 → 근거 조회 → 누락 근거와 분석 한계를 함께 반환합니다."
+    elif fast_external_tide:
         intent_type = "DATA_DISCOVERY"
         target_objects = [term for term in ["대조기", "조석", "조위", "물때", "tide"] if term in original_query or term in query.lower()]
         if not target_objects:
@@ -3056,47 +3008,10 @@ def _quality_metrics_from_state(
         result = dict(quality)
         result.setdefault("fast_path", fast_path)
         return result
-    if exact:
-        return {
-            "intent_similarity": 1.0,
-            "kg_similarity": 1.0,
-            "evidence_similarity": 1.0,
-            "evidence_average_similarity": 1.0,
-            "estimated_accuracy": 1.0,
-            "confidence_band": "high",
-            "method": "deterministic_exact_route_match",
-            "fast_path": fast_path,
-            "notes": ["Exact fast-path route. Ground-truth accuracy still requires review feedback."],
-        }
-    if blocked_no_evidence:
-        return {
-            "intent_similarity": 1.0,
-            "kg_similarity": 0.8,
-            "evidence_similarity": 0.8,
-            "evidence_average_similarity": 0.8,
-            "estimated_accuracy": 0.82,
-            "confidence_band": "high",
-            "method": "deterministic_authoritative_no_evidence_gate",
-            "fast_path": fast_path,
-            "notes": [
-                "Authoritative local registries and evidence stores were checked.",
-                "No-evidence is a supported terminal result, not a missing quality signal.",
-            ],
-        }
-    return {
-        "intent_similarity": 0.65,
-        "kg_similarity": 0.55,
-        "evidence_similarity": 0.55,
-        "evidence_average_similarity": 0.55,
-        "estimated_accuracy": 0.58,
-        "confidence_band": "medium",
-        "method": "deterministic_fast_path_default_quality_v1",
-        "fast_path": fast_path,
-        "notes": [
-            "Deterministic fast path supplied default quality metrics.",
-            "This is an estimated routing/evidence signal, not labelled ground-truth accuracy.",
-        ],
-    }
+    from services.orchestrator.quality import unmeasured_quality
+    return unmeasured_quality(method="source_lookup", exact_registry_match=exact,
+                              no_evidence=blocked_no_evidence, fast_path=fast_path)
+
 
 def _record_query_quality_issues(state: OrchestratorState, final_dict: dict) -> None:
     if not isinstance(final_dict, dict):
@@ -3172,47 +3087,19 @@ def _record_query_quality_issues(state: OrchestratorState, final_dict: dict) -> 
 
 async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorState:
     """Return authoritative local catalogue answers without vector/LLM orchestration."""
+    if _looks_like_navigation_risk_analysis(state.get("query") or ""):
+        from services.orchestrator.navigation_risk import navigation_risk_analysis_node
+        return await navigation_risk_analysis_node(state)
     raw_query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
     navigation_risk_analysis = _looks_like_navigation_risk_analysis(raw_query)
     query, resolved_location = _legal_query_with_spatial_context(state, raw_query)
-    nearest_port, nearest_port_geometry, nearest_port_distance_m = _nearest_port_from_map_context(_spatial_context_dict(state))
+    nearest_port = nearest_port_distance_m = None
     temporal_window = _extract_temporal_window_from_query(query)
     feature = _exact_s101_feature_match(query)
     relation = _exact_s100_s101_relation_match(query)
     legal_notice_docs = _legal_notice_documents_for_query(query)
-    if navigation_risk_analysis:
-        if not (resolved_location or _requested_port_name(raw_query)):
-            legal_notice_docs = []
-        operational_families = {"port_traffic_rule", "vessel_traffic_service_rule", "port_facility_operation_rule", "tug_operation_rule"}
-        operational_layers = {"fairway_area", "speed_restriction_area", "anchorage_area", "vessel_traffic_control_area", "tug_operation", "berth_operation"}
-        legal_notice_docs = [
-            item for item in legal_notice_docs
-            if item.get("notice_family") in operational_families
-            or bool(set(item.get("governs_layers") or []) & operational_layers)
-        ]
-        for item in legal_notice_docs:
-            # Registry provenance can be exact without proving empirical risk.
-            item["relevance_score"] = min(float(item.get("relevance_score") or 0.0), 0.95)
     traffic_result = None
     traffic_error = None
-    if navigation_risk_analysis and legal_notice_docs:
-        try:
-            import asyncio
-            from services.orchestrator.traffic_execution import execute_traffic_request
-
-            traffic_state = dict(state)
-            traffic_spatial = dict(_spatial_context_dict(state))
-            if nearest_port:
-                traffic_spatial.update({
-                    "base_location": nearest_port,
-                    "location_text": nearest_port,
-                    "geometry": nearest_port_geometry,
-                    "buffer_distance": traffic_spatial.get("buffer_distance") or 50000.0,
-                })
-            traffic_state["spatial_context"] = traffic_spatial
-            traffic_result = await asyncio.to_thread(execute_traffic_request, traffic_state)
-        except Exception as exc:
-            traffic_error = str(exc)
     legal_notice_intent = _looks_like_legal_rag_query(query) or bool(_requested_notice_families(query))
     no_evidence = _looks_like_no_evidence_document_query(query) or (legal_notice_intent and not legal_notice_docs)
     if feature:
@@ -3377,15 +3264,6 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
         doc = documents[0]
         citation = citations[0]
         answer = _navigation_risk_answer(query, documents) if navigation_risk_analysis else _legal_notice_answer(query, documents)
-        if navigation_risk_analysis and traffic_result:
-            traffic_structured = traffic_result.get("structured_result") or {}
-            answer += (
-                f" 통항자료 조회 결과, 최신 적재 기간 기준 AIS/V-Pass 합계는 "
-                f"{int(traffic_structured.get('total_traffic_count') or 0):,}건, 분석 격자는 "
-                f"{int(traffic_structured.get('grid_count') or 0):,}개입니다."
-            )
-        elif navigation_risk_analysis:
-            answer += " 현재 통항자료 실행 결과를 확보하지 못했으므로 고시 근거만으로 제한 분석했으며, 종합 위험도는 확정하지 않았습니다."
     elif no_evidence:
         target_term = "no_authoritative_evidence"
         doc = {
@@ -3430,22 +3308,6 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
         exact=not doc_blocked and not legal_result,
         blocked_no_evidence=doc_blocked,
     )
-    if navigation_risk_analysis and not doc_blocked:
-        best_evidence = max((float(item.get("relevance_score") or 0.0) for item in documents), default=0.0)
-        quality_metrics = {
-            "intent_similarity": 0.92,
-            "evidence_similarity": round(min(best_evidence, 0.95), 3),
-            "analysis_completeness": 0.9 if traffic_result else 0.55,
-            "estimated_accuracy": round(min(0.88 if traffic_result else 0.72, 0.55 + best_evidence * 0.25 + (0.08 if traffic_result else 0.0)), 3),
-            "confidence_band": "high" if traffic_result else "medium",
-            "method": "navigation_risk_registry_grounding_v1",
-            "fast_path": "legal_notice_registry",
-            "notes": [
-                "Intent fit, evidence match, and analysis completeness are separate signals.",
-                "Legal notices support regulated risk factors; traffic observations supply operational exposure evidence.",
-                "An empirical risk probability still requires accidents, hydrography, and weather evidence.",
-            ],
-        }
     data_bindings = ["s101_feature_catalogue", "s101_dceg_2_0_0"] if feature else (["legal_notice_registry"] if legal_result else ["s101_feature_catalogue"])
     route_plan = {
         "task_id": f"TASK-DOC-FAST-{state['task_id'][:3].upper()}",
@@ -3468,7 +3330,7 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
         "data": data_bindings + (["DynamicTrafficLayer"] if navigation_risk_analysis else []),
         "outputs": ["StandardDocumentOutput", "EvidenceBundle", "Summary"],
         "clarification_required": False,
-        "confidence": quality_metrics.get("estimated_accuracy", 0.0),
+        "confidence": None,
         "execution_ready": False if doc_blocked else True,
         "route_plan_status": "BLOCKED_DATA" if doc_blocked else "EXECUTION_READY",
     }
@@ -4871,24 +4733,9 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
         return await fast_spatial_or_traffic_block_node(state)
     anchor_query = _requested_layer_anchor_query(primary_query, targets)
 
-    sea_parting_place = None
-    if any(target["layer_id"] == "sea_parting_prediction" for target in targets):
-        sea_parting_place = next((place for place in SEA_PARTING_QUERY_ANCHORS if place in query), None)
-    if sea_parting_place:
-        location = {
-            "status": "RESOLVED",
-            "geometry": SEA_PARTING_QUERY_ANCHORS[sea_parting_place],
-            "location_text": sea_parting_place,
-            "location_resolution": {
-                "method": "sea_parting_site_anchor",
-                "confidence": 0.92,
-                "source": "serving.sea_parting_prediction_current site anchor",
-            },
-        }
-    else:
-        location = await asyncio.to_thread(resolve_payload, anchor_query, _spatial_context_dict(state))
-        if location["status"] != "RESOLVED":
-            return _place_lookup_update(state, location, "feature_search_by_radius")
+    location = await asyncio.to_thread(resolve_payload, anchor_query, _spatial_context_dict(state))
+    if location["status"] != "RESOLVED":
+        return _place_lookup_update(state, location, "feature_search_by_radius")
 
     base_wkt = location["geometry"]
     location_text = location["location_text"]
@@ -5735,8 +5582,8 @@ async def map_report_node(state: OrchestratorState) -> OrchestratorState:
         _record_query_quality_issues(state, final_dict)
         return {
             "final_dict": final_dict,
-            "status": AgentStatus.COMPLETED,
-            "state_history": log_transition(AgentStatus.MAP_REPORT_GENERATING, AgentStatus.COMPLETED),
+            "status": result.status,
+            "state_history": log_transition(AgentStatus.MAP_REPORT_GENERATING, result.status),
         }
     
     final_dict = result.model_dump(mode="json")
@@ -5918,8 +5765,8 @@ async def map_report_node(state: OrchestratorState) -> OrchestratorState:
     _record_query_quality_issues(state, final_dict)
     return {
         "final_dict": final_dict,
-        "status": AgentStatus.COMPLETED,
-        "state_history": log_transition(AgentStatus.MAP_REPORT_GENERATING, AgentStatus.COMPLETED)
+        "status": result.status,
+        "state_history": log_transition(AgentStatus.MAP_REPORT_GENERATING, result.status)
     }
 
 async def audit_log_node(state: OrchestratorState) -> OrchestratorState:

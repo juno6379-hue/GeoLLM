@@ -72,11 +72,7 @@ def _candidate(place_id, label, aliases, geometry, records, status="source_backe
 
 def _registry_candidates(places):
     if places is None:
-        try:
-            registry = yaml.safe_load((ROOT / "data/place_geometry_registry.yaml").read_text(encoding="utf-8")) or {}
-            places = registry.get("places") or registry.get("entries") or {}
-        except (OSError, ValueError, yaml.YAMLError) as exc:
-            raise PlaceResolutionProblem("BLOCKED_CONFIG", "INVALID_REGISTRY", "기준 위치 설정을 읽을 수 없습니다.") from exc
+        return []  # Runtime coordinates must come from the serving DB or explicit input.
     candidates = []
     for identifier, place in places.items():
         geometry = place.get("geometry_wkt") or place.get("geometry")
@@ -113,6 +109,17 @@ def load_catalog(*, refresh=False):
             return _cache[2]
         candidates, unavailable = [], []
         sources = [
+            ("S101_DB_URL", "projection.s101_feature_valid", "harbour", """
+                SELECT min(feature_instance_id)::text AS id, attributes->>'name' AS name,
+                       NULL::text AS name_en,
+                       ST_AsText(ST_PointOnSurface(ST_UnaryUnion(ST_Collect(geometry)))) AS wkt,
+                       4326 AS srid, max(dataset_version_id)::text AS revision
+                FROM projection.s101_feature_valid
+                WHERE feature_type_name = 'HarbourAreaAdministrative'
+                  AND product_specification = 'INT.IHO.S-101.2.0'
+                  AND coalesce(attributes->>'name', '') <> ''
+                GROUP BY attributes->>'name'
+            """),
             ("S101_DB_URL", "serving.island_gazetteer_current", "island", """
                 SELECT source_id::text AS id, name, properties->>'NP_ENM' AS name_en,
                        ST_AsText(geometry) AS wkt, ST_SRID(geometry) AS srid,
@@ -298,7 +305,7 @@ def resolve_location(query, spatial=None, *, places=None, catalog=None):
         parent = re.sub(_MODIFIERS, " ", label, flags=re.I).strip()
         matches = _matches(parent, available, exact=True)
         modified = _has_unbound_qualifier(query, label, matches)
-    if loaded.get("unavailable_sources") and not matches:
+    if loaded.get("unavailable_sources"):
         raise PlaceResolutionProblem("BLOCKED_DATA", "GAZETTEER_UNAVAILABLE", "지명 원본의 연결 또는 품질을 확인해야 합니다. 좌표를 직접 지정하거나 잠시 후 다시 조회해 주세요.", candidates=[{**item, "requires_confirmation": True} for item in matches])
     if len(matches) == 1 and not modified:
         return _resolved(matches[0], "RESOLVED_GAZETTEER")

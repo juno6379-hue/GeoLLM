@@ -3,7 +3,10 @@ from shared.schemas.agent import AgentRequest, Intent, SecurityContext, Orchestr
 from services.standard_rag_agent.agent import execute_rag_search
 
 @pytest.mark.asyncio
-async def test_rag_search_with_match():
+async def test_rag_search_with_match(monkeypatch):
+    monkeypatch.setattr("services.standard_rag_agent.agent.search_vdb", lambda *a, **kw: [
+        {"doc_id": "fixture-evidence", "title": "Source fixture", "version": "test", "section": "source",
+         "content": "Source excerpt for retrieval contract testing.", "similarity": 0.73}])
     request = AgentRequest(
         task_id="test-rag-1",
         trace_id="tr1",
@@ -20,10 +23,11 @@ async def test_rag_search_with_match():
     assert result.status == "COMPLETED"
     assert result.structured_result["retrieved_count"] >= 1
     assert len(result.evidence) >= 1
-    assert "해양환경관리법" in result.evidence[0]
+    assert "Source fixture" in result.evidence[0]
 
 @pytest.mark.asyncio
-async def test_rag_search_no_match():
+async def test_rag_search_no_match(monkeypatch):
+    monkeypatch.setattr("services.standard_rag_agent.agent.search_vdb", lambda *a, **kw: [])
     request = AgentRequest(
         task_id="test-rag-2",
         trace_id="tr2",

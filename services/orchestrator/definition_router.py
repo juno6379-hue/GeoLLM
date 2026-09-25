@@ -123,7 +123,7 @@ def resolve_definition(query: str) -> dict[str, Any] | None:
 
 def is_definition_query(query: str) -> bool:
     text = str(query or "").strip()
-    if not text or has_operational_slots(text):
+    if not text or has_operational_slots(text) or len(normalize_term(definition_subject(text))) < 2:
         return False
     entry = resolve_definition(text)
     if not entry:

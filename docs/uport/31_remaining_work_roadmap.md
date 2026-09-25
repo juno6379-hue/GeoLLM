@@ -3,77 +3,59 @@
 기준일: 2026-09-25
 재개 원칙: 다음 접속에서는 아래 `P0 미비점`부터 처리한다.
 
-## 2026-09-25 웹·DB 연동 및 현재 상태 검증
+## 2026-09-25 재수정 및 실제 검증 결과
 
-- DB, backend, tile-server, eta-history-collector 컨테이너가 실행 중이다.
-- 웹 `/`, `/uport/`, `/health`가 HTTP 200이다. `/health`는 API 생존 확인만 하므로 DB 연결 성공과 구분한다.
-- 웹은 동일 출처 `/api/v1/uport/map/berths`를 통해 `S101_DB_URL`의 `gbhd_s101`에 연결한다. 부산 bbox `128.98,35.02,129.18,35.18`에서 169건, 인천 bbox `126.50,37.35,126.70,37.55`에서 128건의 S-101 2.0 선석 GeoJSON을 반환했다. 잘못된 bbox와 과대 범위는 HTTP 422이다.
-- DB 직접 조회: S-101 projection 787,102건, 사고 4,636건, RAG 8,413건 및 embedding 8,413건이다. 기존 체크포인트 중 이 수치만 이번에 재검증했으며 geometry validity/사고 관계 전체를 다시 검사한 것은 아니다.
-- `POSTGIS_URL`은 `marine_geo`(KHOA 지명 테이블 존재), `S101_DB_URL`은 `gbhd_s101`을 사용한다. README의 단일 DB 예시를 실제 역할에 맞게 수정했다. 직접 psycopg2 접속과 호환되는 `postgresql://`를 문서화했다.
-- `scripts/check_web_db_connection.py`를 추가했다. 호스트와 컨테이너 내부 모두 7개 점검이 통과했다. `start_geollm.bat`에 동일 점검을 추가했으며 명령 자체를 실제 실행했다. 배치 전체와 LiDAR UI 기동은 이번에 실행하지 않았다.
-- 실행 이미지에는 pytest와 최신 테스트가 없었다. 현재 컨테이너에 pytest 8.4.2/pytest-asyncio 0.23.8을 설치하고 최신 tests를 복사하여 검증했다. Compose에는 tests read-only mount를 추가했다. 현재 컨테이너를 재생성하지 않았으므로 mount는 다음 recreate부터 적용되며, 개발 의존성의 영속 반영은 `up -d --build backend`가 필요하다.
-- Browser 연결 목록이 비어 있어 실제 브라우저 렌더링·지도 조작은 미검증이다. HTTP/API 통과를 화면 검증 완료로 간주하지 않는다.
+### 웹·DB·서비스 상태
 
-### 실제 질의 검증과 남은 문제
+- `/`, `/uport/`, `/vision/react_lidar/`, 최신 LiDAR JS 번들 및 `/health` HTTP 200. `/health`만으로 DB 정상 여부를 판단하지 않는다.
+- `POSTGIS_URL`은 `marine_geo`, `S101_DB_URL`은 `gbhd_s101`. 부산 선석 169건, 인천 선석 128건을 `projection.s101_feature_valid`에서 실제 조회했다. 잘못된 bbox/과대 bbox는 422.
+- `python scripts/check_web_db_connection.py`: **11개 점검 모두 통과**. 실제 LiDAR 미등록 ID의 preprocess/classify는 모두 404이며 가짜 job을 만들지 않는다.
+- LiDAR `lidar_datasets` 테이블이 없음을 발견했다. `python -m scripts.initialize_lidar_registry`로 빈 테이블을 생성했고 실제 조회 결과 **0건**이다. 샘플 데이터를 삽입하지 않았다. 파일 크기·점 수는 BigInteger이며 실제 메타데이터를 저장한다.
+- Compose backend를 `up -d --no-build backend`로 재생성했다. tests와 ui의 읽기 전용 마운트가 적용돼 재시작 후에도 최신 웹 번들을 사용한다. DB/타일/ETA 서비스는 유지했다.
+- 항만 조회가 재기동 후 5초 제한을 넘기는 오류를 실제 API에서 발견했다. `scripts/sql/20260925_navigation_port_index.sql`의 항만 전용 인덱스를 DB에 적용했다. EXPLAIN ANALYZE에서 **Index Scan**, 항만명 73개, 실행시간 **193.193ms**를 확인했다. 이후 실제 질의 7개가 모두 통과했다. projection을 재생성하는 환경에서는 이 인덱스도 적용해야 한다.
 
-- `/api/v1/tasks`에 `이 해역의 통항위험이 높은 이유를 설명해줘`와 부산/인천 bbox를 각각 전달했다. 두 질의 모두 `COMPLETED`, `Navigation Risk Analysis Agent`, 통항자료 확보 성공이다. 최근접 거리는 부산 506.3m, 인천 751.6m이다.
-- 두 응답 모두 `parsed_intent.intent_type=KNOWLEDGE_SEARCH`와 `route_plan.intent=ANALYSIS`가 불일치한다(P0-2 재현). `estimated_accuracy=0.868`은 gold-label 정확도가 아니다.
-- 지도 문맥 없이 같은 질의를 보내면 `BLOCKED`, 항만 null, 통항자료 없음으로 응답한다. 임의 항만은 선택하지 않지만 위치 누락을 `NEEDS_CLARIFICATION`으로 설명하는 후속 개선이 필요하다.
-- `조석예보란`은 정의 응답으로 완료됐다. 정의형도 상위 `KNOWLEDGE_SEARCH`와 최종 `DEFINITION`의 메타데이터 관계를 함께 정리해야 한다.
-- 전국 항만 확대, 최근접 거리 제한, 명시 항만명과 지도 문맥의 우선순위, 사고·수심·기상 결합은 아직 미완료이다. 실시간 AIS는 provider 미설정 시 503을 반환하는 계약이며 선석/과거 통항자료가 실시간 관측을 대신하지 않는다.
-- P1 코드 확인: `query_candidate_broker`는 여전히 `dry_run_no_execution_change`와 Ollama 필요 여부만 기록한다. 후보 점수 결합·calibration·gold-label 비교 실험을 완료한 상태가 아니며 QLoRA 착수 조건도 이번에 입증되지 않았다.
-- 실제 질의 응답은 ignored `outputs/runtime-check/`에 저장했다. 기존 변경이 있던 `data/feedback/query_quality_issues.jsonl`과 이번 검증이 추가한 런타임 기록은 소스 커밋에서 제외한다.
+### 제거·수정한 실행 경로
 
-## 완료된 작업
+- mock registry/client/VDB/S-111 DB, fake embedding, 합성 공간결과, LiDAR pilot 산출물 생성 코드를 제거했다. 단위검증에 사용하는 격리 fixture는 테스트 폴더에만 둔다.
+- RAG 원천 장애는 `BLOCKED/RAG_SOURCE_UNAVAILABLE`로 반환한다. LLM 실패 시 실제 검색 문서 발췌만 사용하며 임의 규정 답변을 만들지 않는다.
+- 임의 위험등급, 기본 흘수 8m, 근거 없는 UKC 10% 법적 주장과 LLM 위험등급 fallback을 제거했다. 검증된 위험규칙 엔진이 없으면 `UNKNOWN/NOT_EVALUATED`이다.
+- 고정 정확도·품질 점수와 의미 없는 100% 표시를 제거했다. 측정하지 않은 점수는 null/미평가이며 registry hit·문서 수·도구 실행 여부는 관측값으로 따로 남긴다.
+- `navigation_risk.py`, `port_context.py`, `quality.py`로 복합 분석·위치 해소·미평가 계약을 분리했다. `parsed_intent`와 최종 route가 분석은 `ANALYSIS`, 정의는 `DEFINITION`으로 일치한다.
+- 위치는 명시 항만명을 우선하며, 지도 문맥은 선택 feature → 클릭 → 명시 geometry → viewport → 중심 순으로 해소한다. S-101 HarbourAreaAdministrative 실제 geometry/ID를 사용하고, 지도 최근접 항만은 기본 25km 정책 밖이면 clarification이다. DB에 수록된 항만 범위이며 전국 항만의 완전성을 보증하지 않는다.
+- 통항 검색은 지정 geometry 또는 사용자가 준 반경으로 제한한다. 누락된 실행 결과를 통항량 0으로 대체하지 않는다. 격자·월 합계는 고유 선박 수/실시간 위험도가 아니라고 명시한다.
+- 실패·부분 결과를 report 단계에서 COMPLETED로 덮어쓰지 않는다. UI도 실행하지 않은 단계를 모두 완료 처리하지 않는다.
+- LiDAR UI의 날짜/장비/CRS/좌표/점 수/밀도/RGB 고정값, 대시보드 목업 및 이전 배포 번들을 제거했다. 실제 파일 헤더를 표시하고 값이 없으면 미확인·미측정으로 표시한다.
+- 전처리는 실제 PDAL 산출물과 LAS 헤더 점 수를 확인한 경우에만 성공한다. 정합·CRS 변환·RMSE는 미수행/미측정이다. 분류·DEM/S-111 의미검색 등 미구현 기능은 명시적으로 차단한다. **실행 컨테이너에 PDAL은 미설치**이며 실제 엔진 성공 검증은 미완료다.
 
-### 1. 정의형 질의의 범용 라우팅
+### 검증 범위
 
-- `란/이란/뜻/정의/의미/개념`을 정의 신호로 사용한다.
-- 날짜·시간·장소·반경·조회/검색 같은 실행 슬롯이 있으면 정의형보다 실행형을 우선한다.
-- 정의 근거는 `definition_term_registry`, 해양용어사전, S-101 catalogue를 통합한다.
-- 실제 서비스에서 `조석예보란`, `S-101 Feature란`, `정박지란`을 검증했다.
-- `9월 인천 조석예보`는 정의형이 아니라 외부 시계열 자료 요구 경로를 유지한다.
-
-### 2. 훈련 데이터 확장 프레임워크
-
-- canonical case 계약, Pydantic/JSON Schema 검증, registry ID/enum 정규화를 추가했다.
-- component/end-to-end view, 실행 결과, EvidenceBundle, lineage, registry snapshot, prompt version을 포함한다.
-- 중복·오염 검증과 소규모 dry run을 추가했다.
-- 관련 파일은 `marine_geollm_training_schema.yaml`, `SEED_EXPANSION_PROMPT.md`, `Training Prompt.md`, `configs/training/`, `scripts/training/`, `training/`, `docs/training/`에 있다.
-
-### 3. 통항위험 원인 분석 라우팅
-
-- `통항/항행/항로 + 위험 + 왜/이유/원인/요인/설명/분석`을 `navigation_risk_explanation` 분석형으로 분류한다.
-- `이 해역`은 현재 지도 중심에서 `place_geometry_registry`의 가장 가까운 항만으로 해소한다.
-- 해당 항만의 `legal_notice_registry` 통항 고시와 PostGIS AIS/V-Pass 통항 집계를 결합한다.
-- registry exact hit와 답변 정확도를 분리하고 의도 적합도, 근거 적합도, 분석 완결도를 별도로 낸다.
-- 부산 지도 범위 실제 API 검증: 최근접 부산항 약 506.3m, 부산항 항법 규칙 1건, AIS/V-Pass 집계 성공.
+- 관련 단위/그래프/스트림/공간/장소/RAG/UI API 회귀 **257 passed**. 이후 LiDAR DB 저장 수정에 대해 파일 헤더→실제 SQLite 저장→동일 경로 재등록 ID 유지와 실패 경로 **12 passed**를 별도 확인했다(11개 중복 실행, 총 고유 테스트 258개). 전체 저장소 테스트를 통과했다고 주장하지 않는다.
+- `python scripts/check_navigation_runtime.py`: **7/7 통과**. 부산/인천 bbox와 부산 지도+명시 인천항은 실제 통항자료가 있는 `PARTIAL`; 위치 없음/먼 좌표/없는 항만은 `NEEDS_CLARIFICATION`; `조석예보란`은 `COMPLETED/DEFINITION`이다. 의도·최종 상태·항만 ID·통항자료·미평가 계약을 함께 검사한다.
+- 실제 항만 source ID: 부산 지도 599613, 인천 지도 623953, 명시 인천항 집계 대표 548868. 고정 입력 ID가 아니라 해당 실행에서 조회한 결과다.
+- `npm run build`, Compose `config --quiet`, `git diff --check` 통과. 최신 번들은 실제 HTTP로 확인했다.
+- Browser 연결 목록이 비어 있어 실제 화면 렌더링·클릭·지도 조작은 미검증이다. HTTP/API 검증과 구분한다.
+- 기존 훈련 데이터 확장 프레임워크는 유지했다. P1은 여전히 `dry_run_no_execution_change`; 후보 점수 결합·calibration·gold-label 실험과 QLoRA 승격은 수행하지 않았다.
+- 기존 사용자 변경 및 런타임 기록 `data/feedback/query_quality_issues.jsonl`, ignored scratch/outputs 로그는 소스 커밋에서 제외한다.
 
 ## P0 미비점 — 다음 접속에서 먼저 처리
 
-1. **회귀 테스트 완성**
-   - 2026-09-25: 인천 지도 중심, 명시적 항만명, 지도 문맥 없음, 통항 실행 불가(mock exception) 4개 케이스를 추가했다. 실제 DB 테이블을 제거한 장애 실험은 수행하지 않았다.
-   - 컨테이너에서 `python -m pytest tests/unit/test_definition_router.py tests/unit/test_navigation_risk_routing.py tests/unit/test_uport_map.py -q`: **23 passed**, deprecation warning 9개.
-   - Compose `config --quiet`, `git diff --check` 통과. 전체 프로젝트 테스트는 실행하지 않았으므로 후속 라우팅 변경에 필요한 추가 회귀 범위는 확인해야 한다.
+1. **시공간 입력과 실행 범위의 잔여 계약**
+   - 일반 traffic 시간 필터는 `last_1_year` 외 기간을 동일하게 처리하는 기존 한계가 남아 있다. `최근 3개월 통항량` 등 명시 기간이 적재 전체 기간으로 넓어지지 않도록 달력 기간/월 집계 계약을 정리하고 부정 사례를 추가한다.
+   - 항만 입구/출구는 항만 전체 geometry로 치환하지 않고 clarification한다. 사용자가 확인한 세부 위치를 재제출하는 UI 흐름과 다중 항만·광역 viewport를 실제 브라우저에서 확인해야 한다.
+   - 분류기 단위 테스트의 사전 fixture 통과를 실제 모든 용어의 정의 근거 확보로 간주하지 않는다. 등록되지 않은 복합 용어와 다중 의도를 추가 검증한다.
 
-2. **응답 메타데이터 일관성 확인**
-   - 재시작 후 `agent_name=Navigation Risk Analysis Agent`와 통항 도구 목록을 확인한다.
-   - quality/citation/UI 어디에도 의미 정확도 100%가 표시되지 않는지 확인한다.
-   - 상위 `parsed_intent`가 아직 `KNOWLEDGE_SEARCH`로 남는 현상을 `ANALYSIS`와 일치시킨다.
+2. **위험 분석 근거 확장**
+   - 사고이력, 수심/UKC, 기상·파고·조류를 동일 시공간으로 결합해야 한다. 현재 통항+고시 결과는 `PARTIAL`이며 종합 위험점수·사고확률을 산정하지 않는다.
+   - 실시간 AIS provider 미설정 시 503 계약을 유지한다. 2023년 등 과거 집계가 실시간 관측을 대신하지 않는다.
 
-3. **최근접 항만 해소 범위 확장**
-   - 현재 curated port point를 전국 authoritative gazetteer 또는 PostGIS 항만 레이어로 확대한다.
-   - 최근접 거리가 과도하면 임계값을 두고 `NEEDS_CLARIFICATION`으로 전환한다.
-   - 선택 feature/클릭 위치/viewport polygon/지도 중심의 우선순위를 계약으로 확정한다.
+3. **LiDAR와 S-111 실제 엔진 완성**
+   - PDAL 설치·고정 버전·실제 LAS/LAZ 성공 실행과 출력 품질 검증이 필요하다. 분류/DEM/정합/변화탐지는 구현 전 성공을 반환하지 않는다.
+   - S-111 실제 원천·관측 인덱스·검색 근거 계약을 연결해야 한다.
+   - LiDAR 원본이 변경된 동일 경로의 재등록 시 메타데이터 갱신/버전 정책, 처리 산출물의 웹 제공과 영속 작업 상태를 보강한다.
 
-4. **위험 분석 근거 확장**
-   - 사고이력, 수심/UKC, 기상·파고·조류를 같은 시공간으로 추가한다.
-   - AIS/V-Pass 수치는 격자·월별 집계 합계이며 고유 선박 수가 아님을 UI와 답변에 표시한다.
-   - 고시의 규제 존재를 실제 사고 확률로 해석하지 않는다.
-
-5. **구조 리팩터링**
-   - `graph.py` helper를 별도 모듈로 분리하고 정의 라우터의 중복 helper를 제거한다.
-   - 전용 `navigation_risk_analysis_node`로 복합 분석을 분리한다.
+4. **구조·운영 검증**
+   - graph.py의 남은 중복 helper와 다른 legacy 분석 경로를 순차 감사한다. 이번 수정 범위를 전체 저장소의 모든 stub 구현 완료로 간주하지 않는다.
+   - Browser 연결 후 지도/폼의 실제 상호작용 검증. 서비스 재기동 직후에는 준비 완료를 기다린 뒤 smoke를 실행한다.
 
 ## P1 Ollama 의도 보조와 QLoRA 보강
 
@@ -157,19 +139,17 @@ QLoRA는 즉시 적용하지 않고 다음 조건을 모두 만족할 때 진행
 
 ## 다음 실행 순서
 
-1. `python scripts/check_web_db_connection.py`로 웹/API/DB 연결 재확인
-2. 컨테이너 재생성 시 `docker compose -f docker/docker-compose.yml up -d --build backend`로 개발 의존성·최신 tests mount 반영
-3. P0-1 잔여 관련 회귀 범위를 확인하고 P0-2 `parsed_intent`/최종 경로/도구 메타데이터 불일치 수정
-4. 수정 후 컨테이너 테스트와 부산/인천/명시 항만/지도 문맥 누락 실제 `/api/v1/tasks` 재검증
-5. 지도 문맥 누락 clarification 및 명시 위치 우선순위·최근접 거리 제한 확정
-6. P0-3 전국 항만 resolver 확장 및 브라우저 연결 후 화면 검증
-7. P0-4 사고·수심·기상 근거 결합
-8. Ollama ambiguity resolver를 shadow mode로 구현하고 gold-label 평가
-9. prompt 보완 후에도 남는 반복 오류가 확인된 경우에만 QLoRA 실험
+1. 웹 준비 후 `python scripts/check_web_db_connection.py`와 `python scripts/check_navigation_runtime.py` 실행.
+2. 새 DB에는 `docker exec geollm_backend python -m scripts.initialize_lidar_registry` 적용. S-101 projection에는 `scripts/sql/20260925_navigation_port_index.sql`을 S101 DB에 적용.
+3. P0-1의 명시 시간 범위와 항만 세부위치 계약을 우선 수정하고 관련 단위 테스트+실제 API 부정 사례 검증.
+4. 사고·수심·기상 근거 결합 및 LiDAR 실제 엔진을 각각 원천·산출물 검증과 함께 확장.
+5. Browser 연결 후 화면·지도 조작 검증.
+6. Ollama 후보 재평가를 shadow mode로 구현하고 독립 gold-label/calibration 평가. 승격 조건 충족 전 실행 결정권을 주지 않는다.
+7. prompt 보완 후에도 반복 오류가 남고 holdout·rollback 조건이 충족될 때만 QLoRA 실험.
 
 ## 검증 시 주의사항
 
 - 2023년 통항자료를 현재 실시간 위험도라고 표현하지 않는다.
-- `estimated_accuracy`는 gold-label 정확도가 아니라 라우팅·근거 기반 추정치다.
+- `estimated_accuracy`는 측정 전 null이다. registry exact match를 답변 정확도 100%라고 표현하지 않는다.
 - 고시 polygon이 `pending_geometry_ingest`이면 적용 공간을 확정했다고 표현하지 않는다.
 - 지도 문맥과 명시 항만명이 모두 없으면 특정 항만을 임의 선택하지 않는다.

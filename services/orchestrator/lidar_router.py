@@ -1,5 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Form
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from data.database import get_postgis_db
 from data.models.lidar_dataset import LiDARDataset
@@ -18,10 +18,18 @@ async def test_hello():
 UPLOAD_DIR = os.path.join(os.getcwd(), "geollm_results", "lidar_uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+def _dataset_from_metadata(metadata):
+    fields = ("dataset_id", "file_name", "file_path", "file_type", "file_size_bytes",
+              "point_count", "point_format", "crs", "min_x", "min_y", "min_z",
+              "max_x", "max_y", "max_z", "average_density", "has_rgb", "has_intensity",
+              "source", "project_name")
+    return LiDARDataset(**{key: metadata[key] for key in fields if key in metadata})
+
+
 class FolderRegisterRequest(BaseModel):
     folder_path: str
     source: str = "LOCAL_SCAN"
-    project_name: str = "부산항 시범구역"
+    project_name: str | None = None
 
 @router.post("/register_folder")
 def register_local_folder(req: FolderRegisterRequest, db: Session = Depends(get_postgis_db)):
@@ -29,17 +37,20 @@ def register_local_folder(req: FolderRegisterRequest, db: Session = Depends(get_
     Scans a local directory on the server, extracts metadata for LiDAR files,
     saves them to the database, and finds 3D tiles for visualization.
     """
+    if db is None:
+        raise HTTPException(status_code=503, detail="LiDAR dataset database is unavailable")
     folder = req.folder_path
     if not os.path.isdir(folder):
         raise HTTPException(status_code=400, detail=f"Directory not found: {folder}")
         
     extracted_datasets = []
+    failures = []
     
     viz_data = {
         "ortho": None,
         "pointcloud": None,
         "dsm": None,
-        "min_z": 0.0
+        "min_z": None
     }
 
     # Recursive scan (depth limited to 3 to prevent infinite crawls)
@@ -79,33 +90,17 @@ def register_local_folder(req: FolderRegisterRequest, db: Session = Depends(get_
                         # Check if already exists to prevent duplicates based on path
                         existing = db.query(LiDARDataset).filter(LiDARDataset.file_path == file_path).first()
                         if not existing:
-                            new_dataset = LiDARDataset(
-                                dataset_id=metadata["dataset_id"],
-                                file_name=metadata["file_name"],
-                                file_path=metadata["file_path"],
-                                file_type=metadata["file_type"],
-                                file_size_bytes=metadata["file_size_bytes"],
-                                point_count=metadata.get("point_count"),
-                                point_format=metadata.get("point_format"),
-                                min_x=metadata.get("min_x"),
-                                min_y=metadata.get("min_y"),
-                                min_z=metadata.get("min_z"),
-                                max_x=metadata.get("max_x"),
-                                max_y=metadata.get("max_y"),
-                                max_z=metadata.get("max_z"),
-                                average_density=metadata.get("average_density"),
-                                has_rgb=metadata.get("has_rgb", False),
-                                has_intensity=metadata.get("has_intensity", False),
-                                source=metadata.get("source"),
-                                project_name=metadata.get("project_name")
-                            )
+                            new_dataset = _dataset_from_metadata(metadata)
                             db.add(new_dataset)
                             db.commit()
                             db.refresh(new_dataset)
+                        else:
+                            metadata["dataset_id"] = existing.dataset_id
                             
                     extracted_datasets.append(metadata)
                 except Exception as e:
-                    print(f"Failed to parse {file_path}: {e}")
+                    db.rollback()
+                    failures.append({"file": file_path, "error": str(e)})
 
     # Extract min_z from tileset if possible
     import json
@@ -121,7 +116,9 @@ def register_local_folder(req: FolderRegisterRequest, db: Session = Depends(get_
         print("Error reading min_z:", e)
 
     return {
-        "message": f"Successfully scanned folder: {folder}",
+        "status": "PARTIAL" if failures else "COMPLETED",
+        "errors": failures,
+        "message": f"Registered {len(extracted_datasets)} datasets; {len(failures)} failures",
         "datasets": extracted_datasets,
         "visualization": viz_data
     }
@@ -133,9 +130,14 @@ async def upload_lidar_dataset(
     project_name: str = Form(None),
     db: Session = Depends(get_postgis_db)
 ):
-    # Kept for backward compatibility if manual upload is ever needed
+    if db is None:
+        raise HTTPException(status_code=503, detail="LiDAR dataset database is unavailable")
+    import uuid
+    filename = os.path.basename((file.filename or "").replace("\\", "/"))
+    if os.path.splitext(filename)[1].lower() not in {".las", ".laz"}:
+        raise HTTPException(status_code=422, detail="Only LAS/LAZ point clouds are supported")
     try:
-        file_path = os.path.join(UPLOAD_DIR, file.filename)
+        file_path = os.path.join(UPLOAD_DIR, uuid.uuid4().hex + "_" + filename)
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
@@ -146,88 +148,60 @@ async def upload_lidar_dataset(
         metadata = process_ingestion(file_path, user_metadata)
         
         if db is not None:
-            new_dataset = LiDARDataset(
-                dataset_id=metadata["dataset_id"],
-                file_name=metadata["file_name"],
-                file_path=metadata["file_path"],
-                file_type=metadata["file_type"],
-                file_size_bytes=metadata["file_size_bytes"],
-                point_count=metadata.get("point_count")
-            )
+            new_dataset = _dataset_from_metadata(metadata)
             db.add(new_dataset)
             db.commit()
             
         return {"message": "Upload successful", "dataset": metadata}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Dataset registration failed") from e
 
 class PreprocessRequest(BaseModel):
     dataset_id: str
-    sor_mean_k: int = 50
-    sor_std_dev_mul: float = 1.0
+    sor_mean_k: int = Field(default=50, ge=2, le=10000)
+    sor_std_dev_mul: float = Field(default=1.0, gt=0, allow_inf_nan=False)
 
 @router.post("/preprocess")
 async def preprocess_lidar(req: PreprocessRequest, db: Session = Depends(get_postgis_db)):
     """
     Module 02: 점군 노이즈 제거 (Statistical Outlier Removal)
     """
+    if db is None:
+        raise HTTPException(status_code=503, detail="LiDAR dataset database is unavailable")
     try:
-        # 1. DB에서 dataset 조회
-        if req.dataset_id == 'demo_dataset_001':
-            # UI 데모용 가짜 데이터셋 생성
-            class MockDataset:
-                file_path = "D:/dummy_pointcloud.laz"
-            dataset = MockDataset()
-        else:
-            dataset = db.query(LiDARDataset).filter(LiDARDataset.dataset_id == req.dataset_id).first()
-            if not dataset:
-                raise HTTPException(status_code=404, detail="Dataset not found")
-        
-        # 실제 Python/C++ 기반 전처리 에이전트(Module 02) 호출 로직 연동
-        result = run_preprocessing(
-            dataset_id=req.dataset_id,
-            input_path=dataset.file_path,
-            mean_k=req.sor_mean_k,
-            std_dev_mul=req.sor_std_dev_mul
-        )
-        
-        return {
-            "message": "Preprocessing finished successfully.",
-            "status": "SUCCESS",
-            "job_id": f"job-prep-{req.dataset_id}",
-            "result": result
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        dataset = db.query(LiDARDataset).filter(LiDARDataset.dataset_id == req.dataset_id).first()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="LiDAR dataset database is unavailable") from exc
+    if dataset is None:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    try:
+        import asyncio
+        result = await asyncio.to_thread(run_preprocessing, req.dataset_id, dataset.file_path,
+                                         req.sor_mean_k, req.sor_std_dev_mul)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="LiDAR processing failed; no successful output is available") from exc
+    return {"status": "SUCCESS", "result": result}
 
 class ClassifyRequest(BaseModel):
     dataset_id: str
-    cloth_resolution: float = 0.5
-    class_threshold: float = 0.5
+    cloth_resolution: float = Field(default=0.5, gt=0, allow_inf_nan=False)
+    class_threshold: float = Field(default=0.5, gt=0, allow_inf_nan=False)
 
 @router.post("/classify")
 async def classify_lidar(req: ClassifyRequest, db: Session = Depends(get_postgis_db)):
-    """
-    Module 03: 지상/비지상 분류 및 DEM 생성 (Cloth Simulation Filter)
-    """
+    if db is None:
+        raise HTTPException(status_code=503, detail="LiDAR dataset database is unavailable")
     try:
-        if req.dataset_id == 'demo_dataset_001':
-            pass # UI 데모용 가짜 데이터셋 바이패스
-        else:
-            dataset = db.query(LiDARDataset).filter(LiDARDataset.dataset_id == req.dataset_id).first()
-            if not dataset:
-                raise HTTPException(status_code=404, detail="Dataset not found")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-        
-    # TODO: 실제 분류 에이전트(Module 03) 호출 로직 연동
-    
-    return {
-        "message": "Classification and DEM generation started.",
-        "status": "RUNNING",
-        "job_id": f"job-cls-{req.dataset_id}",
-        "parameters": {
-            "cloth_resolution": req.cloth_resolution,
-            "class_threshold": req.class_threshold
-        }
-    }
+        dataset = db.query(LiDARDataset).filter(LiDARDataset.dataset_id == req.dataset_id).first()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="LiDAR dataset database is unavailable") from exc
+    if dataset is None:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    raise HTTPException(status_code=501, detail="Classification and DEM generation are not implemented; no job was started")

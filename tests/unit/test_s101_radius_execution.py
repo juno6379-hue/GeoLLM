@@ -9,22 +9,36 @@ from services.orchestrator import s101_radius_execution as radius
 from shared.schemas.agent import DataBinding, EvidenceBundle, PlanStatus, QueryExecutionContext
 
 
+
+@pytest.fixture(autouse=True)
+def isolated_location_sources(monkeypatch):
+    from services.spatial_analysis_agent import place_resolver
+    places = {
+        "busan_port_entrance": {"canonical_name": "부산항 입구", "aliases": ["Busan Port Entrance"], "geometry_wkt": "POINT(129.075 35.075)", "srid": 4326, "status": "curated"},
+        "incheon_port": {"canonical_name": "인천항", "aliases": ["Incheon Port"], "geometry_wkt": "POINT(126.6 37.45)", "srid": 4326, "status": "curated"},
+    }
+    monkeypatch.setattr(radius, "_place_entries", lambda: places)
+    monkeypatch.setattr(place_resolver, "load_catalog", lambda **kwargs: {"candidates": [], "unavailable_sources": []})
+    return places
+
 @pytest.fixture
 def state():
     return {
         "task_id": "fixture-radius", "user_id": "fixture-user",
         "query": "부산항 입구 3km 이내 위험객체를 찾아줘",
-        "spatial_context": {"base_location": "부산항 입구", "geometry": "POINT(129.075 35.075)", "crs": "EPSG:4326", "buffer_distance": 3000},
+        "spatial_context": {"base_location": "부산항 입구", "geometry": "POINT(129.075 35.075)", "crs": "EPSG:4326", "buffer_distance": 3000, "result_limit": 30},
     }
 
 
 @pytest.fixture
-def registries(monkeypatch):
+def registries(monkeypatch, isolated_location_sources):
     original = radius._registry
     data = {name: original(name) for name in [
         "derived_concept_registry_v2.yaml", "place_geometry_registry.yaml",
         "spatial_layer_registry.yaml", "query_template_registry.yaml",
     ]}
+    data["place_geometry_registry.yaml"] = {"places": isolated_location_sources}
+    monkeypatch.setattr(radius, "_place_entries", lambda: data["place_geometry_registry.yaml"]["places"])
     monkeypatch.setattr(radius, "_registry", lambda name: copy.deepcopy(data[name]))
     return data
 
@@ -57,7 +71,7 @@ def test_approved_registry_location_can_execute(state, registries):
 def test_unknown_explicit_place_does_not_fall_back_to_busan(state, monkeypatch):
     from services.spatial_analysis_agent import place_resolver
     monkeypatch.setattr(place_resolver, "load_catalog", lambda **kwargs: {"candidates": [], "unavailable_sources": []})
-    state["spatial_context"] = {"base_location": "Unknown Port", "buffer_distance": 3000}
+    state["spatial_context"] = {"base_location": "Unknown Port", "buffer_distance": 3000, "result_limit": 30}
     result = radius.execute_radius_request(state)
 
     assert result["status"] == "NEEDS_CLARIFICATION"
@@ -143,7 +157,7 @@ def test_invalid_explicit_radius_is_not_defaulted(value):
 
 def test_conflicting_radius_is_not_silently_overwritten():
     with pytest.raises(radius.RadiusProblem, match="서로 다른 반경"):
-        radius.parse_distance("반경 5km 위험객체", {"buffer_distance": 3000})
+        radius.parse_distance("반경 5km 위험객체", {"buffer_distance": 3000, "result_limit": 30})
 
 
 def test_wreck_only_is_not_broadened_to_all_hazards(state):
@@ -164,9 +178,11 @@ def test_plural_targets_preserve_requested_scope(state, query, expected):
     state["query"] = query
     context, _, _, params = radius.prepare_radius_request(state)
 
+    expected = policy_targets() - {"Wreck"} if "except wrecks" in query.lower() else expected
     assert set(context.slots.target_features) == expected
     assert set(params["target_features"]) == expected
-    assert len(params["feature_codes"]) == len(expected)
+    assert set(params["target_features"]) == set(context.slots.target_features)
+    assert all(isinstance(code, int) for code in params["feature_codes"])
 
 
 @pytest.mark.parametrize("context", ["environmental_assessment", "grounding_risk", "", ["navigation_safety"]])
@@ -223,7 +239,7 @@ def test_unrecognized_target_words_are_not_defaulted(state, target):
 def test_exclusions_survive_default_hazard_expansion(state):
     state["query"] = "부산항 입구 3km 이내 침선을 제외하고 위험객체를 찾아줘"
     context, _, _, params = radius.prepare_radius_request(state)
-    assert set(context.slots.target_features) == {"UnderwaterAwashRock", "Obstruction"}
+    assert set(context.slots.target_features) == policy_targets() - {"Wreck"}
     assert "Wreck" in context.slots.exclusions
     assert 101 not in params["feature_codes"]
 
@@ -232,7 +248,7 @@ def test_candidate_ontology_features_are_not_execution_targets(state, registries
     concept = registries["derived_concept_registry_v2.yaml"]["derived_concepts"][radius.CONCEPT]
     concept["target_features"].append("UnapprovedFeature")
     context, *_ = radius.prepare_radius_request(state)
-    assert set(context.slots.target_features) == {"UnderwaterAwashRock", "Wreck", "Obstruction"}
+    assert set(context.slots.target_features) == policy_targets()
 
 
 @pytest.mark.parametrize(("registry", "field", "value", "code"), [
@@ -463,3 +479,7 @@ def test_envelope_is_conservative_at_wrap_and_poles(point):
     xmin, ymin, xmax, ymax = radius.conservative_envelope(radius.wkt.loads(point), 50000)
     assert xmin == -180 and xmax == 180
     assert -90 <= ymin <= ymax <= 90
+
+
+def policy_targets():
+    return set(radius._registry("derived_concept_registry_v2.yaml")["derived_concepts"][radius.CONCEPT]["execution_profiles"][radius.PROFILE]["target_features"])

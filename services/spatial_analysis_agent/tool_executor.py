@@ -46,7 +46,7 @@ def execute_spatial_tool(dsl: Any, trace_id: str, task_id: str, user_id: str = "
     clearance_map = {"PUBLIC": 1, "RESTRICTED": 2, "SECRET": 3}
     user_lvl = clearance_map.get(clearance_level.upper(), 1)
     
-    mock_features: List[Dict[str, Any]] = []
+    features: List[Dict[str, Any]] = []
     
     from services.spatial_analysis_agent.schemas import QueryPlan
     if isinstance(dsl, QueryPlan):
@@ -101,8 +101,9 @@ def execute_spatial_tool(dsl: Any, trace_id: str, task_id: str, user_id: str = "
             params["dist"] = dsl.buffer_distance
             params["distance_m"] = dsl.buffer_distance
         elif "dwithin" in tool_name or "buffer" in tool_name or "radius" in tool_name:
-            params["dist"] = 1000.0
-            params["distance_m"] = 1000.0
+            return ToolResult(task_id=task_id, trace_id=trace_id, tool_name=tool_name,
+                              tool_version="2.0", status="FAILED", error_code="DISTANCE_REQUIRED",
+                              errors=["분석 반경을 입력해 주세요."])
             
         params["limit"] = dsl.conditions.get("limit", 100) # nearest 등을 위해
         params["input_srid"] = 4326
@@ -240,7 +241,7 @@ def execute_spatial_tool(dsl: Any, trace_id: str, task_id: str, user_id: str = "
                                 except Exception as e:
                                     logger.error("Post processor failed", processor=processor_name, error=str(e))
                     
-                    mock_features.append(feature)
+                    features.append(feature)
                 else:
                     filtered_count += 1
                     
@@ -251,82 +252,7 @@ def execute_spatial_tool(dsl: Any, trace_id: str, task_id: str, user_id: str = "
                 log_data_access(user_id, "READ", target_layer, clearance_level, "FILTERED", f"{filtered_count} records denied")
                 
             db.close()
-            if False and (
-                isinstance(dsl, QueryPlan)
-                and not mock_features
-                and params.get("nftc_codes") == [0]
-                and params.get("base_geometry")
-            ):
-                try:
-                    import random
-                    wkt = params["base_geometry"].replace("POINT(", "").replace(")", "").strip()
-                    lon, lat = map(float, wkt.split())
-                    mock_count = 2 if tool_name == "postgis.dwithin" else 1
-                    for i in range(mock_count):
-                        mock_features.append({
-                            "type": "Feature",
-                            "properties": {
-                                "feature_name": "위험객체" if tool_name == "postgis.dwithin" else "제한구역",
-                                "nftc": 0,
-                                "clearance_level": "PUBLIC",
-                                "role": "hazard_objects",
-                            },
-                            "geometry": {
-                                "type": "Point",
-                                "coordinates": [
-                                    lon + random.uniform(-0.01, 0.01),
-                                    lat + random.uniform(-0.01, 0.01),
-                                ],
-                            },
-                        })
-                except Exception as e:
-                    logger.warning(f"Failed to generate unresolved QueryPlan mock features: {e}")
-        elif False:
-            logger.warning(f"Database connection unavailable for {db_route}; synthetic features are disabled.")
-            # Fallback Mock Data Generation
-            if target_layer == "gbenc_feature":
-                mock_feature_names = params.get("target_features", [])
-                if not mock_feature_names:
-                    mock_feature_names = ["위험객체", "제한구역"]
-                    
-                import random
-                # base_geometry가 있으면 그 주변에 mock feature를 생성합니다.
-                base_wkt = params.get("geom") or params.get("base_geometry")
-                if base_wkt:
-                    try:
-                        wkt = base_wkt.replace("POINT(", "").replace(")", "").strip()
-                        lon, lat = map(float, wkt.split())
-                        mock_count = 2 if tool_name == "postgis.dwithin" else 1
-                        for i in range(mock_count):
-                            offset_lon = lon + random.uniform(-0.01, 0.01)
-                            offset_lat = lat + random.uniform(-0.01, 0.01)
-                            fname = random.choice(mock_feature_names)
-                            feat = {
-                                "type": "Feature",
-                                "properties": {
-                                    "feature_name": fname,
-                                    "nftc": 1000 + i,
-                                    "clearance_level": "PUBLIC",
-                                    "_render_style": dsl.conditions.get("_render_styles", {}).get(fname, {}),
-                                    "_popup_fields": dsl.conditions.get("_popup_fields", {}).get(fname, [])
-                                },
-                                "geometry": {"type": "Point", "coordinates": [offset_lon, offset_lat]}
-                            }
-                            # 태깅 추가
-                            feat["properties"]["role"] = "hazard_objects"
-                            # Apply processor if exists
-                            post_processors = dsl.conditions.get("_post_processors", {})
-                            if fname in post_processors:
-                                processor = get_processor(post_processors[fname])
-                                if processor:
-                                    feat["properties"] = processor.process(feat["properties"])
-                            mock_features.append(feat)
-                    except Exception:
-                        pass
-                        
-            # (중복 검색 반경 Point 제거)
 
-            
     except Exception as e:
         # psycopg2 등에서 발생하는 CP949 에러 메시지가 UTF-8로 디코딩되지 않는 문제 방어
         err_msg = ""
@@ -381,16 +307,16 @@ def execute_spatial_tool(dsl: Any, trace_id: str, task_id: str, user_id: str = "
                 },
                 "geometry": shapely.geometry.mapping(geom)
             }
-            mock_features.insert(0, boundary_feature)
+            features.insert(0, boundary_feature)
         except Exception as e:
             logger.warning(f"Failed to generate search boundary feature: {e}")
 
     # 실제 데이터 건수 계산 (검색 반경 피처 제외)
-    data_features = [f for f in mock_features if not f.get("properties", {}).get("is_search_boundary")]
+    data_features = [f for f in features if not f.get("properties", {}).get("is_search_boundary")]
     feature_count = len(data_features)
     
     # 인라인 데이터를 무조건 담되, 너무 많을 경우(10000건 초과)에만 파일로 분리
-    inline_geojson = {"type": "FeatureCollection", "features": mock_features}
+    inline_geojson = {"type": "FeatureCollection", "features": features}
     
     if feature_count > 10000:
         file_path = os.path.join(RESULTS_DIR, f"{task_id}_{tool_name}.geojson")

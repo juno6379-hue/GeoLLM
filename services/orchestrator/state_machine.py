@@ -1,28 +1,17 @@
-"""Compatibility entry point for callers of the former orchestration API."""
-
-from datetime import datetime, timezone
-
-from shared.schemas.agent import AgentStatus
-
+"""Compatibility adapter to the real orchestration graph."""
+from services.orchestrator.graph import orchestrator_graph
 
 async def run_orchestration_workflow(task_id: str, query: str, task_store):
-    """Run the legacy workflow contract against a mapping-like task store."""
-    result = {
-        "task_id": task_id,
-        "trace_id": f"trace-{task_id}",
-        "agent_name": "spatial-analysis-agent",
-        "agent_version": "compatibility",
-        "status": AgentStatus.COMPLETED,
-        "summary": "Legacy orchestration workflow completed",
-        "structured_result": {"count": 5},
-        "features": "s3://mock/results.geojson",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
     current = task_store.get(task_id, {})
-    task_store[task_id] = {
-        **current,
-        "query": query,
-        "status": AgentStatus.COMPLETED,
-        "result": result,
-    }
+    state = await orchestrator_graph.ainvoke(
+        {"task_id": task_id, "query": query,
+         "organization_id": current.get("organization_id", "default_org"),
+         "user_id": current.get("user_id", "default_user"),
+         "spatial_context": current.get("spatial_context") or {},
+         "status": "RECEIVED", "state_history": []},
+        config={"configurable": {"thread_id": task_id}},
+    )
+    result = state.get("final_dict")
+    task_store[task_id] = {**current, "query": query, "status": state.get("status", "FAILED"),
+                           "result": result, "error_message": state.get("error_message")}
     return result

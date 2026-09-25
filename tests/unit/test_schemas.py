@@ -11,7 +11,7 @@ from shared.schemas.agent import (
     SecurityContext,
 )
 from shared.security.context import check_clearance, ClearanceLevel
-from services.registry.mock import get_tools, get_tool_by_name
+from services.spatial_analysis_agent.tool_registry import QueryTemplateRegistry
 
 def test_agent_request_creation():
     req = AgentRequest(
@@ -81,12 +81,8 @@ def test_clearance_level():
     assert check_clearance(ClearanceLevel.SECRET, ClearanceLevel.CONFIDENTIAL) is True
     assert check_clearance(ClearanceLevel.PUBLIC, ClearanceLevel.SECRET) is False
 
-def test_mock_registry():
-    tools = get_tools()
-    assert len(tools) == 1
-    tool = get_tool_by_name("postgis.dwithin")
-    assert tool is not None
-    assert tool.tool_name == "postgis.dwithin"
-    
-    missing = get_tool_by_name("not.exist")
-    assert missing is None
+def test_registered_spatial_query_template():
+    registry = QueryTemplateRegistry()
+    assert registry.get_template_sql("feature_search_by_radius")
+    with pytest.raises(ValueError):
+        registry.get_template_sql("not.exist")

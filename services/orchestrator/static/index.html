@@ -994,6 +994,7 @@
         }
 
         function formatPercent(value) {
+            if (value === null || value === undefined || value === "") return "미평가";
             const n = Number(value);
             if (!Number.isFinite(n)) return "-";
             return `${(n * 100).toFixed(1)}%`;
@@ -1011,7 +1012,7 @@
             const intent = route.intent || (finalResult && finalResult.intent && finalResult.intent.intent_type) || (finalResult && finalResult.agent_name) || "-";
             document.getElementById("intentResult").innerText = intent;
             document.getElementById("similarityScore").innerText = formatPercent(quality.kg_similarity ?? quality.intent_similarity ?? quality.evidence_similarity);
-            document.getElementById("accuracyScore").innerText = formatPercent(quality.estimated_accuracy);
+            document.getElementById("accuracyScore").innerText = quality.evaluation_status === "EVALUATED" ? formatPercent(quality.estimated_accuracy) : "미평가";
             if (fallbackCount !== undefined && fallbackCount !== null) {
                 document.getElementById("dangerCount").innerText = `${fallbackCount}건`;
             }
@@ -1059,7 +1060,7 @@
             if (ragProv.filters) evidenceItems.push("문서/RAG 검색 조건을 함께 반영했습니다.");
             warnings.forEach(w => evidenceItems.push(`경고: ${w}`));
 
-            setAnalysisPanel("분석 완료", summary, evidenceItems);
+            setAnalysisPanel(finalResult.status === "PARTIAL" ? "부분 분석 · 근거 부족" : finalResult.status === "BLOCKED" ? "실행 불가" : "분석 완료", summary, evidenceItems);
             if (window.QuerySummary && typeof QuerySummary.renderGeneric === "function") {
                 QuerySummary.renderGeneric(finalResult, data.query || structured.original_query || "", geojsonData);
             }
@@ -1470,15 +1471,10 @@
                                     break;
                                 }
                                 
+                                const resultStatus = data.final_result?.status || data.status;
                                 setStep('routing', 'done');
-                                setStep('discovery', 'done');
-                                setStep('spatial', 'done');
-                                setStep('ais', 'done');
-                                setStep('knowledge', 'done');
-                                setStep('reasoning', 'done');
-                                setStep('validation', 'done');
-                                setStep('report', 'done');
-                                addLog(`[System] 분석 완료`);
+                                setStep('report', resultStatus === 'BLOCKED' ? 'error' : 'done');
+                                addLog(resultStatus === 'PARTIAL' ? '[System] 부분 분석: 추가 근거 필요' : resultStatus === 'BLOCKED' ? '[System] 실행 불가' : '[System] 분석 완료');
                                 
                                 let geojsonData = null;
                                 if (data.final_result) {

@@ -2,6 +2,8 @@
 
 import ast
 from copy import deepcopy
+from datetime import date, datetime
+from decimal import Decimal
 import os
 from pathlib import Path
 from types import SimpleNamespace
@@ -19,7 +21,7 @@ def serializers():
     }
     tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
     module = ast.Module(body=[node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in names], type_ignores=[])
-    namespace = {"os": os, "AgentStatus": SimpleNamespace(RECEIVED="RECEIVED")}
+    namespace = {"uuid": __import__("uuid"), "date": date, "datetime": datetime, "Decimal": Decimal, "os": os, "AgentStatus": SimpleNamespace(RECEIVED="RECEIVED")}
     exec(compile(module, str(path), "exec"), namespace)
     return namespace
 
@@ -70,7 +72,7 @@ def test_stream_keeps_every_spatial_surface_and_identity(serializers, serializer
 
     assert compact["structured_result"] == result["structured_result"] | {
         "retrieved_count": None, "documents": [], "citations": [], "requires_external_api": None,
-        "api_params": None, "external_data_requirement": None, "status": None, "evidence_candidate_summary": None,
+        "quality_metrics": None, "api_params": None, "external_data_requirement": None, "status": None, "evidence_candidate_summary": None,
     }
     for field in ("map_layers", "evidence_bundle", "spatial_result_summary"):
         assert compact[field] == result[field]
@@ -150,7 +152,7 @@ def test_radius_confirmation_restarts_same_task_with_fresh_context(serializers):
         "agent_request": {"stale": True}, "context_result": {"stale": True}, "extracted_slots": {"distance_m": 99},
     }
     original = deepcopy(state)
-    request = SimpleNamespace(query="Wreck within 3km", spatial_context={"base_location": "Confirmed entrance", "geometry": "POINT(129.075 35.075)", "crs": "EPSG:4326", "buffer_distance": 3000})
+    request = SimpleNamespace(task_id=None, organization_id=None, user_id=None, query="Wreck within 3km", spatial_context={"base_location": "Confirmed entrance", "geometry": "POINT(129.075 35.075)", "crs": "EPSG:4326", "buffer_distance": 3000})
 
     assert serializers["_is_radius_state"](state)
     restarted = serializers["_radius_restart_state"](state, request)
@@ -167,7 +169,7 @@ def test_radius_confirmation_restarts_same_task_with_fresh_context(serializers):
 
 def test_changed_place_without_geometry_does_not_reuse_previous_center(serializers):
     state = {"query": "Wreck within 3km", "execution_revision": 4, "spatial_context": {"base_location": "Old entrance", "geometry": "POINT(129 35)", "crs": "EPSG:4326"}}
-    request = SimpleNamespace(query="New entrance", spatial_context={"base_location": "New entrance"})
+    request = SimpleNamespace(task_id=None, organization_id=None, user_id=None, query="New entrance", spatial_context={"base_location": "New entrance"})
 
     restarted = serializers["_radius_restart_state"](state, request)
 
@@ -213,7 +215,7 @@ def test_changed_gazetteer_selection_clears_previous_geometry_and_provenance(ser
             "target_features": ["Wreck"], "exclusions": ["Obstruction"], "result_limit": 17,
         },
     }
-    request = SimpleNamespace(query=state["query"], spatial_context={"base_location": "Same label", **selection})
+    request = SimpleNamespace(task_id=None, organization_id=None, user_id=None, query=state["query"], spatial_context={"base_location": "Same label", **selection})
 
     spatial = serializers["_radius_restart_state"](state, request)["spatial_context"]
 
@@ -232,7 +234,7 @@ def test_same_task_manual_point_clears_old_gazetteer_selection_after_merge(seria
         "place_id": "dataset-a:place-1", "place_version": "version-1", "geometry": "POINT(129 35)",
         "location_resolution": {"source_ref": "old-source"}, "target_features": ["Wreck"], "result_limit": 17,
     }}
-    request = SimpleNamespace(query=state["query"], spatial_context={
+    request = SimpleNamespace(task_id=None, organization_id=None, user_id=None, query=state["query"], spatial_context={
         "geometry": "POINT(126 37)", "crs": "EPSG:4326", "location_resolution": {"source_ref": "unverified-input"},
     })
 
@@ -257,7 +259,7 @@ def test_generic_location_confirmation_restarts_same_task_with_fresh_gates(seria
         "task_plan": {"stale": True}, "agent_result": {"stale": True}, "context_result": {"stale": True},
     }
     original = deepcopy(state)
-    request = SimpleNamespace(query=state["query"], spatial_context={"place_id": "island:1", "place_version": "v1", "geometry": "POINT(129 35)", "crs": "EPSG:4326"})
+    request = SimpleNamespace(task_id=None, organization_id=None, user_id=None, query=state["query"], spatial_context={"place_id": "island:1", "place_version": "v1", "geometry": "POINT(129 35)", "crs": "EPSG:4326"})
     assert serializers["_is_place_clarification_state"](state)
     restarted = serializers["_radius_restart_state"](state, request)
     assert restarted["task_id"] == "generic-task"
@@ -287,7 +289,7 @@ def test_new_generic_query_does_not_inherit_previous_radius(serializers, supplie
         "query": "Find hazards within 3km", "spatial_context": {"buffer_distance": 3000, "target_features": ["Wreck"], "k": 4},
         "final_dict": {"status": "NEEDS_CLARIFICATION", "structured_result": {"analysis_type": "nearest_feature"}},
     }
-    request = SimpleNamespace(query="Nearest Wreck to Island B", spatial_context=supplied)
+    request = SimpleNamespace(task_id=None, organization_id=None, user_id=None, query="Nearest Wreck to Island B", spatial_context=supplied)
     restarted = serializers["_radius_restart_state"](state, request)
     assert restarted["query"] == request.query
     assert restarted["spatial_context"].get("buffer_distance") == supplied.get("buffer_distance")
@@ -314,7 +316,7 @@ def test_completed_place_request_rechecks_changed_selection_or_manual_point(seri
     }
     original = deepcopy(state)
     assert serializers["_is_place_clarification_state"](state)
-    request = SimpleNamespace(query=state["query"], spatial_context=selection)
+    request = SimpleNamespace(task_id=None, organization_id=None, user_id=None, query=state["query"], spatial_context=selection)
     restarted = serializers["_radius_restart_state"](state, request)
     assert restarted["task_id"] == state["task_id"]
     assert restarted["execution_revision"] == 4

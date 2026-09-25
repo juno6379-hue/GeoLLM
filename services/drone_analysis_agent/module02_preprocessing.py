@@ -1,100 +1,53 @@
-import os
+"""Real PDAL outlier filtering; no copied-input or synthetic metrics fallback."""
 import json
+import math
+import shutil
 import subprocess
 import time
-import shutil
+import uuid
+from pathlib import Path
+import laspy
 
-def run_preprocessing(dataset_id: str, input_path: str, mean_k: int = 50, std_dev_mul: float = 1.0) -> dict:
-    """
-    Run PDAL Pipeline for Point Cloud Preprocessing & Registration.
-    Steps:
-      01 Noise Removal
-      02 Outlier Filtering
-      03 Coordinate Transformation
-      04 Registration (Mocked via ICP filter parameters)
-      05 Quality Check (RMSE Evaluation)
-    """
-    start_time = time.time()
-    
-    # 1. Determine Output Path
-    output_dir = os.path.join(os.path.dirname(input_path), "processed")
-    os.makedirs(output_dir, exist_ok=True)
-    base_name = os.path.basename(input_path)
-    output_path = os.path.join(output_dir, f"module02_{base_name.replace('.las', '.laz')}")
-    pipeline_path = os.path.join(output_dir, f"{dataset_id}_pipeline.json")
-    
-    # 2. Build PDAL Pipeline JSON
-    pipeline = {
-        "pipeline": [
-            input_path,
-            {
-                "type": "filters.outlier",
-                "method": "statistical",
-                "mean_k": mean_k,
-                "multiplier": std_dev_mul
-            },
-            {
-                "type": "filters.reprojection",
-                "in_srs": "EPSG:5186",
-                "out_srs": "EPSG:5186" # Dummy transform to fulfill Coordinate Transformation step
-            },
-            output_path
-        ]
-    }
-    
-    with open(pipeline_path, "w") as f:
-        json.dump(pipeline, f, indent=4)
-        
-    # 3. Attempt to run PDAL CLI (Subprocess)
-    pdal_executed = False
-    try:
-        # Check if PDAL is in PATH
-        result = subprocess.run(["pdal", "--version"], capture_output=True, text=True)
-        if result.returncode == 0:
-            print("Running PDAL Pipeline...")
-            subprocess.run(["pdal", "pipeline", pipeline_path], check=True)
-            pdal_executed = True
-    except FileNotFoundError:
-        print("PDAL not found in PATH. Using Mock / Fallback engine.")
-        
-    # 4. Fallback execution if PDAL is missing
-    # For demonstration, if PDAL fails or isn't installed, we mock the result.
-    before_points = 125600000
-    if not pdal_executed:
-        # Simulate processing time
-        time.sleep(2)
-        # Mock creating an output file by copying input
-        try:
-            shutil.copyfile(input_path, output_path)
-        except FileNotFoundError:
-            with open(output_path, "w") as f:
-                f.write("mock pointcloud data")
-        
-    # 5. Calculate Metrics (Mocked/Estimated)
-    # In a real PDAL execution, we would read PDAL metadata: pdal info --metadata
-    removed_points = int(before_points * (0.005 + (1.0 / mean_k))) # Dummy calculation
-    after_points = before_points - removed_points
-    rmse = 0.028 # Dummy RMSE for Registration step
-    
-    return {
-        "before_points": before_points,
-        "after_points": after_points,
-        "removed_points": removed_points,
-        "rmse": rmse,
-        "unit": "m",
-        "processing_time": round(time.time() - start_time, 2),
-        "output_path": output_path,
-        "engine": "PDAL Pipeline (Native)" if pdal_executed else "PDAL Pipeline (Fallback Engine)",
-        "steps_completed": [
-            {"name": "01 노이즈 제거", "detail": f"SOR Filter (Mean K: {mean_k}, Std Dev: {std_dev_mul})", "status": "success"},
-            {"name": "02 점군 필터링", "detail": f"Duplicate & Density Filtering", "status": "success"},
-            {"name": "03 점군 보정", "detail": "Boresight & Coordinate Correction (EPSG:5186)", "status": "success"},
-            {"name": "04 ICP 정합", "detail": "Iterative Closest Point Registration", "status": "success"},
-            {"name": "05 정합오차 확인", "detail": f"RMSE Evaluated: {rmse} m", "status": "success"}
-        ]
-    }
-
-if __name__ == "__main__":
-    # Test
-    res = run_preprocessing("TEST", "dummy.las")
-    print(json.dumps(res, indent=2))
+def run_preprocessing(dataset_id, input_path, mean_k=50, std_dev_mul=1.0):
+    start = time.monotonic()
+    source = Path(input_path).resolve()
+    if not source.is_file():
+        raise FileNotFoundError("등록된 점군 파일이 서버에 없습니다.")
+    if source.suffix.lower() not in {".las", ".laz"}:
+        raise ValueError("전처리는 LAS/LAZ 파일만 지원합니다.")
+    if mean_k < 2 or not math.isfinite(std_dev_mul) or std_dev_mul <= 0:
+        raise ValueError("노이즈 필터 매개변수가 유효하지 않습니다.")
+    executable = shutil.which("pdal")
+    if not executable:
+        raise RuntimeError("PDAL 실행 엔진이 설치되지 않아 전처리를 실행할 수 없습니다.")
+    with laspy.open(source) as reader:
+        before = int(reader.header.point_count)
+    if before <= mean_k:
+        raise ValueError("입력 점 수가 이웃 점 수보다 많아야 합니다.")
+    output_dir = source.parent / "processed"
+    output_dir.mkdir(exist_ok=True)
+    job = uuid.uuid4().hex
+    output = output_dir / f"{source.stem}_{job}.las"
+    pipeline_path = output_dir / f"{job}_pipeline.json"
+    pipeline = {"pipeline": [
+        {"type": "readers.las", "filename": str(source)},
+        {"type": "filters.outlier", "method": "statistical", "mean_k": mean_k, "multiplier": std_dev_mul},
+        {"type": "filters.expression", "expression": "Classification != 7"},
+        {"type": "writers.las", "filename": str(output), "forward": "all"}]}
+    pipeline_path.write_text(json.dumps(pipeline, indent=2), encoding="utf-8")
+    version = subprocess.run([executable, "--version"], check=True, capture_output=True, text=True, timeout=10).stdout.strip()
+    subprocess.run([executable, "pipeline", str(pipeline_path)], check=True, capture_output=True, text=True, timeout=600)
+    if not output.is_file():
+        raise RuntimeError("PDAL이 출력 파일을 생성하지 않았습니다.")
+    with laspy.open(output) as reader:
+        after = int(reader.header.point_count)
+    if after > before:
+        raise RuntimeError("전처리 출력 점 수가 입력 점 수보다 큽니다.")
+    return {"dataset_id": dataset_id, "before_points": before, "after_points": after,
+            "removed_points": before - after, "rmse": None, "unit": None,
+            "processing_time": round(time.monotonic() - start, 3),
+            "output_path": str(output), "pipeline_path": str(pipeline_path),
+            "engine": "PDAL", "engine_version": version,
+            "registration_status": "NOT_PERFORMED", "crs_transformation_status": "NOT_PERFORMED",
+            "steps_completed": [{"name": "통계적 이상점 제거", "detail": f"mean_k={mean_k}, multiplier={std_dev_mul}", "status": "success"}],
+            "warnings": ["정합·좌표변환·고도기준 검증은 수행하지 않았으며 RMSE를 산정하지 않았습니다."]}

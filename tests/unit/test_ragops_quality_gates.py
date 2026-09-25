@@ -9,18 +9,18 @@ def test_blocked_no_evidence_fast_path_has_quality_metrics():
         blocked_no_evidence=True,
     )
 
-    assert metrics["method"] == "deterministic_authoritative_no_evidence_gate"
-    assert metrics["estimated_accuracy"] >= 0.8
-    assert metrics["kg_similarity"] > 0
-    assert metrics["evidence_similarity"] > 0
+    assert metrics["observations"]["no_evidence"] is True
+    assert metrics["estimated_accuracy"] is None
+    assert metrics["kg_similarity"] is None
+    assert metrics["evidence_similarity"] is None
 
 
 def test_default_fast_path_quality_is_not_unavailable():
     metrics = graph._quality_metrics_from_state({"graph_context": {}}, fast_path="dataset_place_resolver")
 
-    assert metrics["method"] == "deterministic_fast_path_default_quality_v1"
-    assert metrics["estimated_accuracy"] >= 0.55
-    assert metrics["confidence_band"] == "medium"
+    assert metrics["evaluation_status"] == "NOT_EVALUATED"
+    assert metrics["estimated_accuracy"] is None
+    assert metrics["confidence_band"] == "not_evaluated"
 
 
 def test_blocked_data_is_not_logged_as_execution_not_ready(monkeypatch):

@@ -18,16 +18,36 @@ CONFIRMED_LOCATION = {
 }
 
 
+
+@pytest.fixture(autouse=True)
+def isolated_location_sources(monkeypatch):
+    from services.spatial_analysis_agent import place_resolver
+    places = {
+        "busan_port_entrance": {"canonical_name": "부산항 입구", "aliases": ["Busan Port Entrance"], "geometry_wkt": "POINT(129.075 35.075)", "srid": 4326, "status": "curated"},
+        "incheon_port": {"canonical_name": "인천항", "aliases": ["Incheon Port"], "geometry_wkt": "POINT(126.6 37.45)", "srid": 4326, "status": "curated"},
+    }
+    monkeypatch.setattr(radius, "_place_entries", lambda: places)
+    monkeypatch.setattr(place_resolver, "load_catalog", lambda **kwargs: {"candidates": [], "unavailable_sources": []})
+    return places
+
 @pytest.fixture
 def graph_module(monkeypatch):
     monkeypatch.setenv("DISABLE_LLM_API", "true")
+    monkeypatch.setenv("GEOLLM_CAPABILITY_PGVECTOR", "false")
+    monkeypatch.setenv("GEOLLM_SEMANTIC_PRIOR_OLLAMA", "false")
     connect = Mock(side_effect=AssertionError("Graph integration fixtures must not open a database"))
     http_request = Mock(side_effect=AssertionError("Graph integration fixtures must not make HTTP requests"))
     monkeypatch.setattr(radius.psycopg2, "connect", connect)
     monkeypatch.setattr(requests.sessions.Session, "request", http_request)
     from services.orchestrator import graph
 
+    from services.orchestrator import query_candidate_broker as broker_module
+    monkeypatch.setattr(broker_module, "_verify_candidates", lambda capabilities: [])
+    connect.reset_mock()
     http_request.reset_mock()
+    monkeypatch.setattr(graph, "_resolve_s101_feature_code_map_from_projection", lambda *args: {})
+    original_terms = graph._marine_term_names
+    monkeypatch.setattr(graph, "_marine_term_names", lambda: original_terms() | {"위험객체", "해상예보"})
     monkeypatch.setattr(graph.cache, "check_cache", Mock(side_effect=AssertionError("Deterministic radius route must not call semantic cache")))
     monkeypatch.setattr(graph.router, "route_query", Mock(side_effect=AssertionError("Deterministic radius route must not call embeddings")))
     monkeypatch.setattr(graph, "ChatOpenAI", Mock(side_effect=AssertionError("Graph integration fixtures must not invoke an LLM")))
@@ -134,7 +154,7 @@ def test_hazard_definition_question_does_not_enter_spatial_or_place_route(graph_
     assert graph_module._looks_like_standard_rag_query("위험객체란")
     assert graph_module._looks_like_definition_question("위험객체란")
     assert graph_module._should_fast_execute_s101_hazard_radius(state) is False
-    assert graph_module.check_intent_parsed(state) == "create_plan"
+    assert graph_module.check_intent_parsed(state) == "fast_definition_answer"
 
 
 @pytest.mark.parametrize("query", ["조석예보란", "조석 예보란?", "해상예보란"])
@@ -149,7 +169,7 @@ def test_forecast_definition_question_does_not_require_external_time_series(grap
     assert graph_module._looks_like_definition_question(query)
     assert graph_module._looks_like_standard_rag_query(query)
     assert not graph_module._should_fast_external_requirement(query)
-    assert graph_module.check_intent_parsed(state) == "create_plan"
+    assert graph_module.check_intent_parsed(state) == "fast_definition_answer"
 
 
 @pytest.mark.parametrize("query", ["조석예보", "조석예보란", "조석 예보란?", "해상예보란"])

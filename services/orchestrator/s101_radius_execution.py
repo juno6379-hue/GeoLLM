@@ -47,8 +47,7 @@ def _registry(filename):
 
 
 def _place_entries():
-    registry = _registry("place_geometry_registry.yaml")
-    return registry.get("places") or registry.get("entries") or {}
+    return {}  # Resolve runtime places from authoritative serving data.
 
 
 def _spatial(state):
@@ -614,18 +613,8 @@ def _source_layer(layer):
 
 
 def _quality_metrics(method, *, fast_path, exact=True):
-    score = 0.93 if exact else 0.78
-    return {
-        "intent_similarity": score,
-        "kg_similarity": 0.9 if exact else 0.74,
-        "evidence_similarity": 0.88 if exact else 0.72,
-        "evidence_average_similarity": 0.88 if exact else 0.72,
-        "estimated_accuracy": 0.91 if exact else 0.76,
-        "confidence_band": "high" if exact else "medium",
-        "method": method,
-        "fast_path": fast_path,
-        "notes": ["Registry/KG 정책과 실행 입력 검증을 통과한 deterministic fast path 품질 추정값입니다."],
-    }
+    from services.orchestrator.quality import unmeasured_quality
+    return {**unmeasured_quality(method=method, exact_registry_match=exact), "fast_path": fast_path}
 
 
 def _feature_rows_to_geojson(qec, layer, rows, result_id, execution_id):

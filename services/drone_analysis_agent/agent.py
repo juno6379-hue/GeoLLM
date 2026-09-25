@@ -21,21 +21,21 @@ class DroneLiDARAnalysisAgent:
         output_layers = []
         metrics = {}
         
-        # Rule 1: Parse Context from Orchestrator
         input_assets = []
-        if getattr(request, "available_datasets", None):
-            for ds in request.available_datasets:
-                # Mock converting DatasetVersion to asset dict for this demo
-                input_assets.append({"role": "primary", "path": f"/data/{ds.dataset_id}.laz", "version": ds.version})
-        else:
-            # Fallback mock for testing
-            input_assets = [{"role": "primary", "path": "d:/TEST_0708/TEST_0708/lidars/terra_las/pointcloud.laz", "version": "v1.0"}]
-
-        # Rule 6: Asynchronous Job Placeholder (Currently blocking, intended for Celery)
-        # In a real environment, we would return a task ID here and run in background.
-        
+        from data.database import get_postgis_db
+        from data.models.lidar_dataset import LiDARDataset
         try:
-            # Execute 15-step Preprocessing and Registration
+            generator = get_postgis_db()
+            try:
+                db = next(generator)
+                if db is not None:
+                    for ds in request.available_datasets or []:
+                        row = db.query(LiDARDataset).filter(LiDARDataset.dataset_id == ds.dataset_id).first()
+                        if row:
+                            input_assets.append({"role": "primary", "path": row.file_path, "version": ds.version})
+            finally:
+                generator.close()
+            # Execute only the implemented PDAL preprocessing.
             pc_processor = PointCloudProcessor(self.tools)
             pc_res = pc_processor.execute_preprocessing_and_registration(input_assets)
             
@@ -50,15 +50,9 @@ class DroneLiDARAnalysisAgent:
                     execution_time_ms=tc["execution_time_ms"]
                 ))
             
-            # Determine Status based on Quality (Rule 9)
-            quality = result_data.get("quality_grade", "F")
-            if quality in ["C", "F"]:
-                status = AgentStatus.WAITING_FOR_REVIEW
-                requires_human_review = True
-            else:
-                status = AgentStatus.COMPLETED
-                requires_human_review = False
-                
+            quality = None
+            status = AgentStatus.PARTIAL
+            requires_human_review = True
             metrics["registration_rmse"] = result_data.get("rmse")
             metrics["quality_grade"] = quality
             
@@ -68,7 +62,7 @@ class DroneLiDARAnalysisAgent:
 
             # Rule 4: Validation Payload Generation
             val_res = self.tools.validation_payload_generation(metrics)
-            tool_calls.append(ToolCallLog(tool_name="system.validation_payload", status="SUCCESS", execution_time_ms=10.0))
+            tool_calls.append(ToolCallLog(tool_name="system.validation_payload", status="NOT_EVALUATED", execution_time_ms=0.0))
             validation_payload = val_res
             
             structured_result = {

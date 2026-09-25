@@ -54,38 +54,14 @@ def _query_embedding(query: str):
         result = json.load(response)
     return result['embeddings'][0]
 
-def _mock_fallback_enabled() -> bool:
-    return (
-        os.getenv("ALLOW_MOCK_FALLBACK", "").lower() in {"1", "true", "yes", "on"}
-        or bool(os.getenv("PYTEST_CURRENT_TEST"))
-    )
+class RetrievalUnavailable(RuntimeError):
+    """A source failure must not be represented as a successful empty search."""
 
-# Fallback Mock Data
-MOCK_DOCUMENTS = [
-    {
-        "doc_id": "doc-s101-001",
-        "title": "S-101 Electronic Navigational Chart (ENC) Product Specification",
-        "version": "1.2.0",
-        "content": "위험객체(Hazard) 중 침선(Wreck)은 해상 운항에 중대한 위협이 되므로 수심 20m 미만 지역에서 반드시 표시되어야 한다.",
-        "section": "12.3 Wrecks",
-        "keywords": ["위험객체", "침선", "s101", "수심"],
-        "clearance": "PUBLIC"
-    },
-    {
-        "doc_id": "doc-law-001",
-        "title": "해양환경관리법",
-        "version": "2025.01",
-        "content": "해상풍력 단지 개발 시 보호구역으로 지정된 해양보호구역에서는 최소 2km 이상 이격하여야 한다.",
-        "section": "제15조 제2항",
-        "keywords": ["해상풍력", "보호구역", "거리", "이격"],
-        "clearance": "PUBLIC"
-    }
-]
 
 def search_vdb(query: str, top_k: int = 2, user_id: str = "system", clearance_level: str = "PUBLIC", rag_filters: Dict[str, Any] = None) -> List[Dict[str, Any]]:
     """
     사용자 쿼리를 임베딩하여 pgvector의 코사인 유사도 검색(<=>)을 수행합니다.
-    로컬 DB 연결 실패 시 기존의 Mock 로직으로 자동 전환됩니다.
+    검색 실패 시 가짜 문서로 대체하지 않습니다.
     """
     
     # DB 연결 확인
@@ -174,38 +150,9 @@ def search_vdb(query: str, top_k: int = 2, user_id: str = "system", clearance_le
                     if result:
                         return [dict(r) for r in result]
         except Exception as e:
-            logger.error("pgvector search failed, falling back to mock", error=str(e))
+            logger.error("pgvector search failed; no evidence returned", error=str(e))
+            raise RetrievalUnavailable("문서 검색 DB 또는 임베딩 엔진을 사용할 수 없습니다.") from e
     
-    # Fallback 로직 (보안 필터 적용)
-    if not _mock_fallback_enabled():
-        logger.error("Real pgvector search unavailable and mock fallback is disabled")
-        return []
-
-    logger.warning("Falling back to Mock Vector DB Search")
-    results = []
-    query_lower = query.lower()
-    
-    clearance_map = {"PUBLIC": 1, "RESTRICTED": 2, "SECRET": 3}
-    user_lvl = clearance_map.get(clearance_level.upper(), 1)
-    
-    filtered_count = 0
-    
-    candidate_ids = set(rag_filters.get("candidate_document_ids", []))
-    for doc in MOCK_DOCUMENTS:
-        req_lvl = clearance_map.get(doc.get("clearance", "PUBLIC"), 1)
-        if user_lvl >= req_lvl:
-            if candidate_ids and doc.get("doc_id") not in candidate_ids:
-                continue
-            score = sum(1 for kw in doc["keywords"] if kw in query_lower)
-            if score > 0:
-                results.append({"doc": doc, "score": score})
-        else:
-            if any(kw in query_lower for kw in doc["keywords"]):
-                filtered_count += 1
-                
-    if filtered_count > 0:
-        log_data_access(user_id, "READ", "mock_vector_db", clearance_level, "FILTERED", f"{filtered_count} docs denied")
-        logger.warning(f"{filtered_count} RAG documents filtered out due to clearance")
-            
-    results.sort(key=lambda x: x["score"], reverse=True)
-    return [r["doc"] for r in results[:top_k]]
+    if not db_available or not llm_api_enabled():
+        raise RetrievalUnavailable("문서 검색 DB 또는 임베딩 엔진이 준비되지 않았습니다.")
+    return []

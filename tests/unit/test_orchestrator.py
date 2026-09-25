@@ -73,7 +73,9 @@ def test_query_execution_context_contract_fields():
     assert qec.rag["filters"] == {"product_id": "S-101"}
 
 
-def test_s101_hazard_radius_fast_path_is_registry_backed():
+def test_s101_hazard_radius_fast_path_is_registry_backed(monkeypatch):
+    from services.orchestrator import graph
+    monkeypatch.setattr(graph, "_resolve_s101_feature_code_map_from_projection", lambda *args: {"UnderwaterAwashRock": [100], "Wreck": [101], "Obstruction": [102]})
     from services.orchestrator.graph import (
         _resolve_known_marine_place_wkt,
         _s101_hazard_radius_registry_config,
@@ -92,24 +94,18 @@ def test_s101_hazard_radius_fast_path_is_registry_backed():
         "Busan Port Entrance 3km Wreck",
         {"spatial_context": {}},
     )
-    assert wkt == "POINT(129.075 35.075)"
-    assert name == "부산항 입구"
+    assert wkt is None  # An unregistered harbour entrance must not use seed coordinates.
 
 @pytest.mark.asyncio
-async def test_state_machine_flow():
-    from services.orchestrator.state_machine import run_orchestration_workflow
-    
-    task_id = "test-task-123"
-    query = "부산항 위험객체 분석"
-    TASK_STORE[task_id] = {
-        "status": AgentStatus.RECEIVED,
-        "query": query,
-        "result": None
-    }
-    
-    await run_orchestration_workflow(task_id, query, TASK_STORE)
-    
-    assert TASK_STORE[task_id]["status"] == AgentStatus.COMPLETED
-    assert TASK_STORE[task_id]["result"] is not None
-    assert TASK_STORE[task_id]["result"]["agent_name"] == "spatial-analysis-agent"
-    assert TASK_STORE[task_id]["result"]["structured_result"]["count"] == 5
+async def test_state_machine_preserves_real_failure(monkeypatch):
+    from services.orchestrator import state_machine
+    async def execute(state, config):
+        assert state["query"] == "missing source"
+        return {"status": "BLOCKED", "final_dict": {"status": "BLOCKED", "error_code": "NO_SOURCE"}}
+    from types import SimpleNamespace
+    monkeypatch.setattr(state_machine, "orchestrator_graph", SimpleNamespace(ainvoke=execute))
+    store = {}
+    result = await state_machine.run_orchestration_workflow("compat-test", "missing source", store)
+    assert result["error_code"] == "NO_SOURCE"
+    assert store["compat-test"]["status"] == "BLOCKED"
+    assert "features" not in result

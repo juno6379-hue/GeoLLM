@@ -18,16 +18,6 @@ import yaml
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
-KNOWN_PLACES = {
-    "부산항 입구": ("부산항 입구", "POINT(129.075 35.075)"),
-    "부산항": ("부산항", "POINT(129.075 35.075)"),
-    "부산": ("부산항", "POINT(129.075 35.075)"),
-    "인천항": ("인천항", "POINT(126.592 37.456)"),
-    "인천": ("인천항", "POINT(126.592 37.456)"),
-    "busan port entrance": ("Busan Port Entrance", "POINT(129.075 35.075)"),
-    "busan port": ("Busan Port", "POINT(129.075 35.075)"),
-    "incheon port": ("Incheon Port", "POINT(126.592 37.456)"),
-}
 
 
 class TrafficProblem(Exception):
@@ -109,14 +99,16 @@ def _reference(query: str, state: dict) -> tuple[str | None, str | None, float |
         spatial = spatial.model_dump()
     if not isinstance(spatial, dict):
         spatial = {}
-    if spatial.get("geometry"):
-        return str(spatial["geometry"]), spatial.get("base_location") or spatial.get("location_text") or "request geometry", spatial.get("buffer_distance")
-    text = " ".join(str(item or "") for item in [query, spatial.get("base_location"), spatial.get("location_text")]).lower()
-    compact_text = re.sub(r"\s+", "", text)
-    for alias, (label, wkt) in KNOWN_PLACES.items():
-        if alias.lower() in text or re.sub(r"\s+", "", alias.lower()) in compact_text:
-            return wkt, label, _distance_m(query) or spatial.get("buffer_distance") or 50000.0
-    return None, None, None
+    from services.orchestrator.port_context import request_geometry, resolve_port_context, PortContextError
+    try:
+        geometry, method = request_geometry(spatial)
+        label = spatial.get("base_location") or spatial.get("location_text") or method
+        if geometry is None:
+            location = resolve_port_context(query, spatial)
+            geometry, label = location["geometry"], location["port"]
+        return geometry, label, _distance_m(query) or spatial.get("buffer_distance")
+    except PortContextError as exc:
+        raise TrafficProblem("NEEDS_CLARIFICATION", exc.code, str(exc)) from exc
 
 
 def _temporal_window(query: str) -> dict:
@@ -378,10 +370,18 @@ def execute_traffic_request(state: dict) -> dict:
     relation = "serving.dynamic_traffic_layer"
     limit = 50
     params: dict[str, Any] = {"sources": sources, "limit": limit}
-    spatial_predicate = ""
-    if ref_wkt and distance_m and math.isfinite(float(distance_m)):
-        spatial_predicate = "AND ST_DWithin(t.geom::geography, ST_SetSRID(ST_GeomFromText(%(ref_wkt)s), 4326)::geography, %(distance_m)s)"
-        params.update({"ref_wkt": ref_wkt, "distance_m": float(distance_m)})
+    from shapely import wkt
+    geometry = wkt.loads(ref_wkt)
+    params["ref_wkt"] = ref_wkt
+    if distance_m is not None:
+        if not math.isfinite(float(distance_m)) or not 0 < float(distance_m) <= 100000:
+            raise TrafficProblem("NEEDS_CLARIFICATION", "INVALID_DISTANCE", "분석 반경은 0m 초과 100km 이하로 지정해 주세요.")
+        spatial_predicate = "AND ST_DWithin(t.geom::geography, ST_GeomFromText(%(ref_wkt)s,4326)::geography, %(distance_m)s)"
+        params["distance_m"] = float(distance_m)
+    elif geometry.geom_type in {"Polygon", "MultiPolygon"}:
+        spatial_predicate = "AND ST_Intersects(t.geom, ST_GeomFromText(%(ref_wkt)s,4326))"
+    else:
+        raise TrafficProblem("NEEDS_CLARIFICATION", "DISTANCE_REQUIRED", "선택한 지점의 분석 반경 또는 지도 범위를 알려주세요.")
 
     with psycopg2.connect(_db_url(), connect_timeout=5) as conn:
         conn.set_session(readonly=True, isolation_level="REPEATABLE READ")
@@ -529,6 +529,8 @@ def execute_traffic_request(state: dict) -> dict:
         "analysis_type": "traffic_search_by_time_space",
         "total_traffic_count": int(result.get("vessel_count_total") or 0),
         "grid_count": int(result.get("grid_count") or 0),
+        "count_semantics": "sum_of_grid_month_aggregates_not_unique_vessels",
+        "spatial_semantics": "whole_intersecting_grid_cells" if distance_m is None else "grid_cells_within_distance",
         "source_breakdown": result.get("source_breakdown") or {},
         "monthly_breakdown": result.get("monthly_breakdown") or [],
         "source_layer": {"physical_table": relation, "geometry_column": "geom", "temporal_column": "observed_at", "count_column": "vessel_count_total"},

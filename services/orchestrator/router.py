@@ -1,4 +1,5 @@
-﻿import asyncio
+from services.orchestrator.quality import unmeasured_quality
+import asyncio
 import json
 import os
 import argparse
@@ -197,14 +198,7 @@ def _instant_place_final(task_id: str, query: str, payload: dict) -> dict:
             "count": len(features.get("features", [])),
             "returned_count": len(features.get("features", [])),
             "geojson": features,
-            "quality_metrics": {
-                "intent_similarity": 1.0,
-                "kg_similarity": 0.7 if not resolved else 1.0,
-                "evidence_similarity": 0.7 if not resolved else 1.0,
-                "estimated_accuracy": 0.72 if not resolved else 1.0,
-                "confidence_band": "medium" if not resolved else "high",
-                "method": "instant_place_navigation_fast_path",
-            },
+            "quality_metrics": unmeasured_quality(method="place_resolution", resolved=resolved),
         },
         "debug_trace": debug_trace,
         "clarification_questions": [summary] if status == "NEEDS_CLARIFICATION" else [],
@@ -643,7 +637,7 @@ def _compact_final_result_for_stream(final_result):
     }
     if isinstance(result.get("debug_trace"), dict):
         compact["debug_trace"] = result["debug_trace"]
-    for key in ("normalization", "extracted_slots", "derived_concept_mapping"):
+    for key in ("normalization", "extracted_slots", "derived_concept_mapping", "nearest_port_resolution", "traffic_analysis", "traffic_error", "analysis_type"):
         if key in structured:
             compact["structured_result"][key] = structured[key]
     _preserve_spatial_stream_payload(result, compact)

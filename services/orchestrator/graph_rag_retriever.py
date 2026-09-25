@@ -148,23 +148,17 @@ def _quality_metrics(
     kg_similarity = min(1.0, (len(related_ids) / 12.0) * 0.55 + (len(graph_paths) / 4.0) * 0.45)
     evidence_similarity = max(evidence_scores) if evidence_scores else 0.0
     evidence_average = _mean(evidence_scores)
-    estimated_accuracy = min(
-        1.0,
-        intent_similarity * 0.35
-        + kg_similarity * 0.25
-        + evidence_similarity * 0.30
-        + evidence_average * 0.10,
-    )
     return {
         "intent_similarity": round(intent_similarity, 4),
         "kg_similarity": round(kg_similarity, 4),
         "evidence_similarity": round(evidence_similarity, 4),
         "evidence_average_similarity": round(evidence_average, 4),
-        "estimated_accuracy": round(estimated_accuracy, 4),
-        "confidence_band": "high" if estimated_accuracy >= 0.8 else ("medium" if estimated_accuracy >= 0.55 else "low"),
+        "estimated_accuracy": None,
+        "confidence_band": "not_evaluated",
+        "evaluation_status": "NOT_EVALUATED",
         "method": "heuristic_online_query_quality_v1",
         "notes": [
-            "estimated_accuracy is not labelled ground-truth accuracy.",
+            "Token and graph coverage are routing diagnostics; accuracy is not evaluated.",
             "It combines intent seed coverage, KG path coverage, and evidence candidate match scores.",
         ],
         "coverage": {

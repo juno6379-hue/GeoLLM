@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, func
+from sqlalchemy import Column, String, Integer, BigInteger, Float, DateTime, Boolean, func
 from data.models.base import Base
 import datetime
 
@@ -12,7 +12,7 @@ class LiDARDataset(Base):
     file_name = Column(String(255), nullable=False)
     file_path = Column(String(1024), nullable=False) # MinIO or local path
     file_type = Column(String(20), nullable=False) # LAS, LAZ, TIF, etc.
-    file_size_bytes = Column(Integer, nullable=True)
+    file_size_bytes = Column(BigInteger, nullable=True)
     
     # Metadata
     acquisition_date = Column(DateTime, nullable=True)
@@ -30,7 +30,7 @@ class LiDARDataset(Base):
     max_z = Column(Float, nullable=True)
     
     # LiDAR specific
-    point_count = Column(Integer, nullable=True)
+    point_count = Column(BigInteger, nullable=True)
     point_format = Column(Integer, nullable=True)
     average_density = Column(Float, nullable=True) # pts/m2
     has_rgb = Column(Boolean, default=False)
