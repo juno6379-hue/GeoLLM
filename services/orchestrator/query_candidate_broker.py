@@ -527,11 +527,15 @@ def _capability_candidates(
 
 def _verify_candidates(capabilities: list[dict[str, Any]]) -> list[dict[str, Any]]:
     verified = []
+    reference_checks = {}
     for candidate in capabilities:
         authority = candidate.get("authority_ref")
         registry = candidate.get("registry_ref")
-        authority_check = _verify_reference(authority)
-        registry_check = _verify_reference(registry)
+        for ref in (authority, registry):
+            if ref not in reference_checks:
+                reference_checks[ref] = _verify_reference(ref)
+        authority_check = reference_checks[authority]
+        registry_check = reference_checks[registry]
         has_declared_refs = bool(authority and registry)
         has_registry_or_authority = authority_check["status"] in {"verified", "declared"} and registry_check["status"] in {"verified", "declared"}
         status = "verified_ready" if has_declared_refs and has_registry_or_authority else "candidate_needs_authority"

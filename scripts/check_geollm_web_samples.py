@@ -21,12 +21,13 @@ def extract_presets(html):
     return prompts
 
 
-def observe(base_url, number, query):
-    row = {'sample': number, 'query': query, 'browser_tested': False, 'spatial_context': {}, 'events': []}
+def observe(base_url, number, query, spatial_context=None):
+    context = spatial_context or {}
+    row = {'sample': number, 'query': query, 'browser_tested': False, 'spatial_context': context, 'events': []}
     start = time.monotonic()
     try:
         body = json.dumps({'query': query, 'user_id': 'admin', 'organization_id': 'test',
-                           'spatial_context': {}}, ensure_ascii=False).encode()
+                           'spatial_context': context}, ensure_ascii=False).encode()
         req = Request(base_url+'/api/v1/tasks/stream', data=body, headers={'Content-Type': 'application/json'})
         with urlopen(req, timeout=30) as response:
             for raw in response:
@@ -49,6 +50,11 @@ def observe(base_url, number, query):
         row.update(observation='OBSERVATION_ERROR', observation_error=f'{type(exc).__name__}: {exc}')
     row['elapsed_seconds'] = round(time.monotonic()-start, 3)
     return row
+
+
+def observed_status(row):
+    completion = row.get('completion') or {}
+    return (completion.get('final_result') or {}).get('status') or completion.get('status') or row['observation']
 
 
 def main():
@@ -81,11 +87,12 @@ def main():
                 stream.write(json.dumps(row,ensure_ascii=False)+'\n')
             final = (row.get('completion') or {}).get('final_result') or {}
             print(json.dumps({'sample':row['sample'],'observation':row['observation'],
-                              'status':final.get('status'),'error_code':final.get('error_code'),
+                              'status':observed_status(row),'error_code':final.get('error_code'),
                               'seconds':row['elapsed_seconds']},ensure_ascii=True),flush=True)
     (args.output/'summary.json').write_text(json.dumps({'count':len(rows),'browser_tested':False,
         'status_is_not_accuracy': True,
-        'statuses':dict(Counter(((r.get('completion') or {}).get('final_result') or {}).get('status',r['observation']) for r in rows)),
+        'statuses':dict(Counter(observed_status(r) for r in rows)),
+        'failed_tasks':[r['sample'] for r in rows if observed_status(r)=='FAILED'],
         'observation_errors':[r['sample'] for r in rows if r['observation']!='COMPLETED_EVENT_RECEIVED']},indent=2),encoding='utf-8')
 
 

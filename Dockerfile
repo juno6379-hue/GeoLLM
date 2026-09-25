@@ -13,7 +13,8 @@ COPY pyproject.toml poetry.lock* ./
 ARG INSTALL_DEV=false
 RUN poetry config virtualenvs.create false \
     && if [ "$INSTALL_DEV" = "true" ]; then poetry install --with dev --no-interaction --no-ansi --no-root; else poetry install --only main --no-interaction --no-ansi --no-root; fi \
-    && pip install --force-reinstall "setuptools<70" wheel
+    && pip install --force-reinstall "setuptools<70" wheel "packaging>=24,<25" \
+    && pip check
 COPY . .
 EXPOSE 8000
 CMD ["uvicorn", "services.orchestrator.main:app", "--host", "0.0.0.0", "--port", "8000"]

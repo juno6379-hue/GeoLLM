@@ -55,6 +55,8 @@ class OrchestratorState(TypedDict):
     graph_context: Optional[Dict[str, Any]]
     graph_rag_context: Optional[Dict[str, Any]]
     candidate_trace: Optional[Dict[str, Any]]
+    korean_query_analysis: Optional[Dict[str, Any]]
+    query_contract_blocked: Optional[bool]
     data_discovery_result: Optional[Dict[str, Any]]
     clarification_questions: Optional[List[str]]
 def log_transition(

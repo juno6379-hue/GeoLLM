@@ -326,6 +326,7 @@ def _related_ids(nodes: dict[str, dict[str, Any]], edges: list[dict[str, Any]], 
 
 
 def _seed_ids(nodes: dict[str, dict[str, Any]], context: dict[str, Any], query: str) -> list[str]:
+    grounded = [identifier for identifier in context.get('validated_seed_ids', []) if identifier in nodes]
     types_by_key = {
         "target_features": {"Feature", "MarineTerm"},
         "derived_concepts": {"DerivedConcept", "MarineTerm"},
@@ -334,7 +335,7 @@ def _seed_ids(nodes: dict[str, dict[str, Any]], context: dict[str, Any], query: 
         "product_id": {"Product"},
         "candidate_documents": {"StandardDocument", "LawDocument", "DocumentChunk"},
     }
-    seeds = []
+    seeds = list(grounded)
     for key, types in types_by_key.items():
         for value in _list(context.get(key)):
             seeds.extend(_matches(nodes, value, types))

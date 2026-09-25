@@ -1,0 +1,60 @@
+policy_version: maritime-reference-v1
+status: DESIGN_BASELINE_NOT_RUNTIME_ENFORCEMENT
+created_on: '2026-09-26'
+principle: Authority is scoped to the claim, edition, jurisdiction, and time; wiki is a publication format.
+sources:
+  - id: iho_s101_fc_2_0_0
+    scope: [feature_definition, attribute_schema, association_schema]
+    authority: normative_standard
+    edition: 2.0.0
+    url: https://registry.iho.int/productspec/view.do?idx=214
+  - id: iho_s101_dceg_2_0_0
+    scope: [encoding_rules, feature_selection, attribute_usage]
+    authority: normative_standard
+    edition: 2.0.0
+    url: https://registry.iho.int/productspec/view.do?idx=214
+  - id: iho_s101_pc_2_0_0
+    scope: [portrayal_rules, conditional_symbols]
+    authority: normative_standard
+    edition: 2.0.0
+    url: https://registry.iho.int/productspec/view.do?idx=214
+    required_context: [feature_attributes, portrayal_parameters, display_context]
+  - id: iho_s32
+    scope: [hydrographic_terminology]
+    authority: official_dictionary
+    url: https://portal.iho.int/iho-ohi/S32/
+    snapshot_required: true
+  - id: iala_dictionary
+    scope: [marine_aids_to_navigation_terminology]
+    authority: official_dictionary
+    format: wiki
+    url: https://www.iala.int/wiki/dictionary/index.php?page=Main+Page
+    snapshot_required: true
+    article_review_required: true
+  - id: korean_law_and_notice
+    scope: [legal_requirements, notice_applicability]
+    authority: official_legal_source
+    url: https://open.law.go.kr/LSO/openApi/guideList.do
+    required_context: [jurisdiction, effective_date, amendment_history, provision_locator]
+  - id: official_marine_data
+    scope: [observations, spatial_facts, temporal_aggregates]
+    authority: verified_dataset
+    required_context: [publisher, dataset_version, coverage, crs, units, query_parameters, execution_id]
+    note: Registry membership or a successful SQL call alone does not validate the data or result.
+  - id: community_wiki
+    scope: [alias_discovery, background, question_variants, primary_source_discovery]
+    authority: supplemental
+    snapshot_required: true
+    sole_gold_basis_allowed: false
+gold_reference_contract:
+  required_fields: [source_id, edition_or_revision, locator, retrieved_at, sha256, claim, applicability, review_status]
+  review_statuses: [UNREVIEWED, AI_REVIEW_REQUIRED, HUMAN_VERIFIED]
+  human_review_required_for_gold: true
+  content_hash_is_authenticity_proof: false
+  disagreements: retain_both_sources_and_adjudicate_scope_before_scoring
+evaluation:
+  separate_axes: [claim_correctness, task_coverage, slot_correctness, evidence_selection, tool_plan, actual_execution]
+  no_gold_semantic_score: null
+  execution_authority: registry_and_validated_tools
+  ollama_mode: shadow_only
+  qlora_decision: DEFER

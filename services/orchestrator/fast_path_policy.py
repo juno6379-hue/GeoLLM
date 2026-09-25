@@ -48,6 +48,11 @@ def instant_place_navigation_decision(query: str) -> dict[str, Any]:
     if not text:
         return {"allowed": False, "reason": "empty_query"}
 
+    from services.orchestrator.korean_query_analysis import constraints
+    from services.orchestrator.request_obligations import required_outputs
+    if constraints(text) or any(item in required_outputs(text) for item in ('selected_feature_evidence', 'data_processing_provenance', 'portrayal_symbol_binding')):
+        return {"allowed": False, "reason": "query_constraint_requires_validation"}
+
     from services.orchestrator.pipeline_diagnostics import diagnostic_request
     diagnostic = diagnostic_request(text)
     if diagnostic:

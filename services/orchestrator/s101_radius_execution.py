@@ -89,9 +89,11 @@ def resolve_reference(query, spatial, places):
 
 
 def parse_distance(query, spatial):
-    pattern = r"(?<![\d.])([+-]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|[+-]?\.\d+)\s*(킬로미터|킬로|km|㎞|해리|nm|미터|m)(?![A-Za-z])"
-    factors = {"킬로미터": 1000, "킬로": 1000, "km": 1000, "㎞": 1000, "해리": 1852, "nm": 1852}
-    distances = {float(number.replace(",", "")) * factors.get(unit.lower(), 1) for number, unit in re.findall(pattern, query, re.I)}
+    from services.orchestrator.slot_evidence import radius_quantities
+    quantities = radius_quantities(query)
+    if any(item['validation_status'] != 'GROUNDED' for item in quantities):
+        raise RadiusProblem("NEEDS_USER_INPUT", "INVALID_RADIUS", "반경은 유한한 양수여야 합니다.")
+    distances = {item['normalized_value'] for item in quantities}
     supplied = spatial.get("buffer_distance")
     try:
         if supplied is not None:
@@ -128,8 +130,8 @@ def _distance_policy(query, spatial, distance):
 
 
 def _extract_explicit_distance(query):
-    pattern = r"(?<![\d.])([+-]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|[+-]?\.\d+)\s*(킬로미터|킬로|km|㎞|해리|nm|미터|m)(?![A-Za-z])"
-    return re.search(pattern, query or "", re.I) is not None
+    from services.orchestrator.slot_evidence import radius_quantities
+    return bool(radius_quantities(query or ''))
 
 
 def _alias_present(text, alias):

@@ -29,6 +29,16 @@ venv.bak/
 # Ignore logs and results
 logs/
 geollm_results/
+# Compose mounts runtime evidence/KG and evaluation artifacts from the host.
+# Do not copy local experiments, database exports or generated data into the image.
+outputs/
+processed/
+tmp/
+.pytest_cache/
+.env
+.env.*
+!.env.example
+geollm_state.sqlite3*
 .gemini/
 .git/
 .codex/

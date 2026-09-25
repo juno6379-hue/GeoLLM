@@ -1365,6 +1365,9 @@ def _navigation_risk_answer(query: str, docs: list[dict]) -> str:
     )
 
 def _looks_like_dataset_evidence_query(query: str) -> bool:
+    from services.orchestrator.request_obligations import required_outputs
+    if 'data_processing_provenance' in required_outputs(query):
+        return True
     if re.search(r"(?:통항량|교통량).*(?:분석|집계|요약|보여)", query or ""):
         return False
     text = query or ""
@@ -1742,15 +1745,8 @@ def _looks_like_island_query(query: str) -> bool:
     return any(term in lowered or term in text for term in ["island", "\uc12c \ubaa9\ub85d", "\uc12c"])
 
 def _extract_distance_m_from_query(query: str) -> float | None:
-    import re
-
-    match = re.search(r"(-?\d+(?:\.\d+)?)\s*(km|킬로미터|킬로|㎞)", query or "", re.IGNORECASE)
-    if match:
-        return float(match.group(1)) * 1000.0
-    match = re.search(r"(-?\d+(?:\.\d+)?)\s*(m|미터)", query or "", re.IGNORECASE)
-    if match:
-        return float(match.group(1))
-    return None
+    from services.orchestrator.slot_evidence import distance_m
+    return distance_m(query or '')
 
 def _spatial_context_dict(state: OrchestratorState) -> dict:
     spatial = state.get("spatial_context") or {}
@@ -2472,6 +2468,11 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
     import asyncio
     logger.info("LangGraph: Parsing intent", task_id=state["task_id"])
     original_query = state["query"]
+    from services.orchestrator.korean_query_analysis import analyze_query, contract_problem, guard_result
+    korean_analysis = await asyncio.to_thread(analyze_query, original_query)
+    problem = contract_problem(original_query, korean_analysis, state.get("spatial_context"))
+    if problem:
+        return guard_result(state, korean_analysis, problem)
     
     # [Query Normalizer Injection]
     norm_result = normalizer.normalize_with_debug(original_query)
@@ -2493,6 +2494,11 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         norm_result=norm_result,
     )
     state["candidate_trace"] = candidate_trace
+    candidate_trace["korean_query_analysis"] = korean_analysis
+    from services.orchestrator.semantic_slot_binding import bind_semantic_slots
+    semantic_bindings = await asyncio.to_thread(bind_semantic_slots, original_query, korean_analysis,
+                                                candidate_trace.get("capability_candidates", []))
+    candidate_trace["semantic_slot_binding"] = semantic_bindings
     trace_summary = _candidate_trace_summary(candidate_trace)
     top_routes = [
         f"{row.get('route')}:{row.get('score')}"
@@ -2925,6 +2931,10 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
     elif intent_type in ("SPATIAL_SEARCH", "spatial_proximity_search", "marine_hazard_feature_search"):
         extracted_payload = slot_extractor.extract(query, "spatial_proximity_search")
     extracted_payload = _enrich_extracted_slots(extracted_payload, norm_result)
+    # Parser/model numbers must match source quantities or explicit request context.
+    from services.orchestrator.slot_evidence import ground_distance_payload
+    extracted_payload = ground_distance_payload(original_query, extracted_payload, req_spatial_ctx)
+    extracted_payload['semantic_slot_binding'] = semantic_bindings
     
     # extracted가 있는지 확인
     radius_m = None
@@ -3003,6 +3013,8 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         "spatial_context": preserved_spatial_context,
         "extracted_slots": extracted_payload,
         "candidate_trace": candidate_trace,
+        "korean_query_analysis": korean_analysis,
+        "query_contract_blocked": False,
     }
 
 from services.orchestrator.feature_resolver import feature_resolver
@@ -3021,6 +3033,9 @@ async def graph_rag_node(state: OrchestratorState) -> OrchestratorState:
         "derived_concepts": derived_seed,
         "document_type": norm.get("document_type", []),
     }
+    bindings = (state.get('candidate_trace') or {}).get('semantic_slot_binding') or {}
+    seed_context['validated_seed_ids'] = bindings.get('kg_seed_ids', [])
+    seed_context['target_features'] = list(dict.fromkeys(seed_context['target_features'] + bindings.get('target_features', [])))
     context = _sanitize_graph_context_for_execution(
         graph_rag_retriever.retrieve(query, seed_context),
         query,
@@ -5927,6 +5942,11 @@ async def audit_log_node(state: OrchestratorState) -> OrchestratorState:
 # ----------------- Conditional Edges -----------------
 
 def check_intent_parsed(state: OrchestratorState) -> str:
+    if state.get("query_contract_blocked"):
+        return "query_contract_stop"
+    from services.orchestrator.request_obligations import required_outputs
+    if 'data_processing_provenance' in required_outputs(state.get('query', '')):
+        return 'fast_dataset_evidence_answer'
     from services.orchestrator.request_semantics import permits_document_answer
     from services.orchestrator.pipeline_diagnostics import diagnostic_request
     if diagnostic_request(state.get('query')):
@@ -6033,11 +6053,32 @@ def check_after_map_report(state: OrchestratorState) -> str:
 
 # ----------------- Graph Builder -----------------
 
+async def verify_output_obligations_node(state: OrchestratorState) -> dict:
+    from services.orchestrator.request_obligations import audit_outputs, required_outputs
+    final = state.get('final_dict')
+    if not isinstance(final, dict):
+        # Legacy routes serialize agent_result at the stream boundary. LangGraph
+        # rejects an empty update, even when this request has no output obligations.
+        if not required_outputs(state.get('query', '')):
+            return {'status': state['status']}
+        agent_result = state.get('agent_result')
+        if hasattr(agent_result, 'model_dump'):
+            final = agent_result.model_dump(mode='json')
+        elif isinstance(agent_result, dict):
+            final = dict(agent_result)
+        else:
+            return {'status': state['status']}
+        _attach_candidate_trace(state, final)
+    final = audit_outputs(state.get('query', ''), final)
+    # Graph state retains its enum contract; JSON serialization happens at the API boundary.
+    return {'final_dict': final, 'status': AgentStatus(final.get('status', state.get('status')))}
+
 def build_orchestrator_graph():
     workflow = StateGraph(OrchestratorState)
     
     # Add Nodes
     workflow.add_node("parse_intent", parse_intent_node)
+    workflow.add_node("verify_output_obligations", verify_output_obligations_node)
     workflow.add_node("fast_pipeline_diagnostic", fast_pipeline_diagnostic_node)
     workflow.add_node("fast_definition_answer", fast_definition_answer_node)
     workflow.add_node("fast_document_answer", fast_document_answer_node)
@@ -6069,6 +6110,7 @@ def build_orchestrator_graph():
         check_intent_parsed,
         {
             "needs_clarification": "audit_log",
+            "query_contract_stop": "verify_output_obligations",
             "fast_pipeline_diagnostic": "fast_pipeline_diagnostic",
             "fast_definition_answer": "fast_definition_answer",
             "fast_external_data_requirement": "fast_external_data_requirement",
@@ -6086,19 +6128,12 @@ def build_orchestrator_graph():
             "resolve_context": "graph_rag"
         }
     )
-    workflow.add_edge("fast_definition_answer", END)
-    workflow.add_edge("fast_pipeline_diagnostic", END)
-    workflow.add_edge("fast_external_data_requirement", END)
-    workflow.add_edge("fast_document_answer", END)
-    workflow.add_edge("fast_dataset_evidence_answer", END)
-    workflow.add_edge("fast_spatial_or_traffic_block", END)
-    workflow.add_edge("fast_s101_hazard_radius_execute", END)
-    workflow.add_edge("fast_dynamic_traffic_execute", END)
-    workflow.add_edge("fast_s101_nearest_feature_execute", END)
-    workflow.add_edge("fast_requested_spatial_layer_execute", END)
-    workflow.add_edge("fast_accident_spatial_history_lookup", END)
-    workflow.add_edge("fast_accident_event_lookup", END)
-    workflow.add_edge("fast_place_lookup", END)
+    for terminal_node in ("fast_definition_answer", "fast_pipeline_diagnostic", "fast_external_data_requirement",
+                          "fast_document_answer", "fast_dataset_evidence_answer", "fast_spatial_or_traffic_block",
+                          "fast_s101_hazard_radius_execute", "fast_dynamic_traffic_execute", "fast_s101_nearest_feature_execute",
+                          "fast_requested_spatial_layer_execute", "fast_accident_spatial_history_lookup",
+                          "fast_accident_event_lookup", "fast_place_lookup"):
+        workflow.add_edge(terminal_node, "verify_output_obligations")
     workflow.add_conditional_edges("graph_rag", check_graph_rag_next, {
         "data_discovery": "data_discovery",
         "resolve_context": "resolve_context",
@@ -6120,9 +6155,10 @@ def build_orchestrator_graph():
     
     workflow.add_conditional_edges("map_report", check_after_map_report, {
         "audit_log": "audit_log",
-        "end": END,
+        "end": "verify_output_obligations",
     })
-    workflow.add_edge("audit_log", END)
+    workflow.add_edge("audit_log", "verify_output_obligations")
+    workflow.add_edge("verify_output_obligations", END)
     
     # 체크포인터를 연결하여 HITL(Human-in-the-Loop) 완벽 지원
     checkpointer = MemorySaver()

@@ -876,6 +876,10 @@ async def stream_task(req: TaskCreateRequest):
             try:
                 payload = await asyncio.to_thread(resolve_payload, req.query, req.spatial_context or {})
                 final_result = _instant_place_final(task_id, req.query, payload)
+                from services.orchestrator.korean_query_analysis import analyze_query
+                analysis = await asyncio.to_thread(analyze_query, req.query)
+                final_result["structured_result"]["korean_query_analysis"] = analysis
+                final_result["orchestrator_v2"]["korean_query_analysis"] = analysis
                 status = final_result["status"]
                 snapshot = {
                     "task_id": task_id,

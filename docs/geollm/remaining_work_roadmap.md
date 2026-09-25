@@ -1,5 +1,32 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-09-26 최종 재검증 및 해양 정답 근거 기준
+
+- `web-samples-v4/`: 실제 API 100/100 완료 이벤트, 도메인 FAILED 0, 관측 오류 0. COMPLETED 9 / PARTIAL 15 / NEEDS_CLARIFICATION 68 / BLOCKED 8. 상태 분포는 의미 정확도가 아니며 추가 질문 68건의 필요성은 독립 검수가 남았다.
+- 45번은 빈 graph update 수정 후 SQLAlchemy 2.1의 기본 PostgreSQL 드라이버 변경으로 `No module named 'psycopg'`가 발생했다. 기존 psycopg2와 호환되는 SQLAlchemy `>=2.0.31,<2.1`로 고정하고 lock/image를 재생성했다. 실제 2.0.54·psycopg2 확인 후 v4에서 45번 COMPLETED와 오류 없음 확인. 실패 v2/v3 원본을 보존했다.
+- `stage-matrix-v1.json`: 동일 원문·ID 100개를 S0와 대조했다. 상태/오류/route/분석유형/계획 도구 중 변화 사례 5개, 관측 오류 0. 슬롯·KG·입력 계약·실행 ID·근거 수를 함께 기록하며 정답 판정은 아니다.
+- 기존 광범위 324개 회귀 통과에 더해 최종 이미지에서 평가 지표 테스트 11개 통과(중복 포함). accuracy, macro/micro-F1, 허용 도구 대안·raw 슬롯·clarification 지표를 구현했다. human gold 부재로 실제 의미 점수는 null이다.
+- [해양 정답 근거 기준](maritime_evaluation_reference_standard.md)과 `configs/evaluation/maritime_reference_policy.yaml`을 추가했다. 공식 사전 위키와 일반 위키를 구분하고, FC/PC/DCEG·법령·고시·관측 데이터의 적용 범위와 검수 계약을 정했다. 검수 양식에 출처·최소 주장 필드를 추가했다. 정책은 설계 기준이며 원천 자동 수집·서명/진위 검증·런타임 강제 적용은 미완료다.
+
+다음 실행 순서: P0 실제 portrayal/선택 객체 근거·처리 lineage·복합/부정 조건 실행 보강 → 해양 참조 원천 snapshot/locator와 독립 검수 gold 구축 → shadow 원문 선택·지연 문제 개선 → smoke 통과 후 전체 동일 후보 비교. 9B 및 QLoRA 승격 조건은 여전히 미충족이다. 웹 브라우저 조작은 미검증이며 이번 검증은 실제 SSE API/DB 경로다.
+
+## 2026-09-26 한국어 슬롯·온톨로지/KG·도구 계약 구현
+
+최신 구현과 판단 근거는 [구현·평가 보고서](korean_pipeline_implementation_20260926.md), 검수 방식은 [한국어 shadow 검수 지침](korean_shadow_annotation_guide.md)에 기록했다. 아래 9월 25일의 미설치·계획 상태는 당시 이력이며 현재 상태가 아니다.
+
+- S0: 실제 API 100개 기준선과 모델 입력을 고정했다. 실제 후보 trace 85개, 없는 15개를 구분한다. 과거 기준 시각은 없으므로 생성하지 않았다.
+- S1/S2: 원문 구간·출처·거리/기간 검증, Kiwi 0.23.2와 모델 0.23.0 고정, registry 사전·토큰 근거, 부정/문맥/수량 공통 검사를 구현했다. 원문/명시 지도 입력에 근거 없는 반경은 제거한다. 부정/제외는 현재 무시한 실행을 차단하는 단계이며 실행 지원 완료가 아니다.
+- 온톨로지/KG/도구 연결: 사전 canonical ID→타입 검증 관계→KG seed→capability 입력/출력 계약을 연결했다. 원문·사전·ontology·KG hash와 unresolved 입력을 기록하고 실제 graph RAG seed와 거리 도구 입력에 반영한다. KG 관계를 사실·실행 권위로 승격하지 않는다.
+- S3: 공통 종료 노드에서 필수 산출물을 감사한다. 46/47/48/76/84를 재검증했고 관련 없는 문서나 일반 사건 조회로 완료하지 않는다. portrayal 매핑·선택 객체 근거·전체 처리 lineage 자체의 완성은 남았다.
+- 실제 API 100개: `web-samples-v1/`, COMPLETED 9 / PARTIAL 14 / NEEDS_CLARIFICATION 69 / BLOCKED 8. 이후 76의 dispatch 수정은 `p0-followup-v2/`에 별도 보존했다. 상태 분포는 정확도가 아니다. 기존 API 계약 13/13, 신규 계약 7/7. 최종 수정 이후 재검증은 구현 보고서의 후속 기록을 따른다.
+- S4: Qwen3.5:4b 설치·동일 후보 runner 구현. CPU 실행 대표 10개 시험에서 구조/인용/슬롯 근거 통과 3, 원문 인용 실패 5, 슬롯 거부 1, 120초 timeout 1. p50 95.835초. 의미 정답률이 아니며 전체 모델 100개 평가 완료가 아니다. 해당 설정은 smoke를 통과하지 못해 전체 확대/운영 채택을 보류한다.
+- S5/S6/S7: 독립 human gold·calibration·holdout 미확보. 모델 출력 없는 개발 검수 양식 100개를 만들었다. 9B는 검증된 자원 여유와 무 timeout 조건 미충족으로 보류, QLoRA DEFER. shadow는 계속 `used_for_execution=false`다.
+- 효율: 요청 내 참조 검증 16→10회, warm 한국어 분석 p50 1.218ms / p95 2.717ms, binding p50 0.239ms / p95 0.661ms를 관측했다. 단일 개발 환경 측정이며 전체 API 개선율을 주장하지 않는다.
+- 배포 재현: Kiwi/model/jsonschema 고정과 poetry.lock 추가, Dockerfile packaging 호환 범위·pip check 보강, runtime 산출물을 이미지 context에서 제외했다. backend 새 이미지 재생성 후 관련 324개 테스트, 실제 API 계약 13/13 및 신규 8/8 통과. 실제 항만 후보 선택 후 1852m Wreck 검색 8건과 근거 8개를 확인했다.
+- 후속 실패도 보존: `web-samples-v2/`의 45번 legacy 응답에서 빈 graph update가 SSE 종료를 일으켰다. 상태 update를 보존하도록 수정하고 회귀 테스트를 추가했다. 최종 재실행과 상세 근거는 구현 보고서에 기록한다.
+
+다음 순서: 최종 회귀/런타임 확인 → P0의 실제 산출물·복합 작업·부정 조건 실행 보강 → 원문 span 선택 방식의 shadow adapter 개선과 자원 검증 → smoke 통과 후 전체 동일 후보 비교 → 독립 평가 후 승격/QLoRA 판단. 사용자 피드백 JSONL 및 outputs 원본은 소스 커밋에서 제외한다.
+
 ## 2026-09-25 한국어 슬롯·Kiwi·Qwen3.5 상세 작업계획
 
 사용자 지정 후속 계획: [한국어 의도·슬롯 보강 및 Qwen3.5 shadow 평가](korean_intent_slot_shadow_plan.md). **계획 문서 작성 완료이며 신규 구현·모델 실험 완료가 아니다.** 원문 구간/단위/부정/문맥 근거 → Kiwi → 작업별 완료 계약 → 동일 후보 Qwen3.5 4B → 독립 평가와 조건부 9B → QLoRA go/defer 순서다.
@@ -194,7 +221,7 @@ QLoRA는 즉시 적용하지 않고 다음 조건을 모두 만족할 때 진행
 
 ## 다음 실행 순서
 
-**최신 사용자 지정 우선순위:** [상세 계획](korean_intent_slot_shadow_plan.md)의 S0→S1→S2→S3→S4 순서로 진행한다. S5 독립 평가 후 S6의 조건부 9B/자원 격리, S7 QLoRA 판단으로 이어간다. 아래 기존 순서는 운영 점검 및 잔여 P0 목록으로 유지한다.
+**최신 사용자 지정 우선순위:** [상세 계획](korean_intent_slot_shadow_plan.md)의 S0–S4 구현·검증 현황은 문서 상단과 [구현 보고서](korean_pipeline_implementation_20260926.md)를 따른다. 남은 실제 작업별 산출물과 shadow 원문/자원 문제를 보완하고 smoke를 통과한 뒤 전체 비교를 확대한다. S5 독립 평가 후 조건부 9B/자원 격리, S7 QLoRA 판단으로 이어간다. 아래 기존 순서는 운영 점검 및 잔여 P0 목록으로 유지한다.
 
 사용자 지정 P1 후속: AI 사후 검토를 사람이 확인해 **필수 작업·허용 capability 조합·슬롯·근거·clarification** 단위의 독립 평가셋을 만든다. route 이름을 정답으로 고정하지 않는다. 후보 설명 누락·공유 기능을 정비하고 고정한 prompt/model로 전체 calibration/evaluation을 재실험한다. 지연·실패 격리 확인 전 상시 shadow나 실행 권한을 승격하지 않는다. 별도 우선순위가 없으면 아래 P0 순서를 따른다.
 

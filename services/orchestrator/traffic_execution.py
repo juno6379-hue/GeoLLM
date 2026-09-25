@@ -86,12 +86,8 @@ def _source_filter(query: str) -> list[str]:
 
 
 def _distance_m(query: str) -> float | None:
-    match = re.search(r"(\d+(?:\.\d+)?)\s*(km|㎞|킬로|m|미터)", query or "", re.I)
-    if not match:
-        return None
-    value = float(match.group(1))
-    unit = match.group(2).lower()
-    return value * 1000 if unit in {"km", "㎞", "킬로"} else value
+    from services.orchestrator.slot_evidence import distance_m
+    return distance_m(query or '')
 
 
 def _reference(query: str, state: dict) -> tuple[str | None, str | None, float | None]:
