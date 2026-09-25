@@ -102,8 +102,23 @@ def test_manual_point_validation_without_catalog_lookup(monkeypatch, geometry):
 def test_missing_source_is_not_an_empty_success(catalog):
     catalog["unavailable_sources"] = ["fixture.offline"]
     with pytest.raises(resolver.PlaceResolutionProblem) as exc:
-        resolver.resolve_location("테스트항", places={})
+        resolver.resolve_location("미등록장소", places={})
     assert exc.value.code == "GAZETTEER_UNAVAILABLE"
+
+
+def test_unrelated_source_failure_does_not_block_verified_candidate(catalog):
+    catalog['unavailable_sources'] = ['fixture.offline']
+    _, label, _, resolution = resolver.resolve_location('테스트항', places={})
+    assert label == '테스트항'
+    assert resolution['coverage_complete'] is False
+    assert resolution['unavailable_sources'] == ['fixture.offline']
+
+
+def test_failed_candidate_source_still_blocks(catalog):
+    catalog['unavailable_sources'] = ['fixture.gazetteer']
+    with pytest.raises(resolver.PlaceResolutionProblem) as exc:
+        resolver.resolve_location('테스트항', places={})
+    assert exc.value.code == 'GAZETTEER_UNAVAILABLE'
 
 
 def test_radius_contract_contains_dataset_reference_and_version(catalog):

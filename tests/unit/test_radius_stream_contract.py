@@ -11,6 +11,23 @@ from types import SimpleNamespace
 import pytest
 
 
+@pytest.mark.parametrize("analysis_type,payload", [
+    ("definition_lookup", {"feature_code": "AnchorageArea", "source_ref": "catalogue.xml"}),
+    ("traffic_coverage", {"rows": [{"layer_source": "AIS", "months": ["202312"]}]}),
+])
+def test_nonspatial_domain_outputs_and_evidence_survive_stream(serializers, analysis_type, payload):
+    result = {"structured_result": {"analysis_type": analysis_type, **payload},
+              "evidence_bundle": {"diagnostic_evidence": [{"snapshot": "test-snapshot"}]},
+              "orchestrator_v2": {"fast_path": "diagnostic", "query_execution_context": {"provenance": {"observed": True}}}}
+    for name in ("_compact_agent_result_for_stream", "_compact_final_result_for_stream"):
+        serialized = serializers[name](result)
+        for key, value in payload.items():
+            assert serialized['structured_result'][key] == value
+        assert serialized['evidence_bundle'] == result['evidence_bundle']
+    final = serializers['_compact_final_result_for_stream'](result)
+    assert final['orchestrator_v2']['query_execution_context']['provenance']['observed']
+
+
 @pytest.fixture
 def serializers():
     path = Path(__file__).resolve().parents[2] / "services/orchestrator/router.py"

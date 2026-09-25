@@ -25,6 +25,7 @@ class TrafficProblem(Exception):
         super().__init__(message)
         self.status = status
         self.code = code
+        self.details = {}
 
 
 def _json_safe(value: Any) -> Any:
@@ -101,26 +102,30 @@ def _reference(query: str, state: dict) -> tuple[str | None, str | None, float |
         spatial = {}
     from services.orchestrator.port_context import request_geometry, resolve_port_context, PortContextError
     try:
-        geometry, method = request_geometry(spatial)
+        named = re.search(r"(?<![가-힣])([가-힣]+항)(?=$|\s|의|에서|주변|반경)", query)
+        geometry, method = (None, None) if named and named.group(1) != "통항" else request_geometry(spatial)
         label = spatial.get("base_location") or spatial.get("location_text") or method
         if geometry is None:
             location = resolve_port_context(query, spatial)
             geometry, label = location["geometry"], location["port"]
         return geometry, label, _distance_m(query) or spatial.get("buffer_distance")
     except PortContextError as exc:
-        raise TrafficProblem("NEEDS_CLARIFICATION", exc.code, str(exc)) from exc
+        status = "BLOCKED_DATA" if exc.code == "PORT_SOURCE_UNAVAILABLE" else "NEEDS_CLARIFICATION"
+        raise TrafficProblem(status, exc.code, str(exc)) from exc
 
 
 def _temporal_window(query: str) -> dict:
     text = query or ""
     if any(term in text.lower() or term in text for term in ["최근 1년", "최근 일년", "지난 1년", "last year", "past year"]):
-        return {"preset": "last_1_year", "duration": "P1Y", "source": "query_text"}
+        return {"preset": "last_1_year", "duration": "P1Y", "source": "query_text", "anchor": "latest_loaded" if "적재" in text else "current_date"}
     match = re.search(r"(?:최근|지난)\s*(\d+)\s*(년|개월|달|일)", text)
     if match:
         value = int(match.group(1))
         unit = match.group(2)
         designator = {"년": "Y", "개월": "M", "달": "M", "일": "D"}[unit]
-        return {"preset": f"last_{value}_{unit}", "duration": f"P{value}{designator}", "source": "query_text"}
+        return {"preset": f"last_{value}_{unit}", "duration": f"P{value}{designator}", "source": "query_text", "anchor": "latest_loaded" if "적재" in text else "current_date"}
+    if re.search(r"\d{4}\s*(?:년|[-./])|오늘|어제|내일|이번|지난달", text):
+        raise TrafficProblem("NEEDS_CLARIFICATION", "UNSUPPORTED_TRAFFIC_PERIOD", "이 도구는 월별 집계 자료를 사용합니다. 최근 N개월 또는 최신 적재 월로 기간을 지정해 주세요.")
     return {"preset": "latest_available", "duration": None, "source": "default"}
 
 
@@ -137,22 +142,48 @@ def _effective_month_filter(cur, sources: list[str], temporal_window: dict) -> t
     row = cur.fetchone()
     if not row or not row["max_month"]:
         raise TrafficProblem("BLOCKED_DATA", "NO_TRAFFIC_ROWS", "No executable AIS/V-PASS traffic rows are loaded.")
-    if temporal_window.get("preset") == "last_1_year":
-        where_sql = "observed_month >= (%(max_month)s::date - interval '11 months') AND observed_month <= %(max_month)s::date"
-        interpretation = "latest_available_12_months"
-    else:
-        where_sql = "observed_month <= %(max_month)s::date"
-        interpretation = "latest_available"
+    duration = temporal_window.get("duration")
+    months = 1
+    if duration:
+        match = re.fullmatch(r"P(\d+)([MY])", duration)
+        if not match:
+            raise TrafficProblem("NEEDS_CLARIFICATION", "MONTHLY_RESOLUTION_ONLY", "월별 집계 자료로 일 단위 통항량을 계산할 수 없습니다. 월 단위 기간을 지정해 주세요.")
+        months = int(match.group(1)) * (12 if match.group(2) == "Y" else 1)
+        if not 1 <= months <= 120:
+            raise TrafficProblem("NEEDS_CLARIFICATION", "INVALID_TRAFFIC_PERIOD", "분석 기간은 1~120개월로 지정해 주세요.")
+    loaded_anchor = not duration or temporal_window.get("anchor") == "latest_loaded"
+    end = row["max_month"] if loaded_anchor else datetime.now(timezone.utc).date().replace(day=1)
+    if isinstance(end, str):
+        end = date.fromisoformat(end[:10])
+    end = end.replace(day=1)
+    offset = end.year * 12 + end.month - 1 - (months - 1)
+    start = date(offset // 12, offset % 12 + 1, 1)
+    expected = []
+    for index in range(months):
+        value = offset + index
+        expected.append(f"{value // 12:04d}{value % 12 + 1:02d}")
+    # Require each requested source/month, not the union across sources.
+    cur.execute("""SELECT layer_source, to_char(observed_month, 'YYYYMM') AS month
+                   FROM serving.dynamic_traffic_layer WHERE layer_source = ANY(%s)
+                   AND observed_month >= %s AND observed_month <= %s
+                   GROUP BY layer_source, observed_month""", (sources, start, end))
+    present = {(item['layer_source'], item['month']) for item in cur.fetchall()}
+    missing = [f"{source}:{month}" for source in sources for month in expected if (source, month) not in present]
+    if missing:
+        raise TrafficProblem("BLOCKED_DATA", "TRAFFIC_PERIOD_NOT_COVERED", "요청 기간의 월별 통항 자료가 부족합니다. 과거 기간으로 대체하지 않았습니다. 누락: " + ", ".join(missing))
+    where_sql = "observed_month >= %(start_month)s::date AND observed_month <= %(max_month)s::date"
+    interpretation = "latest_loaded_calendar_months" if loaded_anchor else "current_calendar_months"
     metadata = {
         "requested_temporal_window": temporal_window,
         "effective_temporal_window": {
             "interpretation": interpretation,
             "min_available_month": str(row["min_month"]),
             "max_available_month": str(row["max_month"]),
-            "available_months": row["months"] or [],
-            "warning": "Current-year AIS/V-PASS observations are not loaded; query uses the latest loaded traffic months.",
+            "available_months": expected,
+            "start_month": str(start), "end_month": str(end),
+            "warning": "월별 자료의 집계입니다. 일 단위 이동 기간 및 고유 선박 수와 다릅니다." + (" 최신 적재 월 기준입니다." if loaded_anchor else " 현재 월은 집계가 진행 중일 수 있습니다."),
         },
-        "max_month": str(row["max_month"]),
+        "start_month": str(start), "max_month": str(end),
     }
     return where_sql, metadata
 
@@ -281,7 +312,7 @@ def _fallback_traffic_answer(brief: dict[str, Any]) -> str:
     place_text = f"{place} 반경 {float(distance_m) / 1000:.1f}km" if place and distance_m else "조회 구역"
     lines = [
         f"{place_text}의 AIS/V-PASS 통항량은 {scope.get('period')} 기준 총 {_fmt_int(brief.get('total_traffic_count'))}건입니다.",
-        f"출처별로는 AIS {_fmt_int(source_totals.get('AIS'))}건, V-PASS {_fmt_int(source_totals.get('V-PASS'))}건이며, V-PASS 비중이 더 크게 나타납니다.",
+        f"출처별로는 AIS {_fmt_int(source_totals.get('AIS'))}건, V-PASS {_fmt_int(source_totals.get('V-PASS'))}건입니다. 격자·월별 집계의 합이며 고유 선박 수가 아닙니다.",
     ]
     if top_months:
         month_text = ", ".join(f"{item['month']} {_fmt_int(item['traffic'])}건" for item in top_months)
@@ -292,7 +323,7 @@ def _fallback_traffic_answer(brief: dict[str, Any]) -> str:
             for cell in top_cells[:3]
         )
         lines.append(f"상위 혼잡 구역은 {cell_text}으로, 지도에서 해당 격자를 클릭해 AIS/V-PASS 세부 값을 확인할 수 있습니다.")
-    lines.append("이 기간은 현재일 기준이 아니라 적재된 최신 가용월 기준 최근 12개월입니다.")
+    lines.append(f"기간 해석: {scope.get('interpretation')}. 월별 자료로 집계했습니다.")
     return "\n".join(lines)
 
 
@@ -366,7 +397,11 @@ def execute_traffic_request(state: dict) -> dict:
         raise TrafficProblem("BLOCKED_DATA", "TRAFFIC_LAYER_NOT_EXECUTABLE", "Dynamic traffic layer is not executable.")
     sources = _source_filter(query)
     temporal_window = _temporal_window(query)
-    ref_wkt, ref_label, distance_m = _reference(query, state)
+    try:
+        ref_wkt, ref_label, distance_m = _reference(query, state)
+    except TrafficProblem as exc:
+        exc.details = {"sources": sources, "temporal_window": temporal_window, "validation_stage": "spatial_context"}
+        raise
     relation = "serving.dynamic_traffic_layer"
     limit = 50
     params: dict[str, Any] = {"sources": sources, "limit": limit}
@@ -389,8 +424,15 @@ def execute_traffic_request(state: dict) -> dict:
             cur.execute("SELECT to_regclass('serving.dynamic_traffic_layer') AS relation")
             if not cur.fetchone()["relation"]:
                 raise TrafficProblem("BLOCKED_DATA", "TRAFFIC_TABLE_MISSING", "serving.dynamic_traffic_layer is missing.")
-            time_where, temporal_metadata = _effective_month_filter(cur, sources, temporal_window)
+            try:
+                time_where, temporal_metadata = _effective_month_filter(cur, sources, temporal_window)
+            except TrafficProblem as exc:
+                exc.details = {"sources": sources, "temporal_window": temporal_window,
+                    "reference_geometry": ref_wkt, "location_text": ref_label, "distance_m": distance_m,
+                    "validation_stage": "traffic_period_coverage", "coverage_relation": relation}
+                raise
             params["max_month"] = temporal_metadata["max_month"]
+            params["start_month"] = temporal_metadata["start_month"]
             cur.execute(
                 f"""
                 WITH filtered AS MATERIALIZED (
@@ -500,7 +542,7 @@ def execute_traffic_request(state: dict) -> dict:
             "location_text": ref_label,
             "distance_m": distance_m,
         },
-        "tools": ["traffic.dynamic_layer_search", "postgis.intersects", "postgis.dwithin"],
+        "tools": ["traffic.dynamic_layer_search", "postgis.dwithin" if distance_m is not None else "postgis.intersects"],
         "data": ["DynamicTrafficLayer", *[layer["layer_id"] for layer in layers]],
         "outputs": ["TrafficSummary", "GeoJSON", "EvidenceBundle"],
         "clarification_required": False,
@@ -516,13 +558,13 @@ def execute_traffic_request(state: dict) -> dict:
             "dataset_id": "DynamicTrafficLayer",
             "relation": relation,
             "geometry_column": "geom",
-            "temporal_column": "observed_at",
+            "temporal_column": "observed_month",
             "count_column": "vessel_count_total",
             "srid": 4326,
             "execution_status": "executable",
             "read_only": True,
         }],
-        "tool_bindings": [{"tool_id": "traffic.dynamic_layer_search", "operation": "traffic_search_by_time_space", "query_template_id": "traffic_search_by_time_space"}],
+        "tool_bindings": [{"tool_id": "traffic.dynamic_layer_search", "operation": "traffic_search_by_time_space", "query_template_id": "traffic_search_by_time_space", "status": "EXECUTED", "parameters": _json_safe(params), "snapshot": snapshot}],
     }
     structured = {
         "status": "COMPLETED",
@@ -533,7 +575,7 @@ def execute_traffic_request(state: dict) -> dict:
         "spatial_semantics": "whole_intersecting_grid_cells" if distance_m is None else "grid_cells_within_distance",
         "source_breakdown": result.get("source_breakdown") or {},
         "monthly_breakdown": result.get("monthly_breakdown") or [],
-        "source_layer": {"physical_table": relation, "geometry_column": "geom", "temporal_column": "observed_at", "count_column": "vessel_count_total"},
+        "source_layer": {"physical_table": relation, "geometry_column": "geom", "temporal_column": "observed_month", "count_column": "vessel_count_total"},
         "tile_layer_summary": tile_summary,
         "reference_geometry": {"wkt": ref_wkt, "label": ref_label, "distance_m": distance_m},
         "temporal_window": temporal_window,

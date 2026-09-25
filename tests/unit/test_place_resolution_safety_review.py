@@ -51,12 +51,12 @@ def test_compound_place_names_remain_ambiguous(conjunction):
     assert {item["place_id"] for item in error.value.candidates} == {first["place_id"], second["place_id"]}
 
 
-def test_partial_catalog_does_not_auto_resolve_available_name():
+def test_partial_catalog_preserves_healthy_source_and_discloses_incomplete_coverage():
     point = candidate("island:1", "Port Alpha")
-    with pytest.raises(PlaceResolutionProblem) as error:
-        resolve_location("Port Alpha within 3km", places={}, catalog=catalog(point, unavailable=["public.maritime_gazetteer_khoa"]))
-    assert error.value.status == "BLOCKED_DATA"
-    assert error.value.code == "GAZETTEER_UNAVAILABLE"
+    geometry, _, _, resolution = resolve_location("Port Alpha within 3km", places={}, catalog=catalog(point, unavailable=["public.maritime_gazetteer_khoa"]))
+    assert geometry == point['geometry']
+    assert resolution['coverage_complete'] is False
+    assert resolution['unavailable_sources'] == ['public.maritime_gazetteer_khoa']
 
 
 def test_fresh_verified_selection_does_not_need_unrelated_source():

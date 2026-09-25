@@ -1151,23 +1151,25 @@ def _requested_notice_families(query: str, families: dict | None = None) -> list
     text = query or ""
     lowered = text.lower()
     families = families or (((_load_yaml_registry("legal_notice_registry.yaml").get("registries") or {}).get("notice_families") or {}))
-    matched: list[tuple[int, str]] = []
+    matched = []
     if not isinstance(families, dict):
         return []
     for family_id, family in families.items():
         if not isinstance(family, dict):
             continue
         aliases = [family.get("label_ko"), *(family.get("aliases") or [])]
-        best = 0
         for alias in aliases:
             alias_text = str(alias or "").strip()
             if not alias_text:
                 continue
-            if alias_text in text or alias_text.lower() in lowered:
-                best = max(best, len(alias_text))
-        if best:
-            matched.append((best, str(family_id)))
-    return [family_id for _, family_id in sorted(matched, key=lambda item: item[0], reverse=True)]
+            for occurrence in re.finditer(re.escape(alias_text), text, re.I):
+                matched.append((occurrence.start(), occurrence.end(), str(family_id)))
+    surviving = [item for item in matched if not any(
+        other[0] <= item[0] and item[1] <= other[1] and other[:2] != item[:2] and other[2] != item[2]
+        for other in matched)]
+    spans = {family: {item[:2] for item in surviving if item[2] == family} for _, _, family in surviving}
+    surviving = [item for item in surviving if not any(spans[item[2]] < other for family, other in spans.items() if family != item[2])]
+    return list(dict.fromkeys(item[2] for item in sorted(surviving, key=lambda item: item[1]-item[0], reverse=True)))
 
 
 def _requested_port_name(query: str) -> str | None:
@@ -1363,6 +1365,8 @@ def _navigation_risk_answer(query: str, docs: list[dict]) -> str:
     )
 
 def _looks_like_dataset_evidence_query(query: str) -> bool:
+    if re.search(r"(?:통항량|교통량).*(?:분석|집계|요약|보여)", query or ""):
+        return False
     text = query or ""
     lowered = text.lower()
     dataset_terms = [
@@ -1413,6 +1417,8 @@ def _looks_like_traffic_query(query: str) -> bool:
     text = query or ""
     lowered = text.lower()
     if _looks_like_traffic_document_query(text):
+        return False
+    if _requested_spatial_layer_targets(text) and not re.search(r"통항량|교통량|밀도|항적|traffic volume|\bais\b|v-pass", lowered):
         return False
     return any(term in lowered or term in text for term in [
         "ais",
@@ -1521,7 +1527,8 @@ def _looks_like_accident_event_lookup_query(query: str) -> bool:
         "\uc804\ubcf5",
         "\ud45c\ub958",
     ]
-    return any(term in lowered or term in text for term in accident_terms) and any(term in lowered or term in text for term in detail_terms)
+    lookup_action = bool(re.search(r"찾아|검색|조회|이력|사례|목록|history|lookup|find", lowered))
+    return any(term in lowered or term in text for term in accident_terms) and (lookup_action or any(term in lowered or term in text for term in detail_terms))
 
 def _looks_like_accident_spatial_history_query(query: str) -> bool:
     text = query or ""
@@ -1852,7 +1859,7 @@ def _place_lookup_update(state, payload, analysis_type="place_lookup"):
         evidence["spatial_feature_evidence"] = [{"evidence_id": evidence_id, "evidence_type": "place_reference", "source_ref": resolution.get("source_ref"), "data": {**properties, "location_resolution": resolution, "selected_place_evidence": selected_evidence or None}}]
         text = f"{payload['location_text']}: 경도 {point.x:.6f}, 위도 {point.y:.6f} (EPSG:4326)."
     safe_spatial = {key: value for key, value in spatial.items() if key in {"base_location", "location_text", "place_id", "place_version", "geometry", "crs", "buffer_distance", "target_features", "exclusions", "context", "result_limit", "offset", "k", "selected_place_evidence"}}
-    structured = {**payload, "analysis_type": analysis_type, "original_query": state["query"], "spatial_context": safe_spatial, "count": 1 if resolved else None, "returned_count": int(resolved), "geojson": collection}
+    structured = {**payload, "location_resolution": resolution, "analysis_type": analysis_type, "original_query": state["query"], "spatial_context": safe_spatial, "count": 1 if resolved else None, "returned_count": int(resolved), "geojson": collection}
     if selected_evidence:
         structured["selected_place_evidence"] = selected_evidence
     plan = {"analysis_type": analysis_type, "primary_agent": "Spatial Analysis Agent", "execution_ready": resolved, "status": "EXECUTION_READY" if resolved else ("NEEDS_USER_INPUT" if status == AgentStatus.NEEDS_CLARIFICATION else "BLOCKED_DATA")}
@@ -1988,6 +1995,9 @@ def _should_fast_execute_traffic_query(state: OrchestratorState) -> bool:
 
 def _requested_spatial_layer_targets(query: str) -> list[dict]:
     text = query or ""
+    from services.orchestrator.request_semantics import permits_document_answer
+    if permits_document_answer(text) and _looks_like_legal_rag_query(text):
+        return []
     lowered = text.lower()
     targets = []
     provenance_terms = [
@@ -2006,6 +2016,12 @@ def _requested_spatial_layer_targets(query: str) -> list[dict]:
     for target in REQUESTED_SPATIAL_LAYER_TARGETS.values():
         if any(term.lower() in lowered or term in text for term in target["terms"]):
             targets.append(target)
+    for layer_id, layer in (_load_yaml_registry("spatial_layer_registry.yaml").get("layers") or {}).items():
+        terms = layer.get("query_terms") or []
+        if layer.get("execution_status") == "executable" and any(str(term).casefold() in lowered for term in terms):
+            targets.append({"layer_id": layer_id, "relation": layer["physical_table"],
+                            "title": layer.get("title") or layer_id, "layer_type": layer.get("layer_type"),
+                            "name_column": layer.get("name_column") or "name", "terms": terms})
     if any(term in lowered or term in text for term in ["\uc704\ud5d8\uac1d\uccb4", "hazard object"]):
         targets.extend([
             REQUESTED_SPATIAL_LAYER_TARGETS["entry_restricted"],
@@ -2025,7 +2041,7 @@ def _requested_spatial_layer_targets(query: str) -> list[dict]:
     return list(deduped.values())
 
 
-def _requested_layer_distance_m(query: str, state: OrchestratorState) -> float:
+def _requested_layer_distance_m(query: str, state: OrchestratorState) -> float | None:
     import re
 
     spatial = _spatial_context_dict(state)
@@ -2040,7 +2056,7 @@ def _requested_layer_distance_m(query: str, state: OrchestratorState) -> float:
     match = re.search(r"(\d+(?:\.\d+)?)\s*(m|\ubbf8\ud130)", query or "", re.IGNORECASE)
     if match:
         return float(match.group(1))
-    return 3000.0
+    return None
 
 
 def _requested_layer_anchor_query(query: str, targets: list[dict]) -> str:
@@ -2453,6 +2469,7 @@ def _build_query_execution_context(
     return qec
 
 async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
+    import asyncio
     logger.info("LangGraph: Parsing intent", task_id=state["task_id"])
     original_query = state["query"]
     
@@ -2470,7 +2487,7 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         
     state["normalization_debug"] = debug_logs
     state["norm_result"] = norm_result
-    candidate_trace = query_candidate_broker.build_trace(
+    candidate_trace = await asyncio.to_thread(query_candidate_broker.build_trace,
         original_query,
         normalized_query=query,
         norm_result=norm_result,
@@ -2507,18 +2524,22 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
     # 0. Fast deterministic intent gates. These avoid expensive semantic-cache
     # lookups for well-scoped external-data and document/RAG queries.
     fast_definition = is_definition_query(original_query) and bool(resolve_definition(original_query))
+    from services.orchestrator.pipeline_diagnostics import diagnostic_request
+    fast_diagnostic = diagnostic_request(original_query)
     fast_navigation_risk = _looks_like_navigation_risk_analysis(original_query) and not fast_definition
     fast_external_tide = _looks_like_external_tide_query(original_query)
     fast_external_weather = _looks_like_external_weather_query(original_query)
-    fast_standard_rag = _looks_like_standard_rag_query(original_query)
+    from services.orchestrator.request_semantics import permits_document_answer
+    document_request = permits_document_answer(original_query)
+    fast_standard_rag = document_request and _looks_like_standard_rag_query(original_query)
     fast_dataset_evidence = _looks_like_dataset_evidence_query(original_query)
-    fast_legal_or_no_evidence_rag = (
+    fast_legal_or_no_evidence_rag = document_request and (
         _looks_like_legal_rag_query(original_query)
         or _looks_like_no_evidence_document_query(original_query)
         or bool(_requested_notice_families(original_query))
     )
     fast_time_series = _looks_like_time_series_query(original_query)
-    fast_known_place = _looks_like_known_place_search(original_query, state)
+    fast_known_place = await asyncio.to_thread(_looks_like_known_place_search, original_query, state)
     combined_fast_query = f"{original_query} {query}"
     fast_requested_layer = bool(_requested_spatial_layer_targets(combined_fast_query))
     fast_spatial_or_traffic = (
@@ -2532,6 +2553,7 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         or _looks_like_explicit_time_series_request(combined_fast_query)
         or _looks_like_accident_relation_query(combined_fast_query)
         or _looks_like_accident_spatial_history_query(combined_fast_query)
+        or _looks_like_accident_event_lookup_query(combined_fast_query)
         or _looks_like_policy_block_query(combined_fast_query)
         or _looks_like_ambiguous_hazard_query(combined_fast_query)
         or _looks_like_tidal_current_query(combined_fast_query)
@@ -2541,8 +2563,12 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         or _looks_like_eddy_hazard_query(combined_fast_query)
         or _looks_like_island_query(combined_fast_query)
     )
-    cached_intent = None if (fast_definition or fast_navigation_risk or fast_external_tide or fast_external_weather or fast_standard_rag or fast_dataset_evidence or fast_legal_or_no_evidence_rag or fast_time_series or fast_spatial_or_traffic or fast_known_place) else cache.check_cache(query)
-    if fast_definition:
+    cached_intent = None if (fast_diagnostic or fast_definition or fast_navigation_risk or fast_external_tide or fast_external_weather or fast_standard_rag or fast_dataset_evidence or fast_legal_or_no_evidence_rag or fast_time_series or fast_spatial_or_traffic or fast_known_place) else cache.check_cache(query)
+    if fast_diagnostic:
+        intent_type, target_objects, output_format = "DATA_DISCOVERY", [fast_diagnostic], "SUMMARY"
+        intent_understanding = "실제 DB 또는 작업 추적으로 시스템 상태를 진단합니다."
+        execution_plan = "진단 대상 확인 → 읽기 전용 조회 → 관측 결과와 검증 범위 반환"
+    elif fast_definition:
         intent_type = "DEFINITION"
         target_objects = [resolve_definition(original_query)["canonical_term"]]
         output_format = "SUMMARY"
@@ -2605,6 +2631,12 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
             output_format = "MAP"
             intent_understanding = "Nearby accident history requires a validated place anchor, radius, and accident event serving-table binding."
             execution_plan = "1. Resolve the reference place. 2. Validate accident spatial history binding. 3. Query serving.accident_events by distance and return map evidence."
+        elif _looks_like_accident_event_lookup_query(combined_fast_query):
+            intent_type = "ACCIDENT_ANALYSIS"
+            target_objects = ["accident_events"]
+            output_format = "MAP"
+            intent_understanding = "사고 사례를 실제 사건 테이블에서 조회합니다."
+            execution_plan = "사건 조회 조건 확인 → registry 후보 검증 → 읽기 전용 사건 조회"
         elif _looks_like_explicit_time_series_request(combined_fast_query):
             intent_type = "TIME_SERIES_ANALYSIS"
             target_objects = ["time_series"]
@@ -2948,6 +2980,13 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         state.get("context_result"),
     )
     
+    if intent_type in {"TRAFFIC_ANALYSIS", "ACCIDENT_ANALYSIS"} and not fast_dataset_evidence:
+        from services.orchestrator.query_candidate_broker import select_execution_route
+        candidate_trace = select_execution_route(candidate_trace, intent_type,
+            "The requested analytical output determines the execution route; named-place resolution can remain a prerequisite.")
+    elif intent_type == "SPATIAL_SEARCH" and fast_requested_layer:
+        from services.orchestrator.query_candidate_broker import select_execution_route
+        candidate_trace = select_execution_route(candidate_trace, "SPATIAL_ANALYSIS", "Requested feature geometry requires spatial execution after place resolution.")
     # RECEIVED -> INTENT_PARSED 로깅
     return {
         "task_id": task_id,
@@ -3345,6 +3384,7 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
         "answer_text": answer,
         "structured_result": {
             "retrieved_count": 0 if doc_blocked else len(documents),
+            "analysis_type": route_plan["analysis_type"],
             "documents": [] if doc_blocked else documents,
             "citations": [] if doc_blocked else citations,
             "no_evidence": doc_blocked,
@@ -3999,10 +4039,26 @@ async def fast_accident_spatial_history_lookup_node(state: OrchestratorState) ->
 
 async def fast_accident_event_lookup_node(state: OrchestratorState) -> OrchestratorState:
     """Answer row-level accident event lookup from serving.accident_events."""
+    import asyncio
     query = state.get("query") or state.get("normalized_query") or ""
+    if not _accident_event_terms(query):
+        question = "조회할 사고의 해역·관할 또는 사고 유형과 기간을 알려주세요. '최근'만으로 임의 기간을 적용하지 않습니다."
+        plan = {"intent": "ACCIDENT_ANALYSIS", "analysis_type": "accident_event_lookup", "status": "NEEDS_CLARIFICATION",
+                "slots": {"target_terms": [], "unresolved_slots": ["accident_filters"]}, "tools": ["accident.event_lookup"],
+                "execution_ready": False, "clarification_required": True}
+        context = {"readiness": "NEEDS_CLARIFICATION", "blockers": ["ACCIDENT_FILTERS_REQUIRED"], "data_bindings": [],
+                   "tool_bindings": [{"tool_id": "accident.event_lookup", "status": "NOT_RUN"}]}
+        final = {"task_id": state['task_id'], "status": "NEEDS_CLARIFICATION", "error_code": "ACCIDENT_FILTERS_REQUIRED",
+                 "answer_text": question, "summary": question, "clarification_questions": [question],
+                 "structured_result": {"analysis_type": "accident_event_lookup", "count": None},
+                 "orchestrator_v2": {"route_plan": plan, "query_execution_context": context}}
+        _attach_candidate_trace(state, final)
+        return {"final_dict": final, "status": AgentStatus.NEEDS_CLARIFICATION, "task_plan": plan,
+                "query_execution_context": context,
+                "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.NEEDS_CLARIFICATION, actor="AccidentFilters")}
     task_id = str(state.get("task_id") or "local")
     generated_at = datetime.utcnow().isoformat() + "Z"
-    result = _query_accident_events(query)
+    result = await asyncio.to_thread(_query_accident_events, query)
     rows = result.get("rows") or []
     total = int(result.get("total") or 0)
     found = bool(rows)
@@ -4163,10 +4219,11 @@ async def fast_accident_event_lookup_node(state: OrchestratorState) -> Orchestra
 
 async def fast_dataset_evidence_answer_node(state: OrchestratorState) -> OrchestratorState:
     """Answer Dataset provenance questions from live knowledge.document_chunks."""
+    import asyncio
     query = state.get("query") or state.get("normalized_query") or ""
     task_id = str(state.get("task_id") or "local")
     generated_at = datetime.utcnow().isoformat() + "Z"
-    sources = _query_dataset_evidence_sources(query)
+    sources = await asyncio.to_thread(_query_dataset_evidence_sources, query)
     citations = []
     documents = []
     for item in sources:
@@ -4289,7 +4346,7 @@ async def fast_dataset_evidence_answer_node(state: OrchestratorState) -> Orchest
                 "llm_used": False,
                 "execution_path": "dataset_evidence_fast_path",
                 "local_authoritative_registry_checked": False,
-                "dataset_ingestion_report_checked": True,
+                "dataset_ingestion_report_checked": False,
             },
         },
         "evidence_bundle": {
@@ -4326,16 +4383,35 @@ async def fast_dataset_evidence_answer_node(state: OrchestratorState) -> Orchest
         "contract_version": "geollm.execution.v1",
         "request_id": task_id,
     }
+    status = AgentStatus.PARTIAL if found else AgentStatus.BLOCKED
+    limitation = "관련 문서 청크 조회 결과입니다. raw·표준화·공간 serving 단계의 적재 완료 및 전체 원천 coverage는 아직 검증하지 않았습니다."
+    final_dict.update(status=status.value, answer_text=answer + "\n" + limitation, summary=answer + "\n" + limitation)
+    final_dict['structured_result'].update(status=status.value, no_evidence=not found, limitations=[limitation])
+    route_plan.update(status=status.value, tools=['rag.dataset_profile_retrieve'])
+    context = final_dict['orchestrator_v2']['query_execution_context']
+    context['tool_bindings'] = [{'tool_id': 'rag.dataset_profile_retrieve', 'operation': 'document_chunk_source_counts', 'status': 'EXECUTED'}]
+    context['warnings'] = [limitation]
     _attach_candidate_trace(state, final_dict)
     _record_query_quality_issues(state, final_dict)
     return {
         "final_dict": final_dict,
         "task_plan": route_plan,
-        "query_execution_context": final_dict["orchestrator_v2"]["query_execution_context"],
+        "query_execution_context": context,
         "candidate_trace": state.get("candidate_trace"),
-        "status": AgentStatus.COMPLETED,
-        "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.COMPLETED, actor="FastDatasetEvidenceAnswer"),
+        "status": status,
+        "state_history": log_transition(AgentStatus.INTENT_PARSED, status, actor="FastDatasetEvidenceAnswer"),
     }
+
+async def fast_pipeline_diagnostic_node(state: OrchestratorState) -> OrchestratorState:
+    import asyncio
+    from services.orchestrator.pipeline_diagnostics import diagnostic_response
+    final = await asyncio.to_thread(diagnostic_response, state)
+    _attach_candidate_trace(state, final)
+    status = AgentStatus(final['status'])
+    return {'final_dict': final, 'status': status, 'task_plan': final['orchestrator_v2']['route_plan'],
+            'query_execution_context': final['orchestrator_v2']['query_execution_context'],
+            'state_history': log_transition(AgentStatus.INTENT_PARSED, status, actor='PipelineDiagnostics')}
+
 
 async def fast_definition_answer_node(state: OrchestratorState) -> OrchestratorState:
     payload = build_definition_response(state)
@@ -4521,8 +4597,23 @@ async def fast_dynamic_traffic_execute_node(state: OrchestratorState) -> Orchest
             "status": status,
             "state_history": log_transition(AgentStatus.INTENT_PARSED, status, actor="DynamicTrafficLayerExecute"),
         }
-    except TrafficProblem:
-        return await fast_spatial_or_traffic_block_node(state)
+    except TrafficProblem as exc:
+        payload = await fast_spatial_or_traffic_block_node(state)
+        final = payload["final_dict"]
+        status = AgentStatus.NEEDS_CLARIFICATION if exc.status == "NEEDS_CLARIFICATION" else AgentStatus.BLOCKED
+        final.update(status=status.value, error_code=exc.code, summary=str(exc), answer_text=str(exc))
+        final["structured_result"].update(status=exc.status, blockers=[str(exc)], error_code=exc.code)
+        context = final["orchestrator_v2"]["query_execution_context"]
+        context.update(readiness=exc.status, blockers=[str(exc)])
+        context["tool_bindings"] = [{"tool_id": "traffic.dynamic_layer_search", "status": "BLOCKED", "error_code": exc.code,
+                                    "parameters": exc.details, "aggregate_execution": "NOT_RUN"}]
+        final["orchestrator_v2"]["route_plan"].setdefault("slots", {}).update(exc.details)
+        final["orchestrator_v2"]["route_plan"].update(status=exc.status, route_plan_status=exc.status,
+            clarification_required=status == AgentStatus.NEEDS_CLARIFICATION)
+        if status == AgentStatus.NEEDS_CLARIFICATION:
+            final["clarification_questions"] = [str(exc)]
+        payload.update(status=status, state_history=log_transition(AgentStatus.INTENT_PARSED, status, actor="DynamicTrafficValidation"))
+        return payload
 
 
 async def fast_s101_nearest_feature_execute_node(state: OrchestratorState) -> OrchestratorState:
@@ -4740,6 +4831,10 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
     base_wkt = location["geometry"]
     location_text = location["location_text"]
     distance_m = _requested_layer_distance_m(primary_query, state)
+    import math
+    if distance_m is None or not math.isfinite(distance_m) or not 0 < distance_m <= 100000:
+        return _place_lookup_update(state, {"status": "NEEDS_CLARIFICATION", "error_code": "DISTANCE_REQUIRED",
+            "summary": "조회할 반경을 0m 초과 100km 이하로 지정해 주세요. 임의 반경을 적용하지 않았습니다."}, "feature_search_by_radius")
     limit_per_layer = 100
     sql = """
         WITH base AS (
@@ -5832,6 +5927,10 @@ async def audit_log_node(state: OrchestratorState) -> OrchestratorState:
 # ----------------- Conditional Edges -----------------
 
 def check_intent_parsed(state: OrchestratorState) -> str:
+    from services.orchestrator.request_semantics import permits_document_answer
+    from services.orchestrator.pipeline_diagnostics import diagnostic_request
+    if diagnostic_request(state.get('query')):
+        return "fast_pipeline_diagnostic"
     if state["status"] == AgentStatus.NEEDS_CLARIFICATION:
         return "needs_clarification"
     original_query = str(state.get("query", "") or "")
@@ -5857,7 +5956,7 @@ def check_intent_parsed(state: OrchestratorState) -> str:
         return "fast_accident_event_lookup"
     if _looks_like_dataset_evidence_query(query):
         return "fast_dataset_evidence_answer"
-    if _looks_like_legal_rag_query(query) or _looks_like_no_evidence_document_query(query) or _requested_notice_families(query):
+    if permits_document_answer(original_query) and (_looks_like_legal_rag_query(query) or _looks_like_no_evidence_document_query(query) or _requested_notice_families(query)):
         return "fast_document_answer"
     if _looks_like_place_lookup(state.get("query", "")) or _looks_like_known_place_search(state.get("query", ""), state):
         return "fast_place_lookup"
@@ -5939,6 +6038,7 @@ def build_orchestrator_graph():
     
     # Add Nodes
     workflow.add_node("parse_intent", parse_intent_node)
+    workflow.add_node("fast_pipeline_diagnostic", fast_pipeline_diagnostic_node)
     workflow.add_node("fast_definition_answer", fast_definition_answer_node)
     workflow.add_node("fast_document_answer", fast_document_answer_node)
     workflow.add_node("fast_dataset_evidence_answer", fast_dataset_evidence_answer_node)
@@ -5969,6 +6069,7 @@ def build_orchestrator_graph():
         check_intent_parsed,
         {
             "needs_clarification": "audit_log",
+            "fast_pipeline_diagnostic": "fast_pipeline_diagnostic",
             "fast_definition_answer": "fast_definition_answer",
             "fast_external_data_requirement": "fast_external_data_requirement",
             "fast_document_answer": "fast_document_answer",
@@ -5986,6 +6087,7 @@ def build_orchestrator_graph():
         }
     )
     workflow.add_edge("fast_definition_answer", END)
+    workflow.add_edge("fast_pipeline_diagnostic", END)
     workflow.add_edge("fast_external_data_requirement", END)
     workflow.add_edge("fast_document_answer", END)
     workflow.add_edge("fast_dataset_evidence_answer", END)

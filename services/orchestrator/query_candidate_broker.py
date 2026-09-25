@@ -132,7 +132,7 @@ DETERMINISTIC_PATTERNS: list[tuple[str, re.Pattern[str], list[str]]] = [
         ["STANDARD_RAG"],
     ),
     ("traffic_term", re.compile(r"통항량|AIS|V-PASS|vpass|traffic", re.I), ["TRAFFIC_ANALYSIS"]),
-    ("nearby_search", re.compile(r"이내|반경|근처|주변|거리", re.I), ["SPATIAL_ANALYSIS"]),
+    ("nearby_search", re.compile(r"이내|반경|근처|주변|거리|가까운|nearest|closest", re.I), ["SPATIAL_ANALYSIS"]),
     ("hazard_target", re.compile(r"위험객체|장애물|obstruction|wreck|침선|간출암|노출암|부표", re.I), ["SPATIAL_ANALYSIS", "LAYER_INSPECTION"]),
     ("find_intent", re.compile(r"찾아줘|찾아|위치|어디|좌표", re.I), ["PLACE_LOOKUP"]),
     ("place_name", re.compile(r"독도|[가-힣A-Za-z]+항\s*입구|[가-힣A-Za-z]+항|[가-힣]+해역|도서지명", re.I), ["PLACE_LOOKUP"]),
@@ -202,6 +202,8 @@ def _signal_scan(query: str) -> list[Signal]:
         match = pattern.search(query or "")
         if match:
             signals.append(Signal(signal_id=signal_id, routes=routes, value=match.group(0)))
+    if not any(signal.signal_id.startswith('accident_') for signal in signals):
+        signals = [signal for signal in signals if signal.signal_id != 'structured_event_lookup']
     return signals
 
 
@@ -717,6 +719,24 @@ def _execution_contract(
         "execution_route": execution_route,
         "steps": steps,
     }
+
+
+def select_execution_route(trace: dict[str, Any], route: str, reason: str) -> dict[str, Any]:
+    """Revalidate an existing candidate route after resolving requested outputs.
+
+    Ranking remains recorded; this cannot introduce capabilities or turn an
+    unverified candidate into an executable tool. Runtime slot/data gates remain.
+    """
+    routes = trace.get("route_candidates") or []
+    if not any(row.get("route") == route and row.get("score", 0) > 0 for row in routes):
+        return trace
+    previous = (trace.get("execution_contract") or {}).get("execution_route")
+    capabilities, verified = trace.get("capability_candidates") or [], trace.get("verified_candidates") or []
+    readiness = _tool_readiness(capabilities, verified, execution_route=route)
+    contract = _execution_contract(routes, capabilities, verified, readiness, execution_route=route)
+    return {**trace, "tool_readiness": readiness, "execution_contract": contract,
+            "execution_selection": {"ranked_route": previous, "selected_route": route, "reason": reason,
+                                    "runtime_validation_required": True, "ollama_used": False}}
 
 
 def execution_contract_ready(trace: dict[str, Any] | None, *, route: str | None = None, capability_id: str | None = None) -> bool:

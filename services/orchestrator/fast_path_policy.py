@@ -48,6 +48,11 @@ def instant_place_navigation_decision(query: str) -> dict[str, Any]:
     if not text:
         return {"allowed": False, "reason": "empty_query"}
 
+    from services.orchestrator.pipeline_diagnostics import diagnostic_request
+    diagnostic = diagnostic_request(text)
+    if diagnostic:
+        return {"allowed": False, "reason": "runtime_diagnostic_request", "diagnostic_target": diagnostic}
+
     policy = _instant_policy()
     lowered = text.lower()
     prior = build_semantic_prior(text, text)

@@ -90,9 +90,9 @@ def test_selected_place_evidence_survives_coordinate_confirmation(graph):
     assert evidence_row["data"]["selected_place_evidence"] == evidence
 
 
-def test_nearest_query_does_not_auto_approve_curated_reference(graph):
+def test_nearest_query_requires_confirmation_for_qualified_reference(graph):
     module, _ = graph
-    result = invoke(module, "부산항 입구에서 가장 가까운 정박지를 찾아줘")
+    result = invoke(module, "테스트항 입구에서 가장 가까운 정박지를 찾아줘")
     assert result["status"] == AgentStatus.NEEDS_CLARIFICATION
     assert result["final_dict"]["structured_result"]["analysis_type"] == "nearest_feature"
     assert result["final_dict"]["structured_result"]["location_candidates"]

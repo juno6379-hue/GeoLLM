@@ -107,16 +107,17 @@ def load_catalog(*, refresh=False):
     with _cache_lock:
         if not refresh and _cache and _cache[0] == key and time.monotonic() - _cache[1] < _CACHE_SECONDS:
             return _cache[2]
-        candidates, unavailable = [], []
+        candidates, unavailable, invalid_names = [], [], []
         sources = [
             ("S101_DB_URL", "projection.s101_feature_valid", "harbour", """
                 SELECT min(feature_instance_id)::text AS id, attributes->>'name' AS name,
                        NULL::text AS name_en,
-                       ST_AsText(ST_PointOnSurface(ST_UnaryUnion(ST_Collect(geometry)))) AS wkt,
+                       ST_AsText(ST_PointOnSurface(ST_Collect(geometry))) AS wkt,
                        4326 AS srid, max(dataset_version_id)::text AS revision
                 FROM projection.s101_feature_valid
                 WHERE feature_type_name = 'HarbourAreaAdministrative'
                   AND product_specification = 'INT.IHO.S-101.2.0'
+                  AND geometry IS NOT NULL
                   AND coalesce(attributes->>'name', '') <> ''
                 GROUP BY attributes->>'name'
             """),
@@ -144,6 +145,7 @@ def load_catalog(*, refresh=False):
                 continue
             for row in rows:
                 if not _usable_name(row.get("name")):
+                    invalid_names.append(str(row.get('name') or ''))
                     if relation not in unavailable:
                         unavailable.append(relation)
                     continue
@@ -151,10 +153,11 @@ def load_catalog(*, refresh=False):
                 try:
                     candidates.append(_candidate(f"{namespace}:{row['id']}", row["name"], [row.get("name_en")], row["wkt"], [record], crs=f"EPSG:{row['srid']}"))
                 except PlaceResolutionProblem:
+                    invalid_names.append(str(row.get('name') or ''))
                     if relation not in unavailable:
                         unavailable.append(relation)
                     continue
-        result = {"candidates": _deduplicate(candidates), "unavailable_sources": unavailable}
+        result = {"candidates": _deduplicate(candidates), "unavailable_sources": unavailable, "invalid_names": invalid_names}
         _cache = (key, time.monotonic(), result)
         return result
 
@@ -305,10 +308,19 @@ def resolve_location(query, spatial=None, *, places=None, catalog=None):
         parent = re.sub(_MODIFIERS, " ", label, flags=re.I).strip()
         matches = _matches(parent, available, exact=True)
         modified = _has_unbound_qualifier(query, label, matches)
-    if loaded.get("unavailable_sources"):
+    unavailable = loaded.get("unavailable_sources") or []
+    invalid_match = any(_normalized(name) and _normalized(name) in _normalized(label or query or '') for name in loaded.get('invalid_names', []))
+    healthy_matches = [item for item in matches if not any(record.get('source_ref') in unavailable for record in item.get('source_records', []))]
+    if unavailable and (invalid_match or not healthy_matches):
         raise PlaceResolutionProblem("BLOCKED_DATA", "GAZETTEER_UNAVAILABLE", "지명 원본의 연결 또는 품질을 확인해야 합니다. 좌표를 직접 지정하거나 잠시 후 다시 조회해 주세요.", candidates=[{**item, "requires_confirmation": True} for item in matches])
+    if unavailable:
+        matches = healthy_matches
     if len(matches) == 1 and not modified:
-        return _resolved(matches[0], "RESOLVED_GAZETTEER")
+        geometry, resolved_label, crs, resolution = _resolved(matches[0], "RESOLVED_GAZETTEER")
+        if unavailable:
+            resolution.update(unavailable_sources=unavailable, coverage_complete=False,
+                              warnings=['Resolved from a healthy source; other gazetteer sources are unavailable'])
+        return geometry, resolved_label, crs, resolution
     message = "지명을 찾지 못했습니다. 정확한 지명이나 경도·위도를 알려 주세요."
     if matches:
         message = "여러 위치 또는 기준점 후보가 있습니다. 사용할 위치를 선택해 주세요."

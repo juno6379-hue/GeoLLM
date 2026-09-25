@@ -1,5 +1,27 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-09-25 후속: 샘플 파이프라인 수정 및 실행 검증
+
+최종 검증: 관련 단위 **177 passed**, 실행 중 API 계약 **13/13** (`contracts-v7.jsonl`). 웹 샘플 `live-presets-v5`는 100/100 완료 이벤트 수신, 관측 timeout 0; COMPLETED 13 / PARTIAL 13 / NEEDS_CLARIFICATION 66 / BLOCKED 8. 상태 분포는 의미 정확도가 아니다. 아래 이전 실행 수치는 중간 이력으로 보존한다.
+
+최종 재현에서 남은 P0: 샘플 46의 portrayal 매칭 대신 정의 반환, 47/48의 지도 객체 문맥 없이 문서 완료, 76의 원천 좌표 처리 방식 질문을 공간 검색으로 분류, 84의 '위치 없이'를 사고 필터 '없, 부근'으로 조회. 이 사례와 불필요한 clarification을 다음 작업의 출력·문맥·부정 표현 회귀 기준으로 삼는다. 상세 전후 trace: `outputs/pipeline-comparison/final-review/stage_matrix.json`.
+
+상세 판단 근거: [pipeline_repair_review_20260925.md](pipeline_repair_review_20260925.md). 사용자 우선순위는 공통 GeoLLM 샘플의 **의도→슬롯→후보→실행 계획→실제 도구→결과** 검증이다. 브라우저 미연결은 이 검증의 차단 사유가 아니다.
+
+- 항만 catalogue 대표점 SQL의 불필요한 unary union을 제거했다. 실제 73개 항만 그룹 조회 8.54초→0.13초. 정상 지명 원천과 장애 원천을 분리하고 동일 이름 불량 행/후보 자체 원천 장애는 계속 차단한다.
+- 실행 산출물과 관련 문서 주제를 구분하고, 검증된 기존 후보를 요청 산출물에 따라 재선택한다. 장소 후보가 1위여도 traffic aggregation을 후보에서 배제하지 않는다. 검색 행동만으로 사고 후보를 만드는 신호를 제한하고 nearest 공간 신호를 보완했다.
+- 최근 N개월은 현재 월 기준 source별 월 coverage를 검사한다. 과거 적재 기간으로 묵시적 대체하지 않는다. 최신 적재 월은 별도 의미로 보존한다. 고정 V-PASS 우세·12개월 문구, 임의 3km layer 반경을 제거했다.
+- S-101 단일 Feature 매핑, 실제 traffic coverage/pgvector 진단, 작업 trace 문맥 부족 처리, SSE 도메인 결과·근거 보존을 구현했다. 적재 관련 문서 청크 조회만 수행한 응답은 PARTIAL이며 전체 적재 완료로 표시하지 않는다.
+- 격리 환경 관련 회귀 **173 passed**. 실제 API 계약 검사 **9/9 통과** (`outputs/web-sample-review/contracts-v4.jsonl`). 최신 적재 월 부산항 AIS 조회는 실제 2023-12 자료 6개 교차 격자, 집계 합 6,847,473을 반환했다. 고유 선박 수 또는 현재 통항량이 아니다.
+- 최초 Ollama 100개 결과는 기본 형식/인용 통과 69, 인용 불일치 27, JSON 실패 4. 슬롯·설명 오류가 남아 있으므로 정확도로 해석하지 않는다. 최초 lexical 후보 재생과 실제 서비스 후보는 다른 실험이다. `--live-candidates`로 후자를 분리했으며 동일 후보의 rule/Ollama/혼합 순위를 저장한다. human gold와 calibration 없이 실행 권한을 승격하지 않는다.
+- 원시 출력은 `outputs/web-sample-review/`, `outputs/pipeline-comparison/`에 분리한다. 기존 사용자 변경 `data/feedback/query_quality_issues.jsonl`은 소스 커밋에 포함하지 않는다.
+
+남은 P0: portrayal symbol 연결 근거 완결성, raw→표준화→serving 전체 lineage 진단, 복합 요구의 작업별 실행/누락/완료 계약, 최신 외부 예측 및 실제 LiDAR 엔진. 지명 한정어·동명이칭 추가 입력을 자동 좌표로 치환하지 않는다. 남은 P1: 사람이 검수한 독립 gold/holdout, 동일 후보·모델·prompt의 calibration과 ablation. QLoRA 조건은 여전히 미충족이다.
+
+동일 서비스 후보 후속 8개 실험은 구조/인용 5개 통과, 3개 인용 실패였다. 통과 응답에도 무근거 반경·날짜가 남는다. 82/46번에서 후보 부족에 따른 ABSTAIN은 유용했지만 슬롯까지 신뢰할 수는 없다. 병행 부하 실험은 API 계약 6/9로 저하했고 timeout·항만 원천 시간 제한을 관측했다. 원본 `contracts-v5.jsonl`과 `live-candidates-v2/`를 보존했다. 후보/DB 동기 조회를 이벤트 루프 밖으로 이동했으며 상시 shadow 승격 전 자원 격리와 동시 요청 검증이 필요하다.
+
+후속으로 사고 조회 필터가 없는 질의의 clarification 경로, 실제 Dataset 경로별 embedding NULL 집계, resolver registry 선언 목록을 추가했다. 해당 후속 단위 18개와 이벤트 루프 수정 후 관련 46개 회귀가 통과했다(앞의 173개와 중복 포함). 새 진단도 source coverage와 runtime availability를 구분하며 문서/등록 정보만으로 완료를 주장하지 않는다.
+
 기준일: 2026-09-25
 재개 원칙: 명시적 새 우선순위가 없으면 아래 `P0 미비점`부터 처리한다. 이번 세션은 사용자 지시에 따라 GeoLLM 공통 P1 Ollama shadow 실험을 우선 수행했다.
 
@@ -60,9 +82,9 @@
 ## P0 미비점 — 다음 접속에서 먼저 처리
 
 1. **시공간 입력과 실행 범위의 잔여 계약**
-   - 웹 샘플 재현을 우선 기준으로 삼는다. `projection.s101_feature_valid` 항만 gazetteer 집계 5초 timeout과 전체 원천 차단을 분리·수정한다. 필수 분석 결과 없이 문서 검색만으로 COMPLETED 처리되는 경로를 출력 계약으로 검증한다. 샘플별 새 키워드 분기를 추가하는 방식은 피한다.
+   - 항만 대표점 조회 비용과 전체 원천 장애 전파는 이번 수정으로 개선했다. 실제 항만 면 union은 유지하며 병행 부하에서의 시간 제한·자원 격리는 아직 검증이 필요하다. 필수 분석 결과 없이 문서 검색만으로 COMPLETED 처리되는 잔여 경로, 특히 portrayal·지도 선택 객체·복합 요구를 작업별 출력 계약으로 검증한다.
    - 파일럿 API에서 C02/C03/E01/E03/E04는 `GAZETTEER_UNAVAILABLE`. 위치 문맥 없는 E04는 누락 위치 clarification과 원천 장애를 구분해야 한다. E06 `내일 인천항 만조 시각을 알려줘`는 `COMPLETED`와 `error_code=BLOCKED_DATA`가 함께 관측돼 상태 정합성을 재검증해야 한다. E07 관측 timeout은 작업 자체 실패와 구분한다. 재현 질의·관측은 공통 검토 문서와 qwen-pilot-v1 원본에 보존했다.
-   - 일반 traffic 시간 필터는 `last_1_year` 외 기간을 동일하게 처리하는 기존 한계가 남아 있다. `최근 3개월 통항량` 등 명시 기간이 적재 전체 기간으로 넓어지지 않도록 달력 기간/월 집계 계약을 정리하고 부정 사례를 추가한다.
+   - 최근 N개월과 source별 월 coverage 계약을 수정하고 부정 사례를 추가했다. 일 단위·지원하지 않는 명시 날짜 표현은 월 자료로 실행한 척하지 않고 clarification한다. 정확한 일 단위 집계와 다양한 명시 날짜 구간의 지원은 남은 작업이다.
    - 항만 입구/출구는 항만 전체 geometry로 치환하지 않고 clarification한다. 사용자가 확인한 세부 위치를 재제출하는 UI 흐름과 다중 항만·광역 viewport를 실제 브라우저에서 확인해야 한다.
    - 분류기 단위 테스트의 사전 fixture 통과를 실제 모든 용어의 정의 근거 확보로 간주하지 않는다. 등록되지 않은 복합 용어와 다중 의도를 추가 검증한다.
 
@@ -165,7 +187,7 @@ QLoRA는 즉시 적용하지 않고 다음 조건을 모두 만족할 때 진행
 
 1. 웹 준비 후 `python scripts/check_web_db_connection.py`와 `python scripts/check_navigation_runtime.py` 실행.
 2. 새 DB에는 `docker exec geollm_backend python -m scripts.initialize_lidar_registry` 적용. S-101 projection에는 `scripts/sql/20260925_navigation_port_index.sql`을 S101 DB에 적용.
-3. P0-1의 명시 시간 범위와 항만 세부위치 계약을 우선 수정하고 관련 단위 테스트+실제 API 부정 사례 검증.
+3. P0-1의 복합 요구·portrayal·선택 객체 출력 계약과 shadow/API 자원 격리를 우선 검증한다. 항만 세부위치 확인 흐름과 미지원 날짜 표현을 보강하고 관련 단위 테스트+실제 API 부정 사례를 검증한다.
 4. 사고·수심·기상 근거 결합 및 LiDAR 실제 엔진을 각각 원천·산출물 검증과 함께 확장.
 5. Browser 연결 후 화면·지도 조작 검증.
 6. 구현된 오프라인 shadow를 근거·복수 기능 조합 기준의 독립 human gold/calibration 평가로 확장한다. v2 전체 평가와 상시 관측 연동은 미완료다. 승격 조건 충족 전 실행 결정권을 주지 않는다.

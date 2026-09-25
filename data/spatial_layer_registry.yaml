@@ -43,6 +43,8 @@ layers:
     - dwithin
     - nearest
   anchorage_area:
+    query_terms: [정박지, 정박구역, anchorage]
+    title: 정박지 면
     zone: serving
     layer_type: anchorage
     execution_status: executable
@@ -56,6 +58,8 @@ layers:
     - dwithin
     - nearest
   anchorage_point:
+    query_terms: [정박지, 정박구역, anchorage]
+    title: 정박지 점
     zone: serving
     layer_type: anchorage
     execution_status: executable
@@ -69,6 +73,8 @@ layers:
     - dwithin
     - nearest
   fairway_area:
+    query_terms: [일반항로, 항로구역, fairway]
+    title: 일반항로
     zone: serving
     layer_type: fairway
     execution_status: executable
@@ -82,6 +88,8 @@ layers:
     - dwithin
     - nearest
   traffic_separation_boundary:
+    query_terms: [통항분리구역, 통항분리경계선, traffic separation]
+    title: 통항분리 경계선 (구역 면과 구분)
     zone: serving
     layer_type: traffic_separation_boundary
     execution_status: executable

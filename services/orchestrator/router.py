@@ -537,6 +537,17 @@ def _compact_agent_result_for_stream(agent_result):
 def _preserve_spatial_stream_payload(result: dict, compact: dict) -> None:
     structured = result.get("structured_result") if isinstance(result.get("structured_result"), dict) else {}
     orch = result.get("orchestrator_v2") if isinstance(result.get("orchestrator_v2"), dict) else {}
+    # Preserve typed domain outputs for every analysis, not just a hardcoded
+    # spatial allowlist. Document previews remain bounded by the caller.
+    for key, value in structured.items():
+        compact.setdefault("structured_result", {}).setdefault(key, value)
+    if "evidence_bundle" in result:
+        compact["evidence_bundle"] = result["evidence_bundle"]
+    if "orchestrator_v2" in compact:
+        for key, value in orch.items():
+            compact["orchestrator_v2"].setdefault(key, value)
+        for key, value in (orch.get("query_execution_context") or {}).items():
+            compact["orchestrator_v2"].setdefault("query_execution_context", {}).setdefault(key, value)
     route = orch.get("route_plan") if isinstance(orch.get("route_plan"), dict) else {}
     spatial_stream_analysis_types = {
         "feature_search_by_radius",

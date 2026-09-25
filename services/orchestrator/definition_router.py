@@ -18,6 +18,9 @@ def normalize_term(value: Any) -> str:
 
 
 def definition_subject(query: str) -> str:
+    mapping = catalogue_mapping_subject(query)
+    if mapping:
+        return mapping
     text = str(query or "").strip().strip("\"'“”‘’").rstrip("?!. ").strip()
     suffix = re.fullmatch(r"(.+?)(?:이란|란)", text)
     if suffix:
@@ -117,7 +120,24 @@ def definition_entries() -> dict[str, dict[str, Any]]:
     return entries
 
 
+def catalogue_mapping_subject(query: str) -> str | None:
+    match = re.fullmatch(
+        r"\s*(.+?)(?:은|는|이|가)?\s*S-?101(?:에서|의)?\s*(?:어떤|무슨)\s*(?:Feature|피처|객체)(?:야|인가|인가요|인지)?[?!.\s]*",
+        str(query or ""), re.I,
+    )
+    return match.group(1).strip() if match else None
+
+
 def resolve_definition(query: str) -> dict[str, Any] | None:
+    subject = catalogue_mapping_subject(query)
+    if subject:
+        registry = yaml.safe_load((DATA / "s101_feature_dictionary.yaml").read_text(encoding="utf-8")) or {}
+        mapping = (registry.get("s101_features") or {}).get(subject) or {}
+        candidates = mapping.get("feature_candidates") or []
+        # Multi-feature terms require clarification; never choose the first alias.
+        if len(candidates) == 1:
+            return definition_entries().get(normalize_term(candidates[0]))
+        return None
     return definition_entries().get(normalize_term(definition_subject(query)))
 
 
@@ -134,4 +154,4 @@ def is_definition_query(query: str) -> bool:
     bare_term = normalize_term(text) == normalize_term(entry["canonical_term"]) or any(
         normalize_term(text) == normalize_term(alias) for alias in entry.get("aliases") or []
     )
-    return bool(explicit or suffix or bare_term)
+    return bool(explicit or suffix or bare_term or catalogue_mapping_subject(text))
