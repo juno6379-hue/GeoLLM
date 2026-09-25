@@ -1,7 +1,28 @@
 # Marine GeoLLM 현재 상태와 다음 작업
 
-기준일: 2026-09-22  
+기준일: 2026-09-25
 재개 원칙: 다음 접속에서는 아래 `P0 미비점`부터 처리한다.
+
+## 2026-09-25 웹·DB 연동 및 현재 상태 검증
+
+- DB, backend, tile-server, eta-history-collector 컨테이너가 실행 중이다.
+- 웹 `/`, `/uport/`, `/health`가 HTTP 200이다. `/health`는 API 생존 확인만 하므로 DB 연결 성공과 구분한다.
+- 웹은 동일 출처 `/api/v1/uport/map/berths`를 통해 `S101_DB_URL`의 `gbhd_s101`에 연결한다. 부산 bbox `128.98,35.02,129.18,35.18`에서 169건, 인천 bbox `126.50,37.35,126.70,37.55`에서 128건의 S-101 2.0 선석 GeoJSON을 반환했다. 잘못된 bbox와 과대 범위는 HTTP 422이다.
+- DB 직접 조회: S-101 projection 787,102건, 사고 4,636건, RAG 8,413건 및 embedding 8,413건이다. 기존 체크포인트 중 이 수치만 이번에 재검증했으며 geometry validity/사고 관계 전체를 다시 검사한 것은 아니다.
+- `POSTGIS_URL`은 `marine_geo`(KHOA 지명 테이블 존재), `S101_DB_URL`은 `gbhd_s101`을 사용한다. README의 단일 DB 예시를 실제 역할에 맞게 수정했다. 직접 psycopg2 접속과 호환되는 `postgresql://`를 문서화했다.
+- `scripts/check_web_db_connection.py`를 추가했다. 호스트와 컨테이너 내부 모두 7개 점검이 통과했다. `start_geollm.bat`에 동일 점검을 추가했으며 명령 자체를 실제 실행했다. 배치 전체와 LiDAR UI 기동은 이번에 실행하지 않았다.
+- 실행 이미지에는 pytest와 최신 테스트가 없었다. 현재 컨테이너에 pytest 8.4.2/pytest-asyncio 0.23.8을 설치하고 최신 tests를 복사하여 검증했다. Compose에는 tests read-only mount를 추가했다. 현재 컨테이너를 재생성하지 않았으므로 mount는 다음 recreate부터 적용되며, 개발 의존성의 영속 반영은 `up -d --build backend`가 필요하다.
+- Browser 연결 목록이 비어 있어 실제 브라우저 렌더링·지도 조작은 미검증이다. HTTP/API 통과를 화면 검증 완료로 간주하지 않는다.
+
+### 실제 질의 검증과 남은 문제
+
+- `/api/v1/tasks`에 `이 해역의 통항위험이 높은 이유를 설명해줘`와 부산/인천 bbox를 각각 전달했다. 두 질의 모두 `COMPLETED`, `Navigation Risk Analysis Agent`, 통항자료 확보 성공이다. 최근접 거리는 부산 506.3m, 인천 751.6m이다.
+- 두 응답 모두 `parsed_intent.intent_type=KNOWLEDGE_SEARCH`와 `route_plan.intent=ANALYSIS`가 불일치한다(P0-2 재현). `estimated_accuracy=0.868`은 gold-label 정확도가 아니다.
+- 지도 문맥 없이 같은 질의를 보내면 `BLOCKED`, 항만 null, 통항자료 없음으로 응답한다. 임의 항만은 선택하지 않지만 위치 누락을 `NEEDS_CLARIFICATION`으로 설명하는 후속 개선이 필요하다.
+- `조석예보란`은 정의 응답으로 완료됐다. 정의형도 상위 `KNOWLEDGE_SEARCH`와 최종 `DEFINITION`의 메타데이터 관계를 함께 정리해야 한다.
+- 전국 항만 확대, 최근접 거리 제한, 명시 항만명과 지도 문맥의 우선순위, 사고·수심·기상 결합은 아직 미완료이다. 실시간 AIS는 provider 미설정 시 503을 반환하는 계약이며 선석/과거 통항자료가 실시간 관측을 대신하지 않는다.
+- P1 코드 확인: `query_candidate_broker`는 여전히 `dry_run_no_execution_change`와 Ollama 필요 여부만 기록한다. 후보 점수 결합·calibration·gold-label 비교 실험을 완료한 상태가 아니며 QLoRA 착수 조건도 이번에 입증되지 않았다.
+- 실제 질의 응답은 ignored `outputs/runtime-check/`에 저장했다. 기존 변경이 있던 `data/feedback/query_quality_issues.jsonl`과 이번 검증이 추가한 런타임 기록은 소스 커밋에서 제외한다.
 
 ## 완료된 작업
 
@@ -31,9 +52,9 @@
 ## P0 미비점 — 다음 접속에서 먼저 처리
 
 1. **회귀 테스트 완성**
-   - `test_navigation_risk_routing.py`를 컨테이너에서 실행한다.
-   - 인천 지도 중심, 명시적 항만명, 지도 문맥 없음, 통항 테이블 없음 케이스를 추가한다.
-   - 정의형 테스트와 전체 관련 테스트를 다시 실행한다.
+   - 2026-09-25: 인천 지도 중심, 명시적 항만명, 지도 문맥 없음, 통항 실행 불가(mock exception) 4개 케이스를 추가했다. 실제 DB 테이블을 제거한 장애 실험은 수행하지 않았다.
+   - 컨테이너에서 `python -m pytest tests/unit/test_definition_router.py tests/unit/test_navigation_risk_routing.py tests/unit/test_uport_map.py -q`: **23 passed**, deprecation warning 9개.
+   - Compose `config --quiet`, `git diff --check` 통과. 전체 프로젝트 테스트는 실행하지 않았으므로 후속 라우팅 변경에 필요한 추가 회귀 범위는 확인해야 한다.
 
 2. **응답 메타데이터 일관성 확인**
    - 재시작 후 `agent_name=Navigation Risk Analysis Agent`와 통항 도구 목록을 확인한다.
@@ -136,12 +157,12 @@ QLoRA는 즉시 적용하지 않고 다음 조건을 모두 만족할 때 진행
 
 ## 다음 실행 순서
 
-1. `docker compose -f docker/docker-compose.yml restart backend`
-2. `python -m py_compile services/orchestrator/graph.py`
-3. `python -m pytest tests/unit/test_definition_router.py tests/unit/test_navigation_risk_routing.py -q`
-4. 부산/인천 지도 범위로 실제 `/api/v1/tasks` 검증
-5. P0-2 메타데이터 불일치 수정
-6. P0-3 전국 항만 resolver 확장
+1. `python scripts/check_web_db_connection.py`로 웹/API/DB 연결 재확인
+2. 컨테이너 재생성 시 `docker compose -f docker/docker-compose.yml up -d --build backend`로 개발 의존성·최신 tests mount 반영
+3. P0-1 잔여 관련 회귀 범위를 확인하고 P0-2 `parsed_intent`/최종 경로/도구 메타데이터 불일치 수정
+4. 수정 후 컨테이너 테스트와 부산/인천/명시 항만/지도 문맥 누락 실제 `/api/v1/tasks` 재검증
+5. 지도 문맥 누락 clarification 및 명시 위치 우선순위·최근접 거리 제한 확정
+6. P0-3 전국 항만 resolver 확장 및 브라우저 연결 후 화면 검증
 7. P0-4 사고·수심·기상 근거 결합
 8. Ollama ambiguity resolver를 shadow mode로 구현하고 gold-label 평가
 9. prompt 보완 후에도 남는 반복 오류가 확인된 경우에만 QLoRA 실험

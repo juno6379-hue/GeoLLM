@@ -62,6 +62,7 @@ services:
       - ../data:/app/data
       - ../outputs:/app/outputs
       - ../scripts:/app/scripts
+      - ../tests:/app/tests:ro
       - ../services/orchestrator/static:/app/services/orchestrator/static
       - eta_readiness_data:/app/eta_readiness:ro
 

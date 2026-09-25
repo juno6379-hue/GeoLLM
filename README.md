@@ -78,23 +78,53 @@ Health check:
 curl.exe -fsS http://localhost:8000/health
 ```
 
+Verify the website-to-PostGIS connection (main and U-Port HTML, Busan/Incheon
+S-101 berth queries, and rejection of invalid map bounds):
+
+```powershell
+python scripts/check_web_db_connection.py
+```
+
+The launcher also runs this check inside the backend container. `/health` alone
+only checks API liveness; it does not prove database connectivity. The smoke
+check expects the populated local S-101 dataset, including berths in both ports.
+It checks HTTP and database-backed API responses, not browser rendering.
+
+The main website is at `http://localhost:8000/`; U-Port is at
+`http://localhost:8000/uport/`. U-Port requests the same-origin
+`/api/v1/uport/map/berths` endpoint, which reads `gbhd_s101` through `S101_DB_URL`.
+Charted berths are not live berth occupancy or live AIS observations.
+
+For container regression tests, rebuild the development backend if its image
+does not yet include pytest. Compose mounts the current tests read-only:
+
+```powershell
+docker compose -f docker/docker-compose.yml up -d --build backend
+docker compose -f docker/docker-compose.yml exec -T backend python -m pytest tests/unit/test_definition_router.py tests/unit/test_navigation_risk_routing.py tests/unit/test_uport_map.py -q
+```
+
 ## Important Environment Variables
 
 Host-side defaults:
 
 ```text
-POSTGIS_URL=postgresql+psycopg2://postgres:postgres@localhost:5433/gbhd_s101
-S101_DB_URL=postgresql+psycopg2://postgres:postgres@localhost:5433/gbhd_s101
+POSTGIS_URL=postgresql://postgres:postgres@localhost:5433/marine_geo
+S101_DB_URL=postgresql://postgres:postgres@localhost:5433/gbhd_s101
 OLLAMA_HOST=http://localhost:11434
 ```
 
 Container-side defaults:
 
 ```text
-POSTGIS_URL=postgresql+psycopg2://postgres:postgres@db:5432/gbhd_s101
-S101_DB_URL=postgresql+psycopg2://postgres:postgres@db:5432/gbhd_s101
+POSTGIS_URL=postgresql://postgres:postgres@db:5432/marine_geo
+S101_DB_URL=postgresql://postgres:postgres@db:5432/gbhd_s101
 OLLAMA_HOST=http://host.docker.internal:11434
 ```
+
+These databases serve different roles: `marine_geo` includes the KHOA maritime
+gazetteer; `gbhd_s101` serves S-101 projections, accident data, traffic, and RAG.
+Keep their targets separate. Plain `postgresql://` URLs work with both SQLAlchemy
+and the direct psycopg2 connections used by the execution paths.
 
 ## Rebuild S-101 Projection And Relations
 
