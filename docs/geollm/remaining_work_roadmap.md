@@ -1,5 +1,16 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-09-25 한국어 슬롯·Kiwi·Qwen3.5 상세 작업계획
+
+사용자 지정 후속 계획: [한국어 의도·슬롯 보강 및 Qwen3.5 shadow 평가](korean_intent_slot_shadow_plan.md). **계획 문서 작성 완료이며 신규 구현·모델 실험 완료가 아니다.** 원문 구간/단위/부정/문맥 근거 → Kiwi → 작업별 완료 계약 → 동일 후보 Qwen3.5 4B → 독립 평가와 조건부 9B → QLoRA go/defer 순서다.
+
+- 왜: 무근거 반경·날짜, 부정 표현의 사건 필터 오인, 관련 문서만으로 분석 완료, shadow/API 병행 부하를 각각 해결해야 한다. 단일 intent 일치율로 성공을 판정하지 않는다.
+- 어떻게: 기존 registry·KG·PostGIS·도구 실행은 유지하고 원문 근거 슬롯 및 필요한 작업 계약을 추가한다. 모델은 고정 후보의 해석과 점수만 제안하며 shadow 결과는 실행에 반영하지 않는다.
+- 이번 재확인: backend 실행 및 `/health` 200, Kiwi 미설치, Qwen3.5 4B/9B 미설치. 기존 Ollama 목록은 qwen2.5:1.5b/bge-m3/gemma2다. 저장된 `live-presets-v5` 100개·오류 0 및 `contracts-v7` 13/13을 재확인했다. 이전 단위 177개는 이번 문서 작업에서 재실행하지 않았다.
+- 평가: 계획상 필요 작업 충족과 실제 작업 완료를 분리하고, 슬롯 원문/정규화 정확도·무근거 슬롯·불필요 질문·필요 질문 누락·과잉 실행·p50/p95 지연을 측정한다. 웹 100개는 개발 회귀셋이며 독립 holdout으로 재사용하지 않는다.
+- 남은 조건: 하드웨어 계측, Kiwi/모델 설치·버전 고정, 독립 human gold와 calibration, 자원 격리. QLoRA는 DEFER다. 문서의 자원·표본 수 기준은 계획값이며 검증된 성능이 아니다.
+- 다음 시작점: 상세 계획 S0(snapshot·자원 기준선) → S1(슬롯 근거 schema·단위 검증) → S2(Kiwi·부정 범위·fast path 공통 검사). 기존 P0 46/47/48/76/84는 S2/S3의 필수 회귀로 유지한다.
+
 ## 2026-09-25 후속: 샘플 파이프라인 수정 및 실행 검증
 
 최종 검증: 관련 단위 **177 passed**, 실행 중 API 계약 **13/13** (`contracts-v7.jsonl`). 웹 샘플 `live-presets-v5`는 100/100 완료 이벤트 수신, 관측 timeout 0; COMPLETED 13 / PARTIAL 13 / NEEDS_CLARIFICATION 66 / BLOCKED 8. 상태 분포는 의미 정확도가 아니다. 아래 이전 실행 수치는 중간 이력으로 보존한다.
@@ -182,6 +193,8 @@ QLoRA는 즉시 적용하지 않고 다음 조건을 모두 만족할 때 진행
 - adapter의 base model, dataset snapshot, prompt/schema version, 평가 보고서를 registry에 등록하고 즉시 rollback 가능하게 한다.
 
 ## 다음 실행 순서
+
+**최신 사용자 지정 우선순위:** [상세 계획](korean_intent_slot_shadow_plan.md)의 S0→S1→S2→S3→S4 순서로 진행한다. S5 독립 평가 후 S6의 조건부 9B/자원 격리, S7 QLoRA 판단으로 이어간다. 아래 기존 순서는 운영 점검 및 잔여 P0 목록으로 유지한다.
 
 사용자 지정 P1 후속: AI 사후 검토를 사람이 확인해 **필수 작업·허용 capability 조합·슬롯·근거·clarification** 단위의 독립 평가셋을 만든다. route 이름을 정답으로 고정하지 않는다. 후보 설명 누락·공유 기능을 정비하고 고정한 prompt/model로 전체 calibration/evaluation을 재실험한다. 지연·실패 격리 확인 전 상시 shadow나 실행 권한을 승격하지 않는다. 별도 우선순위가 없으면 아래 P0 순서를 따른다.
 
