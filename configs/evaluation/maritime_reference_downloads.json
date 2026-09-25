@@ -1,0 +1,20 @@
+{
+  "version": "mof-reference-acquisition-v1",
+  "storage": "Dataset/authoritative_references/mof",
+  "sources": [
+    {"id":"mof_dictionary", "title":"해양수산 용어사전", "page":"https://www.mof.go.kr/dictionary/selectDictionaryList.do?menuSeq=928", "article":19755, "files":[1], "role":"terminology", "edition":"CHECK_DOCUMENT"},
+    {"id":"mof_standard_terms", "title":"해양수산 전문용어 표준화 홍보물", "page":"https://www.mof.go.kr/dictionary/selectDictionaryList.do?menuSeq=928", "article":15153, "files":[3], "role":"terminology", "edition":"CHECK_DOCUMENT"},
+    {"id":"mof_spatial_characteristics_2019", "title":"해양공간특성평가 지침 제정", "page":"https://www.mof.go.kr/doc/ko/selectDoc.do?bbsSeq=35&docSeq=26403&menuSeq=885", "article":26403, "files":[1,2], "role":"published_guideline", "edition":"2019-76"},
+    {"id":"mof_spatial_consultation_2022", "title":"해양공간적합성협의에 관한 업무처리규정 일부개정", "page":"https://www.mof.go.kr/doc/ko/selectDoc.do?bbsSeq=35&docSeq=47512&menuSeq=885", "article":47512, "files":[1,2], "role":"amendment_not_consolidated_text", "edition":"2022-160"},
+    {"id":"mof_aton_equipment_2025", "title":"항로표지 장비·용품 등의 기능 및 규격 기준 일부개정", "page":"https://www.mof.go.kr/doc/ko/selectDoc.do?bbsSeq=35&docSeq=60520&menuSeq=886", "article":60520, "files":[1,2,3], "role":"amendment_and_annexes_not_consolidated_text", "edition":"2025-23"},
+    {"id":"mof_jeju_sindori_2025", "title":"제주 신도리 주변해역 해양보호구역 지정 고시", "page":"https://www.mof.go.kr/doc/ko/selectDoc.do?bbsSeq=9&docSeq=61209&menuSeq=375", "article":61209, "files":[1], "role":"designation_notice", "edition":"2025-57"},
+    {"id":"mof_busan_msp_2020", "title":"부산 및 부산 인근 배타적 경제수역 해양공간관리계획", "page":"https://www.mof.go.kr/doc/ko/selectDoc.do?bbsSeq=35&docSeq=30244&menuSeq=886", "article":30244, "files":[1,2], "role":"published_spatial_plan", "edition":"2020-11"}
+  ],
+  "existing_local_patterns": [
+    "Dataset/S-101*.pdf",
+    "Dataset/101_*2.0.0*.zip",
+    "Dataset/rag_sources/xml/101_Feature_Catalogue_2.0.0.xml",
+    "Dataset/rag_sources/pdfs/*해양사고*.pdf",
+    "Dataset/rag_sources/pdfs/*해양사례집*.pdf"
+  ]
+}

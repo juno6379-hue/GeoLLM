@@ -1,5 +1,13 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-09-26 GitHub push 및 해양수산부 공식 원문 확보
+
+- 사용자 요청으로 기존 커밋을 `origin/main`에 push하고 원격 `453b58a`를 확인했다. 후속 자료 수집 코드·목록·문서는 별도 커밋으로 push한다.
+- [수집 보고서](maritime_reference_acquisition_20260926.md): 해양수산부 공식 첨부 12개(PDF 4/HML 5/HWPX 3), 출처 페이지 7개를 `Dataset/authoritative_references/mof/20260926-v1/`에 보관했다. 실패 0, 19개 hash 재검증, 기존 S-101·사고자료 12개는 중복 다운로드 없이 목록화했다.
+- PDF 페이지/일부 본문 및 HML/HWPX XML 확인 완료. 지침 PDF 표지 `2019-xx`와 동반 제정문 사이의 판 불일치는 GOLD_APPROVAL_BLOCKED로 기록했다. 지정 고시의 제외구역·지적경계 조건도 확인해 좌표만으로 자동 공간 적재하지 않았다.
+- 원문은 로컬 Dataset에 보관하며 GitHub에는 재현 스크립트·출처/hash 목록·검수 상태를 보존한다. 기존 사용자 피드백 JSONL은 제외한다.
+- 다음 참조 작업: 현행 통합법령·후속 개정 확인 → 불일치 자료 판 검수 → 조항/용어 locator 및 canonical ID 연결 → 독립 human gold. 자료 수집은 완료했으나 원천 전체 망라·RAG/DB 적재·gold 승인은 미완료다. 기존 P0 실제 작업 산출물 및 shadow 지연 개선도 남아 있다.
+
 ## 2026-09-26 최종 재검증 및 해양 정답 근거 기준
 
 - `web-samples-v4/`: 실제 API 100/100 완료 이벤트, 도메인 FAILED 0, 관측 오류 0. COMPLETED 9 / PARTIAL 15 / NEEDS_CLARIFICATION 68 / BLOCKED 8. 상태 분포는 의미 정확도가 아니며 추가 질문 68건의 필요성은 독립 검수가 남았다.

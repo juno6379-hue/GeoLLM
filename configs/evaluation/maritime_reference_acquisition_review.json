@@ -1,0 +1,27 @@
+{
+  "snapshot": "20260926-v1",
+  "review_status": "AI_REVIEW_REQUIRED",
+  "human_gold": false,
+  "signature_verified": false,
+  "current_law_status": "NOT_VERIFIED",
+  "checks": {
+    "downloaded_originals": 12,
+    "source_page_snapshots": 7,
+    "existing_files_inventoried": 12,
+    "retrieval_failures": 0,
+    "downloaded_artifact_sha256_checks_passed": 19,
+    "pdf_pages": {"mof_dictionary_1":359,"mof_standard_terms_3":2,"mof_spatial_characteristics_2019_2":50,"mof_busan_msp_2020_2":220},
+    "hml_xml_parsed": 5,
+    "hwpx_xml_parsed": 3,
+    "pdf_check_scope": "pypdf page tree and first three pages text extraction; no full visual validation"
+  },
+  "findings": [
+    {"artifact_id":"mof_spatial_characteristics_2019_2", "status":"GOLD_APPROVAL_BLOCKED", "reason":"Official promulgation-page attachment cover still contains 제2019-xx호 and 2019.4; companion HML identifies 2019-76 dated 2019-06-12. Resolve document edition discrepancy before normative gold use."},
+    {"artifact_id":"mof_dictionary_1", "status":"EDITION_REVIEW_REQUIRED", "reason":"359-page official attachment obtained; publication edition is not established by the URL or download date."},
+    {"artifact_id":"mof_standard_terms_3", "status":"SUPPLEMENTAL_TERMINOLOGY_REFERENCE", "reason":"Brochure refers to standardization notice effective 2017-01-18; it is not the notice itself or proof of present legal applicability."},
+    {"artifact_id":"mof_spatial_consultation_2022_2", "status":"AMENDMENT_REVIEW_REQUIRED", "reason":"Published amendment package; consolidated text and later amendments need separate verification."},
+    {"artifact_id":"mof_aton_equipment_2025_3", "status":"BODY_TEXT_IDENTIFIED_REVIEW_REQUIRED", "reason":"Attachment includes numbered body articles, with separate annex attachment. Verify against official consolidated edition before gold approval."},
+    {"artifact_id":"mof_jeju_sindori_2025_1", "status":"SPATIAL_APPLICABILITY_REVIEW_REQUIRED", "reason":"Boundary points, excluded project area, cadastral boundary precedence and land exclusion are part of the notice. Do not create a polygon solely from the outer points."},
+    {"artifact_id":"mof_busan_msp_2020_2", "status":"HISTORICAL_EDITION", "reason":"2020 plan preserved; subsequent changes and geometry lineage are not verified. Some cover digits extract as control characters."}
+  ]
+}
