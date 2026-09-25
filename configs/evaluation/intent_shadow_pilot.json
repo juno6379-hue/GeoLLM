@@ -1,0 +1,23 @@
+{
+  "version": "pilot-20260925-v1",
+  "label_status": "REVIEW_REQUIRED",
+  "label_author": "codex_provisional_not_human_gold",
+  "cases": [
+    {"id":"C01","group":"standard_definition","split":"calibration","query":"S-101 Feature란 무엇인가?","expected_route":"STANDARD_RAG","context":{}},
+    {"id":"C02","group":"explicit_radius","split":"calibration","query":"부산항 반경 3km 이내 침선을 찾아줘","expected_route":"SPATIAL_ANALYSIS","context":{}},
+    {"id":"C03","group":"place_lookup","split":"calibration","query":"인천항 위치를 지도에서 보여줘","expected_route":"PLACE_LOOKUP","context":{}},
+    {"id":"C04","group":"monthly_traffic","split":"calibration","query":"부산항 월별 AIS 통항량을 비교해줘","expected_route":"TRAFFIC_ANALYSIS","context":{}},
+    {"id":"C05","group":"dataset_lineage","split":"calibration","query":"사고 데이터의 출처와 적재 건수를 확인해줘","expected_route":"DATASET_PROVENANCE","context":{}},
+    {"id":"C06","group":"regulation_lookup","split":"calibration","query":"인천항 선박통항규칙 고시 근거를 찾아줘","expected_route":"STANDARD_RAG","context":{}},
+    {"id":"E01","group":"accident_history","split":"evaluation","query":"독도 부근 사고 이력을 찾아줘","expected_route":"ACCIDENT_ANALYSIS","context":{}},
+    {"id":"E02","group":"negated_execution","split":"evaluation","query":"침선 위치를 찾지 말고 침선의 정의만 설명해줘","expected_route":"STANDARD_RAG","context":{}},
+    {"id":"E03","group":"map_context","split":"evaluation","query":"여기서 가까운 장애물을 찾아줘","expected_route":"SPATIAL_ANALYSIS","context":{"spatial_context":{"map_center":[129.1,35.1]}}},
+    {"id":"E04","group":"missing_map_context","split":"evaluation","query":"여기서 가까운 위험객체를 찾아줘","expected_route":"SPATIAL_ANALYSIS","expected_clarification":true,"context":{}},
+    {"id":"E05","group":"navigation_composite","split":"evaluation","query":"이 해역의 통항위험이 높은 이유를 사고와 수심까지 함께 분석해줘","expected_route":"NAVIGATION_RISK_ANALYSIS","context":{"spatial_context":{"map_bounds":[128.98,35.02,129.18,35.18]}}},
+    {"id":"E06","group":"forecast_execution","split":"evaluation","query":"내일 인천항 만조 시각을 알려줘","expected_route":"TIME_SERIES_FORECAST","context":{}},
+    {"id":"E07","group":"quality_error","split":"evaluation","query":"지도 아이콘과 범례가 서로 다른 오류를 검증해줘","expected_route":"QUALITY_REVIEW","context":{}},
+    {"id":"E08","group":"layer_properties","split":"evaluation","query":"선택한 레이어의 상세정보를 표시해줘","expected_route":"LAYER_INSPECTION","context":{"selected_layer_id":"GBENC_S101_feature"}},
+    {"id":"E09","group":"tide_definition","split":"evaluation","query":"조석예보란","expected_route":"STANDARD_RAG","context":{}},
+    {"id":"E10","group":"conversation_reference","split":"evaluation","query":"그 항만의 통항량도 비교해줘","expected_route":"TRAFFIC_ANALYSIS","context":{"conversation_context":[{"role":"user","content":"인천항에 대해 알아보고 있어"}]}}
+  ]
+}
