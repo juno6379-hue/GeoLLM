@@ -1,0 +1,160 @@
+{
+  "schema_version": "marine_terminology.v1",
+  "seeds": {
+    "status": "AI_REVIEW_REQUIRED",
+    "source_id": "mof_standard_terms_3",
+    "page_1based": 1,
+    "relation": "recommended_korean_label",
+    "execution_authorized": false,
+    "pairs": [
+      {
+        "original": "잠제",
+        "preferred": "수중 방파제"
+      },
+      {
+        "original": "물양장",
+        "preferred": "소형선 부두"
+      },
+      {
+        "original": "예선",
+        "preferred": "끌배"
+      },
+      {
+        "original": "선유장",
+        "preferred": "소형선 정박장"
+      }
+    ],
+    "limitations": [
+      "Review seeds from the official brochure, not approved query rewrites.",
+      "A recommended label is not automatically owl:sameAs or an S-101 Feature mapping."
+    ]
+  },
+  "units": [
+    {
+      "unit_id": "ad52d59b50f32bcd8779c1a43007e19981051766bdd3ad7b7f1fba90604d7411",
+      "source_id": "mof_standard_terms_3",
+      "source_sha256": "6ea5be3733130b47e1f8ba0a47c988bb210d094d85fd753b7f0ec5868a984885",
+      "edition": "CHECK_DOCUMENT",
+      "locator": {
+        "kind": "pdf_page",
+        "page_1based": 1
+      },
+      "text": "해양수산 용어 알기 쉽게 바꿔 써요~\n바꿔 쓰기로 약속해요~\n ※ 위의 순화한 용어들을 담은 「해양수산 분야 전문용어 표준화」 고시가 2017년 1월 18일 시행되었습니다. \n     앞으로 관련 법령 제•개정, 공문서•보도자료 작성 및 해양수산 현장에서 적극 사용하여 주시기 바랍니다.\n • ‘^’ 표시는 띄어 쓰는 것을 원칙으로 하되, 붙여 쓸 수 있습니다.\n • 바꿔쓰는 용어의 ‘①, ②, ③’ 표시는 ‘①’ 또는 ‘②’ 또는 ‘③’을 선택적으로 쓸 수 있음을 의미합니다.\n번호 대상용어 바꿔쓰는 용어\n1 잠제(潛堤) 수중^방파제\n2 감용기(減容機) 압축기\n3 치패(稚貝) 새끼∨조개\n4 채묘(採苗) 종자^붙이기\n5 입식(入殖) 종자^넣기\n6 해중림(海中林) 바다숲\n7 해조류(藻類) 바닷말류\n8 전재(轉載)/전재하다 옮겨 싣기/옮겨 싣다\n9 어시장(魚市場) ① 수산물^시장\n② 어시장\n10 빈산소수괴\n (貧酸素水塊) 산소^부족^물덩어리\n11 기수/기수역\n(汽水/汽水域) 갯물/갯물^수역\n12 재선의무\n(在船義務) 승선^유지^의무\n13 낙도보조항로\n(落島補助航路) 국가^보조^항로\n14 물양장\n(物揚場, lighter's wharf) 소형선^부두\n15 호안(護岸)\n① 호안 \n② 해안^보호둑\n③ 하안^보호둑\n16\n항만국통제\n(港灣國統制, \nPort State Control)\n① 항만국^통제 \n② 입항국^통제\n17\n오염우심해역\n(汚染尤甚海域,  \npollution hot spot)\n오염^심각^해역\n번호 대상용어 바꿔쓰는 용어\n18 외해양식(外海養殖) 난바다^양식\n19 일선수협(一線水協) 단위∨수협\n20 영어(營漁)도우미 어가∨도우미\n21 오니(汚泥) 오염^침전물\n22 예선(曳船) 끌배\n23 하주(荷主) ① 화주 ② 화물주\n24 선유장(船留場) 소형선^정박장\n25 황천(荒天) ① 거친∨바다\n② 거친∨날씨\n26 용선 \n(傭船, chartering of vessel) 선박^임차\n27 대선 \n(貸船, hiring of vessel) 선박^임대\n28 나용선\n(裸傭船, bare boat) 선체^임차\n29 허브항\n(--港, Hub Port) 중심축^항만\n30 보링선\n(--船, boring ship) 해저지반조사선\n31 송입/송입업체\n( 送入/送入業體)\n국내∨취업/\n국내∨취업∨알선∨업체\n32 만재흘수선/흘수선\n(滿載吃水線/吃水線)\n① 만재^흘수선 \n② 적재^한계선\n/① 흘수선 ② 잠김선\n33\n기국통제\n(旗國統制, \nFlag State Control)\n① 기국^통제 \n② 자국^선박^통제",
+      "text_sha256": "3e453b420be4f20f5674ba269bdf81eb8dbbf80284ca4cdcb39241780aa2e91b",
+      "canonical_ids": [],
+      "source_review_status": "SUPPLEMENTAL_TERMINOLOGY_REFERENCE",
+      "current_law_status": "NOT_VERIFIED",
+      "execution_authorized": false,
+      "extraction_flags": []
+    }
+  ],
+  "relations": [
+    {
+      "original": "잠제",
+      "preferred": "수중 방파제",
+      "relation": "recommended_korean_label",
+      "review_status": "AI_REVIEW_REQUIRED",
+      "reviewer_ids": [],
+      "source_span": [
+        287,
+        300
+      ],
+      "quote": "잠제(潛堤) 수중^방파제",
+      "optional_spacing": true,
+      "reference": {
+        "unit_id": "ad52d59b50f32bcd8779c1a43007e19981051766bdd3ad7b7f1fba90604d7411",
+        "source_id": "mof_standard_terms_3",
+        "source_sha256": "6ea5be3733130b47e1f8ba0a47c988bb210d094d85fd753b7f0ec5868a984885",
+        "edition": "CHECK_DOCUMENT",
+        "locator": {
+          "kind": "pdf_page",
+          "page_1based": 1
+        },
+        "text_sha256": "3e453b420be4f20f5674ba269bdf81eb8dbbf80284ca4cdcb39241780aa2e91b"
+      },
+      "ontology_equivalence_verified": false,
+      "execution_authorized": false
+    },
+    {
+      "original": "물양장",
+      "preferred": "소형선 부두",
+      "relation": "recommended_korean_label",
+      "review_status": "AI_REVIEW_REQUIRED",
+      "reviewer_ids": [],
+      "source_span": [
+        556,
+        589
+      ],
+      "quote": "물양장\n(物揚場, lighter's wharf) 소형선^부두",
+      "optional_spacing": true,
+      "reference": {
+        "unit_id": "ad52d59b50f32bcd8779c1a43007e19981051766bdd3ad7b7f1fba90604d7411",
+        "source_id": "mof_standard_terms_3",
+        "source_sha256": "6ea5be3733130b47e1f8ba0a47c988bb210d094d85fd753b7f0ec5868a984885",
+        "edition": "CHECK_DOCUMENT",
+        "locator": {
+          "kind": "pdf_page",
+          "page_1based": 1
+        },
+        "text_sha256": "3e453b420be4f20f5674ba269bdf81eb8dbbf80284ca4cdcb39241780aa2e91b"
+      },
+      "ontology_equivalence_verified": false,
+      "execution_authorized": false
+    },
+    {
+      "original": "예선",
+      "preferred": "끌배",
+      "relation": "recommended_korean_label",
+      "review_status": "AI_REVIEW_REQUIRED",
+      "reviewer_ids": [],
+      "source_span": [
+        828,
+        837
+      ],
+      "quote": "예선(曳船) 끌배",
+      "optional_spacing": false,
+      "reference": {
+        "unit_id": "ad52d59b50f32bcd8779c1a43007e19981051766bdd3ad7b7f1fba90604d7411",
+        "source_id": "mof_standard_terms_3",
+        "source_sha256": "6ea5be3733130b47e1f8ba0a47c988bb210d094d85fd753b7f0ec5868a984885",
+        "edition": "CHECK_DOCUMENT",
+        "locator": {
+          "kind": "pdf_page",
+          "page_1based": 1
+        },
+        "text_sha256": "3e453b420be4f20f5674ba269bdf81eb8dbbf80284ca4cdcb39241780aa2e91b"
+      },
+      "ontology_equivalence_verified": false,
+      "execution_authorized": false
+    },
+    {
+      "original": "선유장",
+      "preferred": "소형선 정박장",
+      "relation": "recommended_korean_label",
+      "review_status": "AI_REVIEW_REQUIRED",
+      "reviewer_ids": [],
+      "source_span": [
+        862,
+        878
+      ],
+      "quote": "선유장(船留場) 소형선^정박장",
+      "optional_spacing": true,
+      "reference": {
+        "unit_id": "ad52d59b50f32bcd8779c1a43007e19981051766bdd3ad7b7f1fba90604d7411",
+        "source_id": "mof_standard_terms_3",
+        "source_sha256": "6ea5be3733130b47e1f8ba0a47c988bb210d094d85fd753b7f0ec5868a984885",
+        "edition": "CHECK_DOCUMENT",
+        "locator": {
+          "kind": "pdf_page",
+          "page_1based": 1
+        },
+        "text_sha256": "3e453b420be4f20f5674ba269bdf81eb8dbbf80284ca4cdcb39241780aa2e91b"
+      },
+      "ontology_equivalence_verified": false,
+      "execution_authorized": false
+    }
+  ],
+  "mode": "ADVISORY_ONLY",
+  "human_gold": false,
+  "query_rewrite_enabled": false
+}

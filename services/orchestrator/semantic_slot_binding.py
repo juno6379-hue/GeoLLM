@@ -62,6 +62,10 @@ def _indexes():
 def bind_semantic_slots(query: str, analysis: dict, capabilities: list[dict]) -> dict:
     started = time.monotonic()
     patterns, by_name, outgoing, contract_id, versions = _indexes()
+    from services.orchestrator.marine_terminology import match_terminology
+    terminology = analysis.get('maritime_terminology')
+    if terminology is None:
+        terminology = match_terminology(query, analysis.get('constraints', []))
     terms, seeds, paths, features = [], set(), {}, set()
     for pattern, label, entry in patterns:
         for match in pattern.finditer(query):
@@ -103,6 +107,13 @@ def bind_semantic_slots(query: str, analysis: dict, capabilities: list[dict]) ->
     return {'contract': 'semantic_slot_binding.v1', 'ontology_contract': contract_id, 'source_sha256': versions,
             'term_bindings': terms, 'kg_seed_ids': sorted(seeds), 'kg_relations': list(paths.values()),
             'capability_bindings': bindings, 'target_features': sorted(features),
+            'maritime_terminology': terminology,
+            'unresolved_terminology': [
+                {'span':t['span'], 'raw_text':t['raw_text'], 'reason':'ONTOLOGY_MAPPING_NOT_VERIFIED',
+                 'candidate_tool_contracts':[c['candidate_id'] for c in capabilities
+                     if set(c.get('input_slots') or []) & {'feature_term','target_feature_group'}],
+                 'execution_authorized':False}
+                for t in terminology['candidates'] if not t['excluded'] and not t['quoted']],
             'limitations': ['KG relations propose evidence; provenance and runtime geometry/data gates remain required',
                             'Duration is not an absolute temporal_window; location text is not anchor_geometry'],
             'latency_ms': round((time.monotonic()-started)*1000, 3)}

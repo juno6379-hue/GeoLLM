@@ -70,6 +70,8 @@ def analyze_query(query: str) -> dict:
               'index_unit': 'unicode_code_point', 'original_preserved': True,
               'slots': extract_quantities(query), 'constraints': constraints(query), 'tokens': [],
               'role': 'linguistic_evidence_not_execution_authority'}
+    from services.orchestrator.marine_terminology import match_terminology
+    result['maritime_terminology'] = match_terminology(query, result['constraints'])
     if os.getenv('GEOLLM_KIWI_ENABLED', 'true').lower() not in {'true', '1', 'yes', 'on'}:
         result['analyzer'] = {'status': 'DISABLED'}
     elif len(query) > 4096:

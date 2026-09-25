@@ -11,22 +11,27 @@ def build_definition_response(state: dict[str, Any]) -> dict[str, Any] | None:
         return None
     canonical = str(entry["canonical_term"])
     definition = str(entry["definition_ko"])
+    lexical = entry['source_kind'] == 'mof_terminology_relation'
+    analysis_type = 'terminology_relation_lookup' if lexical else 'definition_lookup'
     source_title = str(entry["source_title"])
     source_ref = str(entry["source_ref"])
     task_id = str(state["task_id"])
     evidence_id = f"definition:{entry['term_id']}:v1"
     feature_code = entry["term_id"] if entry["source_kind"] == "s101_feature_catalogue" else None
     answer = f"{canonical}" + (f" ({feature_code})" if feature_code else "") + f"란 {definition} 근거: {source_title}."
+    if lexical:
+        answer = (f"해양수산부 순화 자료에서 ‘{canonical}’의 바꿔 쓰는 용어는 ‘{entry['recommended_label']}’입니다. "
+                  f"근거: {source_title}. 이 자료의 용어 관계이며, 현재 법적 의무나 S-101 객체 매핑을 확정한 것은 아닙니다.")
     route_plan = {
         "task_id": f"TASK-DEFINITION-{task_id[:3].upper()}",
         "status": "COMPLETED", "intent": "DEFINITION",
         "context": entry.get("context") or "marine_standard",
-        "analysis_type": "definition_lookup", "derived_concept": None,
+        "analysis_type": analysis_type, "derived_concept": None,
         "primary_agent": "Standard RAG Agent", "secondary_agents": [],
-        "slots": {"target_term": canonical, "analysis_type": "definition_lookup"},
+        "slots": {"target_term": canonical, "analysis_type": analysis_type},
         "tools": ["definition.registry_lookup"], "data": [entry["source_kind"]],
         "outputs": ["StandardDocumentOutput", "EvidenceBundle", "Summary"],
-        "clarification_required": False, "confidence": 1.0,
+        "clarification_required": False, "confidence": None if lexical else 1.0,
         "execution_ready": True, "route_plan_status": "EXECUTION_READY",
     }
     evidence = {
@@ -35,6 +40,9 @@ def build_definition_response(state: dict[str, Any]) -> dict[str, Any] | None:
         "data": {"term_id": entry["term_id"], "canonical_term": canonical,
                  "definition": definition, "verification_status": entry["verification_status"]},
     }
+    if lexical:
+        evidence['evidence_type'] = 'source_lexical_relation'
+        evidence['data'] = entry['source_relation']
     bundle = {"rag_evidence": [evidence], "kg_provenance": [],
               "regulatory_evidence": [], "spatial_feature_evidence": [],
               "spatial_layer_evidence": [], "accident_relation_evidence": []}
@@ -51,8 +59,8 @@ def build_definition_response(state: dict[str, Any]) -> dict[str, Any] | None:
         "agent_version": "2.3.0-definition-fast-path", "status": "COMPLETED",
         "summary": answer, "answer_text": answer,
         "structured_result": {
-            "status": "COMPLETED", "analysis_type": "definition_lookup",
-            "canonical_term": canonical, "definition": definition,
+            "status": "COMPLETED", "analysis_type": analysis_type,
+            "canonical_term": canonical, "definition": None if lexical else definition,
             "feature_code": feature_code,
             "source_ref": source_ref,
             "web_rag_usage": {"web_used": False, "rag_used": False,
@@ -69,5 +77,8 @@ def build_definition_response(state: dict[str, Any]) -> dict[str, Any] | None:
         "kg_provenance": [], "contract_version": "geollm.execution.v1",
         "request_id": task_id,
     }
+    if lexical:
+        final['structured_result']['terminology_relation'] = entry['source_relation']
+        final['orchestrator_v2']['fast_path'] = 'source_terminology_relation'
     return {"final_dict": final, "task_plan": route_plan,
             "query_execution_context": qec}

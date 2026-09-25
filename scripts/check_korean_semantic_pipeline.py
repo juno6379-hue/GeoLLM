@@ -16,25 +16,38 @@ CASES = [
     ('duration', '부산항 최근 12개월 AIS 통항량을 구역별로 요약해줘'),
     ('positive_accident', '기관손상 사고 이력을 찾아줘'),
     ('anchorage_binding', '정박지는 S-101에서 어떤 Feature야?'),
+    ('mof_original', '잠제의 순화어는?'),
+    ('mof_preferred', '수중방파제의 뜻은?'),
+    ('mof_excluded', '수중 방파제 말고 침선을 찾아줘'),
+    ('mof_prefix', '예선전 말고 침선을 찾아줘'),
 ]
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output', type=Path, required=True)
+    p.add_argument('--readiness-timeout', type=float, default=120)
     args = p.parse_args()
+    if args.readiness_timeout <= 0:
+        p.error('--readiness-timeout must be positive')
     if args.output.exists():
         raise ValueError('Use a new run file')
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    for attempt in range(30):
+    ready_started = time.monotonic()
+    ready = False
+    while time.monotonic() - ready_started < args.readiness_timeout:
         try:
             with urllib.request.urlopen('http://localhost:8000/health',timeout=2) as response:
                 if response.status==200:
+                    ready = True
                     break
         except OSError:
             pass
         time.sleep(1)
-    else:
+    readiness = {'api_ready':ready, 'elapsed_seconds':round(time.monotonic()-ready_started,3),
+                 'timeout_seconds':args.readiness_timeout, 'query_cases_evaluated':False}
+    args.output.with_suffix('.readiness.json').write_text(json.dumps(readiness,indent=2),encoding='utf-8')
+    if not ready:
         raise RuntimeError('API readiness failed; no query cases were evaluated')
     passed = 0
     for case, query in CASES:
@@ -59,9 +72,29 @@ def main():
         trace = orch.get('candidate_trace') or {}
         analysis = orch.get('korean_query_analysis') or trace.get('korean_query_analysis') or {}
         binding = trace.get('semantic_slot_binding') or {}
+        terminology = analysis.get('maritime_terminology') or {}
         expected = {'missing_location':'LOCATION_REQUIRED', 'excluded_accident':'NEGATION_EXECUTION_NOT_SUPPORTED',
                     'absent_accidents':'NEGATION_EXECUTION_NOT_SUPPORTED', 'invalid_radius':'INVALID_QUANTITY'}
-        if case in expected:
+        if case.startswith('mof_'):
+            terms = terminology.get('candidates') or []
+            ok = terminology.get('status') == 'AVAILABLE'
+            if case == 'mof_prefix':
+                ok = ok and not terms and final.get('error_code') == 'NEGATION_EXECUTION_NOT_SUPPORTED'
+            elif case == 'mof_excluded':
+                ok = (ok and len(terms)==1 and terms[0]['excluded'] and
+                      final.get('error_code') == 'NEGATION_EXECUTION_NOT_SUPPORTED')
+            else:
+                ok = (ok and len(terms)==1 and terms[0]['original_label']=='잠제' and
+                      terms[0]['reference']['source_id']=='mof_standard_terms_3' and
+                      not terms[0]['execution_authorized'] and terms[0]['canonical_id'] is None and
+                      bool(binding.get('unresolved_terminology')))
+                if case == 'mof_original':
+                    structured = final.get('structured_result') or {}
+                    ok = (ok and final.get('status')=='COMPLETED' and
+                          structured.get('analysis_type')=='terminology_relation_lookup' and
+                          (structured.get('terminology_relation') or {}).get('preferred_label')=='수중 방파제' and
+                          not structured.get('web_rag_usage',{}).get('llm_used'))
+        elif case in expected:
             ok = final.get('error_code') == expected[case] and (orch.get('query_execution_context') or {}).get('execution_status') == 'NOT_RUN'
         elif case == 'grounded_chain':
             tools = binding.get('capability_bindings') or []

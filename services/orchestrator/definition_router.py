@@ -129,6 +129,10 @@ def catalogue_mapping_subject(query: str) -> str | None:
 
 
 def resolve_definition(query: str) -> dict[str, Any] | None:
+    from services.orchestrator.marine_terminology import resolve_label_request
+    label_request = resolve_label_request(query)
+    if label_request:
+        return label_request
     subject = catalogue_mapping_subject(query)
     if subject:
         registry = yaml.safe_load((DATA / "s101_feature_dictionary.yaml").read_text(encoding="utf-8")) or {}
@@ -148,6 +152,8 @@ def is_definition_query(query: str) -> bool:
     entry = resolve_definition(text)
     if not entry:
         return False
+    if entry['source_kind'] == 'mof_terminology_relation':
+        return True
     lowered = text.casefold()
     explicit = any(token in lowered for token in ("definition", "meaning", "what is", "정의", "뜻", "의미", "무엇", "뭐야", "뭔가", "개념"))
     suffix = re.search(r"(?:이란|란)\??$", text) is not None

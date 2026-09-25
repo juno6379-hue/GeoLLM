@@ -13,6 +13,8 @@ def reference_candidates(case, units):
     binding=bind_semantic_slots(case['query'],{'constraints':constraints(case['query'])},[])
     codes=set(binding['target_features'])
     terms={t['raw_text'] for t in binding['term_bindings'] if not t['excluded']}
+    lexical = [t for t in binding['maritime_terminology']['candidates'] if not t['excluded'] and not t['quoted']]
+    source_units = {t['reference']['unit_id'] for t in lexical}
     hits=[]
     for unit in units:
         canonical=codes.intersection(unit['canonical_ids'])
@@ -20,9 +22,10 @@ def reference_candidates(case, units):
         matches=sorted(t for t in terms|codes|names if t.casefold() in unit['text'].casefold())
         heading=any(re.search(r'^\s*\d+(?:\.\d+)+\s+'+re.escape(name)+r'\s*$',unit['text'][:1800],re.I|re.M)
                     for name in names)
-        if not canonical and not matches:
+        direct_relation = unit['unit_id'] in source_units
+        if not canonical and not matches and not direct_relation:
             continue
-        hits.append((3 if canonical else 2 if heading else 1,len(matches),unit,matches))
+        hits.append((4 if direct_relation else 3 if canonical else 2 if heading else 1,len(matches),unit,matches))
     hits.sort(key=lambda h:(-h[0],-h[1],h[2]['source_id'],h[2]['locator'].get('page_1based',0),json.dumps(h[2]['locator'],sort_keys=True)))
     # Diversify sources; this is a review aid, not automatic evidence selection gold.
     selected=[]; source_counts={}
@@ -58,6 +61,8 @@ def review_forms(snapshot, units=None):
             form.update(reference_candidates=candidates,
                         concept_bindings=binding['term_bindings'],kg_seed_ids=binding['kg_seed_ids'],
                         semantic_registry_sha256=binding['source_sha256'])
+            form.update(maritime_terminology=binding['maritime_terminology'],
+                        unresolved_terminology=binding['unresolved_terminology'])
         yield form
 
 
