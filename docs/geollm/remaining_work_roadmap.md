@@ -5,6 +5,16 @@
 
 ## 2026-09-25 GeoLLM 공통 shadow 실험 및 근거 평가
 
+### 후속: 실제 웹 샘플 100개 응답 평가
+
+- [웹 샘플 평가 보고서](web_sample_review_20260925.md): 실제 HTTP 페이지의 100개 preset을 웹과 같은 SSE API로 실행했다. COMPLETED 29 / BLOCKED 63 / NEEDS_CLARIFICATION 5 / 관측 timeout 3. **상태값은 정답률이 아니다.**
+- Browser 연결 목록이 비어 화면 클릭·렌더링은 미검증이다. 사용자에게 연결을 요청했으며 지도 문맥은 임의로 넣지 않았다. SSE/API 관측과 브라우저 E2E를 구분한다.
+- 샘플 21의 Feature 식별, 25의 구역 지도 표시, 28/30/31/32의 통항 집계, 79의 pgvector 동작 확인, 80/82의 판단 근거 요청이 관련 문서 답변으로 종료되는 **필수 결과 누락**을 확인했다. 28/30/31/32/33의 `traffic_analysis`는 null이다.
+- 원천 장애 55건의 공통 경로를 확인했다. 실제 catalog에는 후보 1,985개가 있지만 항만 projection 집계가 5초 statement timeout으로 실패하고 전체 지명 해소에 전파된다. 원천별 격리·조회 비용 개선이 필요하다.
+- 43/44의 정의는 로컬 FC 정의와 일치했다. 97/98은 공식 예측 원천 부재를 명시하고 차단했다. 이 제한된 성공을 전체 서비스 정확도로 확장하지 않는다.
+- 원본은 `outputs/web-sample-review/live-presets-v1/`. 40/41/42는 30초 관측 timeout 후 기존 task가 RECEIVED로 남아 있었다. 관측 클라이언트 연결 종료의 영향과 실제 브라우저 동작을 분리해 재현해야 한다.
+- 평가 수집기 `scripts/check_geollm_web_samples.py` 추가. 이번 평가는 운영 코드 수정 전 기준 결과이며, 운영 라우팅을 변경하지 않았다.
+
 - 오프라인 shadow runner, Pydantic 계약 검증, 규칙/Ollama/혼합 순위·보정·원본 요청/응답·실행 관측·모델/prompt/registry/source 버전 기록을 구현했다. 운영 상시 관측이나 실행 결정권 승격은 아직 아니다.
 - gemma2 9B는 180초 timeout 2회, 축약 입력 1회 307.9초. qwen2.5:1.5b 실제 16문항은 계약 통과 9/16, 중앙값 55.62초, 기존 API 관측 15건/관측 timeout 1건이다.
 - 라벨은 AI 작성 REVIEW_REQUIRED이다. 단일 라벨 불일치를 오분류로 단정하지 않도록 `provisional_label_agreement`, `reference_label_coverage`로 수정했다. 의미 정확도·task coverage는 미측정이다. 공간 분석과 위치 조회처럼 같은 기능을 공유하는 route는 대안일 수 있다.
@@ -44,12 +54,13 @@
 - 실제 항만 source ID: 부산 지도 599613, 인천 지도 623953, 명시 인천항 집계 대표 548868. 고정 입력 ID가 아니라 해당 실행에서 조회한 결과다.
 - `npm run build`, Compose `config --quiet`, `git diff --check` 통과. 최신 번들은 실제 HTTP로 확인했다.
 - Browser 연결 목록이 비어 있어 실제 화면 렌더링·클릭·지도 조작은 미검증이다. HTTP/API 검증과 구분한다.
-- 기존 훈련 데이터 확장 프레임워크는 유지했다. P1은 여전히 `dry_run_no_execution_change`; 후보 점수 결합·calibration·gold-label 실험과 QLoRA 승격은 수행하지 않았다.
+- 기존 훈련 데이터 확장 프레임워크는 유지했다. 웹·DB 검증 당시 P1은 dry-run이었고 이후 위 기록의 오프라인 후보 점수 결합·잠정 calibration 실험을 수행했다. 독립 human gold 평가·운영 승격·QLoRA는 미수행이다.
 - 기존 사용자 변경 및 런타임 기록 `data/feedback/query_quality_issues.jsonl`, ignored scratch/outputs 로그는 소스 커밋에서 제외한다.
 
 ## P0 미비점 — 다음 접속에서 먼저 처리
 
 1. **시공간 입력과 실행 범위의 잔여 계약**
+   - 웹 샘플 재현을 우선 기준으로 삼는다. `projection.s101_feature_valid` 항만 gazetteer 집계 5초 timeout과 전체 원천 차단을 분리·수정한다. 필수 분석 결과 없이 문서 검색만으로 COMPLETED 처리되는 경로를 출력 계약으로 검증한다. 샘플별 새 키워드 분기를 추가하는 방식은 피한다.
    - 파일럿 API에서 C02/C03/E01/E03/E04는 `GAZETTEER_UNAVAILABLE`. 위치 문맥 없는 E04는 누락 위치 clarification과 원천 장애를 구분해야 한다. E06 `내일 인천항 만조 시각을 알려줘`는 `COMPLETED`와 `error_code=BLOCKED_DATA`가 함께 관측돼 상태 정합성을 재검증해야 한다. E07 관측 timeout은 작업 자체 실패와 구분한다. 재현 질의·관측은 공통 검토 문서와 qwen-pilot-v1 원본에 보존했다.
    - 일반 traffic 시간 필터는 `last_1_year` 외 기간을 동일하게 처리하는 기존 한계가 남아 있다. `최근 3개월 통항량` 등 명시 기간이 적재 전체 기간으로 넓어지지 않도록 달력 기간/월 집계 계약을 정리하고 부정 사례를 추가한다.
    - 항만 입구/출구는 항만 전체 geometry로 치환하지 않고 clarification한다. 사용자가 확인한 세부 위치를 재제출하는 UI 흐름과 다중 항만·광역 viewport를 실제 브라우저에서 확인해야 한다.
