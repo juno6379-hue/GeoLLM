@@ -1,4 +1,9 @@
 analysis_types:
+  selected_feature_lookup:
+    primary_agent: Spatial Analysis Agent
+    required_tools: [postgis.selected_feature_lookup]
+    required_data: [projection.s101_feature_valid]
+    outputs: [selected_feature_evidence]
   document_search:
     primary_agent: Standard RAG Agent
     secondary_agents:

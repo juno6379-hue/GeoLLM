@@ -52,7 +52,17 @@ class SchemaBindingAdapter:
         result = BindingResult()
         analysis_type = route_plan.get("analysis_type") or slots.get("analysis_type")
 
-        if analysis_type in {"feature_search_by_radius", "feature_dwithin"}:
+        if analysis_type == "selected_feature_lookup":
+            relation = 'projection.s101_feature_valid'
+            inspected = self._inspect_relation(relation)
+            result.inspected_relations[relation] = inspected
+            columns = {column['name'] for column in inspected.get('columns', [])}
+            if not inspected.get('exists') or not inspected.get('has_select') or not {'feature_instance_id', 'feature_type_name', 'attributes', 'geometry'} <= columns:
+                result.blockers.append('BLOCKED_DATA: selected feature source schema unavailable')
+            else:
+                result.data_bindings.append(DataBinding(dataset_id=relation, relation=relation, srid=4326))
+            self._bind_tool('postgis.selected_feature_lookup', 'selected_feature_lookup', None, result)
+        elif analysis_type in {"feature_search_by_radius", "feature_dwithin"}:
             self._bind_feature_radius(route_plan, result)
         elif analysis_type in {"feature_within_area", "spatial_feature_search"}:
             self._bind_feature_area(route_plan, result)

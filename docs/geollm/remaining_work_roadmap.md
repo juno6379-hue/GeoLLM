@@ -1,5 +1,17 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-09-26 사용자 우선순위: 공통 오케스트레이터와 선택 객체 근거
+
+- 사용자 지정 최우선 축은 semantic router, context resolver, QueryExecutionContext, route planner, execution validator, Evidence builder의 연결이다. 개별 기능을 추가할 때 후보 해석 → 문맥/슬롯 → 계획 → 입력·원천 검증 → 실제 실행 → 근거 → 완료 판정의 일관성을 먼저 검증한다.
+- 선택 객체 요청을 기존 후보/semantic slot 해석 뒤 `selected_feature_lookup` 계획으로 연결했다. RoutePlanner registry, typed QueryExecutionContext, SchemaBindingAdapter의 실제 원천 컬럼·SELECT 권한 확인, 공통 execution validator, EvidenceBuilder를 사용한다. 명시 선택 ID·원천은 request 문맥에서 해소하며 일반 ContextResolver/semantic router 전체를 개편한 것은 아니다.
+- 선택 객체의 client 속성 대신 `projection.s101_feature_valid`에서 유일한 ID를 조회한다. 원천·ID 누락/오류, 미존재/중복, 원천 장애는 완료되지 않는다. 계획 hash, 실행 ID, 조회 행 hash와 EvidenceBundle 연결을 기록한다. 행 hash는 조회 시점 결과 식별자이며 원천 파일 전체 lineage가 아니다.
+- 기존 Python portrayal 선택은 `CANDIDATE_NOT_VERIFIED`, `official_rule_executed=false`로 구분한다. 공식 PC 규칙 실행 trace가 없어 심볼 연결 요청은 PARTIAL/OUTPUT_OBLIGATIONS_UNMET를 유지한다. portrayal 완료를 위해 필요한 공식 rule/symbol binding은 여전히 P0다.
+- 초기 직접 조회 버전은 실제 API 5/5 (`outputs/selected-feature/resume-v1.jsonl`), 초기 모듈 단위 9개 통과. 공통 오케스트레이터 연결 이후 최종 검증은 아래 후속 결과로 구분한다. 첫 관련 테스트 실행은 backend 재시작으로 중단되어 통과 집계에 포함하지 않는다.
+- 공통 연결 후 선택 객체/완료 계약 **29 passed**, 선택 객체·execution validator·EvidenceBuilder 최종 회귀 **31 passed**(일부 중복). 실제 API `resume-v2.jsonl` **5/5**로 QEC readiness, 실행 ID와 근거 ID 일치까지 확인했다. 최초 공통 검증 회귀는 20 passed/1 failed였으며 바다갈라짐 미적재 테스트가 운영 executable registry에 의존한 fixture 문제를 수정했다. 운영 바다갈라짐 상태는 변경하지 않았다.
+- 선택 객체 처리 flag 초기화까지 포함한 최종 코드 재기동 후 `outputs/selected-feature/resume-v3.jsonl` **5/5** 재확인. 정상 객체·portrayal 부분 완료·선택 없음·잘못된 원천·잘못된 ID를 검사했다. 브라우저 클릭과 전체 서비스 의미 정확도는 미측정이다.
+- Qwen은 모델, Ollama는 실행 프로그램이다. 현재 융합 대상은 규칙/슬롯/registry와 모델 후보 평가이며 Qwen·Ollama 두 모델의 앙상블이 아니다. 신규 모델 추론·승격은 이번 작업에 포함하지 않는다.
+- 다음: 공통 오케스트레이터의 계획/실행/근거 계약 회귀 확대 → 실제 portrayal 규칙 실행 근거 → 처리 lineage 및 복합 요구. 독립 gold/calibration, 일반 문맥 해소의 정확도·지연 검증과 QLoRA DEFER 조건은 유지한다.
+
 ## 2026-09-26 재개: S-101 속성 검색과 입력 계약 검증
 
 - 기존 미커밋 FC 참조 파서·매핑 registry·속성 검색 구현을 이어 검증했다. 잠제/수중방파제는 `ShorelineConstruction`의 `categoryOfShorelineConstruction=1 AND waterLevelEffect=3`으로 제한된 검색이다. 누락 속성은 제외하며 전체 실세계 잠제의 완전한 매핑이나 human gold 승인을 의미하지 않는다. 물양장·예선·선유장의 미해결 매핑은 실행을 차단한다.

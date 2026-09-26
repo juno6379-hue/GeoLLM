@@ -491,6 +491,10 @@ def test_sea_parting_blocks_until_ingested(monkeypatch):
     from services.orchestrator import execution_validator
 
     adapter = SchemaBindingAdapter()
+    # This test models the pre-ingestion state independently of the live registry.
+    layer = adapter.layer_registry['layers']['sea_parting_prediction']
+    layer['expected_physical_table'] = layer.pop('physical_table', 'serving.sea_parting_prediction_current')
+    layer['execution_status'] = 'needs_ingestion'
     monkeypatch.setattr(adapter, "_inspect_relation", _fake_relation_info)
     monkeypatch.setattr(execution_validator, "schema_binding_adapter", adapter)
 

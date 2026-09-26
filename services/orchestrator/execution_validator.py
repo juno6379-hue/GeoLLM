@@ -105,7 +105,15 @@ def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=No
     warnings.extend(binding_result.warnings)
     current.provenance.setdefault("schema_binding", {})["inspected_relations"] = binding_result.inspected_relations
 
-    if analysis_type in {"feature_search_by_radius", "feature_dwithin"}:
+    if analysis_type == 'selected_feature_lookup':
+        identifier = slots.feature_instance_id
+        if isinstance(identifier, bool) or not str(identifier).isascii() or not str(identifier).isdigit() or not 0 < int(identifier) < 2**63:
+            blockers.append('NEEDS_USER_INPUT: valid selected feature ID is required')
+        if (slots.feature_instance_ref or {}).get('source_ref') != 'projection.s101_feature_valid':
+            blockers.append('NEEDS_USER_INPUT: selected feature source is unresolved')
+        if not current.data_bindings or not current.tool_bindings:
+            blockers.append('BLOCKED_CONFIG: selected feature bindings are unavailable')
+    elif analysis_type in {"feature_search_by_radius", "feature_dwithin"}:
         if not _has_reference_geometry(current):
             blockers.append("NEEDS_USER_INPUT: reference geometry is unresolved")
         if slots.distance_m is None:

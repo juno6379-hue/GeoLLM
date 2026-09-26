@@ -1,5 +1,9 @@
 version: '2.0'
 tools:
+  postgis.selected_feature_lookup:
+    kind: spatial_query
+    operation: selected_feature_lookup
+    source: projection.s101_feature_valid
   geocoder.resolve_location:
     kind: geocoding
     provenance_required: true

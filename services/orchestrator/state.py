@@ -58,6 +58,7 @@ class OrchestratorState(TypedDict):
     korean_query_analysis: Optional[Dict[str, Any]]
     query_contract_blocked: Optional[bool]
     source_mapping_handled: Optional[bool]
+    selected_feature_handled: Optional[bool]
     data_discovery_result: Optional[Dict[str, Any]]
     clarification_questions: Optional[List[str]]
 def log_transition(
