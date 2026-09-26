@@ -1,5 +1,6 @@
 """Source-qualified S-101 attribute searches using real PostGIS rows and explicit radius."""
 import json
+import hashlib
 import os
 import uuid
 import psycopg2
@@ -9,6 +10,10 @@ from services.orchestrator.marine_s101_mapping import resolve_mappings
 from services.orchestrator.s101_radius_execution import RadiusProblem, resolve_reference, parse_distance, conservative_envelope
 from services.orchestrator.slot_evidence import radius_quantities
 from services.orchestrator.korean_query_analysis import constraints
+from services.orchestrator.route_planner import RoutePlanner
+from services.orchestrator.execution_validator import validate_execution_context
+from services.orchestrator.evidence_builder import build_evidence_bundle
+from shared.schemas.agent import ExecutionSlots, QueryExecutionContext, PlanStatus
 
 
 def attribute_predicates(filters):
@@ -32,7 +37,9 @@ def execute(state):
     if hasattr(spatial,'model_dump'): spatial=spatial.model_dump()
     plan={'intent':'SPATIAL_ANALYSIS','analysis_type':'source_attribute_search',
           'tools':['postgis.dwithin'],'slots':{'source_mappings':mappings},'execution_ready':False}
-    qec={'execution_status':'NOT_RUN','tool_bindings':[],'data_bindings':[], 'blockers':[]}
+    qec=QueryExecutionContext(request_id=state['task_id'], task_id=state['task_id'],
+                              original_query=query, route_plan=plan).model_dump(mode='json')
+    qec['execution_status']='NOT_RUN'
     final={'task_id':state['task_id'],'structured_result':{'analysis_type':'source_attribute_search'},
            'orchestrator_v2':{'route_plan':plan,'query_execution_context':qec}, 'map_layers':[]}
     try:
@@ -61,6 +68,24 @@ def execute(state):
         if crs!='EPSG:4326' or point.geom_type!='Point' or point.is_empty or not point.is_valid:
             raise RadiusProblem('NEEDS_USER_INPUT','INVALID_GEOMETRY','EPSG:4326 기준점을 확인해주세요.')
         envelope=conservative_envelope(point,distance)
+        slots=ExecutionSlots(analysis_type='source_attribute_search', reference_geometry=point.wkt,
+            crs=crs, distance_m=distance, target_features=[mapping['feature']],
+            filters={'attribute_filters':mapping['filters'], 'mapping_registry_sha256':mapping['registry_sha256'],
+                     'fc_sha256':mapping['fc_sha256']})
+        plan.clear()
+        plan.update(RoutePlanner().generate_plan(query,slots.model_dump(),None,'source_attribute_search',
+                                                'source_attribute_search','SPATIAL_ANALYSIS'))
+        typed=QueryExecutionContext(request_id=state['task_id'],task_id=state['task_id'],original_query=query,
+            slots=slots,route_plan=plan,context={'location_resolution':resolution},
+            semantic_resolution={'source_mappings':mappings},
+            snapshot_versions={'mapping_registry_sha256':mapping['registry_sha256'],'fc_sha256':mapping['fc_sha256']})
+        typed.plan_hash=hashlib.sha256(json.dumps({'plan':plan,'slots':slots.model_dump()},sort_keys=True,ensure_ascii=False).encode()).hexdigest()
+        typed=validate_execution_context(typed)
+        qec.update(typed.model_dump(mode='json'))
+        plan.update(execution_ready=typed.readiness==PlanStatus.EXECUTION_READY, route_plan_status=typed.readiness.value)
+        qec['route_plan']=plan
+        if typed.readiness!=PlanStatus.EXECUTION_READY:
+            raise RadiusProblem('BLOCKED','SOURCE_ATTRIBUTE_EXECUTION_BLOCKED','속성 검색의 실행 계약 또는 원천을 검증하지 못했습니다.')
         conditions,params=attribute_predicates(mapping['filters'])
         statement=("WITH matches AS MATERIALIZED (SELECT feature_instance_id, feature_type_name, attributes, geometry, "
           "ST_Distance(geometry::geography,ST_GeomFromText(%s,4326)::geography) AS distance_m "
@@ -71,7 +96,8 @@ def execute(state):
           "(SELECT feature_instance_id,feature_type_name,attributes,distance_m,ST_AsGeoJSON(geometry)::jsonb AS geometry "
           "FROM matches ORDER BY distance_m,feature_instance_id LIMIT 100) t),'[]'::jsonb) AS rows")
         sql_params=[point.wkt,mapping['feature'],*envelope,point.wkt,distance,*params]
-        with psycopg2.connect(os.environ['S101_DB_URL']) as connection:
+        qec['execution_status']='RUNNING'
+        with psycopg2.connect(os.environ['S101_DB_URL'],connect_timeout=5) as connection:
             connection.set_session(readonly=True)
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute("SET LOCAL statement_timeout='15s'")
@@ -81,17 +107,19 @@ def execute(state):
                    'properties':{k:v for k,v in r.items() if k!='geometry'}} for r in rows]
         geojson={'type':'FeatureCollection','features':features}
         evidence=[{'evidence_id':execution_id+':'+str(r['feature_instance_id']), 'evidence_type':'spatial_feature',
-                   'source_ref':'projection.s101_feature_valid','data':r} for r in rows]
-        qec.update(execution_status='EXECUTED',readiness='EXECUTION_READY',
-          tool_bindings=[{'tool_id':'postgis.dwithin','status':'EXECUTED','parameters':{
-              'feature':mapping['feature'],'attribute_filters':mapping['filters'],'radius_m':distance,
-              'reference_geometry':point.wkt},'query_execution_id':execution_id}],
-          data_bindings=[{'source_ref':'projection.s101_feature_valid'}])
+                   'source_ref':'projection.s101_feature_valid','data':{**r,'query_execution_id':execution_id}} for r in rows]
+        qec.update(execution_status='EXECUTED')
+        qec['provenance']['execution']={'query_execution_id':execution_id,'tool_id':'postgis.dwithin',
+            'statement_sha256':hashlib.sha256(statement.encode()).hexdigest(),
+            'result_sha256':hashlib.sha256(json.dumps(result,sort_keys=True,ensure_ascii=False).encode()).hexdigest(),
+            'total_count':total,'returned_count':len(rows),'parameters':slots.model_dump()}
         plan.update(execution_ready=True,status='COMPLETED')
         message=(f"{label} 기준 {distance:g}m 이내에서 명시된 S-101 객체·속성 조건에 맞는 {total}건을 조회했습니다. "
                  "속성이 누락된 객체는 포함하지 않았으며 전체 실세계 시설 수를 뜻하지 않습니다.")
         final.update(status='COMPLETED',answer_text=message,summary=message,
-          evidence_bundle={'spatial_feature_evidence':evidence,'kg_provenance':[mapping]},
+          evidence_bundle=build_evidence_bundle(task_id=state['task_id'],spatial_feature_evidence=evidence,
+              structured_result={'kg_provenance_candidates':[{'evidence_type':'source_mapping',
+                  'source_ref':'data/marine_s101_bindings.json','data':mapping}]}).model_dump(mode='json'),
           map_layers=[{'layer_id':execution_id,'source_type':'geojson','inline_geojson':geojson,'feature_count':len(rows)}])
         final['structured_result'].update(total_count=total,returned_count=len(rows),features=rows,geojson=geojson,
           mapping=mapping,distance_m=distance,query_execution_id=execution_id,location_resolution=resolution,
@@ -102,6 +130,10 @@ def execute(state):
         message=str(error) if isinstance(error,RadiusProblem) else '속성 검색 원천 조회에 실패했습니다.'
         final.update(status=status,error_code=code,answer_text=message,summary=message,
                      clarification_options=getattr(error,'candidates',[]))
-        qec.update(readiness=status,blockers=[code]); plan.update(status=status)
+        qec['execution_status']='FAILED' if isinstance(error,psycopg2.Error) else qec['execution_status']
+        if qec['readiness']=='DRAFT':
+            qec['readiness']='NEEDS_USER_INPUT' if status=='NEEDS_CLARIFICATION' else 'BLOCKED_POLICY'
+        qec['blockers']=list(dict.fromkeys([*qec['blockers'],code]))
+        plan.update(status=status,execution_ready=False)
     return {'final_dict':final,'task_plan':plan,'query_execution_context':qec,
             'candidate_trace':state.get('candidate_trace'),'status':final['status'],'source_mapping_handled':True}

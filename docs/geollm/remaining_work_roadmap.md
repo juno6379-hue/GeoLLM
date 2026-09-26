@@ -1,5 +1,15 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-09-26 공통 오케스트레이터 계약을 속성 검색으로 확대
+
+- [상세 설계·검증·재현 문서](orchestration_execution_contracts_20260926.md)를 추가했다. 사용자 최우선인 후보/문맥 → 계획 → QEC → 실행 검증 → 근거 연결을 S-101 속성 검색에 확장했다. 일반 semantic router/ContextResolver 전체 개편은 아니다.
+- `source_attribute_search` operation을 등록하고 RoutePlanner, typed QueryExecutionContext, SchemaBindingAdapter, execution validator, EvidenceBuilder를 사용한다. 원문에서 다시 해석한 매핑과 Feature/속성 조건/registry·FC hash가 일치해야 실행한다.
+- 계획 hash, SQL hash, 결과 hash와 query_execution_id를 남기며 슬롯·실행·공간 근거를 같은 실행으로 연결한다. 검증 준비 상태와 실제 실행 성공/실패를 분리하고 DB 장애를 0건 조회로 대체하지 않는다.
+- 관련 단위 **62 passed**, 실제 속성 API **10/10**, 선택 객체 API **5/5**, 웹·DB **11/11** 통과. 원본: `outputs/marine-mapping/orchestration-v1.jsonl`, `outputs/selected-feature/orchestration-v1.jsonl`. 의미 정확도·브라우저 E2E·전체 테스트 통과를 의미하지 않는다.
+- 마지막 항행 실제 회귀도 **7/7** 통과했다. 통항 분석 PARTIAL, 위치 부족 clarification, 정의 COMPLETED 상태를 유지한다.
+- P1 shadow는 신규 모델 추론/승격 없이 유지하며 QLoRA DEFER다. 다음 P0는 사고·통항 등 다른 실행 경로의 동일 계약 감사 → 실제 portrayal 규칙 근거 → 처리 lineage·복합/부정 작업 실행이다.
+- 사용자가 요청한 GitHub push에는 앞선 로컬 커밋 `da09b99`, `f845a96`과 이번 코드·테스트·registry·상세 문서를 함께 포함한다. 사용자 피드백 JSONL 및 outputs 실행 원본은 제외한다.
+
 ## 2026-09-26 사용자 우선순위: 공통 오케스트레이터와 선택 객체 근거
 
 - 사용자 지정 최우선 축은 semantic router, context resolver, QueryExecutionContext, route planner, execution validator, Evidence builder의 연결이다. 개별 기능을 추가할 때 후보 해석 → 문맥/슬롯 → 계획 → 입력·원천 검증 → 실제 실행 → 근거 → 완료 판정의 일관성을 먼저 검증한다.

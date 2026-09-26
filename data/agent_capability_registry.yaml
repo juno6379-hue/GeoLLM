@@ -1,4 +1,9 @@
 analysis_types:
+  source_attribute_search:
+    primary_agent: Spatial Analysis Agent
+    required_tools: [postgis.dwithin]
+    required_data: [projection.s101_feature_valid]
+    outputs: [spatial_feature_evidence, attribute_filter_evidence]
   selected_feature_lookup:
     primary_agent: Spatial Analysis Agent
     required_tools: [postgis.selected_feature_lookup]

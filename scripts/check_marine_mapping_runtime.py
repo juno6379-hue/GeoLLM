@@ -42,6 +42,13 @@ def main():
             features=structured.get('features') or []
             ok=final.get('status')=='COMPLETED' and structured.get('total_count',0)>=1 and bool(structured.get('query_execution_id'))
             ok=ok and all(str(f['attributes'].get('categoryOfShorelineConstruction'))=='1' and str(f['attributes'].get('waterLevelEffect'))=='3' for f in features)
+            qec=(final.get('orchestrator_v2') or {}).get('query_execution_context') or {}
+            execution=(qec.get('provenance') or {}).get('execution') or {}
+            ok=ok and qec.get('readiness')=='EXECUTION_READY' and qec.get('execution_status')=='EXECUTED'
+            ok=ok and bool(qec.get('plan_hash')) and execution.get('query_execution_id')==structured.get('query_execution_id')
+            ok=ok and (qec.get('slots') or {}).get('filters',{}).get('attribute_filters')==structured.get('mapping',{}).get('filters')
+            evidence=(final.get('evidence_bundle') or {}).get('spatial_feature_evidence') or []
+            ok=ok and len(evidence)==len(features) and all(e.get('data',{}).get('query_execution_id')==execution.get('query_execution_id') for e in evidence)
         else:
             code={203:'TERM_MAPPING_UNRESOLVED',204:'TERM_MAPPING_UNRESOLVED',205:'TERM_MAPPING_UNRESOLVED',
                   206:'NEGATION_EXECUTION_NOT_SUPPORTED',207:'COMPOUND_MAPPING_REQUIRED',208:'RADIUS_REQUIRED',

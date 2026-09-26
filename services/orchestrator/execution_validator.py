@@ -113,7 +113,7 @@ def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=No
             blockers.append('NEEDS_USER_INPUT: selected feature source is unresolved')
         if not current.data_bindings or not current.tool_bindings:
             blockers.append('BLOCKED_CONFIG: selected feature bindings are unavailable')
-    elif analysis_type in {"feature_search_by_radius", "feature_dwithin"}:
+    elif analysis_type in {"feature_search_by_radius", "feature_dwithin", "source_attribute_search"}:
         if not _has_reference_geometry(current):
             blockers.append("NEEDS_USER_INPUT: reference geometry is unresolved")
         if slots.distance_m is None:
@@ -135,6 +135,30 @@ def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=No
             blockers.append("BLOCKED_CONFIG: no validated data binding")
         if not current.tool_bindings:
             blockers.append("BLOCKED_CONFIG: no validated tool binding")
+
+        if analysis_type == 'source_attribute_search':
+            from services.orchestrator.marine_s101_mapping import resolve_mappings
+            from services.orchestrator.korean_query_analysis import constraints
+            query = current.original_query or ''
+            scope = constraints(query)
+            mappings = resolve_mappings(query, scope)
+            if any(c['scope_status'] == 'EXPLICIT_LOCAL_SCOPE' and c['kind'] in {'exclusion', 'absence_predicate'} for c in scope):
+                blockers.append('BLOCKED_POLICY: attribute search cannot execute negative constraints')
+            if len(mappings) != 1 or not mappings[0]['search_enabled']:
+                blockers.append('BLOCKED_CONFIG: executable source mapping is required')
+            else:
+                mapping = mappings[0]
+                if (slots.target_features != [mapping['feature']] or
+                    slots.filters.get('attribute_filters') != mapping['filters'] or
+                    slots.filters.get('mapping_registry_sha256') != mapping['registry_sha256'] or
+                    slots.filters.get('fc_sha256') != mapping['fc_sha256']):
+                    blockers.append('BLOCKED_CONFIG: source mapping snapshot or predicates mismatch')
+            if _has_reference_geometry(current):
+                point = wkt.loads(slots.reference_geometry)
+                if point.geom_type != 'Point' or not (-180 <= point.x <= 180 and -90 <= point.y <= 90):
+                    blockers.append('NEEDS_USER_INPUT: attribute search requires a geographic point')
+            if slots.crs != 'EPSG:4326':
+                blockers.append('NEEDS_USER_INPUT: attribute search requires EPSG:4326')
 
     elif analysis_type in {"feature_within_area", "spatial_feature_search"}:
         if not _has_reference_geometry(current):
