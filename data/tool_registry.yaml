@@ -9,6 +9,9 @@ tools:
   postgis.dwithin:
     kind: spatial_function
     function: ST_DWithin
+    source_attribute_executor: services.orchestrator.marine_mapping_execution.execute
+    source_attribute_mapping_registry: data/marine_s101_bindings.json
+    source_attribute_policy: require_all_fc_validated_predicates_and_explicit_radius
   postgis.nearest:
     kind: spatial_function
     function: ST_Distance

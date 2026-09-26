@@ -1,0 +1,132 @@
+{
+  "contract": "marine_s101_bindings.v1",
+  "fc_sha256": "2743d0689d8a2130f9b809554591d794f01cd9953f222f065ac891b590bd3cfc",
+  "reviewer_kind": "AI_SOURCE_REVIEW",
+  "human_gold": false,
+  "units": [
+    {
+      "unit_id": "889873416f849e9fea74cb650e96d67509765a8e6d31d5061181807a027ee904",
+      "source_id": "mof_dictionary_1",
+      "source_sha256": "3a7cdccc15096020f323e3689b6d84aee4a59b3656b8ad72051da03e9e57c1a6",
+      "edition": "CHECK_DOCUMENT",
+      "locator": {
+        "kind": "pdf_page",
+        "page_1based": 309
+      },
+      "text": "305 ❙\n5. 항만 분야\n항\n만\n분\n야\n무역항\n 貿易港 / commercial port\n무역항은 체계적이고 효율적으로 관리･운영하기 위하여 수출입 화물량, 개발계획 \n및 지역균형 발전 등을 고려하여 국가관리무역항과 지방관리무역항으로 \n대통령령으로 세분하여 운영\n ① 국가관리무역항 : 국내외 육･해상 운송망의 거점으로서 광역권의 배후화물을 처리하거나 \n주요 기간 산업단지 지원 등으로 국가의 이해에 중대한 관계를 가지는 항만\n  - ’20년 1월 현재 국가관리무역항(14개항) : 인천, 경인, 평택･당진, 대산, 군산, \n장항, 목포, 광양, 여수, 마산, 부산, 울산, 포항, 동해･묵호\n ② 지방관리무역항 : 육･해상 운송망의 거점으로서 지역 산업에 필요한 화물처리를 \n주목적으로 하는 항만\n  - ’20년 1월 현재 지방관리무역항(17개항) : 서울, 태안, 보령, 완도, 제주, 서귀포, \n진해, 고현, 장승포, 통영, 삼천포, 옥포, 하동, 삼척, 호산, 옥계, 속초\n \n물양장\n 物揚場 / lighter's wharf\n ‘물양장’ → ‘소형선 부두’로 순화\n소형선박이 접안하여 계류하는 안벽\n구조물로 항만에서는 전면수심이 (-)4.5m \n미만, 어항에서는  (-)2.5m  만인 부두를 말함\n \n반사\n 反射 / reflection (=파의 반사) \n파가 방파제 등의 연직 벽면에 수직으로(방파제와 직각으로)입사하면 연직벽면이 \n자유단(free end)처럼 거동하여 파를 반사시키므로 방파제의 앞면에서는 파고가 \n높아짐. 일반적으로 진행파고의 1.5~2배의 반사파가 생기며, 경사제의 경우는 \n작음. 입사파를 Hi, 반사파를 Hr라 하면  Hr/Hi의 비를 반사율이라 함. 반사율은 \n입사파의 파형구배, 상대수심, 경사면의 조도 및 경사각에 의해 변화함\n",
+      "text_sha256": "8059ac6d86f4885ba5f2d6bf78bd129604511f30a6c3ef8fc5e332319c6afd5c",
+      "canonical_ids": [],
+      "source_review_status": "EDITION_REVIEW_REQUIRED",
+      "current_law_status": "NOT_VERIFIED",
+      "execution_authorized": false,
+      "extraction_flags": []
+    },
+    {
+      "unit_id": "74ca57d8be28cdacca36e0a3e5d693c56c1fb69563be5b50d620317311e0347a",
+      "source_id": "mof_dictionary_1",
+      "source_sha256": "3a7cdccc15096020f323e3689b6d84aee4a59b3656b8ad72051da03e9e57c1a6",
+      "edition": "CHECK_DOCUMENT",
+      "locator": {
+        "kind": "pdf_page",
+        "page_1based": 323
+      },
+      "text": "319 ❙\n5. 항만 분야\n항\n만\n분\n야\n연안항\n 沿岸港 / coastal harbor\n선박의 출입, 사람의 승선ㆍ하선, 화물의 하역ㆍ보관 및 처리, 해양친수활동 등을 \n위한 시설과 화물의 조립ㆍ가공ㆍ포장ㆍ제조 등 부가가치 창출을 위한 시설이 \n갖추어진 곳 중 주로 국내항 간을 운항하는 선박이 입항ㆍ출항하는 항만을 말하며,  \n우리나라에서는 연안항을 항만법 제2조에 의해 주로 국내항간을 운항하는 선박이 \n입항･ 출항하는 항만으로서 항만법 제3조제1항에 따라 지정된 항만으로 규정\n  ① 국가관리연안항 : 국가안보 또는 영해관리에 중요하거나 기상악화 등 유사시 \n선박의 대피를 주목적으로 하는 항만\n  - ’20년 1월 현재 국가관리연안항(11개항) : 용기포, 연평도, 상왕등도, 흑산도, \n가거항리, 거문도, 국도, 후포, 울릉, 추자, 화순\n ② 지방관리연안항 : 지역산업에 필요한 화물의 처리, 여객의 수송 등 편익 도모, \n관광 활성화 지원을 주목적으로 하는 항만\n  - ’20년 1월 현재 지방관리연안항(18개항) : 대천, 비인, 송공, 홍도, 진도, \n땅끝, 화흥포, 신마, 녹동신, 나로도, 중화, 부산남, 구룡포, 강구, 주문진, \n애월, 한림, 성산포\n예인선\n 曳引船 / tugboat, towboat(=예선, 끌배)\n ‘예선’ → ‘끌배’로 순화\n항만에서 대형선박의 입출항 및 접·이안을 돕거나 고장선박 또는 바지선을 \n예인하는 선박. 또한 자체 항행력이 없는 부선이나, 준설선과 같이 항행력은 있어도 \n일시 사용치 않는 선박을 지정된 장소까지 끌어당기거나 밀어서 이동시키는 \n선박으로, 규모는 작아도 강력한 추진력을 갖고 있음. 안전 및 시설보호를 위하여 \n선박이 부두에 접이안하거나 갑문 통과 시 예선을 사용토록 강제하는 경우가 \n있음. 끌배 또는 예선이라고도 함",
+      "text_sha256": "ead2ab7c2204baad588c4e69e136ea9b4191946317e3f7fd9620bc1f0898e767",
+      "canonical_ids": [],
+      "source_review_status": "EDITION_REVIEW_REQUIRED",
+      "current_law_status": "NOT_VERIFIED",
+      "execution_authorized": false,
+      "extraction_flags": []
+    },
+    {
+      "unit_id": "fc7132927c020761b30362dd14e3c98e543e04571a540a79b9533f73f1c051ab",
+      "source_id": "mof_dictionary_1",
+      "source_sha256": "3a7cdccc15096020f323e3689b6d84aee4a59b3656b8ad72051da03e9e57c1a6",
+      "edition": "CHECK_DOCUMENT",
+      "locator": {
+        "kind": "pdf_page",
+        "page_1based": 326
+      },
+      "text": "해양수산 용어사전\n❙ 322\n잔교\n 棧橋 / Jetty, Landing pier\n강재나 콘크리트로 된 말뚝 위에 \n상부시설을 설치한 구조물로 \n잔교에는 해안선과 나란하게 축조하는 \n횡잔교와 직각으로 축조하는 돌제식 \n잔교로 구분됨\n잠제\n 潛堤 / submerged breakwater, submerged dike\n ‘잠제’ → ‘수중 방파제’로 순화\n마루높이가 해면보다 낮고 해안선에서 떨어진 해역에 해안선과 평행하게 \n설치되는 연안구조물로서 해일 및 파랑 저감과 해안침식을 방지 하고 표사를 \n제어함으로써 해빈의 안정화를 주목적으로 함. 잠제는 수면위로 돌출되는 \n이안제에 대비되는 구조형식으로 폭이 넓은 것을 광폭잠제 혹은 인공리프라고 \n칭함\n장주기파\n 長週期波 / long period wave   \n항만에서 부진동을 일으키는 것과 같은 주기가 긴 수십초 이상의 파. 부진동의 \n원인이 되는 장주기파는 태풍이나 저기압 또는 이동하는 전선에 수반하는 미세 \n기압변동에 의해 발생한 외해에서의 장주기 너울이 내습하여 항내에 강제진동을 \n일으키는 것으로, 항만내의 형태에 따른 고유진동주기에 대해 공진현상(共振現狀)을 \n유발시켜 증폭되는 것으로 추정되고 있음\n",
+      "text_sha256": "a0847674a5eeb2bc97aecf6f247b4a8a5bf52e383b1fa09445898cb68efb3533",
+      "canonical_ids": [],
+      "source_review_status": "EDITION_REVIEW_REQUIRED",
+      "current_law_status": "NOT_VERIFIED",
+      "execution_authorized": false,
+      "extraction_flags": []
+    },
+    {
+      "unit_id": "edae898637fd3521e82d255e1d01e51246dd31c81008454333ca763387910126",
+      "source_id": "iho_s101_dceg_2_0_0",
+      "source_sha256": "7168ea98269736b0713c27d661177dc9c65f5c3dd038e0f33b481bec31c5645e",
+      "edition": "2.0.0",
+      "locator": {
+        "kind": "pdf_page",
+        "page_1based": 205
+      },
+      "text": " Data Classification and Encoding Guide 185 \nS-101 Annex A December 2024 Edition 2.0.0 \nnumber, depths alongside, dolphins, cargo sheds, cranes or railway lines), in addition to the usually distinctive \noutline of such features as piers and jetties, will be sufficient to show that ships may come alongside.  For \nshoreline constructions not intended to berth alongside (such as breakwaters and seawalls), an indication that \nships do not go alongside may be given by encoding the sloping sides ( for example the intertidal portion of the \nstructure). If there is a possibility of misinterpretation by the Mariner , the danger may be indicated by encoding \nan Obstruction surface feature (see clause 13.6) with the seaward edge running parallel to the shoreline \nconstruction. \nFigure 8-1 below represents a shoreline construction such as a mole, including a berthing facility (INT1 -  F12), \nwith a relatively flat top ( abcdlmna), and sloping sides partly above high water ( nmldefgn) and partly intertidal \n(dopqrhgfed). \nFigure 8-1 – Shoreline constructions \nRemarks: \n• Each of the three surface parts of the example shoreline construction above may be encoded as separate \nShoreline Construction features of type surface ; the masked curve  (ang) must be encoded; and, if part of \nthe Shoreline Construction boundary has a different characteristic ( for example (bc) attribute category of \nshoreline construction = 6 or 15), it should be encoded as a separate Shoreline Construction feature of \ntype curve. Alternatively, all the boundaries of the components of the shoreline construction may be encoded \nas Shoreline Construction features of type curve. \n• In this example, the shoreline construction surface above the high water line must also be covered by a Land \nArea feature of type surface , and the intertidal shoreline construction surface must also be covered by a \nDepth Area feature of type surface with attribute depth range minimum value = -H (see clause 11.7.3). \n• Shoreline Construction features must be broken into their constituent parts where possible, and categorised \nusing attributes such as category of shoreline construction  and water level effect  as indicated on the \nsource. \n• If the presence of a feature is only indicated on the source by a textual reference, without a clear symbol (for \nexample ‘pier’, ‘groyne’, ‘post’), it should be encoded using a Caution Area  feature (see clause 16.10) or an \nInformation Area feature (see clause 16.11), with the textual reference encoded using the complex attribute \ninformation (see clause 2.4.6). Caution Area should be used if the information is considered essential for \nsafe navigation. \n• Intertidal or submerged artificial rock walls, such as training walls that are not attached to the shoreline, must \nbe encoded, if required, as Shoreline Construction using the appropriate value for category of shoreline \nconstruction, and water level effect = 3 (always under water/submerged) or water level effect = 4 (covers \nand uncovers). \nDistinction: Causeway; Coastline; Dry Dock ; Floating Dock ; Gridiron; Land Area; Pontoon; Structure Over \nNavigable Water. \n(defg) Spatial feature (no curve \nShoreline Construction if encoded \nas Shoreline Construction surface) \n(nmldefgn) Shoreline Construction \n(optional surface) category of \nshoreline construction = 1, water \nlevel effect = 2, nature of \nconstruction = 3 (on Land Area) \n(dopqhgfed) Depth Area \nShoreline Construction (optional \nsurface) category of shoreline \nconstruction = 1, water level effect \n= 4, nature of construction = 3  \n(on Depth Area) \n (cdlmn)  Spatial feature (no curve \nShoreline Construction if encoded \nas Shoreline Construction surface) \n2 \n(dopqh) Spatial feature (no curve \nShoreline Construction if encoded \nas Shoreline Construction surface) \n(bc)  Shoreline Construction \n(curve), category of shoreline \nconstruction = 6 or 15 \n(ab)  Spatial feature (no curve \nShoreline Construction if encoded \nas Shoreline Construction surface) \n(ka) Shoreline Construction curve,  \ncategory of shoreline \nconstruction = 10 \n(ang)  Masked line only required if \nShoreline Constructions encoded \nas surface \n(abcdlmna) Shoreline \nConstruction (optional surface),  \ncategory of shoreline \nconstruction = 1, water level \neffect = 2 (on Land Area) \n(abcdefghijka)  Land Area \n(ghi) Coastline \na \nb \nc \nd \ne \nf \ng \nh \ni \n j \nk \nl \nm \nn \no \np \nq ",
+      "text_sha256": "f5db2dd77b145c7cca65f95b2daf99a7f0608e38de2003107c0bf7bb98ee478e",
+      "canonical_ids": [],
+      "source_review_status": "LOCAL_SOURCE_REVIEW_REQUIRED",
+      "current_law_status": "NOT_VERIFIED",
+      "execution_authorized": false,
+      "extraction_flags": []
+    }
+  ],
+  "mappings": [
+    {
+      "term": "잠제",
+      "feature": "ShorelineConstruction",
+      "filters": {
+        "categoryOfShorelineConstruction": [
+          "1"
+        ],
+        "waterLevelEffect": [
+          "3"
+        ]
+      },
+      "status": "SOURCE_BACKED_SEARCH_SUBSET",
+      "search_enabled": true,
+      "scope": "Only encoded breakwaters explicitly marked always submerged; missing attributes are excluded. Not all real-world submerged dikes are covered.",
+      "references": [
+        "fc7132927c020761b30362dd14e3c98e543e04571a540a79b9533f73f1c051ab",
+        "edae898637fd3521e82d255e1d01e51246dd31c81008454333ca763387910126"
+      ]
+    },
+    {
+      "term": "물양장",
+      "feature": "ShorelineConstruction",
+      "filters": {
+        "categoryOfShorelineConstruction": [
+          "6"
+        ]
+      },
+      "status": "ADDITIONAL_SEMANTICS_REQUIRED",
+      "search_enabled": false,
+      "scope": "Wharf is a broader candidate; small-vessel usage cannot be established from category 6 alone.",
+      "references": [
+        "889873416f849e9fea74cb650e96d67509765a8e6d31d5061181807a027ee904"
+      ]
+    },
+    {
+      "term": "예선",
+      "feature": null,
+      "filters": {},
+      "status": "VESSEL_DATA_REQUIRED",
+      "search_enabled": false,
+      "scope": "Tugboat is a vessel, not a fixed shoreline construction; vessel data and sense resolution are required.",
+      "references": [
+        "74ca57d8be28cdacca36e0a3e5d693c56c1fb69563be5b50d620317311e0347a"
+      ]
+    },
+    {
+      "term": "선유장",
+      "feature": null,
+      "filters": {},
+      "status": "AMBIGUOUS_FEATURE_MAPPING",
+      "search_enabled": false,
+      "scope": "A preferred label does not establish AnchorageArea, Berth or SmallCraftFacility identity.",
+      "references": []
+    }
+  ]
+}

@@ -2,6 +2,7 @@
 import argparse
 import json
 import time
+import re
 from pathlib import Path
 
 from services.orchestrator.intent_shadow import json_request, fingerprint, prepare_candidates, rankings
@@ -33,8 +34,11 @@ def freeze(baseline: Path, output: Path):
             issue = None
         except ValueError as exc:
             candidates, shown, contracts, issue = [], [], {}, str(exc)
+        binding=trace.get('semantic_slot_binding') or {}
         cases.append({'sample':row['sample'],'query':row['query'],'context':context,'candidates':candidates,
-                      'inputs':{'query':row['query'],'context':context,'candidates':shown,'capability_contracts':contracts},
+                      'inputs':{'query':row['query'],'context':context,'candidates':shown,'capability_contracts':contracts,
+                                'source_mappings':binding.get('source_s101_mappings',[]),
+                                'quantity_evidence':extract_quantities(row['query'])},
                       'baseline_task_id':row.get('task_id'), 'baseline_status':final.get('status'), 'candidate_issue':issue})
     snapshot = {'source_sha256':fingerprint(baseline.read_text(encoding='utf-8')), 'registry_sha256':fingerprint(registry),
                 'prompt':PROMPT,'cases':sorted(cases,key=lambda x:x['sample']), 'gold_status':'DEVELOPMENT_NOT_HUMAN_GOLD',
@@ -82,7 +86,24 @@ def schema_for(case):
     return {'type':'object','properties':props,'required':list(props),'additionalProperties':False}
 
 
-def run(snapshot_path, output, model, url, ids, threads=4):
+def span_schema(case):
+    """Constrain surface selection, not meaning. Absence/role correctness still needs gold."""
+    schema=schema_for(case); query=case['query']
+    tokens=list(re.finditer(r'[가-힣A-Za-z0-9_.-]+',query))
+    options={query[m.start():m.end()] for m in tokens}
+    for m in tokens:
+        for particle in ('에서','으로','이내','를','을','은','는','의','와','과'):
+            if m[0].endswith(particle) and len(m[0])>len(particle): options.add(m[0][:-len(particle)])
+    for q in extract_quantities(query): options.add(q['raw_text'])
+    for m in case['inputs'].get('source_mappings',[]): options.add(m['raw_text'])
+    choices=sorted(x for x in options if x and x in query)
+    for name in schema['properties']['slots']['properties']:
+        schema['properties']['slots']['properties'][name]['enum']=[None,*choices]
+    schema['properties']['query_quote']['enum']=[query]
+    return schema
+
+
+def run(snapshot_path, output, model, url, ids, threads=4, span_selection=False):
     import jsonschema
     snapshot=json.loads(snapshot_path.read_text(encoding='utf-8'))
     tags=json_request(url+'/api/tags')
@@ -91,7 +112,8 @@ def run(snapshot_path, output, model, url, ids, threads=4):
     manifest={'snapshot_sha256':fingerprint(snapshot),'model':model_info,'ollama_version':json_request(url+'/api/version'),
               'source_sha256':fingerprint(Path(__file__).read_text(encoding='utf-8')), 'ids':ids,
               'settings':{'think':False,'temperature':0,'seed':20260925,'num_ctx':8192,'num_predict':700,'num_thread':threads,'timeout_s':120},
-              'used_for_execution':False,'human_gold':False,'prompt_sha256':fingerprint(snapshot['prompt'])}
+              'used_for_execution':False,'human_gold':False,'prompt_sha256':fingerprint(snapshot['prompt']),
+              'span_selection':span_selection}
     (output/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
     for case in snapshot['cases']:
         if ids and case['sample'] not in ids:
@@ -102,7 +124,7 @@ def run(snapshot_path, output, model, url, ids, threads=4):
         if case['candidate_issue']:
             row['error']='CANDIDATE_TRACE_UNAVAILABLE'
         else:
-            schema=schema_for(case)
+            schema=span_schema(case) if span_selection else schema_for(case)
             request={'model':model,'system':snapshot['prompt'],'prompt':json.dumps(case['inputs'],ensure_ascii=False),
                      'format':schema,'think':False,'stream':False,
                      'options':{k:v for k,v in manifest['settings'].items() if k not in {'think','timeout_s'}}}
@@ -146,13 +168,14 @@ def main():
     p.add_argument('--url',default='http://host.docker.internal:11434')
     p.add_argument('--ids',nargs='+',type=int)
     p.add_argument('--threads',type=int,default=4)
+    p.add_argument('--span-selection',action='store_true')
     args=p.parse_args()
     if args.baseline:
         freeze(args.baseline,args.snapshot)
     elif args.output:
         if args.threads < 1:
             p.error('--threads must be positive')
-        run(args.snapshot,args.output,args.model,args.url,args.ids,args.threads)
+        run(args.snapshot,args.output,args.model,args.url,args.ids,args.threads,args.span_selection)
     else:
         p.error('Provide --baseline to freeze or --output to evaluate')
 

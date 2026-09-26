@@ -66,6 +66,8 @@ def bind_semantic_slots(query: str, analysis: dict, capabilities: list[dict]) ->
     terminology = analysis.get('maritime_terminology')
     if terminology is None:
         terminology = match_terminology(query, analysis.get('constraints', []))
+    from services.orchestrator.marine_s101_mapping import resolve_mappings
+    source_mappings = resolve_mappings(query, analysis.get('constraints', []))
     terms, seeds, paths, features = [], set(), {}, set()
     for pattern, label, entry in patterns:
         for match in pattern.finditer(query):
@@ -108,6 +110,7 @@ def bind_semantic_slots(query: str, analysis: dict, capabilities: list[dict]) ->
             'term_bindings': terms, 'kg_seed_ids': sorted(seeds), 'kg_relations': list(paths.values()),
             'capability_bindings': bindings, 'target_features': sorted(features),
             'maritime_terminology': terminology,
+            'source_s101_mappings':source_mappings,
             'unresolved_terminology': [
                 {'span':t['span'], 'raw_text':t['raw_text'], 'reason':'ONTOLOGY_MAPPING_NOT_VERIFIED',
                  'candidate_tool_contracts':[c['candidate_id'] for c in capabilities

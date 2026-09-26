@@ -53,6 +53,11 @@ def instant_place_navigation_decision(query: str) -> dict[str, Any]:
     if constraints(text) or any(item in required_outputs(text) for item in ('selected_feature_evidence', 'data_processing_provenance', 'portrayal_symbol_binding')):
         return {"allowed": False, "reason": "query_constraint_requires_validation"}
 
+    from services.orchestrator.marine_s101_mapping import resolve_mappings
+    from services.orchestrator.request_semantics import requires_execution
+    if requires_execution(text) and resolve_mappings(text):
+        return {"allowed": False, "reason": "source_mapping_requires_validation"}
+
     from services.orchestrator.pipeline_diagnostics import diagnostic_request
     diagnostic = diagnostic_request(text)
     if diagnostic:

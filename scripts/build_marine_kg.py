@@ -54,6 +54,11 @@ def feature_node_for(feature,catalogue):
 def layer_node_id(layer_name):
     if layer_name in load('traffic_layer_registry.yaml').get('layers',{}):
         return nid('DynamicTrafficLayer',layer_name)
+    if layer_name not in load('spatial_layer_registry.yaml').get('layers',{}) and layer_name not in load('data_registry.yaml').get('datasets',{}):
+        # A declared legal target is a logical node, never a fabricated physical dataset.
+        return add_node('DataLayer',layer_name,execution_status='unavailable',
+                        verification_status='CANDIDATE',physical_table=None,
+                        provenance=source('data/legal_notice_registry.yaml'))
     return nid('DataLayer',layer_name)
 def evidence_ref_node(ref, predicate=None, legal_registry=None, catalogue=None):
     value=str(ref)
@@ -118,7 +123,7 @@ def build():
     catalogue=[{'name': x.get('code'), 'catalogue_name': x.get('name'),
                 'nftc': None, 'description': x.get('definition'),
                 'primitives': x.get('permitted_primitives', []),
-                'codeinformation': [b.get('ref') for b in x.get('bindings', [])]}
+                'codeinformation': [b.get('ref') for b in x.get('bindings', []) if b['kind']=='attributeBinding' and b.get('type')=='attribute']}
                for x in parsed.get('features', [])]
     catalogue_source='data/s101_feature_catalogue_v2_parsed.json'
     fc=add_node('FeatureCatalogue','S-101 Feature Catalogue v2.0',version='2.0',

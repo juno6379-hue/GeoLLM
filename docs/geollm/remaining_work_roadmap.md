@@ -1,5 +1,16 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-09-26 재개: S-101 속성 검색과 입력 계약 검증
+
+- 기존 미커밋 FC 참조 파서·매핑 registry·속성 검색 구현을 이어 검증했다. 잠제/수중방파제는 `ShorelineConstruction`의 `categoryOfShorelineConstruction=1 AND waterLevelEffect=3`으로 제한된 검색이다. 누락 속성은 제외하며 전체 실세계 잠제의 완전한 매핑이나 human gold 승인을 의미하지 않는다. 물양장·예선·선유장의 미해결 매핑은 실행을 차단한다.
+- 실제 API 초기 `outputs/marine-mapping/resume-v1.jsonl`은 **7/8**이었다. `잠제를 찾아줘`가 장소 이동 단축 경로로 들어가 지도 기준점 확인만으로 COMPLETED를 반환했다. 등록된 원문 용어의 실행 요청은 정식 매핑/슬롯 검사로 보내도록 수정했고 최종 반경 누락 결과는 `NEEDS_CLARIFICATION/RADIUS_REQUIRED`다.
+- 속성 검색 실행 함수에서 지도 `exclusions` 및 불일치/복수 `target_features`를 검사하도록 보강했다. 직접 호출에서도 질의 부정 조건을 검사한다. 부정·복합 실행 지원을 완료한 것은 아니며 미지원 조건은 `NOT_RUN`으로 차단한다.
+- 최종 실제 API **10/10** 계약 통과: `outputs/marine-mapping/resume-v2.jsonl`. DB의 실제 잠제 조건 객체에서 평가 기준점을 얻고 조회 행의 두 속성, execution ID, 미해결/부정/복합/반경 누락 응답을 확인했다. 의미 정확도나 F1 측정은 아니다.
+- 컨테이너 최종 관련 단위 **102 passed**, shadow 계약·평가 **25 passed**. 앞선 graph 포함 회귀 **98 passed**는 일부 중복이며 최종 fast-path 수정 이전 결과다. 호스트 Python은 `structlog` 부재로 수집 실패했다. 재시작 직후 웹/항행 점검은 연결 거부로 실패했고 준비 완료 후 웹·DB **11/11** 통과했다. 전체 저장소 테스트/브라우저 조작 검증을 의미하지 않는다.
+- 준비 완료 후 `check_navigation_runtime.py`도 **7/7** 통과했다. 부산/인천 통항 결과는 PARTIAL을 유지하며 위치 없음·먼 위치·미등록 항만과 정의 질의를 함께 확인했다.
+- P1: 기존 원문 선택 schema 및 동일 실험 설정 검사 변경을 보존·회귀 검증했다. 신규 Ollama 추론이나 calibration을 수행하지 않았고 `used_for_execution=false`, QLoRA DEFER를 유지한다.
+- 다음 P0: portrayal/선택 객체의 실제 근거 산출물 → 전체 처리 lineage → 복합 작업·부정 조건의 실제 실행 지원. 매핑의 의미 범위와 원문 판/human 검수, API 병행 부하 지연 및 readiness 대기는 남은 제한이다. 사용자 피드백 JSONL과 outputs 원본은 소스 커밋에서 제외한다.
+
 ## 2026-09-26 해수부 순화어 런타임 연결과 직접 근거 조회
 
 - [구현·검증 문서](mof_terminology_runtime_20260926.md): 기존 4개 순화어 후보를 원문/hash/페이지를 포함한 보조 registry로 만들고 실제 질의 분석·슬롯 trace·검수 양식에 연결했다. 같은 번호 표 행 안에서만 관계를 추출하도록 다음 행 오연결 문제도 수정했다.

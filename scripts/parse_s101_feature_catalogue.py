@@ -26,6 +26,26 @@ def children(node, name: str):
     return [child for child in node if local(child.tag) == name]
 
 
+def bindings_of(node):
+    result = []
+    for binding in node:
+        if local(binding.tag) not in {'attributeBinding','informationBinding','featureBinding','subAttributeBinding'}:
+            continue
+        refs = [{'type':local(c.tag),'ref':v} for c in binding
+                for k,v in c.attrib.items() if local(k)=='ref']
+        # Support legacy inline refs and the actual S-100 FC nested reference layout.
+        if binding.get('ref'):
+            refs.append({'type':'attribute','ref':binding.get('ref')})
+        permitted = [c.text for p in children(binding,'permittedValues') for c in p if local(c.tag)=='value']
+        multiplicity = next(iter(children(binding,'multiplicity')),None)
+        for ref in refs:
+            result.append({'kind':local(binding.tag), **ref, 'permitted_values':permitted,
+                           'lower':text_of(multiplicity,'lower') if multiplicity is not None else None,
+                           'upper':text_of(multiplicity,'upper') if multiplicity is not None else None,
+                           'unbounded':any(c.get('infinite')=='true' for c in multiplicity) if multiplicity is not None else False})
+    return result
+
+
 def parse(path: Path) -> dict:
     raw = path.read_bytes()
     root = ET.fromstring(raw)
@@ -41,7 +61,7 @@ def parse(path: Path) -> dict:
                 if local(listed.tag) == "listedValue":
                     values.append({
                         "label": text_of(listed, "label"),
-                        "value": text_of(listed, "value"),
+                        "value": text_of(listed, "value") or text_of(listed, "code"),
                     })
             attrs.append({
                 "code": code or re.sub(r"[^A-Za-z0-9]+", "_", name or "").strip("_"),
@@ -51,6 +71,7 @@ def parse(path: Path) -> dict:
                 "value_type": text_of(node, "valueType"),
                 "uom": text_of(node, "uom"),
                 "listed_values": values,
+                "bindings": bindings_of(node),
                 "source": str(path),
             })
 
@@ -62,12 +83,7 @@ def parse(path: Path) -> dict:
         name = text_of(node, "name")
         if not code and not name:
             continue
-        bindings = []
-        for binding in node.iter():
-            if local(binding.tag) in {"attributeBinding", "informationBinding", "featureBinding"}:
-                ref = next((v for k, v in binding.attrib.items() if local(k) == "ref"), None)
-                if ref:
-                    bindings.append({"kind": local(binding.tag), "ref": ref})
+        bindings = bindings_of(node)
         primitives = [" ".join("".join(x.itertext()).split()) for x in node.iter() if local(x.tag) == "permittedPrimitives"]
         features.append({
             "code": code,
@@ -82,7 +98,10 @@ def parse(path: Path) -> dict:
 
     metadata = {key: text_of(root, key) for key in ("name", "scope", "fieldOfApplication", "versionNumber", "versionDate", "productId")}
     metadata.update({"source": str(path), "sha256": hashlib.sha256(raw).hexdigest(), "namespace_aware": True})
-    return {"metadata": metadata, "features": features, "attributes": attrs}
+    other_types = {'S100_FC_InformationType','S100_FC_FeatureAssociation','S100_FC_InformationAssociation','S100_FC_Role'}
+    other = [{'code':text_of(n,'code'),'kind':local(n.tag),'bindings':bindings_of(n)}
+             for n in root.iter() if local(n.tag) in other_types]
+    return {"metadata": metadata, "features": features, "attributes": attrs, 'other_types':other}
 
 
 def main() -> None:

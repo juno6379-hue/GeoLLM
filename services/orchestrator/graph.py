@@ -2499,6 +2499,11 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
     semantic_bindings = await asyncio.to_thread(bind_semantic_slots, original_query, korean_analysis,
                                                 candidate_trace.get("capability_candidates", []))
     candidate_trace["semantic_slot_binding"] = semantic_bindings
+    from services.orchestrator.marine_mapping_execution import applicable, execute
+    if applicable(original_query):
+        outcome = await asyncio.to_thread(execute, state)
+        _attach_candidate_trace(state, outcome['final_dict'])
+        return outcome
     trace_summary = _candidate_trace_summary(candidate_trace)
     top_routes = [
         f"{row.get('route')}:{row.get('score')}"
@@ -3015,6 +3020,7 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         "candidate_trace": candidate_trace,
         "korean_query_analysis": korean_analysis,
         "query_contract_blocked": False,
+        "source_mapping_handled": False,
     }
 
 from services.orchestrator.feature_resolver import feature_resolver
@@ -5942,7 +5948,7 @@ async def audit_log_node(state: OrchestratorState) -> OrchestratorState:
 # ----------------- Conditional Edges -----------------
 
 def check_intent_parsed(state: OrchestratorState) -> str:
-    if state.get("query_contract_blocked"):
+    if state.get("query_contract_blocked") or state.get('source_mapping_handled'):
         return "query_contract_stop"
     from services.orchestrator.request_obligations import required_outputs
     if 'data_processing_provenance' in required_outputs(state.get('query', '')):

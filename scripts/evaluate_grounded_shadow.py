@@ -132,7 +132,7 @@ def main():
     experiment_contract=None
     for path in args.runs:
         manifest=json.loads((path/'manifest.json').read_text(encoding='utf-8'))
-        current_contract={k:manifest.get(k) for k in ('snapshot_sha256','prompt_sha256','settings')}
+        current_contract={k:manifest.get(k) for k in ('snapshot_sha256','prompt_sha256','settings','span_selection')}
         if experiment_contract is not None and current_contract!=experiment_contract:
             raise ValueError('Paired model comparison requires identical prompt and inference settings')
         experiment_contract=current_contract

@@ -522,7 +522,7 @@ capabilities:
   routes:
   - SPATIAL_ANALYSIS
   role: primary
-  description: 'Execute radius-based spatial feature search using a verified anchor geometry, radius in meters, and target feature candidates.
+  description: 'Execute radius-based spatial feature search using a verified anchor geometry, radius in meters, and target feature candidates. Source-backed S-101 term mappings require all validated attribute predicates; missing attributes do not match and unresolved term mappings cannot execute.
 
     '
   input_slots:
