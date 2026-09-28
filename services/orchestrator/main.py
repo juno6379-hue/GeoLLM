@@ -33,6 +33,8 @@ app.add_middleware(
 )
 
 app.include_router(orchestrator_router, prefix="/api/v1")
+from services.orchestrator.live_intent_comparison import router as intent_comparison_router
+app.include_router(intent_comparison_router, prefix="/api/v1")
 from services.uport.map_router import router as uport_map_router
 app.include_router(uport_map_router, prefix="/api/v1")
 from services.uport.planning_router import router as uport_planning_router

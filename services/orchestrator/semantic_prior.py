@@ -125,7 +125,7 @@ def _ollama_prior(query: str, deterministic_candidates: list[dict[str, Any]]) ->
     return None
 
 
-def build_semantic_prior(query: str, normalized_query: str | None = None) -> dict[str, Any]:
+def build_semantic_prior(query: str, normalized_query: str | None = None, *, allow_ollama: bool = True) -> dict[str, Any]:
     combined = " ".join(part for part in [query, normalized_query] if part)
     deterministic = _deterministic_place_type_candidates(combined)
     place_like = bool(deterministic) or bool(PLACE_ACTION_RE.search(combined or ""))
@@ -145,7 +145,8 @@ def build_semantic_prior(query: str, normalized_query: str | None = None) -> dic
             "role": "ambiguity_resolver_only",
         },
     }
-    ollama = _ollama_prior(combined, deterministic)
+    prior["ollama"]["enabled"] = prior["ollama"]["enabled"] and allow_ollama
+    ollama = _ollama_prior(combined, deterministic) if allow_ollama else None
     if ollama:
         prior["ollama"]["used"] = True
         if isinstance(ollama.get("place_type_candidates"), list):

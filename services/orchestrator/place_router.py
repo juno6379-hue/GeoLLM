@@ -3,6 +3,7 @@
 import asyncio
 import hashlib
 import json
+import math
 import os
 import re
 from typing import Any
@@ -121,7 +122,7 @@ def external_place_fallback(query: str) -> dict[str, Any] | None:
             f"대표 후보는 {first.get('label')}이며, 근거 요지는 '{evidence_text}'입니다. "
             f"출처는 {source_text}입니다. 정확한 feature geometry 승격 전이므로 후보를 확인해 주세요."
             if has_public
-            else "로컬 해양 지명사전에는 없지만 외부 보조 후보를 찾았습니다. authoritative 승격 전이므로 후보를 확인해 주세요."
+            else "로컬 해양 지명사전에는 없지만 외부 보조 후보를 찾았습니다. 요청한 위치와 일치하는 후보를 선택해 주세요. 후보 선택은 권위 지명 등록을 의미하지 않습니다."
         ),
         "location_candidates": candidates,
         "external_evidence_report": {
@@ -133,6 +134,50 @@ def external_place_fallback(query: str) -> dict[str, Any] | None:
             "primary_source": source_text,
         },
     }
+
+
+def allow_display_navigation(query, payload, spatial_context=None):
+    """A unique exact administrative place may move the viewport, never ground analysis."""
+    if payload.get("error_code") != "EXTERNAL_PLACE_CANDIDATES":
+        return payload
+    permission = {"allowed": False, "scope": "map_view_only", "analysis_authority": False,
+                  "registry_promoted": False, "reason": "confirmation_required"}
+    result = {**payload, "execution_permission": permission}
+    # Narrow operation + slots + evidence contract, not a lone keyword trigger.
+    command = re.fullmatch(r"([가-힣]{2,30}(?:구|시|군|동|읍|면))(?:으로|로)?\s*(?:이동(?:해줘|해|하기)?|가줘)[.!?]?", query.strip())
+    context = spatial_context or {}
+    if not command or any(context.get(k) for k in ("exclusions", "target_features", "selected_feature", "radius", "distance_m")):
+        return result
+    if (payload.get("external_evidence_report") or {}).get("domain_id") != "administrative_place_lookup":
+        return result
+    candidates = payload.get("location_candidates") or []
+    if len(candidates) != 1:
+        permission["reason"] = "ambiguous_candidates"
+        return result
+    candidate = candidates[0]
+    if str(candidate.get("label", "")).split(",")[0].strip() != command.group(1):
+        permission["reason"] = "name_not_exact"
+        return result
+    match = re.fullmatch(r"POINT\(([0-9.+-]+)\s+([0-9.+-]+)\)", candidate.get("geometry") or "")
+    try:
+        coords = [float(v) for v in match.groups()] if match else []
+    except ValueError:
+        coords = []
+    if (len(coords) != 2 or not all(math.isfinite(v) for v in coords)
+            or not (-180 <= coords[0] <= 180 and -90 <= coords[1] <= 90)
+            or candidate.get("crs") != "EPSG:4326"
+            or not candidate.get("source_ref") or not candidate.get("source_url")
+            or candidate.get("authority_level") not in {"supplemental", "public_authoritative"}):
+        permission["reason"] = "invalid_geometry_or_provenance"
+        return result
+    permission.update(allowed=True, reason="unique_exact_administrative_place_for_explicit_navigation")
+    return {**result, "status": "RESOLVED", "error_code": None,
+            "geometry": candidate["geometry"], "crs": "EPSG:4326", "location_text": candidate["label"],
+            "place_id": candidate.get("place_id"), "place_version": candidate.get("place_version"),
+            "location_resolution": {**candidate, "status": "SUPPLEMENTAL_DISPLAY_ONLY", "use_as_authority": False,
+                                    "requires_confirmation": False, "execution_permission": permission},
+            "location_candidates": [],
+            "summary": f"{candidate['label']} 위치로 지도를 이동합니다. 출처: {candidate['source_ref']}. 이 보조 위치는 분석의 권위 근거로 승인된 것이 아닙니다."}
 
 
 def resolve_payload(query, spatial_context):

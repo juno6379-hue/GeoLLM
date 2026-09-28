@@ -16,7 +16,8 @@ import yaml
 from shared.schemas.agent import AgentStatus
 from services.orchestrator.fast_path_policy import instant_place_navigation_decision, is_instant_place_navigation_allowed
 from services.orchestrator.graph import orchestrator_graph
-from services.orchestrator.place_router import place_navigation_target, resolve_payload
+from services.orchestrator.place_router import place_navigation_target, resolve_payload, allow_display_navigation
+from services.orchestrator.live_intent_comparison import store as comparison_store, observe as observe_comparison
 from services.orchestrator.state import OrchestratorState
 from services.orchestrator.task_store import PersistentTaskStore
 
@@ -107,6 +108,10 @@ def _instant_place_final(task_id: str, query: str, payload: dict) -> dict:
                 "place_id": payload.get("place_id"),
                 "place_version": payload.get("place_version"),
                 "source_ref": (payload.get("location_resolution") or {}).get("source_ref"),
+                "source_url": (payload.get("location_resolution") or {}).get("source_url"),
+                "operation": "map_navigation",
+                "authority_level": (payload.get("location_resolution") or {}).get("authority_level"),
+                "execution_permission": payload.get("execution_permission"),
             },
         }]} if resolved and coords else _place_candidate_features(candidates)
     )
@@ -146,7 +151,8 @@ def _instant_place_final(task_id: str, query: str, payload: dict) -> dict:
         "slots": slots,
         "readiness": "EXECUTION_READY" if resolved else "NEEDS_USER_INPUT",
         "blockers": [] if resolved else ["location requires user confirmation"],
-        "warnings": [] if resolved else ["external place candidate is not promoted into the local authoritative registry yet"],
+        "warnings": (["supplemental location permitted for map display only"] if payload.get("execution_permission", {}).get("allowed") else ([] if resolved else ["location confirmation is required"])),
+        "execution_permission": payload.get("execution_permission"),
         "data_bindings": [{"dataset_id": "place_registry", "status": "available"}],
         "tool_bindings": [{"tool_id": "place.resolve", "status": "available"}],
         "route_plan": route_plan,
@@ -562,7 +568,7 @@ def _preserve_spatial_stream_payload(result: dict, compact: dict) -> None:
         or route.get("analysis_type") in spatial_stream_analysis_types
         or "location_candidates" in structured
     )
-    for key in ("task_id", "clarification_questions", "clarification_options", "warnings"):
+    for key in ("task_id", "intent_comparison_id", "clarification_questions", "clarification_options", "warnings"):
         if key in result:
             compact[key] = result[key]
     if not is_radius:
@@ -582,7 +588,7 @@ def _preserve_spatial_stream_payload(result: dict, compact: dict) -> None:
         "buffer_distance", "target_layers",
         "reference_geometry", "reference_crs", "geometry", "crs", "source_layer", "blockers",
         "offset", "target_features", "exclusions", "spatial_context",
-        "place_id", "place_version", "location_resolution",
+        "place_id", "place_version", "location_resolution", "execution_permission",
         "geojson_feature_count", "map_layer_count", "evidence_bundle_counts",
         "web_rag_usage", "result_surface", "distance_policy", "user_evidence_summary",
         "result_surface_contract",
@@ -639,6 +645,7 @@ def _compact_final_result_for_stream(final_result):
             "query_execution_context": {
                 "readiness": qec.get("readiness"),
                 "blockers": qec.get("blockers"),
+                "execution_permission": qec.get("execution_permission"),
                 "warnings": qec.get("warnings"),
                 "data_bindings": qec.get("data_bindings"),
                 "tool_bindings": qec.get("tool_bindings"),
@@ -849,6 +856,7 @@ async def stream_task(req: TaskCreateRequest):
         }
 
     instant_place_navigation = (not is_resume) and _is_instant_place_navigation(req.query)
+    comparison_id = comparison_store().submit(task_id, req.query, req.spatial_context)
     
     config = {"configurable": {"thread_id": task_id}}
     
@@ -870,12 +878,15 @@ async def stream_task(req: TaskCreateRequest):
     
     async def event_generator():
         # 시작 이벤트
-        yield f"data: {json.dumps({'event': 'started', 'task_id': task_id})}\n\n"
+        yield f"data: {json.dumps({'event': 'started', 'task_id': task_id, 'comparison_id': comparison_id})}\n\n"
         if instant_place_navigation:
             yield f"data: {json.dumps({'event': 'progress', 'status': 'FAST_PLACE_LOOKUP', 'message': '지명 후보를 바로 확인하는 중...'})}\n\n"
             try:
                 payload = await asyncio.to_thread(resolve_payload, req.query, req.spatial_context or {})
+                payload = allow_display_navigation(req.query, payload, req.spatial_context)
                 final_result = _instant_place_final(task_id, req.query, payload)
+                final_result["intent_comparison_id"] = comparison_id
+                observe_comparison(comparison_id, final_result)
                 from services.orchestrator.korean_query_analysis import analyze_query
                 analysis = await asyncio.to_thread(analyze_query, req.query)
                 final_result["structured_result"]["korean_query_analysis"] = analysis
@@ -903,6 +914,7 @@ async def stream_task(req: TaskCreateRequest):
                 return
             except Exception as e:
                 TASK_STORE.update(task_id, status=AgentStatus.FAILED, error_message=str(e))
+                observe_comparison(comparison_id, {"status": "FAILED", "summary": str(e)})
                 yield f"data: {json.dumps({'event': 'error', 'message': str(e)}, default=str)}\n\n"
                 return
         
@@ -982,6 +994,8 @@ async def stream_task(req: TaskCreateRequest):
             
             safe_final = {"event": "completed", "status": final_status, "debug_trace": debug_trace}
             safe_final.update(_terminal_result_for_stream(state_vals))
+            safe_final["comparison_id"] = comparison_id
+            observe_comparison(comparison_id, safe_final.get("final_result") or {"status": final_status})
                 
             yield f"data: {json.dumps(safe_final, default=str)}\n\n"
             
@@ -990,6 +1004,7 @@ async def stream_task(req: TaskCreateRequest):
             traceback.print_exc()
             print(f"Error in stream generator: {e}")
             TASK_STORE.update(task_id, status=AgentStatus.FAILED, error_message=str(e))
+            observe_comparison(comparison_id, {"status": "FAILED", "summary": str(e)})
             yield f"data: {json.dumps({'event': 'error', 'message': str(e)})}\n\n"
             
     return StreamingResponse(event_generator(), media_type="text/event-stream")

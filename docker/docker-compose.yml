@@ -35,6 +35,8 @@ services:
       - S101_CATALOGUE_VERSION=2.0.0
       - S101_RAG_METADATA_FILTER={"product_id":"S-101","version":"2.0.0","product_specification":"INT.IHO.S-101.2.0"}
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - GEOLLM_WEB_SHADOW_MODEL=qwen2.5:1.5b
+      - GEOLLM_WEB_SHADOW_TIMEOUT=180
       - OLLAMA_CHAT_URL=http://host.docker.internal:11434/v1
       - OLLAMA_EMBEDDING_URL=http://host.docker.internal:11434/api/embed
       - OPENAI_BASE_URL=http://host.docker.internal:11434/v1

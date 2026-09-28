@@ -795,9 +795,9 @@ class QueryCandidateBroker:
         candidates.sort(key=lambda row: (-row["score"], row["candidate_id"]))
         return candidates[:top_k]
 
-    def build_trace(self, query: str, normalized_query: str | None = None, norm_result: dict[str, Any] | None = None) -> dict[str, Any]:
+    def build_trace(self, query: str, normalized_query: str | None = None, norm_result: dict[str, Any] | None = None, *, allow_ollama: bool = True) -> dict[str, Any]:
         combined = " ".join(part for part in [query, normalized_query] if part)
-        semantic_prior = build_semantic_prior(query, normalized_query)
+        semantic_prior = build_semantic_prior(query, normalized_query) if allow_ollama else build_semantic_prior(query, normalized_query, allow_ollama=False)
         signals = _dedupe_signals(
             _signal_scan(combined)
             + _registry_signal_scan(combined)
