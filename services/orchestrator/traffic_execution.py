@@ -14,6 +14,7 @@ from typing import Any
 import psycopg2
 import psycopg2.extras
 import yaml
+from services.orchestrator.execution_validator import MAX_RADIUS_M
 
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
@@ -405,8 +406,8 @@ def execute_traffic_request(state: dict) -> dict:
     geometry = wkt.loads(ref_wkt)
     params["ref_wkt"] = ref_wkt
     if distance_m is not None:
-        if not math.isfinite(float(distance_m)) or not 0 < float(distance_m) <= 100000:
-            raise TrafficProblem("NEEDS_CLARIFICATION", "INVALID_DISTANCE", "분석 반경은 0m 초과 100km 이하로 지정해 주세요.")
+        if not math.isfinite(float(distance_m)) or not 0 < float(distance_m) <= MAX_RADIUS_M:
+            raise TrafficProblem("NEEDS_CLARIFICATION", "INVALID_DISTANCE", f"분석 반경은 0m 초과 {MAX_RADIUS_M / 1000:g}km 이하로 지정해 주세요.")
         spatial_predicate = "AND ST_DWithin(t.geom::geography, ST_GeomFromText(%(ref_wkt)s,4326)::geography, %(distance_m)s)"
         params["distance_m"] = float(distance_m)
     elif geometry.geom_type in {"Polygon", "MultiPolygon"}:
@@ -414,8 +415,44 @@ def execute_traffic_request(state: dict) -> dict:
     else:
         raise TrafficProblem("NEEDS_CLARIFICATION", "DISTANCE_REQUIRED", "선택한 지점의 분석 반경 또는 지도 범위를 알려주세요.")
 
+    route_plan = {
+        "task_id": f"TASK-TRAFFIC-{state['task_id'][:3].upper()}",
+        "status": "PLAN_READY",
+        "intent": "TRAFFIC_ANALYSIS",
+        "context": "maritime_traffic",
+        "analysis_type": "traffic_search_by_time_space",
+        "derived_concept": "dynamic_traffic",
+        "primary_agent": "AIS Analysis Agent",
+        "secondary_agents": ["Spatial Analysis Agent"],
+        "slots": {
+            "target_term": "dynamic_traffic",
+            "analysis_type": "traffic_search_by_time_space",
+            "sources": sources,
+            "temporal_window": temporal_window,
+            "reference_geometry": ref_wkt,
+            "location_text": ref_label,
+            "distance_m": distance_m,
+        },
+        "tools": ["traffic.dynamic_layer_search", "postgis.dwithin" if distance_m is not None else "postgis.intersects"],
+        "data": ["DynamicTrafficLayer", *[layer["layer_id"] for layer in layers]],
+        "outputs": ["TrafficSummary", "GeoJSON", "EvidenceBundle"],
+        "clarification_required": False,
+        "confidence": 1.0,
+        "execution_ready": False,
+        "route_plan_status": "PLAN_READY",
+    }
+    from shared.schemas.agent import QueryExecutionContext, ExecutionSlots
+    from services.orchestrator.execution_validator import validate_execution_context, is_execution_authorized, project_execution_decision
+    from services.orchestrator.schema_binding_adapter import SchemaBindingAdapter
+    qec_model = QueryExecutionContext(request_id=state["task_id"], original_query=state.get("query"),
+        route_plan=route_plan, slots=ExecutionSlots.from_payload(route_plan["slots"]))
+
     with psycopg2.connect(_db_url(), connect_timeout=5) as conn:
         conn.set_session(readonly=True, isolation_level="REPEATABLE READ")
+        qec_model = validate_execution_context(qec_model, binding_adapter=SchemaBindingAdapter(connection=conn))
+        if not is_execution_authorized(qec_model):
+            raise TrafficProblem(qec_model.readiness.value, "EXECUTION_GATE", "; ".join(qec_model.blockers))
+        project_execution_decision(qec_model, route_plan)
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("SELECT to_regclass('serving.dynamic_traffic_layer') AS relation")
             if not cur.fetchone()["relation"]:
@@ -519,49 +556,13 @@ def execute_traffic_request(state: dict) -> dict:
     )
     llm_answer, llm_used = _try_llm_traffic_answer(query, traffic_brief)
     summary = llm_answer or _fallback_traffic_answer(traffic_brief)
-    route_plan = {
-        "task_id": f"TASK-TRAFFIC-{state['task_id'][:3].upper()}",
-        "status": "EXECUTION_READY",
-        "intent": "TRAFFIC_ANALYSIS",
-        "context": "maritime_traffic",
-        "analysis_type": "traffic_search_by_time_space",
-        "derived_concept": "dynamic_traffic",
-        "primary_agent": "AIS Analysis Agent",
-        "secondary_agents": ["Spatial Analysis Agent"],
-        "slots": {
-            "target_term": "dynamic_traffic",
-            "analysis_type": "traffic_search_by_time_space",
-            "sources": sources,
-            "temporal_window": temporal_window,
-            "effective_temporal_window": temporal_metadata["effective_temporal_window"],
-            "reference_geometry": ref_wkt,
-            "location_text": ref_label,
-            "distance_m": distance_m,
-        },
-        "tools": ["traffic.dynamic_layer_search", "postgis.dwithin" if distance_m is not None else "postgis.intersects"],
-        "data": ["DynamicTrafficLayer", *[layer["layer_id"] for layer in layers]],
-        "outputs": ["TrafficSummary", "GeoJSON", "EvidenceBundle"],
-        "clarification_required": False,
-        "confidence": 1.0,
-        "execution_ready": True,
-        "route_plan_status": "EXECUTION_READY",
-    }
-    qec = {
-        "readiness": "READY",
-        "blockers": [],
-        "warnings": [temporal_metadata["effective_temporal_window"]["warning"]],
-        "data_bindings": [{
-            "dataset_id": "DynamicTrafficLayer",
-            "relation": relation,
-            "geometry_column": "geom",
-            "temporal_column": "observed_month",
-            "count_column": "vessel_count_total",
-            "srid": 4326,
-            "execution_status": "executable",
-            "read_only": True,
-        }],
-        "tool_bindings": [{"tool_id": "traffic.dynamic_layer_search", "operation": "traffic_search_by_time_space", "query_template_id": "traffic_search_by_time_space", "status": "EXECUTED", "parameters": _json_safe(params), "snapshot": snapshot}],
-    }
+    qec = qec_model.model_dump(mode="json")
+    qec["execution_status"] = "EXECUTED"
+    qec["provenance"]["execution"] = {"tool_id": "traffic.dynamic_layer_search",
+        "parameters": _json_safe(params), "snapshot": snapshot,
+        "effective_temporal_window": temporal_metadata["effective_temporal_window"]}
+    qec["warnings"].append(temporal_metadata["effective_temporal_window"]["warning"])
+    route_plan["slots"]["effective_temporal_window"] = temporal_metadata["effective_temporal_window"]
     structured = {
         "status": "COMPLETED",
         "analysis_type": "traffic_search_by_time_space",

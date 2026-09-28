@@ -1,6 +1,5 @@
 /* A shadow result is deliberately separate from executed map/analysis results. */
 window.IntentComparison = (() => {
-    let generation = 0;
     const terminal = new Set(['COMPLETED', 'FAILED', 'QUEUE_FULL', 'INTERRUPTED']);
     function line(parent, label, value) {
         const p = document.createElement('p');
@@ -10,16 +9,21 @@ window.IntentComparison = (() => {
     }
     async function watch(id, query) {
         if (!id) return;
-        const current = ++generation;
-        let panel = document.getElementById('intentComparison');
-        if (!panel) {
-            panel = document.createElement('section');
-            panel.id = 'intentComparison';
-            panel.style.cssText = 'margin:12px 0;padding:12px;border:1px solid #64748b;border-radius:8px;font-size:13px;overflow-wrap:anywhere';
-            document.getElementById('chatHistory').before(panel);
+        if (document.getElementById(`intentComparison-${id}`)) return;
+        let host = document.getElementById('intentComparisonEvidence');
+        if (!host) {
+            host = document.createElement('section');
+            host.id = 'intentComparisonEvidence';
+            host.setAttribute('aria-label', '질의별 의도 해석 비교 근거');
+            document.getElementById('answerEvidence').parentElement.after(host);
         }
-        const title = document.createElement('strong');
-        title.textContent = '규칙 · Qwen · 융합 비교';
+        const panel = document.createElement('details');
+        panel.id = `intentComparison-${id}`;
+        panel.style.cssText = 'margin:10px 0;padding:10px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;overflow-wrap:anywhere';
+        host.prepend(panel);
+        const title = document.createElement('summary');
+        title.style.cursor = 'pointer';
+        title.textContent = `규칙 · Qwen · 융합 비교 근거 — ${query}`;
         panel.replaceChildren(title);
         line(panel, '질의', query);
         const body = document.createElement('div');
@@ -30,14 +34,21 @@ window.IntentComparison = (() => {
         link.rel = 'noopener';
         link.textContent = '비교 원본·모델 입력·출력 보기';
         panel.appendChild(link);
-        for (let attempt = 0; attempt < 600 && current === generation; attempt++) {
+        const review = document.createElement('button');
+        review.type = 'button';
+        review.textContent = 'Evidence 검토 메뉴';
+        review.style.marginLeft = '10px';
+        review.addEventListener('click', () => window.EvidenceWorkspace?.show('evidence'));
+        panel.appendChild(review);
+        for (let attempt = 0; attempt < 600; attempt++) {
             try {
                 const response = await fetch(link.href);
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const record = await response.json();
-                if (current !== generation) return;
+                title.textContent = `규칙 · Qwen · 융합 비교 근거 — ${query} · ${record.status}`;
                 body.replaceChildren();
                 line(body, '비교 상태', `${record.status} (${record.model || 'Qwen / Ollama'})`);
+                line(body, '질의 정규화', record.execution?.normalized_query || record.candidate_trace?.normalized_query || '미기록');
                 line(body, '실행 판단', `${record.execution?.status || 'PENDING'} · 규칙/실행 검증 사용`);
                 line(body, '평가 범위', 'shadow 비교 · 모델 실행 권한 없음 · 점수 보정/정확도 미측정');
                 let hasTopTies = false;
@@ -67,7 +78,7 @@ window.IntentComparison = (() => {
             }
             await new Promise(resolve => setTimeout(resolve, 2000));
         }
-        if (current === generation) line(body, '자동 갱신 종료', '원본 링크에서 최종 상태를 확인하세요.');
+        line(body, '자동 갱신 종료', '원본 링크에서 최종 상태를 확인하세요.');
     }
     return {watch};
 })();

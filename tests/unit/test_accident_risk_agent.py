@@ -47,8 +47,10 @@ def _request() -> AgentRequest:
 async def test_accident_agent_returns_relation_evidence(monkeypatch):
     from services.orchestrator import execution_validator
 
-    def passthrough(qec):
-        return qec
+    from services.orchestrator.schema_binding_adapter import BindingResult
+    fixture = _request().query_execution_context
+    monkeypatch.setattr(execution_validator.schema_binding_adapter, "build_bindings", lambda *_: BindingResult(
+        data_bindings=fixture.data_bindings, tool_bindings=fixture.tool_bindings))
 
     def fake_query(qec):
         return [
@@ -65,8 +67,6 @@ async def test_accident_agent_returns_relation_evidence(monkeypatch):
             }
         ], "select * from serving.accident_s101_relation_current"
 
-    monkeypatch.setattr(accident_agent, "validate_execution_context", passthrough)
-    monkeypatch.setattr(execution_validator, "validate_execution_context", passthrough)
     monkeypatch.setattr(accident_agent, "_query_accident_relations", fake_query)
     monkeypatch.setattr(accident_agent, "build_specialist_kg_context", lambda *_args, **_kwargs: {})
 
@@ -86,4 +86,4 @@ async def test_accident_agent_blocks_without_contract():
     result = await accident_agent.execute_accident_risk(req)
 
     assert result.status == "BLOCKED"
-    assert result.error_code == "EXECUTION_CONTRACT_NOT_READY"
+    assert result.error_code == "BLOCKED_CONFIG"

@@ -521,6 +521,10 @@ def _build_fast_rag_result(
         created_at=datetime.utcnow()
     )
 
+from services.orchestrator.agent_execution_gate import validated_agent
+
+
+@validated_agent('Standard RAG Agent')
 async def execute_rag_search(request: AgentRequest) -> AgentResult:
     """
     Standard·RAG Agent Core Logic.

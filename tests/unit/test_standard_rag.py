@@ -1,6 +1,20 @@
 import pytest
 from shared.schemas.agent import AgentRequest, Intent, SecurityContext, OrchestratorContext
 from services.standard_rag_agent.agent import execute_rag_search
+from shared.schemas.agent import QueryExecutionContext, DataBinding, ToolBinding
+from services.orchestrator.schema_binding_adapter import BindingResult
+from services.orchestrator import execution_validator
+
+@pytest.fixture(autouse=True)
+def document_contract(monkeypatch):
+    monkeypatch.setenv("OLLAMA_EMBEDDING_URL", "http://fixture.invalid/api/embed")
+    monkeypatch.setattr(execution_validator.schema_binding_adapter, "build_bindings", lambda *_: BindingResult(
+        data_bindings=[DataBinding(dataset_id="docs", relation="knowledge.document_chunks")],
+        tool_bindings=[ToolBinding(tool_id="rag.graph_scoped_retrieve", operation="document_search")]))
+
+def attach_contract(request):
+    request.query_execution_context = QueryExecutionContext(request_id=request.task_id,
+        original_query=request.original_query, route_plan={"analysis_type": "document_search"})
 
 @pytest.mark.asyncio
 async def test_rag_search_with_match(monkeypatch):
@@ -18,6 +32,7 @@ async def test_rag_search_with_match(monkeypatch):
         security_context=SecurityContext(clearance_level="PUBLIC")
     )
     
+    attach_contract(request)
     result = await execute_rag_search(request)
     
     assert result.status == "COMPLETED"
@@ -38,6 +53,7 @@ async def test_rag_search_no_match(monkeypatch):
         security_context=SecurityContext(clearance_level="PUBLIC")
     )
     
+    attach_contract(request)
     result = await execute_rag_search(request)
     
     assert result.status == "COMPLETED"

@@ -12,6 +12,28 @@ def candidate():
             "authority_level": "supplemental", "requires_confirmation": True}
 
 
+def test_review_history_survives_reopen_and_keeps_request_order(tmp_path):
+    path = tmp_path / "review.sqlite3"
+    db = live.ComparisonStore(path, worker=False)
+    db.update("old", comparison_id="old", created_at=1, query="원문", human_gold=None)
+    db.update("new", comparison_id="new", created_at=2, query="새 질의", human_gold=None, status="COMPLETED")
+    db.update("old", status="COMPLETED")
+    reopened = live.ComparisonStore(path, worker=False)
+    assert [row["comparison_id"] for row in reopened.recent(2)] == ["new", "old"]
+    assert reopened.recent(1)[0]["human_gold"] is None
+
+
+def test_review_observation_preserves_actual_normalization(monkeypatch, tmp_path):
+    db = live.ComparisonStore(tmp_path / "review.sqlite3", worker=False)
+    monkeypatch.setattr(live, "store", lambda: db)
+    live.observe("request", {"status": "BLOCKED", "orchestrator_v2": {
+        "candidate_trace": {"normalized_query": "부산항 반경 1km"},
+        "query_execution_context": {"readiness": "BLOCKED_DATA", "blockers": ["source missing"]}}})
+    row = db.get("request")
+    assert row["execution"]["normalized_query"] == "부산항 반경 1km"
+    assert row["execution"]["query_execution_context"]["blockers"] == ["source missing"]
+
+
 def payload():
     return {"status": "NEEDS_CLARIFICATION", "error_code": "EXTERNAL_PLACE_CANDIDATES",
             "external_evidence_report": {"domain_id": "administrative_place_lookup"}, "location_candidates": [candidate()]}

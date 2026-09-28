@@ -260,6 +260,8 @@ def test_document_search_does_not_require_spatial_slots(monkeypatch):
     from services.orchestrator import execution_validator
 
     adapter = SchemaBindingAdapter()
+    monkeypatch.setattr(adapter, "_inspect_relation", lambda _: {"exists": True, "has_select": True,
+        "columns": [{"name": name} for name in ("content", "metadata", "embedding")]})
     monkeypatch.setattr(execution_validator, "schema_binding_adapter", adapter)
     monkeypatch.setenv("OLLAMA_EMBEDDING_URL", "http://localhost:11434/api/embed")
     monkeypatch.setenv("EMBEDDING_MODEL", "bge-m3")
@@ -523,6 +525,7 @@ def test_dynamic_traffic_ready_after_ingestion(monkeypatch):
         slots=ExecutionSlots(
             reference_geometry="POINT(129.05 35.1)",
             target_dynamic_layers=["ais_route_analysis"],
+            distance_m=1000,
         ),
         spatial={"spatial_context": {"geometry": "POINT(129.05 35.1)"}},
     )

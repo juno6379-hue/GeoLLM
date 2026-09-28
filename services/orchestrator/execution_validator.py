@@ -1,17 +1,267 @@
 import math
 import os
+import hashlib
+import json
+from pathlib import Path
+from functools import wraps
 from typing import Any, Dict, List
 
 from shapely import wkt
 from shapely.errors import ShapelyError
 
-from shared.schemas.agent import PlanStatus, QueryExecutionContext
+from shared.schemas.agent import PlanStatus, QueryExecutionContext, ExecutionSlots, DataBinding, ToolBinding
 from services.orchestrator.schema_binding_adapter import schema_binding_adapter
 
 
 MAX_RADIUS_M = 50000.0
 MAX_NEAREST_K = 100
 MAX_FORECAST_HORIZON_STEPS = 168
+
+
+def _decision_input(qec):
+    return {"request_id": qec.request_id, "revision": qec.revision, "query": qec.original_query,
+            "slots": qec.slots.model_dump(mode="json"), "spatial": qec.spatial,
+            "analysis_type": qec.route_plan.get("analysis_type"),
+            "dispatch_agent": qec.context.get("dispatch_agent"),
+            "contract_scope": qec.context.get("contract_scope"),
+            "security_context_ref": qec.security_context_ref,
+            "data_bindings": [b.model_dump(mode="json") for b in qec.data_bindings],
+            "tool_bindings": [b.model_dump(mode="json") for b in qec.tool_bindings]}
+
+
+def _input_hash(qec):
+    return hashlib.sha256(json.dumps(_decision_input(qec), sort_keys=True, default=str).encode()).hexdigest()
+
+
+def is_execution_authorized(qec):
+    """A readiness flag alone is never a validation decision; slot changes invalidate it."""
+    if not isinstance(qec, QueryExecutionContext):
+        return False
+    decision = qec.provenance.get("execution_validation") or {}
+    return (qec.readiness == PlanStatus.EXECUTION_READY and not qec.blockers
+            and decision.get("authority") == "ExecutionValidator"
+            and decision.get("input_hash") == _input_hash(qec))
+
+
+def project_execution_decision(qec, plan):
+    """Project a validator decision; callers cannot derive approval from routing/result status."""
+    fields = {"execution_ready": is_execution_authorized(qec), "status": qec.readiness.value,
+              "route_plan_status": qec.readiness.value}
+    if isinstance(plan, dict):
+        plan.update(fields)
+        plan["execution_validation"] = qec.provenance.get("execution_validation")
+    else:
+        for key, value in fields.items():
+            setattr(plan, key, value)
+    return plan
+
+
+def apply_execution_decision(target, validated):
+    """Copy the validated context into an executor-owned object without re-deciding."""
+    for name in ("readiness", "blockers", "warnings", "data_bindings", "tool_bindings", "provenance", "route_plan"):
+        setattr(target, name, getattr(validated, name))
+    return target
+
+
+def _finish(current, blockers, warnings):
+    current.blockers = list(dict.fromkeys(blockers))
+    current.warnings = list(dict.fromkeys(warnings))
+    if current.blockers:
+        current.readiness = next((status for status in (PlanStatus.BLOCKED_POLICY, PlanStatus.BLOCKED_DATA,
+            PlanStatus.BLOCKED_CONFIG, PlanStatus.NEEDS_USER_INPUT)
+            if any(item.startswith(status.value) for item in current.blockers)), PlanStatus.BLOCKED_CONFIG)
+    else:
+        current.readiness = PlanStatus.EXECUTION_READY
+    current.provenance["execution_validation"] = {"authority": "ExecutionValidator", "version": "2",
+        "readiness": current.readiness.value, "input_hash": _input_hash(current), "revision": current.revision,
+        "operation": current.route_plan.get("analysis_type")}
+    project_execution_decision(current, current.route_plan)
+    return current
+
+
+_LOOKUP_SOURCES = {
+    "accident_event_lookup": ("serving.accident_events", {"event_id", "geom", "authority", "cause", "accident_type"}, "accident.event_lookup"),
+    "dataset_evidence_lookup": ("knowledge.document_chunks", {"metadata", "content", "embedding"}, "rag.dataset_profile_retrieve"),
+    "traffic_coverage": ("serving.dynamic_traffic_layer", {"layer_source", "observed_month"}, "diagnostics.traffic_coverage"),
+    "document_coverage": ("knowledge.document_chunks", {"metadata", "embedding"}, "diagnostics.document_coverage"),
+    "capability_vector": ("knowledge.capability_embeddings", {"id", "embedding"}, "diagnostics.capability_vector"),
+}
+
+
+def _validate_lookup(current, adapter):
+    operation = current.route_plan.get("analysis_type")
+    blockers, warnings = list(current.blockers), list(current.warnings)
+    current.data_bindings, current.tool_bindings = [], []
+    if not _has_document_query(current):
+        blockers.append("NEEDS_USER_INPUT: lookup query is required")
+    if operation in {"definition_lookup", "terminology_relation_lookup"}:
+        from services.orchestrator.definition_router import resolve_definition
+        entry = resolve_definition(current.original_query or "")
+        if not entry or not entry.get("definition_ko") or not entry.get("source_ref"):
+            blockers.append("BLOCKED_DATA: grounded definition is unavailable")
+        else:
+            current.data_bindings = [DataBinding(dataset_id=entry["source_kind"], relation=entry["source_ref"], geometry_column="")]
+            current.tool_bindings = [ToolBinding(tool_id="definition.registry_lookup", operation=operation)]
+    elif operation in {"local_document_lookup", "resolver_registry", "metadata_discovery", "evidence_validation"}:
+        root = Path(__file__).resolve().parents[2]
+        files = {"resolver_registry": ("capability_registry.yaml",),
+                 "metadata_discovery": ("data_registry.yaml", "agent_registry.json"),
+                 "evidence_validation": ("validation_rule_registry.yaml",)}
+        for name in files.get(operation, ("s101_catalogue.json", "legal_notice_registry.yaml")):
+            if (root / "data" / name).is_file():
+                current.data_bindings.append(DataBinding(dataset_id=name, relation=f"data/{name}", geometry_column=""))
+        if not current.data_bindings:
+            blockers.append("BLOCKED_DATA: local document sources unavailable")
+        current.tool_bindings = [ToolBinding(tool_id=f"inspection.{operation}" if operation in {"metadata_discovery", "evidence_validation"} else "definition.registry_lookup", operation=operation)]
+    else:
+        relation, columns, tool = _LOOKUP_SOURCES[operation]
+        info = adapter._inspect_relation(relation)
+        current.provenance["schema_binding"] = {"inspected_relations": {relation: info}}
+        actual = {c["name"] for c in info.get("columns", [])}
+        if not info.get("exists") or not info.get("has_select") or not columns <= actual:
+            blockers.append(f"BLOCKED_DATA: lookup source unavailable: {relation}")
+        else:
+            current.data_bindings = [DataBinding(dataset_id=relation, relation=relation, geometry_column="")]
+        current.tool_bindings = [ToolBinding(tool_id=tool, operation=operation)]
+        if operation == "accident_event_lookup" and not current.slots.filters.get("terms"):
+            blockers.append("NEEDS_USER_INPUT: accident filters are required")
+    return _finish(current, blockers, warnings)
+
+
+def validate_lookup_request(state, operation, *, slots=None, binding_adapter=None):
+    qec = QueryExecutionContext(request_id=str(state.get("task_id") or "local"), original_query=state.get("query") or "",
+        slots=ExecutionSlots.from_payload(slots or {}), route_plan={"analysis_type": operation},
+        spatial={"spatial_context": state.get("spatial_context") or {}})
+    return validate_execution_context(qec, binding_adapter=binding_adapter)
+
+
+def validate_agent_execution(request, agent_name):
+    """Bind approval to a declared agent operation, request and security context."""
+    from services.orchestrator.agent_registry import registry
+    agent = registry.get_agent(agent_name) or {}
+    policy = agent.get("execution_contract") or {}
+    scope = policy.get("scope")
+    if scope == "inspection":
+        current = QueryExecutionContext(request_id=request.task_id, task_id=request.task_id,
+            original_query=request.original_query, route_plan={"analysis_type": policy.get("operation")},
+            context={"parent_request_id": getattr(request.query_execution_context, "request_id", None)})
+    else:
+        current = request.query_execution_context.model_copy(deep=True) if request.query_execution_context else QueryExecutionContext(
+            request_id=request.task_id, task_id=request.task_id, original_query=request.original_query)
+    blockers = list(current.blockers)
+    current.context.update(dispatch_agent=agent_name, contract_scope=scope)
+    current.security_context_ref = f"user:{request.user_id}@org:{request.organization_id}:{request.security_context.clearance_level}"
+    if scope not in {"inspection", "execution"}:
+        blockers.append("BLOCKED_CONFIG: agent has no supported execution contract")
+    if scope == "execution" and request.query_execution_context is None:
+        blockers.append("BLOCKED_CONFIG: query_execution_context is required")
+    if current.original_query != request.original_query or any(value and value != request.task_id for value in (current.request_id, current.task_id)):
+        blockers.append("BLOCKED_POLICY: execution context belongs to another request")
+    levels = {"PUBLIC": 1, "RESTRICTED": 2, "CONFIDENTIAL": 3, "SECRET": 4}
+    if levels.get(request.security_context.clearance_level, 0) < agent.get("clearance_level", 1):
+        blockers.append("BLOCKED_POLICY: agent clearance requirement is not met")
+    operation = current.route_plan.get("analysis_type") or current.slots.analysis_type or current.slots.operation
+    selected_agent = current.route_plan.get("primary_agent")
+    if selected_agent and selected_agent != agent_name:
+        blockers.append("BLOCKED_POLICY: plan selects a different agent")
+    if operation not in policy.get("operations", [policy.get("operation")]):
+        blockers.append(f"BLOCKED_CONFIG: operation {operation!r} is not supported by {agent_name}")
+    if blockers:
+        return _finish(current, blockers, current.warnings)
+    current.request_id = current.task_id = request.task_id
+    current.route_plan["analysis_type"] = operation
+    return validate_execution_context(current)
+
+
+def reject_agent_execution(request, agent_name, reason):
+    current = request.query_execution_context.model_copy(deep=True) if request.query_execution_context else QueryExecutionContext(
+        request_id=request.task_id, task_id=request.task_id, original_query=request.original_query)
+    current.context["dispatch_agent"] = agent_name
+    return _finish(current, [*current.blockers, f"BLOCKED_CONFIG: {reason}"], current.warnings)
+
+
+def execution_gate_failure(state, qec):
+    status = "NEEDS_CLARIFICATION" if qec.readiness == PlanStatus.NEEDS_USER_INPUT else "BLOCKED"
+    summary = "실행 검증을 통과하지 못했습니다. " + "; ".join(qec.blockers)
+    final = {"task_id": state.get("task_id"), "status": status, "error_code": "EXECUTION_GATE",
+             "summary": summary, "answer_text": summary,
+             "orchestrator_v2": {"route_plan": qec.route_plan, "query_execution_context": qec.model_dump(mode="json")}}
+    return {"status": status, "final_dict": final, "task_plan": qec.route_plan,
+            "query_execution_context": qec.model_dump(mode="json")}
+
+
+def attach_execution_decision(final, validated):
+    """Keep the approval scope separate from execution success/partial/failure."""
+    orch = final.setdefault("orchestrator_v2", {})
+    plan = orch.setdefault("route_plan", {})
+    project_execution_decision(validated, plan)
+    context = orch.setdefault("query_execution_context", {})
+    context.update(validated.model_dump(mode="json"))
+    context["route_plan"] = validated.route_plan
+    return final
+
+
+def validated_lookup(operation, *, slot_builder=None, delegate_if=None):
+    """Legacy lookup adapter: preflight first, never approve by inspecting the result."""
+    def decorate(function):
+        @wraps(function)
+        async def guarded(state):
+            import asyncio
+            if delegate_if and delegate_if(state):
+                return await function(state)
+            slots = slot_builder(state) if slot_builder else {}
+            validated = await asyncio.to_thread(validate_lookup_request, state, operation, slots=slots)
+            if not is_execution_authorized(validated):
+                return execution_gate_failure(state, validated)
+            update = await function(state)
+            if isinstance(update.get("final_dict"), dict):
+                final = attach_execution_decision(update["final_dict"], validated)
+                update["task_plan"] = final["orchestrator_v2"]["route_plan"]
+                update["query_execution_context"] = final["orchestrator_v2"]["query_execution_context"]
+            return update
+        return guarded
+    return decorate
+
+
+def validate_uport_execution_context(qec, agent, db, selection):
+    current = qec.model_copy(deep=True)
+    blockers = list(current.blockers)
+    if current.readiness != PlanStatus.PLAN_READY:
+        blockers.append("BLOCKED_CONFIG: UPort plan is not ready")
+    if db is None or selection is None or agent is None:
+        blockers.append("BLOCKED_CONFIG: UPort execution dependencies are missing")
+    if any(step.get("capability_id") not in {"uport.s101.berth.search", "uport.map.visualize"} for step in current.route_plan.get("steps", [])):
+        blockers.append("BLOCKED_CONFIG: UPort operation has no executable adapter")
+    if not blockers:
+        agent.validate(current, db)
+        current.data_bindings = [DataBinding(dataset_id=str(selection.dataset_id), relation="projection.s101_feature_valid",
+                                  srid=4326, snapshot_version=str(selection.dataset_version_id))]
+        current.tool_bindings = [ToolBinding(tool_id="uport.map.berths", operation="selected_berth_lookup")]
+    return _finish(current, blockers, current.warnings)
+
+
+def validate_place_resolution(query, payload, *, task_id=None):
+    """Resolved server evidence permits display only; never promotes analysis authority."""
+    resolution = payload.get("location_resolution") or {}
+    qec = QueryExecutionContext(request_id=task_id, original_query=query,
+        route_plan={"analysis_type": "place_lookup"},
+        slots=ExecutionSlots(reference_geometry=payload.get("geometry"), crs=payload.get("crs"),
+                             location_text=payload.get("location_text"), analysis_type="place_lookup"),
+        provenance={"location_resolution": resolution, "execution_permission": payload.get("execution_permission")})
+    blockers = []
+    if payload.get("status") != "RESOLVED":
+        prefix = "NEEDS_USER_INPUT" if payload.get("status") == "NEEDS_CLARIFICATION" else "BLOCKED_DATA"
+        return _finish(qec, [f"{prefix}: {payload.get('error_code') or 'location requires confirmation'}"], [])
+    if not _has_reference_geometry(qec) or qec.slots.crs != "EPSG:4326":
+        blockers.append("NEEDS_USER_INPUT: valid geographic location is required")
+    elif not all(-limit <= value <= limit for value, limit in zip(wkt.loads(qec.slots.reference_geometry).bounds, (180, 90, 180, 90))):
+        blockers.append("NEEDS_USER_INPUT: geographic location is out of bounds")
+    if not resolution.get("source_ref"):
+        blockers.append("BLOCKED_DATA: location source is missing")
+    qec.data_bindings = [DataBinding(dataset_id="place_resolution", relation=resolution.get("source_ref") or "unresolved", srid=4326)]
+    qec.tool_bindings = [ToolBinding(tool_id="place.resolve", operation="map_view_only")]
+    qec.warnings = ["Location validation permits map display only, not analysis authority."]
+    return _finish(qec, blockers, qec.warnings)
 
 
 def _has_reference_geometry(qec: QueryExecutionContext) -> bool:
@@ -32,7 +282,7 @@ def _has_reference_geometry(qec: QueryExecutionContext) -> bool:
 
 def _has_target_binding(qec: QueryExecutionContext) -> bool:
     slots = qec.slots
-    return bool(slots.target_features or slots.nftc_codes or slots.resolved_target_set)
+    return bool(slots.target_features or slots.target_layers or slots.nftc_codes or slots.resolved_target_set)
 
 
 def _requested_integer(filters: Dict[str, Any], *keys: str, default: int) -> int:
@@ -92,6 +342,11 @@ def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=No
         from services.uport.validation import validate_uport_plan
         return validate_uport_plan(qec)
     current = qec.model_copy(deep=True)
+    current.readiness = PlanStatus.DRAFT
+    current.route_plan.update(execution_ready=False, status="DRAFT", route_plan_status="DRAFT")
+    current.provenance.pop("execution_validation", None)
+    if current.route_plan.get("analysis_type") in {*_LOOKUP_SOURCES, "definition_lookup", "terminology_relation_lookup", "local_document_lookup", "resolver_registry", "metadata_discovery", "evidence_validation"}:
+        return _validate_lookup(current, binding_adapter or schema_binding_adapter)
     blockers: List[str] = list(current.blockers or [])
     warnings: List[str] = list(current.warnings or [])
     slots = current.slots
@@ -160,7 +415,7 @@ def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=No
             if slots.crs != 'EPSG:4326':
                 blockers.append('NEEDS_USER_INPUT: attribute search requires EPSG:4326')
 
-    elif analysis_type in {"feature_within_area", "spatial_feature_search"}:
+    elif analysis_type in {"feature_within_area", "spatial_feature_search", "feature_search_by_area"}:
         if not _has_reference_geometry(current):
             blockers.append("NEEDS_USER_INPUT: AOI geometry is unresolved")
         if not _has_target_binding(current):
@@ -185,13 +440,15 @@ def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=No
         if not current.tool_bindings:
             blockers.append("BLOCKED_CONFIG: no validated tool binding")
 
-    elif analysis_type in {"document_search", "rag.document_search", "graph_scoped_rag"} or route_plan.get("primary_agent") in {"Standard RAG Agent", "standard-rag-agent"}:
+    elif analysis_type in {"document_search", "rag.document_search", "graph_scoped_rag"}:
         if not _has_document_query(current):
             blockers.append("NEEDS_USER_INPUT: document search query is required")
         if not _rag_profile_available(current):
             blockers.append("BLOCKED_CONFIG: query embedding profile is not configured")
         if not current.tool_bindings:
             blockers.append("BLOCKED_CONFIG: no validated RAG tool binding")
+        if not current.data_bindings:
+            blockers.append("BLOCKED_DATA: no validated document source binding")
 
     elif analysis_type in {"accident_feature_relation", "accident_relation_lookup", "occurred_in_lookup"}:
         if not _has_feature_instance_ref(current):
@@ -225,6 +482,17 @@ def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=No
     elif analysis_type in {"traffic_search_by_time_space", "dynamic_traffic_lookup"}:
         if not _has_reference_geometry(current):
             blockers.append("NEEDS_USER_INPUT: reference geometry is unresolved")
+        elif slots.distance_m is None and wkt.loads(slots.reference_geometry or current.spatial["spatial_context"]["geometry"]).geom_type not in {"Polygon", "MultiPolygon"}:
+            blockers.append("NEEDS_USER_INPUT: distance_m or map bounds is required")
+        if slots.distance_m is not None:
+            try:
+                distance = float(slots.distance_m)
+                if not math.isfinite(distance) or distance <= 0:
+                    blockers.append("NEEDS_USER_INPUT: distance_m must be finite and positive")
+                elif distance > MAX_RADIUS_M:
+                    blockers.append(f"BLOCKED_POLICY: distance_m exceeds max radius {MAX_RADIUS_M:g}")
+            except (TypeError, ValueError):
+                blockers.append("NEEDS_USER_INPUT: distance_m must be numeric")
         if not current.data_bindings:
             blockers.append("BLOCKED_CONFIG: no validated dynamic traffic binding")
         if not current.tool_bindings:
@@ -276,21 +544,4 @@ def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=No
     else:
         blockers.append(f"BLOCKED_CONFIG: unsupported operation: {analysis_type}")
 
-    # Deduplicate while preserving order.
-    current.blockers = list(dict.fromkeys(blockers))
-    current.warnings = list(dict.fromkeys(warnings))
-
-    if current.blockers:
-        if any(item.startswith("BLOCKED_POLICY") for item in current.blockers):
-            current.readiness = PlanStatus.BLOCKED_POLICY
-        elif any(item.startswith("BLOCKED_DATA") for item in current.blockers):
-            current.readiness = PlanStatus.BLOCKED_DATA
-        elif any(item.startswith("BLOCKED_CONFIG") for item in current.blockers):
-            current.readiness = PlanStatus.BLOCKED_CONFIG
-        elif any(item.startswith("NEEDS_USER_INPUT") for item in current.blockers):
-            current.readiness = PlanStatus.NEEDS_USER_INPUT
-        else:
-            current.readiness = PlanStatus.BLOCKED_CONFIG
-    else:
-        current.readiness = PlanStatus.EXECUTION_READY
-    return current
+    return _finish(current, blockers, warnings)

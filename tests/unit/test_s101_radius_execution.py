@@ -108,16 +108,14 @@ def test_distance_wording_is_normalized(expression, expected):
     assert radius.parse_distance(f"부산항 입구 {expression} 이내 위험객체", {}) == expected
 
 
-def test_missing_radius_defaults_to_nearby_three_km_for_hazard_search(state):
+def test_missing_radius_requires_user_input(state):
     state["query"] = "부산항입구위험객체"
     state["spatial_context"].pop("buffer_distance")
 
-    context, _, _, params = radius.prepare_radius_request(state)
-
-    assert context.slots.distance_m == 3000
-    assert params["distance_m"] == 3000
-    assert context.provenance["distance_policy"]["default_applied"] is True
-    assert "기본 부근 범위" in context.provenance["distance_policy"]["summary"]
+    with pytest.raises(radius.RadiusProblem) as caught:
+        radius.prepare_radius_request(state)
+    assert caught.value.status == "NEEDS_USER_INPUT"
+    assert caught.value.code == "DISTANCE_REQUIRED"
 
 
 def test_current_map_bounds_prepare_area_search_without_place_resolution(state):
@@ -133,7 +131,7 @@ def test_current_map_bounds_prepare_area_search_without_place_resolution(state):
     assert layer["physical_table"]
 
 
-def test_contextual_hazard_without_map_bounds_returns_definition_not_place_error(state, monkeypatch):
+def test_contextual_hazard_without_map_bounds_requires_input_without_querying_db(state, monkeypatch):
     state["query"] = "주변 위험객체를 찾아줘"
     state["spatial_context"] = {}
     connect = Mock(side_effect=AssertionError("Definition fallback must not query DB"))
@@ -142,11 +140,10 @@ def test_contextual_hazard_without_map_bounds_returns_definition_not_place_error
     result = radius.execute_radius_request(state)
 
     connect.assert_not_called()
-    assert result["status"] == "COMPLETED"
-    assert result["structured_result"]["analysis_type"] == "hazard_definition"
-    assert result["structured_result"]["requires_map_context_for_search"] is True
+    assert result["status"] == "NEEDS_CLARIFICATION"
+    assert result["error_code"] == "DISTANCE_REQUIRED"
     assert "지명을 찾지 못했습니다" not in result["summary"]
-    assert "위험객체" in result["summary"]
+    assert "반경" in result["summary"]
 
 
 @pytest.mark.parametrize("value", [0, -1, True, float("nan"), float("inf"), "invalid"])

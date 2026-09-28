@@ -4,6 +4,8 @@ from shared.schemas.agent import AgentRequest, AgentResult, AgentStatus, MapOutp
 from services.drone_analysis_agent.tools import DroneToolRegistry
 from services.drone_analysis_agent.point_cloud_processor import PointCloudProcessor
 
+from services.orchestrator.agent_execution_gate import validated_agent
+
 class DroneLiDARAnalysisAgent:
     """
     Independent Specialist Agent
@@ -15,6 +17,7 @@ class DroneLiDARAnalysisAgent:
         self.agent_version = "3.0.0"
         self.tools = DroneToolRegistry()
 
+    @validated_agent("Drone LiDAR Analysis Agent")
     def process(self, request: AgentRequest) -> AgentResult:
         tool_calls: List[ToolCallLog] = []
         provenance = {}
@@ -111,3 +114,9 @@ class DroneLiDARAnalysisAgent:
                 tool_calls=tool_calls,
                 provenance=provenance
             )
+
+
+@validated_agent("Drone LiDAR Analysis Agent")
+async def execute_drone_analysis(request: AgentRequest) -> AgentResult:
+    import asyncio
+    return await asyncio.to_thread(DroneLiDARAnalysisAgent().process, request)

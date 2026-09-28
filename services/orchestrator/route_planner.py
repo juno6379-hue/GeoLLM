@@ -124,10 +124,9 @@ class RoutePlanner:
         route_plan["candidate_query_templates"] = graph_context.get("candidate_query_templates", [])
         route_plan["spatial_execution_available"] = data_discovery_result.get("can_execute_spatial_query", False)
 
-        # Check Readiness
+        # Routing is a proposal. Only ExecutionValidator can grant execution readiness.
         if route_plan["primary_agent"] and route_plan["primary_agent"] != "ClarificationAgent":
-            route_plan["execution_ready"] = True
-            route_plan["route_plan_status"] = "ROUTED"
+            route_plan["route_plan_status"] = "PLAN_READY"
         else:
             route_plan["execution_ready"] = False
             route_plan["route_plan_status"] = "NEEDS_CLARIFICATION"

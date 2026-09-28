@@ -64,12 +64,15 @@ class SchemaBindingAdapter:
             tool = 'postgis.selected_feature_lookup' if analysis_type == 'selected_feature_lookup' else 'postgis.dwithin'
             self._bind_tool(tool, analysis_type, None, result)
         elif analysis_type in {"feature_search_by_radius", "feature_dwithin"}:
-            self._bind_feature_radius(route_plan, result)
-        elif analysis_type in {"feature_within_area", "spatial_feature_search"}:
+            if slots.get("target_layers") and not slots.get("target_features"):
+                self._bind_spatial_layer_analysis("spatial_layer_overlay", slots, result)
+            else:
+                self._bind_feature_radius(route_plan, result)
+        elif analysis_type in {"feature_within_area", "spatial_feature_search", "feature_search_by_area"}:
             self._bind_feature_area(route_plan, result)
         elif analysis_type in {"nearest_feature", "nearest_feature_search"}:
             self._bind_nearest_feature(route_plan, result)
-        elif analysis_type in {"document_search", "rag.document_search", "graph_scoped_rag"} or route_plan.get("primary_agent") in {"Standard RAG Agent", "standard-rag-agent"}:
+        elif analysis_type in {"document_search", "rag.document_search", "graph_scoped_rag"}:
             self._bind_document_search(result)
         elif analysis_type in {"traffic_search_by_time_space", "dynamic_traffic_lookup"}:
             self._bind_dynamic_traffic(slots, result)
@@ -204,6 +207,14 @@ class SchemaBindingAdapter:
 
     def _bind_document_search(self, result: BindingResult) -> None:
         self._bind_tool("rag.graph_scoped_retrieve", "document_search", "graph_scoped_rag", result)
+        relation = "knowledge.document_chunks"
+        info = self._inspect_relation(relation)
+        result.inspected_relations[relation] = info
+        columns = {item["name"] for item in info.get("columns", [])}
+        if not info.get("exists") or not info.get("has_select") or not {"content", "metadata", "embedding"} <= columns:
+            result.blockers.append("BLOCKED_DATA: document source schema or SELECT permission is unavailable")
+        else:
+            result.data_bindings.append(DataBinding(dataset_id=relation, relation=relation, geometry_column=""))
 
     def _bind_dynamic_traffic(self, slots: Dict[str, Any], result: BindingResult) -> None:
         layer_ids = list(slots.get("target_dynamic_layers") or slots.get("target_layers") or [])

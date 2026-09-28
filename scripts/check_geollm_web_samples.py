@@ -21,7 +21,7 @@ def extract_presets(html):
     return prompts
 
 
-def observe(base_url, number, query, spatial_context=None):
+def observe(base_url, number, query, spatial_context=None, *, socket_timeout=30, observation_timeout=120):
     context = spatial_context or {}
     row = {'sample': number, 'query': query, 'browser_tested': False, 'spatial_context': context, 'events': []}
     start = time.monotonic()
@@ -29,9 +29,9 @@ def observe(base_url, number, query, spatial_context=None):
         body = json.dumps({'query': query, 'user_id': 'admin', 'organization_id': 'test',
                            'spatial_context': context}, ensure_ascii=False).encode()
         req = Request(base_url+'/api/v1/tasks/stream', data=body, headers={'Content-Type': 'application/json'})
-        with urlopen(req, timeout=30) as response:
+        with urlopen(req, timeout=socket_timeout) as response:
             for raw in response:
-                if time.monotonic()-start > 120:
+                if time.monotonic()-start > observation_timeout:
                     raise TimeoutError('Observation deadline exceeded; backend task may still be running')
                 line = raw.decode('utf-8').strip()
                 if not line.startswith('data: '):

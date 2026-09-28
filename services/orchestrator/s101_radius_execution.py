@@ -15,7 +15,7 @@ from shapely import wkt
 from shapely.geometry import shape, box
 from shapely.errors import ShapelyError
 
-from services.orchestrator.execution_validator import MAX_RADIUS_M, validate_execution_context
+from services.orchestrator.execution_validator import MAX_RADIUS_M, validate_execution_context, apply_execution_decision
 from services.orchestrator.schema_binding_adapter import SchemaBindingAdapter
 from services.orchestrator.s101_portrayal import resolve_s101_portrayal
 from services.spatial_analysis_agent.place_resolver import PlaceResolutionProblem, resolve_location
@@ -25,7 +25,6 @@ DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 OPERATION = "feature_search_by_radius"
 PROFILE = "s101_hazard_radius"
 CONCEPT = "navigation_hazard_object"
-DEFAULT_NEARBY_RADIUS_M = 3000.0
 
 
 class RadiusProblem(Exception):
@@ -103,7 +102,7 @@ def parse_distance(query, spatial):
     except (TypeError, ValueError) as exc:
         raise RadiusProblem("NEEDS_USER_INPUT", "INVALID_RADIUS", "반경을 양의 거리로 지정해 주세요.") from exc
     if not distances:
-        distances.add(DEFAULT_NEARBY_RADIUS_M)
+        raise RadiusProblem("NEEDS_USER_INPUT", "DISTANCE_REQUIRED", "검색 반경 또는 지도 범위를 지정해 주세요.")
     if len(distances) > 1:
         raise RadiusProblem("NEEDS_USER_INPUT", "CONFLICTING_RADIUS", "서로 다른 반경이 지정되어 있습니다. 사용할 반경을 알려 주세요.")
     distance = distances.pop()
@@ -122,11 +121,7 @@ def _distance_policy(query, spatial, distance):
             "label": f"사용자가 지정한 반경 {distance:g}m",
             "summary": f"질의 또는 지도 컨텍스트에 지정된 반경 {distance:g}m를 적용했습니다.",
         }
-    return {
-        "default_applied": True,
-        "label": "부근 기본 반경 3km",
-        "summary": "질의에 반경이 명시되지 않아 해양 위험객체 조회의 기본 부근 범위인 3km 이내를 먼저 적용했습니다. 더 넓거나 좁은 범위가 필요하면 예: 1km, 5km처럼 다시 지정할 수 있습니다.",
-    }
+    raise RadiusProblem("NEEDS_USER_INPUT", "DISTANCE_REQUIRED", "검색 반경 또는 지도 범위를 지정해 주세요.")
 
 
 def _extract_explicit_distance(query):
@@ -382,9 +377,9 @@ def prepare_bounds_request(state):
         "data": [layer_id],
         "radius_layer_id": layer_id,
         "radius_template_id": template_id,
-        "execution_ready": True,
-        "status": "EXECUTION_READY",
-        "route_plan_status": "EXECUTION_READY",
+        "execution_ready": False,
+        "status": "PLAN_READY",
+        "route_plan_status": "PLAN_READY",
     }
     qec = QueryExecutionContext(
         request_id=request_id,
@@ -439,8 +434,7 @@ def _fetch_result(qec, layer, template, params):
             raise RadiusProblem("BLOCKED_CONFIG", "REGISTRY_CHANGED", "데이터 연결 설정이 변경되었습니다. 다시 조회해 주세요.")
         if adapter.template_registry.get("templates", {}).get(qec.route_plan["radius_template_id"]) != template:
             raise RadiusProblem("BLOCKED_CONFIG", "REGISTRY_CHANGED", "검색 템플릿이 변경되었습니다. 다시 조회해 주세요.")
-        qec.readiness = PlanStatus.EXECUTION_READY
-        qec.route_plan.update(execution_ready=True, status="EXECUTION_READY", route_plan_status="EXECUTION_READY")
+        apply_execution_decision(qec, validated)
         info = validated.provenance["schema_binding"]["inspected_relations"].get(layer["physical_table"], {})
         columns = {column["name"] for column in info.get("columns", [])}
         required = {layer["id_column"], layer["code_column"], layer["name_column"], layer["geometry_column"], layer["attributes_column"], "dataset_id", "dataset_version_id"}
@@ -466,8 +460,6 @@ def _fetch_result(qec, layer, template, params):
             total, counts, rows, search_geometry = cursor.fetchone()
             cursor.execute("SELECT txid_current_snapshot()::text, transaction_timestamp()::text")
             snapshot, captured_at = cursor.fetchone()
-    qec.readiness = PlanStatus.EXECUTION_READY
-    qec.route_plan.update(execution_ready=True, status="EXECUTION_READY", route_plan_status="EXECUTION_READY")
     qec.snapshot_versions.update(data_snapshot=snapshot, captured_at=captured_at)
     return int(total), counts, rows, search_geometry
 
@@ -517,6 +509,10 @@ def _fetch_bounds_result(qec, layer, params):
         )]
         inspected = adapter._inspect_relation(layer["physical_table"])
         qec.provenance.update({"schema_binding": {"inspected_relations": {layer["physical_table"]: inspected}}})
+        validated = validate_execution_context(qec, binding_adapter=adapter)
+        if validated.readiness != PlanStatus.EXECUTION_READY:
+            raise RadiusProblem(validated.readiness.value, "EXECUTION_GATE", "지도 범위 실행 검증을 통과하지 못했습니다.")
+        apply_execution_decision(qec, validated)
         with connection.cursor() as cursor:
             cursor.execute("SELECT set_config('statement_timeout', '30000', true)")
             cursor.execute("SELECT set_config('lock_timeout', '1000', true)")
@@ -596,8 +592,6 @@ def _fetch_bounds_result(qec, layer, params):
             total, counts, rows, search_geometry = cursor.fetchone()
             cursor.execute("SELECT txid_current_snapshot()::text, transaction_timestamp()::text")
             snapshot, captured_at = cursor.fetchone()
-    qec.readiness = PlanStatus.EXECUTION_READY
-    qec.route_plan.update(execution_ready=True, status="EXECUTION_READY", route_plan_status="EXECUTION_READY")
     qec.snapshot_versions.update(data_snapshot=snapshot, captured_at=captured_at)
     return int(total), dict(counts or {}), list(rows or []), search_geometry
 
@@ -877,7 +871,7 @@ def build_hazard_definition_result(state):
             "suggested_search_inputs": {
                 "current_map_bbox": "지도 화면 범위를 전달하면 현 bbox 안의 위험객체를 조회합니다.",
                 "reference_location": "예: 부산항 입구 위험객체, 독도 주변 위험객체",
-                "default_nearby_radius_m": DEFAULT_NEARBY_RADIUS_M,
+                "default_nearby_radius_m": None,
             },
             "evidence_bundle_counts": {"spatial_feature_evidence": 0, "spatial_layer_evidence": 0, "rag_evidence": 0, "kg_provenance": 1, "regulatory_evidence": 0},
             "quality_metrics": quality_metrics,

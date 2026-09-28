@@ -18,6 +18,7 @@ from services.orchestrator.fast_path_policy import instant_place_navigation_deci
 from services.orchestrator.graph import orchestrator_graph
 from services.orchestrator.place_router import place_navigation_target, resolve_payload, allow_display_navigation
 from services.orchestrator.live_intent_comparison import store as comparison_store, observe as observe_comparison
+from services.orchestrator.execution_validator import validate_place_resolution, project_execution_decision, is_execution_authorized
 from services.orchestrator.state import OrchestratorState
 from services.orchestrator.task_store import PersistentTaskStore
 
@@ -94,7 +95,11 @@ def _place_candidate_features(candidates: list[dict]) -> dict:
 
 
 def _instant_place_final(task_id: str, query: str, payload: dict) -> dict:
-    resolved = payload.get("status") == "RESOLVED"
+    validated = validate_place_resolution(query, payload, task_id=task_id)
+    resolved = is_execution_authorized(validated)
+    if payload.get("status") == "RESOLVED" and not resolved:
+        payload = {**payload, "status": "BLOCKED", "error_code": "EXECUTION_GATE",
+                   "summary": "위치 실행 검증을 통과하지 못했습니다.", "geometry": None}
     target = place_navigation_target(query)
     coords = _point_coordinates(payload.get("geometry"))
     candidates = payload.get("location_candidates") or []
@@ -138,9 +143,9 @@ def _instant_place_final(task_id: str, query: str, payload: dict) -> dict:
         "primary_agent": "Spatial Analysis Agent",
         "required_tools": ["place.resolve"],
         "required_data": ["local_place_registry", "external_evidence_registry"],
-        "execution_ready": resolved,
-        "status": "EXECUTION_READY" if resolved else "NEEDS_USER_INPUT",
-        "route_plan_status": "EXECUTION_READY" if resolved else "NEEDS_USER_INPUT",
+        "execution_ready": False,
+        "status": "DRAFT",
+        "route_plan_status": "DRAFT",
         "slots": slots,
     }
     qec = {
@@ -149,8 +154,8 @@ def _instant_place_final(task_id: str, query: str, payload: dict) -> dict:
         "original_query": query,
         "normalized_query": target,
         "slots": slots,
-        "readiness": "EXECUTION_READY" if resolved else "NEEDS_USER_INPUT",
-        "blockers": [] if resolved else ["location requires user confirmation"],
+        "readiness": validated.readiness.value,
+        "blockers": validated.blockers,
         "warnings": (["supplemental location permitted for map display only"] if payload.get("execution_permission", {}).get("allowed") else ([] if resolved else ["location confirmation is required"])),
         "execution_permission": payload.get("execution_permission"),
         "data_bindings": [{"dataset_id": "place_registry", "status": "available"}],
@@ -162,6 +167,11 @@ def _instant_place_final(task_id: str, query: str, payload: dict) -> dict:
             "resolver": "services.orchestrator.place_router.resolve_payload",
         },
     }
+    project_execution_decision(validated, route_plan)
+    qec.update(validated.model_dump(mode="json"))
+    qec["normalized_query"] = target
+    qec["route_plan"] = route_plan
+    qec["execution_permission"] = payload.get("execution_permission")
     norm_result = {
         "normalized_query": target,
         "canonical_terms": [target],
@@ -1087,6 +1097,12 @@ def build_debug_trace(state_vals: dict) -> dict:
         None,
     )
     verified_derived = tp.get("derived_concept") or _valid_debug_derived_concept(derived_from_qec) or derived_from_context or derived_from_norm or "None"
+    from services.orchestrator.execution_validator import is_execution_authorized
+    from shared.schemas.agent import QueryExecutionContext
+    try:
+        authorized_execution = is_execution_authorized(QueryExecutionContext.model_validate(qec_dict))
+    except (ValueError, TypeError):
+        authorized_execution = False
     intent_dict = {
         "Intent": tp.get("intent", ctx_dict.get("intent", "None")),
         "Context": tp.get("context", ctx_dict.get("selected_context", "None")),
@@ -1096,7 +1112,7 @@ def build_debug_trace(state_vals: dict) -> dict:
         "Target Agent": tp.get("primary_agent", "None"),
         "Required Tools": tp.get("tools", tp.get("required_tools", [])),
         "Required Data": tp.get("data", tp.get("required_data", [])),
-        "Execution Ready": tp.get("execution_ready", qec_dict.get("readiness") == "EXECUTION_READY"),
+        "Execution Ready": authorized_execution,
         "Route Plan Status": tp.get("route_plan_status", "UNKNOWN")
     }
 
@@ -1148,7 +1164,7 @@ def build_debug_trace(state_vals: dict) -> dict:
         "context": ctx_dict.get("analysis_type") or ctx_dict.get("selected_context", ""),
         "agent": ctx_dict.get("selected_agents", [""])[0] if ctx_dict.get("selected_agents") else "",
         "tools": plan_tools or ([ctx_dict.get("selected_tool")] if ctx_dict.get("selected_tool") else []),
-        "execution_ready": bool(tp.get("execution_ready")) or qec_dict.get("readiness") == "EXECUTION_READY",
+        "execution_ready": authorized_execution,
         "readiness": qec_dict.get("readiness") or tp.get("route_plan_status"),
         "blockers": qec_dict.get("blockers", []),
         "warnings": qec_dict.get("warnings", []),

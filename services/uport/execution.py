@@ -8,6 +8,7 @@ from services.uport.agent_registry import get_executable_agent
 from services.uport.s101_agent import S101AgentError
 from shared.schemas.agent import DataBinding, EvidenceItem, PlanStatus, QueryExecutionContext, ToolBinding
 from shared.schemas.map_layer import MapLayerSpecification, MapLayerStyle
+from services.orchestrator.execution_validator import validate_uport_execution_context, is_execution_authorized
 
 
 class UportExecutionResult(BaseModel):
@@ -57,15 +58,9 @@ def execute_query(request: UportPlanRequest, db: Session | None) -> UportExecuti
     try:
         # This is the execution gate: the candidate map ID becomes authoritative
         # only after a read from the current dataset and version succeeds.
-        agent.validate(qec, db)
-        qec.data_bindings = [DataBinding(
-            dataset_id=str(request.map_selection.dataset_id),
-            relation="projection.s101_feature_valid", geometry_column="geometry",
-            srid=4326, snapshot_version=str(request.map_selection.dataset_version_id),
-            read_only=True,
-        )]
-        qec.tool_bindings = [ToolBinding(tool_id="uport.map.berths", operation="selected_berth_lookup")]
-        qec.readiness = PlanStatus.EXECUTION_READY
+        qec = validate_uport_execution_context(qec, agent, db, request.map_selection)
+        if not is_execution_authorized(qec):
+            return UportExecutionResult(status="blocked", error_code="VALIDATION_FAILED", query_execution_context=qec, warnings=qec.blockers)
         feature, evidence = agent.execute(qec, db)
     except S101AgentError as exc:
         qec.blockers.append(f"{exc.code}: {exc}")

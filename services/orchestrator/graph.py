@@ -31,7 +31,9 @@ from services.orchestrator.context_resolver import ContextResolver
 from services.orchestrator.route_planner import RoutePlanner
 from services.orchestrator.graph_rag_retriever import GraphRAGRetriever
 from services.orchestrator.query_candidate_broker import execution_contract_ready, query_candidate_broker
-from services.orchestrator.execution_validator import validate_execution_context
+from services.orchestrator.execution_validator import (validate_execution_context, validated_lookup,
+    validate_place_resolution, project_execution_decision, is_execution_authorized,
+    execution_gate_failure, attach_execution_decision, validate_lookup_request, MAX_RADIUS_M)
 from services.orchestrator.evidence_builder import build_evidence_bundle
 from services.orchestrator.definition_router import is_definition_query, resolve_definition
 from services.orchestrator.definition_response import build_definition_response
@@ -1822,7 +1824,10 @@ def _looks_like_known_place_search(query: str, state: OrchestratorState | None =
 def _place_lookup_update(state, payload, analysis_type="place_lookup"):
     from shapely import wkt
 
-    resolved = payload["status"] == "RESOLVED"
+    validated = validate_place_resolution(state["query"], payload, task_id=state["task_id"])
+    resolved = is_execution_authorized(validated)
+    if payload["status"] == "RESOLVED" and not resolved:
+        return execution_gate_failure(state, validated)
     status = AgentStatus.COMPLETED if resolved else AgentStatus(payload["status"])
     spatial = _spatial_context_dict(state)
     selected_evidence = spatial.get("selected_place_evidence") if isinstance(spatial.get("selected_place_evidence"), dict) else {}
@@ -1858,14 +1863,11 @@ def _place_lookup_update(state, payload, analysis_type="place_lookup"):
     structured = {**payload, "location_resolution": resolution, "analysis_type": analysis_type, "original_query": state["query"], "spatial_context": safe_spatial, "count": 1 if resolved else None, "returned_count": int(resolved), "geojson": collection}
     if selected_evidence:
         structured["selected_place_evidence"] = selected_evidence
-    plan = {"analysis_type": analysis_type, "primary_agent": "Spatial Analysis Agent", "execution_ready": resolved, "status": "EXECUTION_READY" if resolved else ("NEEDS_USER_INPUT" if status == AgentStatus.NEEDS_CLARIFICATION else "BLOCKED_DATA")}
-    context = QueryExecutionContext(request_id=state["task_id"], revision=state.get("execution_revision") or 1, original_query=state["query"], route_plan=plan, provenance={"location_resolution": resolution, "selected_place_evidence": selected_evidence or None})
+    plan = {"analysis_type": "place_lookup", "primary_agent": "Spatial Analysis Agent"}
+    project_execution_decision(validated, plan)
+    context = validated
+    context.route_plan = plan
     context.plan_hash = hashlib.sha256(json.dumps({"query": state["query"], "geometry": payload.get("geometry"), "location_resolution": resolution}, sort_keys=True).encode()).hexdigest()
-    context.readiness = PlanStatus(plan["status"])
-    if resolved:
-        context.slots = ExecutionSlots(location_text=payload["location_text"], reference_geometry=payload["geometry"], crs=payload["crs"], resolution_status=resolution["status"], analysis_type=analysis_type)
-    else:
-        context.blockers = [payload.get("error_code", "LOCATION_UNCONFIRMED")]
     quality_metrics = _quality_metrics_from_state(state, fast_path="dataset_place_resolver", exact=resolved)
     structured["quality_metrics"] = quality_metrics
     final = {
@@ -2395,9 +2397,10 @@ def _build_query_execution_context(
     plan_hash = hashlib.sha256(
         json.dumps(route_plan, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
     ).hexdigest() if route_plan else None
-    readiness = PlanStatus.EXECUTION_READY if route_plan.get("execution_ready") else (
-        PlanStatus.NEEDS_USER_INPUT if route_plan.get("clarification_required") else PlanStatus.PLAN_READY
-    )
+    route_plan = dict(route_plan)
+    route_plan["execution_ready"] = False
+    readiness = PlanStatus.NEEDS_USER_INPUT if route_plan.get("clarification_required") else PlanStatus.PLAN_READY
+    route_plan["route_plan_status"] = readiness.value
     qec = QueryExecutionContext(
         request_id=state.get("task_id"),
         task_id=state.get("task_id"),
@@ -3152,6 +3155,7 @@ def _record_query_quality_issues(state: OrchestratorState, final_dict: dict) -> 
             details=details,
         )
 
+@validated_lookup("local_document_lookup", delegate_if=lambda state: _looks_like_navigation_risk_analysis(state.get("query") or ""))
 async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorState:
     """Return authoritative local catalogue answers without vector/LLM orchestration."""
     if _looks_like_navigation_risk_analysis(state.get("query") or ""):
@@ -3378,7 +3382,7 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
     data_bindings = ["s101_feature_catalogue", "s101_dceg_2_0_0"] if feature else (["legal_notice_registry"] if legal_result else ["s101_feature_catalogue"])
     route_plan = {
         "task_id": f"TASK-DOC-FAST-{state['task_id'][:3].upper()}",
-        "status": "BLOCKED_DATA" if doc_blocked else "EXECUTION_READY",
+        "status": "BLOCKED_DATA" if doc_blocked else "PLAN_READY",
         "intent": "ANALYSIS" if navigation_risk_analysis else "KNOWLEDGE_SEARCH",
         "context": "navigation_risk" if navigation_risk_analysis else ("legal_notice" if target_term == "legal_notice_registry" else "standard_document"),
         "analysis_type": "navigation_risk_explanation" if navigation_risk_analysis else "document_search",
@@ -3398,8 +3402,8 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
         "outputs": ["StandardDocumentOutput", "EvidenceBundle", "Summary"],
         "clarification_required": False,
         "confidence": None,
-        "execution_ready": False if doc_blocked else True,
-        "route_plan_status": "BLOCKED_DATA" if doc_blocked else "EXECUTION_READY",
+        "execution_ready": False,
+        "route_plan_status": "BLOCKED_DATA" if doc_blocked else "PLAN_READY",
     }
     final_dict = {
         "task_id": state["task_id"],
@@ -3888,7 +3892,7 @@ async def fast_accident_spatial_history_lookup_node(state: OrchestratorState) ->
     anchor_query = _accident_spatial_anchor_query(query, state)
     task_id = str(state.get("task_id") or "local")
     generated_at = datetime.utcnow().isoformat() + "Z"
-    radius_m = _requested_distance_m(state, query) or 10000.0
+    radius_m = _requested_distance_m(state, query)
     location_payload = await asyncio.to_thread(resolve_payload, anchor_query, _spatial_context_dict(state))
     if not isinstance(location_payload, dict) or location_payload.get("status") != "RESOLVED":
         payload = location_payload if isinstance(location_payload, dict) else {
@@ -3902,6 +3906,51 @@ async def fast_accident_spatial_history_lookup_node(state: OrchestratorState) ->
     location_text = location_payload.get("location_text") or anchor_query
     crs = location_payload.get("crs") or "EPSG:4326"
     resolution = location_payload.get("location_resolution") or {}
+
+    route_plan = {
+        "task_id": f"TASK-ACCIDENT-SPATIAL-{task_id[:3].upper()}",
+        "status": "DRAFT",
+        "intent": "ACCIDENT_ANALYSIS",
+        "context": "accident_risk",
+        "analysis_type": "accident_spatial_history_lookup",
+        "derived_concept": "accident_event",
+        "primary_agent": "Accident/Risk Agent",
+        "secondary_agents": ["Spatial Analysis Agent"],
+        "slots": {
+            "location_text": location_text,
+            "reference_geometry": geometry_wkt,
+            "crs": crs,
+            "distance_m": radius_m,
+            "spatial_relation": "nearby",
+            "target_term": "accident_history",
+            "derived_concept": "accident_event",
+            "analysis_type": "accident_spatial_history_lookup",
+        },
+        "tools": ["accident.spatial_history_lookup"],
+        "data": ["serving.accident_events"],
+        "outputs": ["AccidentEventGeoJSON", "EvidenceBundle", "Summary"],
+        "clarification_required": False,
+        "confidence": None,
+        "execution_ready": False,
+        "route_plan_status": "DRAFT",
+    }
+    qec_model = QueryExecutionContext(
+        request_id=task_id,
+        task_id=task_id,
+        original_query=original_query or query,
+        normalized_query=state.get("normalized_query"),
+        route_plan=route_plan,
+        slots=ExecutionSlots.from_payload(route_plan["slots"]),
+        spatial={"spatial_context": {"base_location": location_text, "geometry": geometry_wkt, "crs": crs, "buffer_distance": radius_m}},
+        blockers=[],
+        warnings=[],
+        provenance={"location_resolution": resolution, "anchor_query": anchor_query},
+    )
+    qec_model = validate_execution_context(qec_model)
+    project_execution_decision(qec_model, route_plan)
+    qec = qec_model.model_dump(mode="json")
+    if not is_execution_authorized(qec_model):
+        return execution_gate_failure(state, qec_model)
 
     result = _query_accident_events_near_geometry(geometry_wkt, radius_m=radius_m)
     rows = result.get("rows") or []
@@ -3957,57 +4006,12 @@ async def fast_accident_spatial_history_lookup_node(state: OrchestratorState) ->
         "detail_text": "사고 좌표와 기준점 거리, 관할해경서, 발생해역, 발생원인, 발생유형은 serving.accident_events에서 직접 조회했습니다.",
         "provenance": {"method": "structured_accident_spatial_history_lookup", "retrieved_at": generated_at, "radius_m": radius_m, "location_resolution": resolution, "anchor_query": anchor_query},
     }]
-    plan_status = "BLOCKED_DATA" if result.get("error") else "EXECUTION_READY"
-    route_plan = {
-        "task_id": f"TASK-ACCIDENT-SPATIAL-{task_id[:3].upper()}",
-        "status": "DRAFT",
-        "intent": "ACCIDENT_ANALYSIS",
-        "context": "accident_risk",
-        "analysis_type": "accident_spatial_history_lookup",
-        "derived_concept": "accident_event",
-        "primary_agent": "Accident/Risk Agent",
-        "secondary_agents": ["Spatial Analysis Agent"],
-        "slots": {
-            "location_text": location_text,
-            "reference_geometry": geometry_wkt,
-            "crs": crs,
-            "distance_m": radius_m,
-            "spatial_relation": "nearby",
-            "target_term": "accident_history",
-            "derived_concept": "accident_event",
-            "analysis_type": "accident_spatial_history_lookup",
-        },
-        "tools": ["accident.spatial_history_lookup"],
-        "data": ["serving.accident_events"],
-        "outputs": ["AccidentEventGeoJSON", "EvidenceBundle", "Summary"],
-        "clarification_required": False,
-        "confidence": 1.0 if found else 0.82,
-        "execution_ready": False,
-        "route_plan_status": "DRAFT",
-    }
-    qec_model = QueryExecutionContext(
-        request_id=task_id,
-        task_id=task_id,
-        original_query=original_query or query,
-        normalized_query=state.get("normalized_query"),
-        route_plan=route_plan,
-        slots=ExecutionSlots.from_payload(route_plan["slots"]),
-        spatial={"spatial_context": {"base_location": location_text, "geometry": geometry_wkt, "crs": crs, "buffer_distance": radius_m}},
-        blockers=[result["error"]] if result.get("error") else [],
-        warnings=["기본 반경은 질의에 거리 표현이 없을 때만 10,000m로 적용됩니다."],
-        provenance={"location_resolution": resolution, "anchor_query": anchor_query},
-    )
-    qec_model = validate_execution_context(qec_model)
-    route_plan["status"] = qec_model.readiness.value
-    route_plan["route_plan_status"] = qec_model.readiness.value
-    route_plan["execution_ready"] = qec_model.readiness == PlanStatus.EXECUTION_READY
-    qec = qec_model.model_dump(mode="json")
     final_dict = {
         "task_id": task_id,
         "trace_id": f"tr-{task_id}",
         "agent_name": "Accident/Risk Agent",
         "agent_version": "2.5.0-accident-spatial-history-fast-path",
-        "status": AgentStatus.COMPLETED if qec_model.readiness == PlanStatus.EXECUTION_READY else AgentStatus.BLOCKED,
+        "status": AgentStatus.COMPLETED if not result.get("error") else AgentStatus.BLOCKED,
         "summary": answer,
         "answer_text": answer,
         "structured_result": {
@@ -4054,7 +4058,7 @@ async def fast_accident_spatial_history_lookup_node(state: OrchestratorState) ->
     }
     _attach_candidate_trace(state, final_dict)
     _record_query_quality_issues(state, final_dict)
-    status = AgentStatus.COMPLETED if qec_model.readiness == PlanStatus.EXECUTION_READY else AgentStatus.BLOCKED
+    status = AgentStatus.COMPLETED if not result.get("error") else AgentStatus.BLOCKED
     return {
         "final_dict": final_dict,
         "task_plan": route_plan,
@@ -4065,6 +4069,7 @@ async def fast_accident_spatial_history_lookup_node(state: OrchestratorState) ->
     }
 
 
+@validated_lookup("accident_event_lookup", slot_builder=lambda state: {"filters": {"terms": _accident_event_terms(state.get("query") or "")}})
 async def fast_accident_event_lookup_node(state: OrchestratorState) -> OrchestratorState:
     """Answer row-level accident event lookup from serving.accident_events."""
     import asyncio
@@ -4152,7 +4157,7 @@ async def fast_accident_event_lookup_node(state: OrchestratorState) -> Orchestra
     }]
     route_plan = {
         "task_id": f"TASK-ACCIDENT-EVENT-{task_id[:3].upper()}",
-        "status": "EXECUTION_READY" if not result.get("error") else "BLOCKED_DATA",
+        "status": "PLAN_READY" if not result.get("error") else "BLOCKED_DATA",
         "intent": "ACCIDENT_ANALYSIS",
         "context": "accident_risk",
         "analysis_type": "accident_event_lookup",
@@ -4165,8 +4170,8 @@ async def fast_accident_event_lookup_node(state: OrchestratorState) -> Orchestra
         "outputs": ["AccidentEventGeoJSON", "EvidenceBundle", "Summary"],
         "clarification_required": False,
         "confidence": 1.0 if found else 0.72,
-        "execution_ready": not bool(result.get("error")),
-        "route_plan_status": "EXECUTION_READY" if not result.get("error") else "BLOCKED_DATA",
+        "execution_ready": False,
+        "route_plan_status": "PLAN_READY" if not result.get("error") else "BLOCKED_DATA",
     }
     qec = {
         "readiness": "READY" if not result.get("error") else "BLOCKED_DATA",
@@ -4245,6 +4250,7 @@ async def fast_accident_event_lookup_node(state: OrchestratorState) -> Orchestra
     }
 
 
+@validated_lookup("dataset_evidence_lookup")
 async def fast_dataset_evidence_answer_node(state: OrchestratorState) -> OrchestratorState:
     """Answer Dataset provenance questions from live knowledge.document_chunks."""
     import asyncio
@@ -4329,7 +4335,7 @@ async def fast_dataset_evidence_answer_node(state: OrchestratorState) -> Orchest
         )
     route_plan = {
         "task_id": f"TASK-DATASET-EVIDENCE-{task_id[:3].upper()}",
-        "status": "EXECUTION_READY",
+        "status": "PLAN_READY",
         "intent": "DATA_DISCOVERY",
         "context": "dataset_provenance",
         "analysis_type": "dataset_evidence_lookup",
@@ -4346,8 +4352,8 @@ async def fast_dataset_evidence_answer_node(state: OrchestratorState) -> Orchest
         "outputs": ["DatasetEvidenceOutput", "EvidenceBundle", "Summary"],
         "clarification_required": False,
         "confidence": 1.0,
-        "execution_ready": True,
-        "route_plan_status": "EXECUTION_READY",
+        "execution_ready": False,
+        "route_plan_status": "PLAN_READY",
     }
     final_dict = {
         "task_id": task_id,
@@ -4683,6 +4689,41 @@ async def fast_s101_nearest_feature_execute_node(state: OrchestratorState) -> Or
         "feature_codes": feature_codes,
         "result_limit": int(config["result_limit"]),
     }
+    route_plan = {
+        "task_id": f"TASK-S101-NEAREST-{state['task_id'][:3].upper()}",
+        "status": "PLAN_READY",
+        "intent": "SPATIAL_ANALYSIS",
+        "context": "navigation_safety",
+        "analysis_type": "nearest_feature",
+        "derived_concept": "nearest_feature",
+        "primary_agent": "Spatial Analysis Agent",
+        "secondary_agents": [],
+        "slots": {
+            "location_text": location_text,
+            "reference_geometry": base_wkt,
+            "target_term": "anchorage",
+            "target_features": config["target_features"],
+            "nftc_codes": feature_codes,
+            "k": int(config["result_limit"]),
+            "analysis_type": "nearest_feature",
+        },
+        "tools": ["postgis.nearest"],
+        "data": [config["layer_id"]],
+        "outputs": ["GeoJSON", "FeatureTable", "Summary"],
+        "clarification_required": False,
+        "confidence": 1.0,
+        "execution_ready": False,
+        "route_plan_status": "PLAN_READY",
+    }
+    qec_model = QueryExecutionContext(request_id=state["task_id"], original_query=state.get("query"),
+        route_plan=route_plan, slots=ExecutionSlots.from_payload(route_plan["slots"]))
+    qec_model.slots.filters["k"] = int(config["result_limit"])
+    qec_model = await asyncio.to_thread(validate_execution_context, qec_model)
+    if not is_execution_authorized(qec_model):
+        return execution_gate_failure(state, qec_model)
+    project_execution_decision(qec_model, route_plan)
+    qec = qec_model.model_dump(mode="json")
+
     rows: list[dict] = []
     try:
         import psycopg2
@@ -4725,52 +4766,6 @@ async def fast_s101_nearest_feature_execute_node(state: OrchestratorState) -> Or
 
     nearest = table_rows[0] if table_rows else {}
     feature_collection = {"type": "FeatureCollection", "features": features}
-    route_plan = {
-        "task_id": f"TASK-S101-NEAREST-{state['task_id'][:3].upper()}",
-        "status": "EXECUTION_READY",
-        "intent": "SPATIAL_ANALYSIS",
-        "context": "navigation_safety",
-        "analysis_type": "nearest_feature",
-        "derived_concept": "nearest_feature",
-        "primary_agent": "Spatial Analysis Agent",
-        "secondary_agents": [],
-        "slots": {
-            "location_text": location_text,
-            "reference_geometry": base_wkt,
-            "target_term": "anchorage",
-            "target_features": config["target_features"],
-            "nftc_codes": feature_codes,
-            "k": int(config["result_limit"]),
-            "analysis_type": "nearest_feature",
-        },
-        "tools": ["postgis.nearest"],
-        "data": [config["layer_id"]],
-        "outputs": ["GeoJSON", "FeatureTable", "Summary"],
-        "clarification_required": False,
-        "confidence": 1.0,
-        "execution_ready": True,
-        "route_plan_status": "EXECUTION_READY",
-    }
-    qec = {
-        "readiness": "READY",
-        "blockers": [],
-        "warnings": [],
-        "data_bindings": [{
-            "dataset_id": config["layer_id"],
-            "relation": relation,
-            "geometry_column": layer.get("geometry_column", "geometry"),
-            "srid": int(layer.get("srid") or 4326),
-            "layer_type": layer.get("layer_type", "s101_feature"),
-            "execution_status": layer.get("execution_status", "executable"),
-            "read_only": True,
-        }],
-        "tool_bindings": [{
-            "tool_id": "postgis.nearest",
-            "operation": "nearest_feature",
-            "query_template_id": config["template_id"],
-            "schema_version": "2.0",
-        }],
-    }
     summary = (
         f"{location_text or '기준 위치'}에서 가장 가까운 S-101 정박지는 "
         f"{round(float(nearest.get('distance_m') or 0.0), 2)}m 거리에 있습니다."
@@ -4860,9 +4855,9 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
     location_text = location["location_text"]
     distance_m = _requested_layer_distance_m(primary_query, state)
     import math
-    if distance_m is None or not math.isfinite(distance_m) or not 0 < distance_m <= 100000:
+    if distance_m is None or not math.isfinite(distance_m) or not 0 < distance_m <= MAX_RADIUS_M:
         return _place_lookup_update(state, {"status": "NEEDS_CLARIFICATION", "error_code": "DISTANCE_REQUIRED",
-            "summary": "조회할 반경을 0m 초과 100km 이하로 지정해 주세요. 임의 반경을 적용하지 않았습니다."}, "feature_search_by_radius")
+            "summary": f"조회할 반경을 0m 초과 {MAX_RADIUS_M / 1000:g}km 이하로 지정해 주세요. 임의 반경을 적용하지 않았습니다."}, "feature_search_by_radius")
     limit_per_layer = 100
     sql = """
         WITH base AS (
@@ -4882,6 +4877,38 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
         ORDER BY geometry::geography <-> base.g
         LIMIT %(limit)s
     """
+
+    route_plan = {
+        "task_id": f"TASK-REQUESTED-LAYER-{state['task_id'][:3].upper()}",
+        "status": "PLAN_READY",
+        "intent": "SPATIAL_ANALYSIS",
+        "context": "dataset_spatial_layer",
+        "analysis_type": "feature_search_by_radius",
+        "derived_concept": "dataset_spatial_layer_radius",
+        "primary_agent": "Spatial Analysis Agent",
+        "secondary_agents": [],
+        "slots": {
+            "location_text": location_text,
+            "reference_geometry": base_wkt,
+            "distance_m": distance_m,
+            "target_layers": [target["layer_id"] for target in targets],
+            "analysis_type": "feature_search_by_radius",
+        },
+        "tools": ["postgis.radius"],
+        "data": [target["layer_id"] for target in targets],
+        "outputs": ["GeoJSON", "FeatureTable", "Summary"],
+        "clarification_required": False,
+        "confidence": 1.0,
+        "execution_ready": False,
+        "route_plan_status": "PLAN_READY",
+    }
+    qec_model = QueryExecutionContext(request_id=state["task_id"], original_query=state.get("query"),
+        route_plan=route_plan, slots=ExecutionSlots.from_payload(route_plan["slots"]))
+    qec_model = await asyncio.to_thread(validate_execution_context, qec_model)
+    if not is_execution_authorized(qec_model):
+        return execution_gate_failure(state, qec_model)
+    project_execution_decision(qec_model, route_plan)
+    qec = qec_model.model_dump(mode="json")
 
     rows: list[dict] = []
     try:
@@ -4973,54 +5000,6 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
         f"{location_text} \uae30\uc900 {distance_m:g}m \uc774\ub0b4 "
         f"{target_titles} {len(features)}\uac74\uc744 \ucc3e\uc558\uc2b5\ub2c8\ub2e4.{sample_text}"
     )
-    route_plan = {
-        "task_id": f"TASK-REQUESTED-LAYER-{state['task_id'][:3].upper()}",
-        "status": "EXECUTION_READY",
-        "intent": "SPATIAL_ANALYSIS",
-        "context": "dataset_spatial_layer",
-        "analysis_type": "feature_search_by_radius",
-        "derived_concept": "dataset_spatial_layer_radius",
-        "primary_agent": "Spatial Analysis Agent",
-        "secondary_agents": [],
-        "slots": {
-            "location_text": location_text,
-            "reference_geometry": base_wkt,
-            "buffer_distance": distance_m,
-            "target_layers": [target["layer_id"] for target in targets],
-            "analysis_type": "feature_search_by_radius",
-        },
-        "tools": ["postgis.radius"],
-        "data": [target["layer_id"] for target in targets],
-        "outputs": ["GeoJSON", "FeatureTable", "Summary"],
-        "clarification_required": False,
-        "confidence": 1.0,
-        "execution_ready": True,
-        "route_plan_status": "EXECUTION_READY",
-    }
-    qec = {
-        "readiness": "READY",
-        "blockers": [],
-        "warnings": [],
-        "execution_contract": (state.get("candidate_trace") or {}).get("execution_contract"),
-        "data_bindings": [
-            {
-                "dataset_id": target["layer_id"],
-                "relation": target["relation"],
-                "geometry_column": "geometry",
-                "srid": 4326,
-                "layer_type": target["layer_type"],
-                "execution_status": "executable",
-                "read_only": True,
-            }
-            for target in targets
-        ],
-        "tool_bindings": [{
-            "tool_id": "postgis.radius",
-            "operation": "feature_search_by_radius",
-            "schema_version": "2.0",
-        }],
-        "provenance": {"location_resolution": location.get("location_resolution")},
-    }
     layer_evidence = [
         {
             "dataset_id": target["layer_id"],
@@ -5382,14 +5361,8 @@ async def create_plan_node(state: OrchestratorState) -> OrchestratorState:
         req.query_execution_context.provenance["location_resolution"] = req.spatial_context.location_resolution
     req.query_execution_context = validate_execution_context(req.query_execution_context)
 
-    if req.query_execution_context.readiness == PlanStatus.EXECUTION_READY:
-        task_plan.execution_ready = True
-        task_plan.route_plan_status = "EXECUTION_READY"
-        task_plan.status = "EXECUTION_READY"
-    else:
-        task_plan.execution_ready = False
-        task_plan.route_plan_status = req.query_execution_context.readiness.value
-        task_plan.status = req.query_execution_context.readiness.value
+    from services.orchestrator.execution_validator import project_execution_decision
+    project_execution_decision(req.query_execution_context, task_plan)
 
     req.task_plan = task_plan
     req.agent_name = task_plan.primary_agent
@@ -5475,59 +5448,18 @@ async def execute_agent_node(state: OrchestratorState) -> OrchestratorState:
             "state_history": log_transition(AgentStatus.PLAN_CREATED, AgentStatus.NEEDS_CLARIFICATION, reason="Clarification terminal state")
         }
 
-    contract_required_agents = {"Spatial Analysis Agent", "Accident/Risk Agent", "AIS Analysis Agent", "Time-Series Agent", "Time-Series Forecast Agent"}
-    if req.agent_name in contract_required_agents and not req.query_execution_context:
-        agent_result = AgentResult(
-            task_id=req.task_id,
-            trace_id=req.trace_id,
-            agent_name=req.agent_name,
-            agent_version="orchestrator-execution-validator",
-            status=AgentStatus.BLOCKED,
-            error_code=PlanStatus.BLOCKED_CONFIG.value,
-            summary="실행계약이 없어 agent 실행을 차단했습니다.",
-            answer_text="이 agent는 QueryExecutionContext 검증을 통과한 뒤에만 실행할 수 있습니다.",
-            structured_result={"blockers": ["BLOCKED_CONFIG: query_execution_context is required"]},
-            warnings=["BLOCKED_CONFIG: query_execution_context is required"],
-            provenance={"validator": "services.orchestrator.execution_validator.validate_execution_context"},
-        )
-        return {
-            "agent_result": agent_result,
-            "status": AgentStatus.BLOCKED,
-            "state_history": log_transition(AgentStatus.PLAN_CREATED, AgentStatus.BLOCKED, reason="Execution contract missing")
-        }
-
-    if req.agent_name in contract_required_agents and req.query_execution_context:
-        qec = validate_execution_context(req.query_execution_context)
-        req.query_execution_context = qec
-        if qec.readiness != PlanStatus.EXECUTION_READY:
-            blockers = qec.blockers or ["Execution contract is not ready"]
-            status = (
-                AgentStatus.NEEDS_CLARIFICATION
-                if qec.readiness == PlanStatus.NEEDS_USER_INPUT
-                else AgentStatus.BLOCKED
-            )
-            agent_result = AgentResult(
-                task_id=req.task_id,
-                trace_id=req.trace_id,
-                agent_name=req.agent_name,
-                agent_version="orchestrator-execution-validator",
-                status=status,
-                error_code=qec.readiness.value,
-                summary="실행계약 검증을 통과하지 못해 공간분석을 실행하지 않았습니다.",
-                answer_text="실행에 필요한 위치, 거리, 대상 또는 데이터 연결 정보가 아직 확정되지 않았습니다.",
-                structured_result={
-                    "blockers": blockers,
-                    "query_execution_context": qec.model_dump(mode="json"),
-                },
-                warnings=qec.warnings,
-                provenance={"validator": "services.orchestrator.execution_validator.validate_execution_context"},
-            )
-            return {
-                "agent_result": agent_result,
-                "status": status,
+    from services.orchestrator.execution_validator import validate_agent_execution
+    from services.orchestrator.agent_execution_gate import blocked_agent_result
+    import asyncio
+    qec = await asyncio.to_thread(validate_agent_execution, req, req.agent_name)
+    if not is_execution_authorized(qec):
+        agent_result = blocked_agent_result(req, req.agent_name, qec)
+        return {"agent_result": agent_result, "status": agent_result.status,
                 "query_execution_context": qec.model_dump(mode="json"),
-                "state_history": log_transition(AgentStatus.PLAN_CREATED, status, reason="Execution contract blocked")
-            }
+                "task_plan": qec.route_plan,
+                "state_history": log_transition(AgentStatus.PLAN_CREATED, agent_result.status, reason="Execution contract blocked")}
+    if qec.context.get("contract_scope") == "execution":
+        req.query_execution_context = qec
 
     # Revalidate source identity at dispatch, including resumed plans.
     if req.spatial_context and req.spatial_context.place_id:

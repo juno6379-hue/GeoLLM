@@ -11,7 +11,7 @@ from services.orchestrator.s101_radius_execution import RadiusProblem, resolve_r
 from services.orchestrator.slot_evidence import radius_quantities
 from services.orchestrator.korean_query_analysis import constraints
 from services.orchestrator.route_planner import RoutePlanner
-from services.orchestrator.execution_validator import validate_execution_context
+from services.orchestrator.execution_validator import validate_execution_context, project_execution_decision
 from services.orchestrator.evidence_builder import build_evidence_bundle
 from shared.schemas.agent import ExecutionSlots, QueryExecutionContext, PlanStatus
 
@@ -82,7 +82,7 @@ def execute(state):
         typed.plan_hash=hashlib.sha256(json.dumps({'plan':plan,'slots':slots.model_dump()},sort_keys=True,ensure_ascii=False).encode()).hexdigest()
         typed=validate_execution_context(typed)
         qec.update(typed.model_dump(mode='json'))
-        plan.update(execution_ready=typed.readiness==PlanStatus.EXECUTION_READY, route_plan_status=typed.readiness.value)
+        project_execution_decision(typed, plan)
         qec['route_plan']=plan
         if typed.readiness!=PlanStatus.EXECUTION_READY:
             raise RadiusProblem('BLOCKED','SOURCE_ATTRIBUTE_EXECUTION_BLOCKED','속성 검색의 실행 계약 또는 원천을 검증하지 못했습니다.')
@@ -113,7 +113,7 @@ def execute(state):
             'statement_sha256':hashlib.sha256(statement.encode()).hexdigest(),
             'result_sha256':hashlib.sha256(json.dumps(result,sort_keys=True,ensure_ascii=False).encode()).hexdigest(),
             'total_count':total,'returned_count':len(rows),'parameters':slots.model_dump()}
-        plan.update(execution_ready=True,status='COMPLETED')
+        plan.update(status='COMPLETED')
         message=(f"{label} 기준 {distance:g}m 이내에서 명시된 S-101 객체·속성 조건에 맞는 {total}건을 조회했습니다. "
                  "속성이 누락된 객체는 포함하지 않았으며 전체 실세계 시설 수를 뜻하지 않습니다.")
         final.update(status='COMPLETED',answer_text=message,summary=message,

@@ -1,5 +1,35 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-09-28 최종 인계 — 사용자 요청으로 Phase A 작업 중단·커밋·푸시
+
+- **다음 세션은 이 절과 문서 전체를 먼저 읽는다. Phase A 완료 선언은 보류한다.** 아래 이전 기록은 당시 검증 범위이며 최신 변경 전체의 통과를 의미하지 않는다.
+- 추가 구현: registry 10개 항목에 실행/조사/미지원 계약을 명시하고, 공통 Agent 진입 gate를 dispatch 및 직접 호출에 적용했다. 요청 ID·질의·Agent·권한·operation·원천 binding을 다시 검증한다. QEC 누락/재사용은 차단하고 슬롯 수정은 승인을 무효화한다.
+- Standard RAG는 문서 relation/SELECT/필수 열과 embedding profile을 확인한다. Data Discovery는 본문 CSV fetch를 제거한 metadata 전용 조사 계약, Validation은 부모 실행 QEC를 승인하지 않는 별도 조사 계약을 쓴다. AIS/Drone의 미완성 실행 adapter와 미구현 Map Agent는 BLOCKED_CONFIG로 남는다. 이는 기능 완성이 아니다.
+- 레거시 DSL 거리 제한을 공통 50km로 맞췄고 최근접 검색 기본 결과 수는 1이다. 화면의 실행 가능 표시는 단순 READY/boolean이 아니라 validator 기록을 확인한다. 사람의 결과 검토 승인 후에는 보고서로 진행하며 실행 승인으로 승격하지 않는다.
+- 검증 기록: 최초 진입 gate 회귀 43 passed / 7 failed(변경된 상태명·QEC fixture), 이를 보완했다. 확장 회귀는 170 passed / 2 failed였으며 실행 중 수정 전 사고 Agent fixture를 로드한 결과다. 수정한 사고 Agent 및 신규 계약 테스트의 별도 재검증 결과는 아래 최종 검증 기록을 따른다. 겹치는 수치는 합산하지 않는다.
+- 현재 API 5/5 통과 기록(v2)은 **이번 전체 Agent gate 추가 이전 버전**이다. 최신 변경의 컨테이너 재시작과 실제 API 재검증은 중단 요청에 따라 다음 작업으로 남긴다. 현재 실행 중 프로세스와 디스크 소스가 다를 수 있다. UI 브라우저 렌더링도 미검증이다.
+- 최종 제한 회귀: `docker exec geollm_backend python -m pytest tests/unit/test_accident_risk_agent.py tests/unit/test_agent_execution_contracts.py -q --disable-warnings --maxfail=2` → **27 passed, 39 warnings (31.37s)**. 사고 Agent의 2개 실패는 수정 후 통과했다. 확장 172개 전체를 최종 소스로 다시 돌린 결과는 아직 없다. `git diff --check` 및 staged 형식 검사는 통과했다.
+
+### 다음 실행 순서 / 재현
+
+1. **P0 / Phase A 마무리**: 변경 파일과 컨테이너 버전 확인 → 최신 회귀 전체 재실행 → backend 재시작 → 정상/부정 실제 API 검증. `docker exec geollm_backend python -m pytest tests/unit/test_agent_execution_contracts.py tests/unit/test_execution_dispatch_gate.py tests/unit/test_execution_validator.py tests/unit/test_spatial_agent.py tests/unit/test_standard_rag.py tests/unit/test_accident_risk_agent.py tests/unit/test_data_discovery.py tests/unit/test_execution_authority.py tests/unit/test_execution_gate_regressions.py tests/unit/test_radius_stream_contract.py tests/unit/test_uport_execution.py -q`. API: `python -m scripts.check_execution_authority_runtime --output outputs/web-intent-audit/<새 파일>.jsonl`(기존 파일 덮어쓰기 금지).
+2. 일반 RAG·사고 관계·시계열 직접 호출 및 수정/재개 계약을 실제 서비스에서 추가 검증한다. 원천 권한 변경, Agent 변경, 슬롯 변경 시 실행 전 차단을 확인한다. RAG SQL 전체 필수 열과 검증 열 목록의 일치도 후속 감사한다. 테스트 결과와 실제 실행 결과를 분리한다.
+3. 브라우저에서 Evidence 메뉴·분석 아래 비교 근거·지도와 질의창 높이·긴 대화 내부 스크롤을 확인한다. Windows browser sandbox helper 실패로 남은 E2E다.
+4. **Phase B**: AIS/V-PASS·수치조류·바다갈라짐·Observation 원천/기간/커버리지 및 실행 adapter. Data Discovery의 기존 예시 catalog 항목을 실제 원천으로 검증/교체한다. metadata 발견을 실제 데이터 검증으로 취급하지 않는다.
+5. C KG/인용/lineage/S-101 portrayal → D 사람 승인 3→30→300+ 및 hard negative/대화/복합/실패/holdout → E strict benchmark/CI/CD/SLO/monitoring → F FastPath·retriever 학습 검토. Planner QLoRA는 조건 충족 후 판단한다.
+6. **P1 shadow 실험**: 규칙/Qwen/융합은 동일 후보 비교 전용, 실행 권한 없음. calibration UNFITTED, human gold 미승인, QLoRA DEFER. 동점/후보 구분력/추가 확인 오류와 CPU 지연을 독립 gold로 평가한다.
+
+- 공유 작업 보존: 별도 관리자 UI script 및 index의 해당 script 태그/관리자 인계 절, 런타임 피드백 JSONL은 이 커밋에서 제외한다. 자동 생성 출력과 로그도 제외한다. GitHub 푸시 후에도 이 파일들 때문에 작업 트리가 dirty일 수 있다.
+
+## 2026-09-28 실행 권한 단일화 1차 및 Evidence 검토 메뉴
+
+- 사용자 우선순위인 Phase A부터 진행했다. RoutePlanner의 자체 승인을 제거하고 지도 이동·정의·legacy 조회·반경/영역/최근접/레이어·통항·UPort의 승인 부여를 ExecutionValidator로 모았다. 입력/binding hash가 바뀌거나 READY 플래그만 있는 QEC는 승인으로 취급하지 않는다. [변경 범위·검증·A–F 순서](execution_authority_and_review_20260928.md).
+- P0 기본 반경 불일치를 수정했다. 위험객체 3km·사고 10km의 암묵 기본값을 제거하고 명시 반경/지도 영역을 요구한다. 반경 상한은 공통 50km다.
+- Evidence 검토·승인은 주요 메뉴로 이동했다. 분석 결과 아래의 접이식 비교 근거와 별도로, 검토 화면에서 저장된 최근 30개 요청의 원문→실제 정규화→규칙/Qwen/융합 순위→실행 검증/차단 사유를 확인한다. Evidence 승인과 human gold/실행 권한은 분리한다. 질의창은 지도와 같은 높이, 내역 내부 스크롤, 하단 입력 고정으로 변경했다.
+- 단위 검증: 110 passed 및 관련 그래프 회귀 134 passed; 정책 수정 후 최종 반경/통항/승인 회귀 93 passed. 중복 포함이므로 합산하지 않는다. 첫 실제 API 검증에서 30초 관측 타임아웃 3건이 발생했고 원본 v1을 보존했다. 180초 제한 재검증 v2는 **5/5 통과**: 지도 이동·정의·1km 검색은 COMPLETED와 validator 승인 기록, 반경 누락은 NEEDS_CLARIFICATION, 60km는 BLOCKED. UI 자산·검토 이력 API 응답도 확인했다. 원본 `outputs/web-intent-audit/20260928-execution-authority-v2.jsonl`.
+- 브라우저 자동화는 Windows sandbox helper 초기화 오류로 시작하지 못했다. 메뉴 클릭·스크롤의 실제 렌더링은 미검증이다. 관리자 메뉴는 별도 공유 작업의 변경을 보존한다.
+- 다음 실행 순서: Phase A의 일반 Standard RAG/보조 Agent registry 진입점 전체 QEC 감사와 legacy 재개 계약 → B 실제 원천/커버리지 → C KG/인용/lineage/공식 portrayal → D 사람 승인 자료·hard negative·대화/복합/실패 → E benchmark/CI/SLO/monitoring → F 학습 여부 판단. **모든 Agent QEC 완료로 선언하지 않는다.** Qwen/융합은 shadow, calibration UNFITTED, human gold 미승인, QLoRA DEFER다.
+
 ## 2026-09-28 웹 요청의 실제 규칙/Qwen/융합 비교와 지도 이동 허용
 
 - 사용자 지정 우선순위에 따라 웹 SSE 요청(빠른 지명 이동 포함)마다 실제 Qwen 후보 점수 비교를 실행하도록 연결했다. 단일 worker/대기열과 별도 comparison_id를 사용하며, 웹에서 규칙·Qwen·동일 가중치 융합 순위, 원문 슬롯, 모델 해석과 실제 실행 판단을 확인한다. [설계·실패 기록·최종 재현](live_web_intent_comparison_20260928.md).

@@ -24,6 +24,12 @@ def _request() -> AgentRequest:
         data_bindings=[{"dataset_id": "GBENC_S101_feature", "relation": "projection.s101_feature_current", "geometry_column": "geometry", "srid": 4326}],
         tool_bindings=[{"tool_id": "postgis.dwithin", "operation": "ST_DWithin", "query_template_id": "feature_search_by_radius"}],
     )
+    from types import SimpleNamespace
+    from services.orchestrator.execution_validator import validate_execution_context
+    adapter = SimpleNamespace(build_bindings=lambda *_: SimpleNamespace(
+        data_bindings=qec.data_bindings, tool_bindings=qec.tool_bindings,
+        blockers=[], warnings=[], inspected_relations={}))
+    qec = validate_execution_context(qec, binding_adapter=adapter)
     return AgentRequest(
         task_id="sp-1",
         trace_id="tr1",
@@ -92,8 +98,8 @@ async def test_spatial_analysis_requires_execution_contract():
 
     result = await spatial_agent.execute_spatial_analysis(req)
 
-    assert result.status == "FAILED"
-    assert result.error_code == "EXECUTION_CONTRACT_NOT_READY"
+    assert result.status == "BLOCKED"
+    assert result.error_code == "BLOCKED_CONFIG"
 
 
 @pytest.mark.asyncio
@@ -105,4 +111,4 @@ async def test_spatial_analysis_blocks_unready_contract():
     result = await spatial_agent.execute_spatial_analysis(req)
 
     assert result.status == "NEEDS_CLARIFICATION"
-    assert result.error_code == "EXECUTION_CONTRACT_NOT_READY"
+    assert result.error_code == "NEEDS_USER_INPUT"

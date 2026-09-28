@@ -48,7 +48,7 @@ def validate_provenance(graph_context: dict[str, Any], result_provenance: dict[s
 
 def validate_execution_state(discovery: dict[str, Any]) -> dict[str, Any]:
     if discovery.get("can_execute_spatial_query"):
-        return {"status": "READY", "execution_level": discovery.get("execution_level", "EXECUTION_READY"), "blocked_reason": None}
+        return {"status": "READY", "execution_level": discovery.get("execution_level", "UNKNOWN"), "blocked_reason": None}
     level = discovery.get("execution_level", "UNKNOWN")
     if level == "CATALOGUE_READY_DB_PENDING" or not discovery.get("can_execute_spatial_query", False):
         reason = "PENDING_DB_RESTORE" if "DB" in "".join(discovery.get("missing_data", [])) or "S101" in "".join(discovery.get("missing_data", [])) else "PENDING_GEOMETRY"
@@ -64,6 +64,10 @@ def validate_orchestration(graph_context: dict[str, Any], discovery: dict[str, A
     return {"status": overall, "kg_path_consistency": graph, "provenance_check": provenance, "execution_state": execution, "verified_by": "Validation Agent", "llm_verification": False}
 
 
+from services.orchestrator.agent_execution_gate import validated_agent
+
+
+@validated_agent('Validation Agent')
 async def execute_validation(request: AgentRequest) -> AgentResult:
     outputs = request.previous_agent_outputs or {}
     validation = validate_orchestration(

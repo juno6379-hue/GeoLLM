@@ -11,7 +11,7 @@ from psycopg2.extras import RealDictCursor
 from services.orchestrator.request_obligations import audit_outputs, required_outputs
 from services.orchestrator.s101_portrayal import resolve_s101_portrayal
 from services.orchestrator.route_planner import RoutePlanner
-from services.orchestrator.execution_validator import validate_execution_context
+from services.orchestrator.execution_validator import validate_execution_context, project_execution_decision
 from services.orchestrator.evidence_builder import build_evidence_bundle
 from shared.schemas.agent import ExecutionSlots, QueryExecutionContext, PlanStatus
 
@@ -72,8 +72,7 @@ def execute(state):
                                                                sort_keys=True, ensure_ascii=False).encode()).hexdigest()
             typed_context = validate_execution_context(typed_context)
             plan = typed_context.route_plan
-            plan.update(execution_ready=typed_context.readiness == PlanStatus.EXECUTION_READY,
-                        route_plan_status=typed_context.readiness.value)
+            project_execution_decision(typed_context, plan)
             qec.update(typed_context.model_dump(mode='json'))
             final['orchestrator_v2']['route_plan'] = plan
             if typed_context.readiness != PlanStatus.EXECUTION_READY:

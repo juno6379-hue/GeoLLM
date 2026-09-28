@@ -276,6 +276,10 @@ class QueryExecutionContext(BaseModel):
         if applied:
             current.revision += 1
             current.provenance.setdefault("patches", []).extend(applied)
+            current.readiness = PlanStatus.DRAFT
+            current.provenance.pop("execution_validation", None)
+            current.route_plan.update(execution_ready=False, status=PlanStatus.DRAFT.value, route_plan_status=PlanStatus.DRAFT.value)
+            current.route_plan.pop("execution_validation", None)
         return current
 
 class AgentRequest(BaseModel):

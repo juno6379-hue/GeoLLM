@@ -51,6 +51,7 @@ async def test_dispatch_preserves_gate_status_with_unresolved_geometry(
         original_query="Find Wreck features within 3000 meters",
         security_context=SecurityContext(clearance_level="PUBLIC"),
         query_execution_context=QueryExecutionContext(
+            original_query="Find Wreck features within 3000 meters",
             route_plan={"analysis_type": "feature_search_by_radius"},
             slots=ExecutionSlots(distance_m=3000, target_features=["Wreck"]),
             blockers=blockers,
@@ -65,7 +66,10 @@ async def test_dispatch_preserves_gate_status_with_unresolved_geometry(
     assert result["agent_result"].error_code == expected_readiness.value
     context = QueryExecutionContext.model_validate(result["query_execution_context"])
     assert context.readiness == expected_readiness
-    assert any(item.startswith("NEEDS_USER_INPUT") for item in context.blockers)
+    if not blockers:
+        assert any(item.startswith("NEEDS_USER_INPUT") for item in context.blockers)
+    else:
+        assert set(blockers).issubset(context.blockers)
 
 
 @pytest.mark.asyncio

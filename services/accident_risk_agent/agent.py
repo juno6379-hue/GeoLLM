@@ -190,13 +190,16 @@ def _relations_to_evidence(relations: list[dict[str, Any]]) -> list[dict[str, An
     return evidence
 
 
+from services.orchestrator.agent_execution_gate import validated_agent
+
+
+@validated_agent('Accident/Risk Agent')
 async def execute_accident_risk(request: AgentRequest) -> AgentResult:
     qec = request.query_execution_context
     if not qec:
         return _contract_blocked_result(request, None, ["BLOCKED_CONFIG: query_execution_context is required"])
 
-    qec = validate_execution_context(qec)
-    request.query_execution_context = qec
+    # The entry decorator has revalidated the current request and bindings.
     if _readiness_value(qec) != PlanStatus.EXECUTION_READY.value:
         return _contract_blocked_result(request, qec, qec.blockers or ["Execution contract is not ready"])
 

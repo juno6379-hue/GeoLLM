@@ -132,7 +132,7 @@ def build_discovery_snapshot():
     elif db["connected"] and db["inventory_ready"] and not db["spatial_ready"]:
         level = "DB_CONNECTED_INVENTORY_READY"
     elif db["spatial_ready"]:
-        level = "EXECUTION_READY"
+        level = "SPATIAL_SOURCE_READY"
     else:
         level = "METADATA_ONLY"
     available = []
@@ -163,7 +163,7 @@ def build_discovery_snapshot():
                 status = "PENDING_LAYER_GEOMETRY"
         blocked.append({"relation": relation, "status": status, "verified": False, "reason": "No LLM-inferred verification"})
     candidate = [{"relation": x["relation"], "status": "CANDIDATE", "reason": "Requires evidence evaluation"} for x in blocked if x["status"] == "CANDIDATE"]
-    can_execute = level == "EXECUTION_READY"
+    can_execute = level == "SPATIAL_SOURCE_READY"
     return {"discovery_status": "READY" if available else "NO_DATA", "execution_level": level,
             "can_execute_spatial_query": can_execute,
             "can_verify_spatial_edges": can_execute and db.get("spatial_quality_ready") is not False,
@@ -242,6 +242,10 @@ def _detect_external_data_need(query_text: str, target_objects: list[str]) -> di
     }
 
 
+from services.orchestrator.agent_execution_gate import validated_agent
+
+
+@validated_agent('Data Discovery Agent')
 async def execute_data_discovery(request: AgentRequest) -> AgentResult:
     """
     Data Discovery Agent Core Logic.
@@ -322,29 +326,9 @@ async def execute_data_discovery(request: AgentRequest) -> AgentResult:
         if match_score > 0 and not ds.is_external_api:
             available_datasets.append(DatasetVersion(dataset_id=ds.dataset_id, version=ds.version))
             
-    # [NEW] Fetch data from matched CSVs
+    # Discovery only proposes sources; body reads require their own execution contract.
     fetched_data = {}
-    import pandas as pd
-    
-    for ds_ver in available_datasets:
-        # Find the original dataset entry
-        ds_entry = next((d for d in all_datasets if d.dataset_id == ds_ver.dataset_id), None)
-        if ds_entry and ds_entry.api_endpoint:
-            if ds_entry.api_endpoint.endswith(".csv"):
-                try:
-                    # Read top 5 rows to provide a summary
-                    df = pd.read_csv(ds_entry.api_endpoint, encoding="cp949", nrows=5)
-                    fetched_data[ds_entry.dataset_id] = df.to_dict(orient="records")
-                    logger.info(f"Successfully fetched data from {ds_entry.api_endpoint}")
-                except Exception as e:
-                    logger.error(f"Failed to fetch CSV data from {ds_entry.api_endpoint}", error=str(e))
-                    try:
-                        # Fallback encoding
-                        df = pd.read_csv(ds_entry.api_endpoint, encoding="utf-8", errors="replace", nrows=5)
-                        fetched_data[ds_entry.dataset_id] = df.to_dict(orient="records")
-                    except Exception as e2:
-                        fetched_data[ds_entry.dataset_id] = {"error": f"Failed to read CSV: {e2}"}
-            
+
     discovery = build_discovery_snapshot()
     graph_dir = PROJECT_ROOT / "outputs/graph"
     graph_dir.mkdir(parents=True, exist_ok=True)
@@ -361,7 +345,7 @@ async def execute_data_discovery(request: AgentRequest) -> AgentResult:
         task_id=request.task_id,
         trace_id=request.trace_id,
         agent_name="data-discovery-agent",
-        agent_version="1.1.0-llm-fetch",
+        agent_version="2.0.0-metadata-contract",
         status=AgentStatus.COMPLETED,
         summary=summary,
         structured_result={

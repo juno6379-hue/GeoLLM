@@ -9,6 +9,10 @@ import os
 
 logger = get_logger("ais_analysis_agent")
 
+from services.orchestrator.agent_execution_gate import validated_agent
+
+
+@validated_agent('AIS Analysis Agent')
 async def execute_ais_analysis(request: AgentRequest) -> AgentResult:
     logger.info(f"[AIS Analysis Agent] Started task for query: {request.original_query}")
     

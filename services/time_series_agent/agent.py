@@ -35,19 +35,20 @@ def _slot_value(request: AgentRequest, key: str, default: Any = None) -> Any:
             return payload.get(key)
         if qec.slots.filters.get(key) not in (None, "", [], {}):
             return qec.slots.filters.get(key)
-    if request.task_plan and request.task_plan.slots:
-        value = request.task_plan.slots.get(key)
-        if value not in (None, "", [], {}):
-            return value
     return default
 
 
+from services.orchestrator.agent_execution_gate import validated_agent
+
+
+@validated_agent('Time-Series Agent')
 async def execute_time_series_analysis(request: AgentRequest) -> AgentResult:
     logger.info("Time-Series Agent started", task_id=request.task_id)
     qec = request.query_execution_context
     if not qec:
         return _contract_blocked_result(request, ["BLOCKED_CONFIG: query_execution_context is required"])
-    if qec.readiness != PlanStatus.EXECUTION_READY:
+    from services.orchestrator.execution_validator import is_execution_authorized
+    if not is_execution_authorized(qec):
         return _contract_blocked_result(request, qec.blockers or ["BLOCKED_DATA: time-series execution context is not ready"])
 
     time_range = qec.slots.time_range or {}

@@ -27,6 +27,12 @@ def diagnostic_response(state):
     from services.orchestrator.traffic_execution import _db_url as traffic_db_url
     from services.orchestrator.traffic_execution import TrafficProblem
     kind = diagnostic_request(state.get('query'))
+    from services.orchestrator.execution_validator import validate_lookup_request, is_execution_authorized, execution_gate_failure, attach_execution_decision
+    validated = None
+    if kind != 'execution_trace':
+        validated = validate_lookup_request(state, kind)
+        if not is_execution_authorized(validated):
+            return execution_gate_failure(state, validated)['final_dict']
     status, code, rows, relation, snapshot = 'COMPLETED', None, [], None, None
     if kind == 'execution_trace':
         status, code = 'NEEDS_CLARIFICATION', 'DIAGNOSTIC_TASK_REQUIRED'
@@ -91,7 +97,7 @@ def diagnostic_response(state):
     tool = {'tool_id': 'diagnostics.' + kind, 'status': 'EXECUTED' if snapshot else 'BLOCKED', 'relation': relation, 'snapshot': snapshot}
     plan = {'intent': 'DATA_DISCOVERY', 'analysis_type': kind, 'slots': {'diagnostic_target': kind},
             'tools': [tool['tool_id']], 'outputs': ['DiagnosticEvidence'], 'status': status,
-            'execution_ready': bool(snapshot), 'clarification_required': status == 'NEEDS_CLARIFICATION'}
+            'execution_ready': False, 'clarification_required': status == 'NEEDS_CLARIFICATION'}
     context = {'readiness': status, 'tool_bindings': [tool], 'data_bindings': [{'relation': relation}] if relation else [],
                'blockers': [code] if code else [], 'warnings': []}
     final = {'task_id': state['task_id'], 'status': status, 'error_code': code, 'answer_text': answer, 'summary': answer,
@@ -100,4 +106,6 @@ def diagnostic_response(state):
              'evidence_bundle': {'diagnostic_evidence': [{'source_ref': relation, 'snapshot': snapshot, 'rows': rows}] if snapshot else []}}
     if status == 'NEEDS_CLARIFICATION':
         final['clarification_questions'] = [answer]
+    if validated is not None:
+        attach_execution_decision(final, validated)
     return final

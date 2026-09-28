@@ -12,7 +12,7 @@ import uuid
 from contextlib import contextmanager
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 
 from services.orchestrator.intent_shadow import fingerprint, json_request, rankings, registry_snapshot, prepare_candidates
@@ -182,6 +182,11 @@ class ComparisonStore:
             row = db.execute("SELECT record FROM comparisons WHERE id=?", (key,)).fetchone()
         return json.loads(row[0]) if row else None
 
+    def recent(self, limit=30):
+        with self.connect() as db:
+            rows = db.execute("SELECT record FROM comparisons ORDER BY json_extract(record, '$.created_at') DESC LIMIT ?", (limit,)).fetchall()
+        return [json.loads(row[0]) for row in rows]
+
     def update(self, key, **fields):
         with self.lock, self.connect() as db:
             row = db.execute("SELECT record FROM comparisons WHERE id=?", (key,)).fetchone()
@@ -230,9 +235,15 @@ def observe(key, final):
     orch = final.get("orchestrator_v2") or {}
     structured = final.get("structured_result") or {}
     store().update(key, execution={"status": final.get("status"), "summary": final.get("summary"),
+                   "normalized_query": (structured.get("normalization") or {}).get("normalized_query") or (orch.get("candidate_trace") or {}).get("normalized_query") or (orch.get("query_execution_context") or {}).get("normalized_query"),
                    "error_code": final.get("error_code") or structured.get("error_code"),
                    "route_plan": orch.get("route_plan"), "query_execution_context": orch.get("query_execution_context"),
                    "execution_permission": structured.get("execution_permission"), "decision_source": "existing_rules_and_execution_validator"})
+
+
+@router.get("/intent-comparisons")
+def list_comparisons(limit: int = Query(default=30, ge=1, le=100)):
+    return {"items": store().recent(limit)}
 
 
 @router.get("/intent-comparisons/{comparison_id}")

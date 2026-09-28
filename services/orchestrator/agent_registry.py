@@ -59,22 +59,30 @@ class AgentRegistry:
         에이전트 이름으로 entry_point를 찾아 동적으로 임포트하여 실행 함수를 반환합니다.
         """
         agent = self.get_agent(agent_name)
+        from services.orchestrator.agent_execution_gate import validated_agent, blocked_agent_result
+        from services.orchestrator.execution_validator import reject_agent_execution
+
+        async def unavailable(request):
+            context = reject_agent_execution(request, agent_name, "registered agent entry point is unavailable")
+            return blocked_agent_result(request, agent_name, context)
         if not agent:
             logger.error(f"Agent '{agent_name}' not found for execution.")
-            return None
+            return unavailable
             
         entry_point = agent.get("entry_point")
         if not entry_point:
             logger.error(f"Agent '{agent_name}' has no entry_point defined.")
-            return None
+            return unavailable
             
         try:
             module_path, func_name = entry_point.rsplit(".", 1)
             module = importlib.import_module(module_path)
             func = getattr(module, func_name)
+            if getattr(func, "__execution_contract_agent__", None) != agent_name:
+                func = validated_agent(agent_name)(func)
             return func
         except Exception as e:
             logger.error(f"Failed to dynamically load agent '{agent_name}' at '{entry_point}': {e}")
-            return None
+            return unavailable
 
 registry = AgentRegistry()

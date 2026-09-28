@@ -69,7 +69,7 @@ def _query_plan_from_contract(request: AgentRequest, qec: QueryExecutionContext)
     feature_names = slots.resolved_target_set or slots.target_features
     target_layers = slots.target_layers or [binding.dataset_id for binding in qec.data_bindings] or ["GBENC_S101_feature"]
     base_geometry = slots.reference_geometry or _spatial_context_geometry(qec)
-    limit = slots.filters.get("limit") or slots.filters.get("k") or 100
+    limit = slots.filters.get("k", slots.filters.get("limit", 1)) if analysis_type in ("nearest_feature", "nearest_feature_search") else slots.filters.get("limit", 100)
 
     return QueryPlan(
         query_id=request.task_id,
@@ -102,6 +102,10 @@ def _query_plan_from_contract(request: AgentRequest, qec: QueryExecutionContext)
         base_geometry=base_geometry,
     )
 
+from services.orchestrator.agent_execution_gate import validated_agent
+
+
+@validated_agent('Spatial Analysis Agent')
 async def execute_spatial_analysis(request: AgentRequest) -> AgentResult:
     """
     Spatial Analysis Agent Core Logic.
@@ -113,7 +117,8 @@ async def execute_spatial_analysis(request: AgentRequest) -> AgentResult:
     readiness = _readiness_value(qec)
     if not qec:
         return _contract_blocked_result(request, AgentStatus.FAILED, "BLOCKED_CONFIG: query_execution_context is required")
-    if readiness != PlanStatus.EXECUTION_READY.value:
+    from services.orchestrator.execution_validator import is_execution_authorized
+    if not is_execution_authorized(qec):
         blockers = qec.blockers or [f"Execution readiness is {readiness or 'UNKNOWN'}"]
         status = AgentStatus.NEEDS_CLARIFICATION if any(str(b).startswith("NEEDS_USER_INPUT") for b in blockers) else AgentStatus.BLOCKED
         return _contract_blocked_result(request, status, "Execution contract is not ready", blockers)

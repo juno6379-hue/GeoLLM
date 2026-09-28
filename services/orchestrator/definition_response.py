@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from services.orchestrator.definition_router import resolve_definition
+from services.orchestrator.execution_validator import validate_lookup_request, is_execution_authorized, project_execution_decision
 
 
 def build_definition_response(state: dict[str, Any]) -> dict[str, Any] | None:
@@ -13,6 +14,9 @@ def build_definition_response(state: dict[str, Any]) -> dict[str, Any] | None:
     definition = str(entry["definition_ko"])
     lexical = entry['source_kind'] == 'mof_terminology_relation'
     analysis_type = 'terminology_relation_lookup' if lexical else 'definition_lookup'
+    validated = validate_lookup_request(state, analysis_type)
+    if not is_execution_authorized(validated):
+        return None
     source_title = str(entry["source_title"])
     source_ref = str(entry["source_ref"])
     task_id = str(state["task_id"])
@@ -32,7 +36,7 @@ def build_definition_response(state: dict[str, Any]) -> dict[str, Any] | None:
         "tools": ["definition.registry_lookup"], "data": [entry["source_kind"]],
         "outputs": ["StandardDocumentOutput", "EvidenceBundle", "Summary"],
         "clarification_required": False, "confidence": None if lexical else 1.0,
-        "execution_ready": True, "route_plan_status": "EXECUTION_READY",
+        "execution_ready": False, "route_plan_status": "PLAN_READY",
     }
     evidence = {
         "evidence_id": evidence_id, "evidence_type": "verified_definition",
@@ -47,12 +51,15 @@ def build_definition_response(state: dict[str, Any]) -> dict[str, Any] | None:
               "regulatory_evidence": [], "spatial_feature_evidence": [],
               "spatial_layer_evidence": [], "accident_relation_evidence": []}
     qec = {
-        "readiness": "EXECUTION_READY", "blockers": [], "warnings": [],
+        "readiness": validated.readiness.value, "blockers": validated.blockers, "warnings": [],
         "semantic_resolution": {"intent": "DEFINITION", "canonical_term": canonical,
                                 "source": entry["source_kind"]},
         "data_bindings": [{"dataset_id": entry["source_kind"], "source_ref": source_ref}],
         "tool_bindings": [{"tool_id": "definition.registry_lookup", "status": "EXECUTED", "term_id": entry["term_id"]}],
     }
+    project_execution_decision(validated, route_plan)
+    qec.update(validated.model_dump(mode="json"))
+    qec["route_plan"] = route_plan
     final = {
         "task_id": task_id, "trace_id": f"tr-{task_id}",
         "agent_name": "Standard RAG Agent",

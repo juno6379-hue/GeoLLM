@@ -1,4 +1,6 @@
 import re
+import math
+from services.orchestrator.execution_validator import MAX_RADIUS_M
 from typing import Tuple, Dict, Any, List
 from shared.observability.logger import get_logger
 from services.spatial_analysis_agent.schemas import SpatialDSL
@@ -44,10 +46,9 @@ def validate_dsl(dsl: SpatialDSL) -> Tuple[bool, List[str]]:
     if dsl.buffer_distance is not None:
         if dsl.distance_unit not in ["meters", "kilometers"]:
             errors.append(f"Unsupported distance unit '{dsl.distance_unit}' for metric operations.")
-        if dsl.buffer_distance < 0:
-            errors.append("Distance cannot be negative.")
-        if dsl.buffer_distance > 1000000:  # 1000km 제한 (과도한 연산 방지)
-            errors.append("Distance exceeds maximum allowed range (1000km).")
+        distance_m = dsl.buffer_distance * (1000 if dsl.distance_unit == "kilometers" else 1)
+        if not math.isfinite(distance_m) or not 0 < distance_m <= MAX_RADIUS_M:
+            errors.append(f"Distance must be finite, positive and at most {MAX_RADIUS_M} meters.")
 
     return len(errors) == 0, errors
 
@@ -67,7 +68,7 @@ def validate_query_plan(qp: Any) -> Tuple[bool, List[str]]:
         errors.append("location information (place_id or original_text) is missing.")
         
     if qp.analysis_type == "feature_dwithin":
-        if qp.spatial.distance_m is None or qp.spatial.distance_m < 0:
+        if qp.spatial.distance_m is None or not math.isfinite(qp.spatial.distance_m) or not 0 < qp.spatial.distance_m <= MAX_RADIUS_M:
             errors.append("Valid distance_m is required for feature_dwithin.")
             
     return len(errors) == 0, errors
