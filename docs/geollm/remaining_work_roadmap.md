@@ -1,5 +1,13 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-09-29 사용자 우선순위 — parser & Map_viewer 지도 API 연동 검토
+
+- [가능성 판단·근거·연동 순서](map_viewer_api_feasibility_20260929.md): 기술적으로 가능하며 기존 Leaflet에 서버 proxy를 통한 PNG XYZ 레이어 연결을 우선 권장한다. 이번에는 구현하지 않았다.
+- 내부 지도 API 3000 health는 DB/projection 정상, FC/PC 2.0.0. 공개 지도 API 3002는 연결 거부, GeoLLM 8000은 전송 오류로 정상 확인 불가. Stage 0~4 로컬 manifest complete=true는 확인했지만 전체 파일/화면/공개 API ready 검증은 아니다. Stage 5/6 완성으로 해석하지 않는다.
+- 다음 연동 순서: 서비스 상태/이용권/대표 타일 확인 → 키를 서버에 두는 고정 경로 proxy → Leaflet XYZ 및 줌/좌표 정합성 → 클릭/객체 API·원천 ID/판 매핑. 공개 API는 타일만 제공하므로 객체 근거 연동은 추가 adapter가 필요하다.
+- Phase A 전체 회귀와 최신 API 재검증은 여전히 미완료이며 아래 인계에 남는다. 규칙/Qwen/융합은 shadow, calibration UNFITTED, QLoRA DEFER다. 자동 서비스 시작·키 발급·연동 코드 변경은 하지 않았다.
+
+
 ## 2026-09-28 최종 인계 — 사용자 요청으로 Phase A 작업 중단·커밋·푸시
 
 - **다음 세션은 이 절과 문서 전체를 먼저 읽는다. Phase A 완료 선언은 보류한다.** 아래 이전 기록은 당시 검증 범위이며 최신 변경 전체의 통과를 의미하지 않는다.
