@@ -43,6 +43,19 @@ def serializers():
     return namespace
 
 
+def test_general_clarification_restarts_without_old_approval(serializers):
+    state = {"task_id": "resume-document", "query": "문서 검색", "task_plan": {"analysis_type": "document_search"},
+        "query_execution_context": {"revision": 4, "readiness": "EXECUTION_READY"},
+        "agent_request": {"old": True}, "agent_result": {"status": "COMPLETED"}, "approval_granted": True}
+    req = SimpleNamespace(query="항만 안전 문서로", task_id="resume-document", organization_id="org", user_id="user", spatial_context={})
+    result = serializers["_radius_restart_state"](state, req)
+    assert result["execution_revision"] == 5
+    assert result["query"].endswith(req.query)
+    for field in ("query_execution_context", "task_plan", "agent_request", "agent_result", "approval_granted"):
+        assert result[field] is None
+    assert state["approval_granted"] is True
+
+
 def radius_result(returned=30):
     rows = [
         {

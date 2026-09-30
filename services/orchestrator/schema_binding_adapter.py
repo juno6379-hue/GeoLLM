@@ -211,7 +211,8 @@ class SchemaBindingAdapter:
         info = self._inspect_relation(relation)
         result.inspected_relations[relation] = info
         columns = {item["name"] for item in info.get("columns", [])}
-        if not info.get("exists") or not info.get("has_select") or not {"content", "metadata", "embedding"} <= columns:
+        required_columns = {"chunk_id", "source_id", "source_sha256", "content", "metadata", "embedding"}
+        if not info.get("exists") or not info.get("has_select") or not required_columns <= columns:
             result.blockers.append("BLOCKED_DATA: document source schema or SELECT permission is unavailable")
         else:
             result.data_bindings.append(DataBinding(dataset_id=relation, relation=relation, geometry_column=""))

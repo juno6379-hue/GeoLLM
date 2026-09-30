@@ -111,6 +111,17 @@ def test_rag_source_permissions_required(monkeypatch):
     assert any("SELECT" in item for item in result.blockers)
 
 
+@pytest.mark.parametrize("missing", ["chunk_id", "source_id", "source_sha256"])
+def test_rag_missing_evidence_columns_cannot_execute(monkeypatch, missing):
+    adapter = SchemaBindingAdapter()
+    columns = {"chunk_id", "source_id", "source_sha256", "content", "metadata", "embedding"} - {missing}
+    monkeypatch.setattr(adapter, "_inspect_relation", lambda _: {"exists": True, "has_select": True,
+        "columns": [{"name": name} for name in columns]})
+    result = adapter.build_bindings({"analysis_type": "document_search"}, {})
+    assert not result.data_bindings
+    assert any(item.startswith("BLOCKED_DATA") for item in result.blockers)
+
+
 @pytest.mark.asyncio
 async def test_discovery_does_not_fetch_csv(monkeypatch, tmp_path):
     from services.data_discovery_agent import agent

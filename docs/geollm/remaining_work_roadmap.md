@@ -1,5 +1,16 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-09-30 Phase A 후속 검증 및 일반 질의 재개 계약 보완
+
+- [변경·검증·잔여 범위](phase_a_validation_20260930.md). 사용자 요청으로 Phase A를 재개했다. 일반 질의도 추가 입력 시 이전 계획/QEC/Agent 결과/승인을 폐기하고 revision을 올려 재계획한다. 메모리 checkpoint가 없으면 저장 snapshot을 사용하며, 모두 없으면 재개를 거절한다.
+- RAG 사전 원천 검사에 실제 SQL이 사용하는 chunk_id/source_id/source_sha256을 추가했다. 누락 시 실행 전에 차단한다.
+- 수정 전 관련 회귀 175 passed. 수정 후 179 passed(77 warnings), 별도 일반 재개·저장 snapshot 복원 route 테스트 2 passed(1 warning). 전체 저장소 테스트 통과나 의미 정확도를 뜻하지 않는다.
+- 최신 코드로 backend 재시작 후 실제 API **6/6 통과**: 이동/정의/1km 검색 승인·완료, 반경 누락 추가 입력 요구·미승인, 60km 차단·미승인, 같은 작업에 1km 추가 입력 시 revision 2·새 승인·완료. 정적 UI 자산·검토 이력 API 확인. 원본 `outputs/web-intent-audit/20260930-phase-a-runtime-v1.jsonl`은 커밋 제외.
+- 응답 시간은 20.894/40.295/15.802/32.658/41.161/68.390초였다. 계약은 통과했지만 지연 개선/SLO 충족을 뜻하지 않는다. 문법 검사 및 git diff --check 통과.
+- **다음 실행 순서:** 일반 RAG·사고 관계·시계열의 실제 운영 원천별 end-to-end 및 권한/원천 변경 검증 → UI 렌더링/지도 문맥 E2E → Phase A 완료 판단 → B 실제 데이터/adapter → C 근거 품질 → D 독립 gold/holdout → E benchmark/CI/SLO → F 학습 판단. Phase A 전체 완료 선언은 보류한다.
+- 아래 9월 28일 인계의 '최신 backend 미반영/전체 관련 회귀 미검증'은 이번 범위에서 해소했다. 그 외 미구현 adapter·UI·원천별 검증은 유지한다. 지도 API 연동은 아직 가능성 검토 상태다. 규칙/Qwen/융합 shadow, calibration UNFITTED, QLoRA DEFER.
+
+
 ## 2026-09-29 사용자 우선순위 — parser & Map_viewer 지도 API 연동 검토
 
 - [가능성 판단·근거·연동 순서](map_viewer_api_feasibility_20260929.md): 기술적으로 가능하며 기존 Leaflet에 서버 proxy를 통한 PNG XYZ 레이어 연결을 우선 권장한다. 이번에는 구현하지 않았다.

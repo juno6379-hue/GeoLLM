@@ -21,13 +21,15 @@ def extract_presets(html):
     return prompts
 
 
-def observe(base_url, number, query, spatial_context=None, *, socket_timeout=30, observation_timeout=120):
+def observe(base_url, number, query, spatial_context=None, *, socket_timeout=30, observation_timeout=120, task_id=None):
     context = spatial_context or {}
     row = {'sample': number, 'query': query, 'browser_tested': False, 'spatial_context': context, 'events': []}
     start = time.monotonic()
     try:
-        body = json.dumps({'query': query, 'user_id': 'admin', 'organization_id': 'test',
-                           'spatial_context': context}, ensure_ascii=False).encode()
+        payload = {'query': query, 'user_id': 'admin', 'organization_id': 'test', 'spatial_context': context}
+        if task_id:
+            payload['task_id'] = task_id
+        body = json.dumps(payload, ensure_ascii=False).encode()
         req = Request(base_url+'/api/v1/tasks/stream', data=body, headers={'Content-Type': 'application/json'})
         with urlopen(req, timeout=socket_timeout) as response:
             for raw in response:

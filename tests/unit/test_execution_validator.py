@@ -261,7 +261,7 @@ def test_document_search_does_not_require_spatial_slots(monkeypatch):
 
     adapter = SchemaBindingAdapter()
     monkeypatch.setattr(adapter, "_inspect_relation", lambda _: {"exists": True, "has_select": True,
-        "columns": [{"name": name} for name in ("content", "metadata", "embedding")]})
+        "columns": [{"name": name} for name in ("chunk_id", "source_id", "source_sha256", "content", "metadata", "embedding")]})
     monkeypatch.setattr(execution_validator, "schema_binding_adapter", adapter)
     monkeypatch.setenv("OLLAMA_EMBEDDING_URL", "http://localhost:11434/api/embed")
     monkeypatch.setenv("EMBEDDING_MODEL", "bge-m3")

@@ -37,6 +37,7 @@ def main():
     ]
     args.output.parent.mkdir(parents=True, exist_ok=True)
     failures = []
+    clarification = None
     with args.output.open('x', encoding='utf-8') as stream:
         for index, (query, context, expected, allowed) in enumerate(cases):
             row = observe(base, index, query, context, socket_timeout=180, observation_timeout=300)
@@ -53,8 +54,29 @@ def main():
             print(json.dumps({'query': query, 'status': final.get('status'), 'ready': plan.get('execution_ready'), 'authority': receipt.get('authority'), 'passed': bool(ok)}, ensure_ascii=False), flush=True)
             if not ok:
                 failures.append(index)
+            if index == 3:
+                clarification = row
+        # Same-task user clarification must discard the previous contract.
+        assert clarification and clarification.get('task_id'), 'No clarification task to resume'
+        resumed = observe(base, 5, '반경 1km로 찾아줘', {**spatial, 'buffer_distance': 1000},
+                          socket_timeout=180, observation_timeout=300, task_id=clarification['task_id'])
+        final = (resumed.get('completion') or {}).get('final_result') or {}
+        qec = (final.get('orchestrator_v2') or {}).get('query_execution_context') or {}
+        old_qec = (((clarification.get('completion') or {}).get('final_result') or {}).get('orchestrator_v2') or {}).get('query_execution_context') or {}
+        receipt = (qec.get('provenance') or {}).get('execution_validation') or {}
+        ok = (final.get('status') == 'COMPLETED' and resumed.get('task_id') == clarification['task_id']
+              and int(qec.get('revision') or 0) > int(old_qec.get('revision') or 0)
+              and receipt.get('authority') == 'ExecutionValidator'
+              and (qec.get('slots') or {}).get('distance_m') == 1000
+              and (qec.get('route_plan') or {}).get('execution_ready') is True)
+        resumed['contract_check_passed'] = bool(ok)
+        stream.write(json.dumps(resumed, ensure_ascii=False) + '\n')
+        print(json.dumps({'case': 'same_task_clarification', 'status': final.get('status'),
+                          'revision': qec.get('revision'), 'passed': bool(ok)}), flush=True)
+        if not ok:
+            failures.append(5)
     assert not failures, failures
-    print('UI assets + review API + 5/5 execution contracts passed', flush=True)
+    print('UI assets + review API + 6/6 execution contracts passed', flush=True)
 
 
 if __name__ == '__main__':

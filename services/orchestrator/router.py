@@ -936,22 +936,17 @@ async def stream_task(req: TaskCreateRequest):
                 # 상태 머신의 현재 상태(NEEDS_CLARIFICATION 등)를 가져와서 최신 쿼리를 반영합니다.
                 state_snapshot = orchestrator_graph.get_state(config)
                 restart_state = None
-                if state_snapshot and state_snapshot.values:
-                    current_state = state_snapshot.values
-                    if (_is_radius_state(current_state) or _is_place_clarification_state(current_state)) and (req.spatial_context is not None or not state_snapshot.next):
-                        restart_state = _radius_restart_state(current_state, req)
-                        TASK_STORE.update(
-                            task_id, query=restart_state["query"], spatial_context=restart_state["spatial_context"],
-                            final_result=None, agent_result=None, snapshot=_to_jsonable(restart_state),
-                        )
-                    else:
-                        current_state = dict(current_state)
-                        current_state["task_id"] = current_state.get("task_id") or task_id
-                        current_state["organization_id"] = current_state.get("organization_id") or req.organization_id or "default_org"
-                        current_state["user_id"] = current_state.get("user_id") or req.user_id or "default_user"
-                        current_state["query"] = f"{current_state.get('query', '')} {req.query}"
-                        current_state["status"] = AgentStatus.RECEIVED
-                        orchestrator_graph.update_state(config, current_state)
+                current_state = (state_snapshot.values if state_snapshot and state_snapshot.values
+                                 else (TASK_STORE.get(task_id, {}).get("snapshot") or {}))
+                if not current_state:
+                    raise ValueError("Resume checkpoint is unavailable; submit a new task")
+                # Every new input invalidates the old plan/approval, including
+                # non-spatial clarification and checkpoints restored after restart.
+                restart_state = _radius_restart_state(current_state, req)
+                TASK_STORE.update(
+                    task_id, query=restart_state["query"], spatial_context=restart_state["spatial_context"],
+                    final_result=None, agent_result=None, snapshot=_to_jsonable(restart_state),
+                )
                     
                 stream_iter = orchestrator_graph.astream(restart_state, config=config, stream_mode="updates")
             else:
