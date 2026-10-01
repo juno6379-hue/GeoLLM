@@ -14,6 +14,7 @@ class Element {
     append(...nodes) { this.children.push(...nodes); }
     prepend(...nodes) { this.children.unshift(...nodes); }
     replaceChildren(...nodes) { this.children = nodes; }
+    querySelectorAll(selector) { return this.children.filter(child => `.${child.className}` === selector); }
     setAttribute(name, value) { this[name] = value; }
     addEventListener(name, listener) { this.listeners[name] = listener; }
     createTHead() { const node = new Element("thead"); this.append(node); return node; }
@@ -97,7 +98,7 @@ assert.deepEqual(popups.map(node => node.dataset.featureId), ["11", "12"]);
 assert.equal(elements.get("querySummary").hidden, false);
 assert.ok(elements.get("querySummaryTitle").textContent.includes("119건"));
 const firstEvidence = elements.get("answerEvidence").children[0];
-assert.equal(firstEvidence.children[0].textContent, "침선 · 기준점에서 11m");
+assert.equal(firstEvidence.children[0].textContent, "침선 · 선택 위치에서 11m");
 const technical = firstEvidence.children.find(node => node.className === "evidence-technical");
 assert.equal(technical.tag, "details");
 assert.ok(!technical.open);

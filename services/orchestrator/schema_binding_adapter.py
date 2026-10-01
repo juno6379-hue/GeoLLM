@@ -121,6 +121,9 @@ class SchemaBindingAdapter:
         if not dataset and not source_path:
             result.blockers.append("BLOCKED_DATA: time-series dataset_id or source_path is required")
             return
+        if dataset and dataset.get("execution_status") == "fixture_only":
+            result.blockers.append("BLOCKED_DATA: test fixture is not an operational time-series source")
+            return
         if dataset and dataset.get("execution_status") in {"metadata_only", "needs_ingestion"} and not dataset.get("path"):
             result.blockers.append(
                 f"BLOCKED_DATA: time-series dataset {dataset_id} is {dataset.get('execution_status')} and has no executable path"
@@ -132,8 +135,27 @@ class SchemaBindingAdapter:
             result.blockers.append(f"BLOCKED_CONFIG: invalid time-series source for dataset {dataset_id}")
             return
 
+        root = Path(PROJECT_ROOT).resolve()
+        try:
+            path = (root / relation).resolve()
+            path.relative_to(root)
+        except (ValueError, OSError, RuntimeError):
+            result.blockers.append("BLOCKED_POLICY: time-series source must stay under project root")
+            return
+        fixture_paths = {(root / row["path"]).resolve() for row in datasets.values()
+                         if row.get("execution_status") == "fixture_only" and row.get("path")}
+        if path in fixture_paths or path.is_relative_to(root / "data" / "fixtures"):
+            result.blockers.append("BLOCKED_DATA: test fixture cannot be used through a source_path alias")
+            return
+        if not path.is_file():
+            result.blockers.append("BLOCKED_DATA: time-series source file is unavailable")
+            return
+        if path.suffix.lower() not in {".csv", ".jsonl", ".ndjson"}:
+            result.blockers.append("BLOCKED_CONFIG: unsupported time-series source format")
+            return
+
         result.inspected_relations[relation] = {
-            "exists": os.path.exists(os.path.join(PROJECT_ROOT, relation)) if not os.path.isabs(relation) else os.path.exists(relation),
+            "exists": True,
             "kind": "file_time_series",
         }
         result.data_bindings.append(

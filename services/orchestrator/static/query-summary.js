@@ -62,6 +62,7 @@
     }
 
     function percent(value) {
+        if (value === null || value === undefined || value === "") return "미평가";
         const n = Number(value);
         return Number.isFinite(n) ? `${(n * 100).toFixed(1)}%` : "-";
     }

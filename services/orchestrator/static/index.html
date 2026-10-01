@@ -1076,16 +1076,14 @@
 
         const stepsArray = ['routing', 'discovery', 'spatial', 'ais', 'knowledge', 'reasoning', 'validation', 'report'];
         function setStep(stepId, state) {
-            let idx = stepsArray.indexOf(stepId);
-            for(let i=0; i<stepsArray.length; i++) {
-                let el = document.getElementById(`step-${stepsArray[i]}`);
+            for (const [i, id] of stepsArray.entries()) {
+                const el = document.getElementById(`step-${id}`);
                 if (!el) continue;
-                if (i < idx) { el.classList.add('done'); el.classList.remove('active'); el.querySelector('.step-circle').innerHTML = '✓'; }
-                else if (i === idx) { 
-                    if(state === 'done') { el.classList.add('done'); el.classList.remove('active'); el.querySelector('.step-circle').innerHTML = '✓'; }
-                    else { el.classList.add('active'); el.classList.remove('done'); el.querySelector('.step-circle').innerHTML = '↻'; }
-                }
-                else { el.classList.remove('active', 'done'); el.querySelector('.step-circle').innerHTML = i+1; }
+                if (state !== 'reset' && id !== stepId) continue;
+                el.classList.remove('active', 'done');
+                if (state === 'done') el.classList.add('done');
+                if (state === 'active') el.classList.add('active');
+                el.querySelector('.step-circle').textContent = state === 'done' ? '✓' : state === 'active' ? '↻' : state === 'error' ? '!' : String(i + 1);
             }
         }
 
@@ -1359,6 +1357,7 @@
             hist.scrollTop = hist.scrollHeight;
             
             queryInput.value = "";
+            setStep(null, 'reset');
             setStep('routing', 'active');
             addLog(`[System] 질의 분석 시작: ${query}`);
 
@@ -1417,14 +1416,15 @@
                                 }
                                 else if (data.status === 'PLAN_CREATED') setStep('discovery', 'active');
                                 else if (data.status === 'RESULTS_AGGREGATED') {
-                                    setStep('spatial', 'done');
-                                    setStep('reasoning', 'active');
-                                    setStep('validation', 'active');
+                                    setStep('discovery', 'reset');
+                                    setStep('routing', 'done');
+                                    setStep('report', 'active');
                                 }
                                 else if (data.status === 'MAP_REPORT_GENERATING') setStep('report', 'active');
                                 
                                 fetchTraceData(currentTaskId);
                             } else if (data.event === 'completed') {
+                                setStep(null, 'reset');
                                 data.query = query;
                                 fetchTraceData(currentTaskId);
                                 if (RadiusResults.isRadius(data.final_result)) {
@@ -1729,7 +1729,7 @@
                                 // Add bot bubble in history
                                 const bBubble = document.createElement("div");
                                 bBubble.style.cssText = "background: #e0f2fe; border: 1px solid #bae6fd; padding: 10px; border-radius: 8px; font-size: 13px; align-self: flex-start; max-width: 90%;";
-                                bBubble.innerHTML = "분석이 완료되었습니다. 우측의 결과 요약을 확인해주세요.<br><br><b>추가 질문이 있을 시 대화 창에 추가 질문을 입력하세요...</b>";
+                                bBubble.textContent = (resultStatus === 'PARTIAL' ? '부분 결과입니다. 추가 근거가 필요합니다.' : resultStatus === 'BLOCKED' ? '실행이 차단되었습니다.' : ['COMPLETED', 'SUCCESS', 'SUCCESS_EMPTY'].includes(resultStatus) ? '분석이 완료되었습니다.' : `처리 상태: ${resultStatus || 'UNKNOWN'}`) + ' 결과 요약과 근거를 확인해주세요.';
                                 hist.appendChild(bBubble);
                                 hist.scrollTop = hist.scrollHeight;
                                 

@@ -8,6 +8,7 @@ class Element {
     constructor(tag) { this.tag = tag; this.textContent = ""; this.dataset = {}; this.children = []; }
     append(...children) { this.children.push(...children); }
     replaceChildren(...children) { this.children = children; }
+    querySelectorAll(selector) { return this.children.filter(child => `.${child.className}` === selector); }
 }
 
 function setup() {
@@ -115,6 +116,15 @@ test("query and place labels are text, not injected HTML", () => {
     assert.equal(ui.get("querySummaryQuery").textContent, label);
     assert.equal(ui.get("querySummaryQuery").innerHTML, undefined);
     assert.equal(ui.get("querySummaryTitle").innerHTML, undefined);
+});
+
+test("unassessed generic metrics remain distinct from measured zero", () => {
+    const ui = setup();
+    ui.summary.renderGeneric({ status: 'PARTIAL', quality_metrics: {
+        intent_similarity: null, kg_similarity: '', evidence_similarity: 0,
+    } }, '근거 문서 검색');
+    assert.equal(ui.facts().filter(value => value === '미평가').length, 2);
+    assert.ok(ui.facts().includes('0.0%'));
 });
 
 test("summary precedes query/map panels and loads before dependent renderer", () => {

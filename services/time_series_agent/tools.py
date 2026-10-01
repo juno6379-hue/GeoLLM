@@ -33,7 +33,8 @@ def _resolve_under_root(value: str | None) -> Path | None:
     if not path.is_absolute():
         path = ROOT / path
     try:
-        path.relative_to(ROOT)
+        path = path.resolve()
+        path.relative_to(ROOT.resolve())
     except ValueError:
         raise ValueError(f"time-series source must stay under project root: {value}")
     return path

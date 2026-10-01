@@ -1,5 +1,13 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-10-01 Phase A 운영 원천 및 실제 브라우저 검증
+
+- [검증 결과·재현·미비점](phase_a_sources_ui_20261001.md). 운영 Agent 직접 호출 5/5: RAG 문서 2건, 사고 관계 5건, 미준비/fixture/미등록 시계열 차단. HTTP E2E와 구분한다. 시계열 binding에서 파일 존재·루트 경계·fixture 별칭·확장자를 검증하도록 수정했다.
+- Python 관련 회귀 117 passed, Node UI 12 passed. backend 재시작 후 실제 API 승인/차단/재개 6/6 통과. 초기 들여쓰기 오류 및 UI 테스트 mock/문구 실패는 수정했으며 검증 문서에 기록했다.
+- 실제 브라우저에서 Evidence 메뉴, 분석 아래 비교 영역, 미평가 점수, PARTIAL 안내, 미실행 단계 표시 및 질의창/지도 동일 높이와 내부 스크롤을 확인했다. 이전 browser helper 장애는 이번 세션에서는 해소됐다. 승인이나 human gold 변경은 하지 않았다.
+- **다음 첫 P0:** `수로 측량 데이터 품질 관리 관련 근거 문서를 검색해줘`의 `근거`→`근처` 정규화 및 DATA_DISCOVERY 오경로를 조사·수정한다. 사고 데이터 중심 근거 반환을 일반 RAG 정상 답변으로 인정하지 않는다. 직접 RAG 실행 성공과 웹 의도 오류는 별개다.
+- 이후 운영 원천 권한/열/Agent/슬롯 변경 검증과 실제 시계열 양성 원천 → Phase A 완료 판단 → B 실제 데이터/adapter → C/D/E/F 순서다. **Phase A 전체 완료는 보류**한다. Qwen/융합 shadow, calibration UNFITTED, QLoRA DEFER 유지.
+
 ## 2026-09-30 Phase A 후속 검증 및 일반 질의 재개 계약 보완
 
 - [변경·검증·잔여 범위](phase_a_validation_20260930.md). 사용자 요청으로 Phase A를 재개했다. 일반 질의도 추가 입력 시 이전 계획/QEC/Agent 결과/승인을 폐기하고 revision을 올려 재계획한다. 메모리 checkpoint가 없으면 저장 snapshot을 사용하며, 모두 없으면 재개를 거절한다.
