@@ -670,7 +670,7 @@
                             </div>
                         </div>
                         <div class="trace-debug-section">
-                            <div class="trace-debug-title">실행 불가능 오류 및 디버그 로그</div>
+                            <div class="trace-debug-title">실행 판단 및 확인 사항</div>
                             <ul class="trace-debug-list" id="col3-debug-list">
                                 <li>대기 중...</li>
                             </ul>
@@ -1167,7 +1167,7 @@
                         const instantPolicy = (routerTrace.fast_path_policy || {}).instant_place_navigation || {};
                         const contract = routerTrace.execution_contract || {};
                         document.getElementById('col3-fast-policy').textContent = instantPolicy.allowed !== undefined
-                            ? `${instantPolicy.allowed ? "ALLOW" : "PASS_TO_ROUTER"} (${instantPolicy.reason || instantPolicy.matched_signal || "-"})`
+                            ? `${instantPolicy.allowed ? "빠른 지명 해석 경로 선택 · 실행 승인 아님" : "일반 해석 경로"} (${instantPolicy.reason || instantPolicy.matched_signal || "-"})`
                             : "N/A";
                         document.getElementById('col3-capabilities').textContent = topCandidateNames.length ? topCandidateNames.join(", ") : "N/A";
                         document.getElementById('col3-contract').textContent = contract.status
@@ -1175,13 +1175,19 @@
                             : (contract.readiness || "N/A");
                         
                         let col3Debug = "";
-                        if (intent["Execution Ready"] === false || data.status === 'NEEDS_CLARIFICATION') {
-                            col3Debug += `<li><span style="color:#ef4444;font-weight:bold;">✗ 실행 불가 오류:</span> ${intent["Route Plan Status"] || data.error_message || "조건 불충분"}</li>`;
+                        const needsInput = data.status === 'NEEDS_CLARIFICATION' || intent["Route Plan Status"] === 'NEEDS_USER_INPUT';
+                        if (needsInput) {
+                            col3Debug += `<li>입력 확인 대기: 요청은 해석했지만 실행에 필요한 위치·조건을 확정하지 못했습니다.</li>`;
+                        } else if (data.status === 'FAILED') {
+                            col3Debug += `<li>처리 오류: ${escapeHtml(data.error_message || "실패 원인은 실행 로그를 확인하세요.")}</li>`;
+                        } else if (intent["Execution Ready"] === false) {
+                            col3Debug += `<li>실행 미승인: ${escapeHtml(intent["Route Plan Status"] || "검증 조건 미충족")}</li>`;
                         } else {
                             col3Debug += `<li>실행 승인 여부는 아래 실행계약 기록을 확인하세요.</li>`;
                         }
                         if (instantPolicy.reason || instantPolicy.matched_signal) {
-                            col3Debug += `<li>Fast path gate: ${escapeHtml(instantPolicy.reason || instantPolicy.matched_signal)}</li>`;
+                            const reason = instantPolicy.reason || instantPolicy.matched_signal;
+                            col3Debug += `<li>해석 경로: ${reason === 'place_navigation_action' ? '지도 이동 요청으로 인식하여 지명 후보를 조회했습니다. 위치 확정·실행 승인은 별도입니다.' : escapeHtml(reason)}</li>`;
                         }
                         if (topCandidateNames.length) {
                             col3Debug += `<li>Capability top-k: ${escapeHtml(topCandidateNames.join(", "))}</li>`;
@@ -1246,9 +1252,9 @@
                                 </li>`;
                             }
                         } else if (data.status === 'NEEDS_CLARIFICATION') {
-                            spatialOp = "중단됨";
-                            execTime = "중단됨";
-                            col5Debug = `<li>✗ 모호성으로 인한 실행 중단</li>`;
+                            spatialOp = "입력 확인 대기";
+                            execTime = "미실행";
+                            col5Debug = `<li>공간쿼리 미실행: 기준 위치 또는 필수 조건 확인이 필요합니다.</li>`;
                         } else if (data.status === 'FAILED') {
                             spatialOp = "에러";
                             execTime = "Error";
@@ -1260,8 +1266,8 @@
                         document.getElementById('col5-spatialop').textContent = spatialOp;
                         
                         if (execData["reference_point"]) {
-                            col5Debug += `<li>✓ 기준 위치: ${execData.reference_point.location_text || '없음'}</li>`;
-                            col5Debug += `<li>기준 위치 기록은 쿼리 실행 완료를 뜻하지 않습니다.</li>`;
+                            col5Debug += `<li>요청에서 추출한 위치 이름: ${escapeHtml(execData.reference_point.location_text || '기록 없음')}</li>`;
+                            col5Debug += `<li>위치 이름 추출과 기준 좌표 확정은 별도입니다. 좌표·출처와 실행 승인은 위 검증 기록을 확인하세요.</li>`;
                         }
                         if (execData["query_template"]) {
                             col5Debug += `<li>✓ 템플릿: ${execData["query_template"]}</li>`;
@@ -1270,8 +1276,14 @@
                             col5Debug += `<li><span style="color:#f59e0b;">⚠ 경고:</span> ${execData.warnings[0]}</li>`;
                         }
                         if (execData["RAG"]) {
-                            col5Debug += `<li>KG/RAG filters: ${JSON.stringify(execData["RAG"].filters || {})}</li>`;
-                            col5Debug += `<li>Graph paths: ${(execData["RAG"].graph_paths || []).length}</li>`;
+                            const filters = execData["RAG"].filters || {};
+                            const paths = execData["RAG"].graph_paths || [];
+                            if (Object.keys(filters).length || paths.length) {
+                                col5Debug += `<li>KG/RAG 필터 기록: ${escapeHtml(JSON.stringify(filters))}</li>`;
+                                col5Debug += `<li>기록된 그래프 경로: ${paths.length}개</li>`;
+                            } else {
+                                col5Debug += `<li>KG/RAG 필터·경로 기록 없음 — 검색을 실행해 0건을 찾았다는 뜻이 아닙니다.</li>`;
+                            }
                         }
                         if (execData["Agent"]) {
                             col5Debug += `<li>Agent: ${execData["Agent"].agent_name || "N/A"}</li>`;
