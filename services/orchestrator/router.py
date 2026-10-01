@@ -615,6 +615,7 @@ def _preserve_spatial_stream_payload(result: dict, compact: dict) -> None:
 
 
 def _compact_final_result_for_stream(final_result):
+    from services.orchestrator.processing_explanation import build_processing_steps
     result = _to_jsonable(final_result) or {}
     structured = result.get("structured_result") if isinstance(result.get("structured_result"), dict) else {}
     orch = result.get("orchestrator_v2") if isinstance(result.get("orchestrator_v2"), dict) else {}
@@ -628,6 +629,7 @@ def _compact_final_result_for_stream(final_result):
         if isinstance(value, list)
     }
     compact = {
+        "processing_steps": build_processing_steps(result),
         "status": result.get("status"),
         "error_code": result.get("error_code"),
         "agent_name": result.get("agent_name"),
@@ -694,6 +696,8 @@ def _terminal_result_for_stream(state_vals: dict) -> dict:
             })
     payload = {"error_message": state_vals.get("error_message")}
     if final_result:
+        from services.orchestrator.processing_explanation import build_processing_steps
+        final_result['processing_steps'] = build_processing_steps(final_result)
         if os.environ.get("GEOLLM_STREAM_FULL_RESULT", "").lower() in {"1", "true", "yes", "on"}:
             payload["final_result"] = final_result
         else:
@@ -1050,7 +1054,7 @@ def build_debug_trace(state_vals: dict) -> dict:
     fallback_spatial = []
     slot_location = qec_slots.get("location_text") or qec_slots.get("location") or state_slots.get("location_text") or state_slots.get("location")
     slot_relation = qec_slots.get("spatial_relation") or state_slots.get("spatial_relation")
-    slot_distance = qec_slots.get("distance_m") or state_slots.get("distance_m")
+    slot_distance = qec_slots.get("distance_m") if qec_slots.get("distance_m") is not None else state_slots.get("distance_m")
     if slot_location or slot_relation or slot_distance:
         parts = [str(item) for item in (slot_location, slot_relation, f"{slot_distance:g}m" if isinstance(slot_distance, (int, float)) else slot_distance) if item]
         fallback_spatial = [" ".join(parts)]
@@ -1112,7 +1116,7 @@ def build_debug_trace(state_vals: dict) -> dict:
     }
 
     loc = slot_location or ""
-    dist_m = slot_distance or 0
+    dist_m = slot_distance
     if extracted_slots["공간조건"]:
         sp = extracted_slots["공간조건"][0]
         if isinstance(sp, dict) and not loc:

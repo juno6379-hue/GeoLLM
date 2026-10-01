@@ -7,6 +7,8 @@ import re
 def required_outputs(query: str) -> list[str]:
     text = str(query or '').casefold()
     outputs = []
+    if re.search(r"렌더링|묘화|portrayal", text) and re.search(r"규칙|rule", text):
+        outputs.append("portrayal_rule_evidence")
     if re.search(r'portrayal|묘화|심볼|symbol|아이콘', text) and re.search(r'매칭|연결|대응|일치', text):
         outputs.append('portrayal_symbol_binding')
     if re.search(r'지도|클릭|선택', text) and re.search(r'이 객체|이것|폴리곤|feature 정보|객체.*근거', text) and re.search(r'설명|정보|근거|무엇', text):
@@ -38,6 +40,7 @@ def audit_outputs(query: str, final: dict) -> dict:
         return value if isinstance(value, dict) else {}
     # Each field is a contract-specific evidence object, not model free text.
     checks = {
+        'portrayal_rule_evidence': bool(evidence('portrayal_binding').get('rule_ref') or evidence('portrayal_rule_evidence').get('rule_ref')),
         'portrayal_symbol_binding': bool(evidence('portrayal_binding').get('rule_ref') and
                                         evidence('portrayal_binding').get('symbol_ref') and
                                         evidence('portrayal_binding').get('feature_id')),
@@ -57,7 +60,7 @@ def audit_outputs(query: str, final: dict) -> dict:
         final['error_code'] = 'OUTPUT_OBLIGATIONS_UNMET'
         final.setdefault('structured_result', {})['unmet_outputs'] = missing
         final['structured_result']['status'] = 'PARTIAL'
-        labels = {'portrayal_symbol_binding': '지도 객체와 심볼의 연결 근거',
+        labels = {'portrayal_rule_evidence': '렌더링 규칙 원문 근거', 'portrayal_symbol_binding': '지도 객체와 심볼의 연결 근거',
                   'selected_feature_evidence': '선택한 지도 객체의 원천 정보',
                   'data_processing_provenance': '원천 자료의 좌표 변환·정제 이력',
                   'traffic_aggregation': '통항량 집계 결과', 'accident_evidence': '사고 분석 근거'}

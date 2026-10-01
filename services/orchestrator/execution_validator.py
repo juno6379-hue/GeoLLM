@@ -183,8 +183,15 @@ def reject_agent_execution(request, agent_name, reason):
 def execution_gate_failure(state, qec):
     status = "NEEDS_CLARIFICATION" if qec.readiness == PlanStatus.NEEDS_USER_INPUT else "BLOCKED"
     summary = "실행 검증을 통과하지 못했습니다. " + "; ".join(qec.blockers)
-    final = {"task_id": state.get("task_id"), "status": status, "error_code": "EXECUTION_GATE",
+    error_code = "EXECUTION_GATE"
+    if status == "NEEDS_CLARIFICATION" and "NEEDS_USER_INPUT: accident filters are required" in qec.blockers:
+        error_code = "ACCIDENT_FILTERS_REQUIRED"
+        summary = "조회할 사고의 해역·관할 또는 사고 유형과 기간을 알려주세요. '최근'만으로 임의 기간을 적용하지 않습니다. 사고 검색은 아직 실행하지 않았습니다."
+    final = {"task_id": state.get("task_id"), "status": status, "error_code": error_code,
              "summary": summary, "answer_text": summary,
+             "clarification_questions": [summary] if status == "NEEDS_CLARIFICATION" else [],
+             "structured_result": {"original_query": state.get("query"), "analysis_type": qec.route_plan.get("analysis_type"),
+                                   "search_execution": {"status": "NOT_RUN", "reason": error_code}, "count": None},
              "orchestrator_v2": {"route_plan": qec.route_plan, "query_execution_context": qec.model_dump(mode="json")}}
     return {"status": status, "final_dict": final, "task_plan": qec.route_plan,
             "query_execution_context": qec.model_dump(mode="json")}

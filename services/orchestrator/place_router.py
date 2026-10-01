@@ -195,9 +195,19 @@ def resolve_payload(query, spatial_context):
             fallback = external_place_fallback(query)
             if fallback:
                 return fallback
+        summary = str(exc)
+        if exc.code == "LOCATION_UNCONFIRMED" and not exc.candidates:
+            summary = (
+                f"'{place_query}'의 위치를 찾는 요청으로 이해했습니다. "
+                "현재 연결된 지명 원천에서 확인 가능한 기준 좌표를 확보하지 못했습니다. "
+                "장소가 존재하지 않는다는 뜻은 아닙니다. 지도에서 위치를 지정하거나 경도·위도를 입력해 주세요."
+            )
         return {
             "status": "NEEDS_CLARIFICATION" if exc.status == "NEEDS_USER_INPUT" else "BLOCKED",
-            "error_code": exc.code, "summary": str(exc), "location_candidates": exc.candidates,
+            "error_code": exc.code, "summary": summary, "location_candidates": exc.candidates,
+            "location_text": place_query,
+            "query_interpretation": {"location_text": place_query, "source": "query_place_extraction", "execution_authorized": False},
+            "search_execution": {"status": "NOT_RUN", "reason": exc.code},
         }
 
 

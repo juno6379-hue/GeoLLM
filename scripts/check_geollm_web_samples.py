@@ -65,6 +65,7 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--workers', type=int, default=2, choices=[1,2])
     parser.add_argument('--ids', nargs='+', type=int)
+    parser.add_argument('--socket-timeout', type=int, default=30)
     args = parser.parse_args()
     if args.output.exists():
         raise ValueError('Use a new output directory')
@@ -81,7 +82,8 @@ def main():
     (args.output/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
     rows=[]
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
-        futures = [pool.submit(observe,args.base_url,number,query) for number,query in cases]
+        futures = [pool.submit(observe,args.base_url,number,query, socket_timeout=args.socket_timeout,
+                              observation_timeout=max(120, args.socket_timeout * 2)) for number,query in cases]
         for future in as_completed(futures):
             row=future.result()
             rows.append(row)

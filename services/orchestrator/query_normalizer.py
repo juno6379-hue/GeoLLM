@@ -205,6 +205,8 @@ class QueryNormalizer:
         """Correct high-confidence typos after compound spacing."""
         correction_candidates = ["\ubd80\uadfc", "\uadfc\ucc98", "\uc8fc\ubcc0"]
         exact_terms = set(self.compound_terms) | set(correction_candidates)
+        # Valid evidence/document words must not become spatial relations by edit distance.
+        exact_terms.update({'근거', '문서', '출처', '원천', '규정', '법령', '품질', '관리'})
         corrections = []
         tokens = text.split()
         corrected_tokens = []

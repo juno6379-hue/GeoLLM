@@ -1,14 +1,20 @@
 /* A shadow result is deliberately separate from executed map/analysis results. */
 window.IntentComparison = (() => {
     const terminal = new Set(['COMPLETED', 'FAILED', 'QUEUE_FULL', 'INTERRUPTED']);
+    let generation = 0;
+    function begin() {
+        generation += 1;
+        document.getElementById('intentComparisonEvidence')?.replaceChildren();
+        return generation;
+    }
     function line(parent, label, value) {
         const p = document.createElement('p');
         p.style.margin = '6px 0';
         p.textContent = `${label}: ${value}`;
         parent.appendChild(p);
     }
-    async function watch(id, query) {
-        if (!id) return;
+    async function watch(id, query, requestGeneration = generation) {
+        if (!id || requestGeneration !== generation) return;
         if (document.getElementById(`intentComparison-${id}`)) return;
         let host = document.getElementById('intentComparisonEvidence');
         if (!host) {
@@ -41,10 +47,16 @@ window.IntentComparison = (() => {
         review.addEventListener('click', () => window.EvidenceWorkspace?.show('evidence'));
         panel.appendChild(review);
         for (let attempt = 0; attempt < 600; attempt++) {
+            if (requestGeneration !== generation) return;
             try {
                 const response = await fetch(link.href);
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const record = await response.json();
+                if (requestGeneration !== generation) return;
+                if (record.query !== query || (record.comparison_id && record.comparison_id !== id)) {
+                    throw new Error('현재 질의와 비교 기록이 일치하지 않습니다.');
+                }
+                window.ExecutionView?.acceptComparison(record);
                 title.textContent = `규칙 · Qwen · 융합 비교 근거 — ${query} · ${record.status}`;
                 body.replaceChildren();
                 line(body, '비교 상태', `${record.status} (${record.model || 'Qwen / Ollama'})`);
@@ -74,11 +86,12 @@ window.IntentComparison = (() => {
                 // The comparison can finish before the actual task: keep observing execution too.
                 if (terminal.has(record.status) && record.execution?.status !== 'PENDING') return;
             } catch (error) {
+                if (requestGeneration !== generation) return;
                 body.textContent = `비교 결과 확인 중: ${error.message}`;
             }
             await new Promise(resolve => setTimeout(resolve, 2000));
         }
         line(body, '자동 갱신 종료', '원본 링크에서 최종 상태를 확인하세요.');
     }
-    return {watch};
+    return {begin, watch};
 })();

@@ -426,6 +426,7 @@
                         <div class="answer-card">
                             <div class="answer-status" id="answerStatus">대기 중</div>
                             <div class="answer-text" id="answerText">자연어 질문을 실행하면 분석 결과가 여기에 표시됩니다.</div>
+                            <section id="intentAnswer" aria-label="질의 해석과 실행 판단" hidden style="border-top:1px solid #cbd5e1;margin-top:12px;font-size:13px;overflow-wrap:anywhere"></section>
                         </div>
 
                         <div class="section-title">핵심 결과 요약</div>
@@ -739,6 +740,8 @@
     <script src="/query-summary.js?v=20260918-router-trace"></script>
     <script src="/radius-results.js?v=20260917-accident-points-v2"></script>
     <script src="/intent-comparison.js?v=20260928-evidence"></script>
+    <script src="/processing-steps.js?v=20261001"></script>
+    <script src="/execution-view.js?v=20261001"></script>
     <script src="/evidence-workspace.js?v=20260928"></script>
     
     <script>
@@ -1074,19 +1077,6 @@
             }
         }
 
-        const stepsArray = ['routing', 'discovery', 'spatial', 'ais', 'knowledge', 'reasoning', 'validation', 'report'];
-        function setStep(stepId, state) {
-            for (const [i, id] of stepsArray.entries()) {
-                const el = document.getElementById(`step-${id}`);
-                if (!el) continue;
-                if (state !== 'reset' && id !== stepId) continue;
-                el.classList.remove('active', 'done');
-                if (state === 'done') el.classList.add('done');
-                if (state === 'active') el.classList.add('active');
-                el.querySelector('.step-circle').textContent = state === 'done' ? '✓' : state === 'active' ? '↻' : state === 'error' ? '!' : String(i + 1);
-            }
-        }
-
         async function fetchTraceData(taskId) {
             if (!taskId) return;
             try {
@@ -1188,7 +1178,7 @@
                         if (intent["Execution Ready"] === false || data.status === 'NEEDS_CLARIFICATION') {
                             col3Debug += `<li><span style="color:#ef4444;font-weight:bold;">✗ 실행 불가 오류:</span> ${intent["Route Plan Status"] || data.error_message || "조건 불충분"}</li>`;
                         } else {
-                            col3Debug += `<li>✓ 실행 가능 (상태: ${intent["Route Plan Status"]})</li>`;
+                            col3Debug += `<li>실행 승인 여부는 아래 실행계약 기록을 확인하세요.</li>`;
                         }
                         if (instantPolicy.reason || instantPolicy.matched_signal) {
                             col3Debug += `<li>Fast path gate: ${escapeHtml(instantPolicy.reason || instantPolicy.matched_signal)}</li>`;
@@ -1208,10 +1198,10 @@
                         if (stablePlan && Object.keys(stablePlan).length) {
                             let p = stablePlan;
                             planText = JSON.stringify(p, null, 2);
-                            col4Debug = `<li>✓ Task ID: ${p.task_id}</li>
-                                         <li>✓ Intent: ${p.intent}</li>
-                                         <li>✓ Context: ${p.context}</li>
-                                         <li>✓ Primary Agent: ${p.primary_agent}</li>`;
+                            col4Debug = `<li>✓ Task ID: ${escapeHtml(p.task_id || data.task_id || "기록 없음")}</li>
+                                         <li>✓ Intent: ${escapeHtml(p.intent || "기록 없음")}</li>
+                                         <li>✓ Context: ${escapeHtml(p.context || "기록 없음")}</li>
+                                         <li>✓ Primary Agent: ${escapeHtml(p.primary_agent || "기록 없음")}</li>`;
                         } else if (data.status === 'NEEDS_CLARIFICATION') {
                             planText = "계획 수립 중단 (모호성 해결 필요)";
                             col4Debug = `<li>✗ 모호성으로 인한 중단</li>`;
@@ -1224,7 +1214,7 @@
                         
                         // 5. Execution
                         let execData = dt["5. 공간쿼리 실행"] || {};
-                        let resultCount = 0;
+                        let resultCount = "미확인";
                         if (execData["쿼리 결과값"]) resultCount = execData["쿼리 결과값"]["count"] || 0;
                         else if (data.final_result && data.final_result.features) resultCount = data.final_result.features.length || 0;
                         
@@ -1235,7 +1225,7 @@
                         if (execData["도구 호출"] && execData["도구 호출"].length > 0) {
                             let tc = execData["도구 호출"][0];
                             spatialOp = tc.tool_name || "Buffer + Within";
-                            execTime = tc.execution_time_ms ? (tc.execution_time_ms / 1000).toFixed(2) + "s" : "0.5s";
+                            execTime = tc.execution_time_ms ? (tc.execution_time_ms / 1000).toFixed(2) + "s" : "기록 없음";
                             col5Debug = `<li>✓ 도구 호출: ${spatialOp}</li>
                                          <li>✓ 상태: ${tc.status}</li>`;
                             if (execData["executed_query"]) {
@@ -1244,7 +1234,7 @@
                         } else if (data.status === 'COMPLETED' || data.status === 'RESULTS_AGGREGATED') {
                             spatialOp = "도구 호출 없음";
                             execTime = "N/A";
-                            col5Debug = `<li>✓ 실행 완료 (공간엔진 우회)</li>`;
+                            col5Debug = `<li>응답 생성 완료 / 공간 도구 실행 기록 없음</li>`;
                             
                             // 드론 라이다 분석 완료 시 뷰어 링크 제공
                             let dtIntent = dt["3. 오케스트레이터 의도분석"] || {};
@@ -1266,12 +1256,12 @@
                         }
                         
                         document.getElementById('col5-time').textContent = execTime;
-                        document.getElementById('col5-count').textContent = resultCount;
+                        document.getElementById('col5-count').textContent = ['NEEDS_CLARIFICATION', 'BLOCKED', 'FAILED'].includes(data.status) ? '미확인' : resultCount;
                         document.getElementById('col5-spatialop').textContent = spatialOp;
                         
                         if (execData["reference_point"]) {
                             col5Debug += `<li>✓ 기준 위치: ${execData.reference_point.location_text || '없음'}</li>`;
-                            col5Debug += `<li>✓ 반경 내 객체 쿼리 완료</li>`;
+                            col5Debug += `<li>기준 위치 기록은 쿼리 실행 완료를 뜻하지 않습니다.</li>`;
                         }
                         if (execData["query_template"]) {
                             col5Debug += `<li>✓ 템플릿: ${execData["query_template"]}</li>`;
@@ -1357,8 +1347,9 @@
             hist.scrollTop = hist.scrollHeight;
             
             queryInput.value = "";
-            setStep(null, 'reset');
-            setStep('routing', 'active');
+            const comparisonGeneration = IntentComparison.begin();
+            ProcessingSteps.reset();
+            ExecutionView.begin(query);
             addLog(`[System] 질의 분석 시작: ${query}`);
 
             try {
@@ -1388,7 +1379,7 @@
 
                 while (true) {
                     const { done, value } = await reader.read();
-                    if (done) break;
+                    if (done) { ExecutionView.end(); break; }
 
                     buffer += decoder.decode(value, { stream: true });
                     let boundary = buffer.indexOf('\n\n');
@@ -1400,9 +1391,10 @@
                         
                         if (line.startsWith('data: ')) {
                             const data = JSON.parse(line.substring(6));
+                            ExecutionView.handle(data);
                             
                             if (data.event === 'started') {
-                                IntentComparison.watch(data.comparison_id, query);
+                                IntentComparison.watch(data.comparison_id, query, comparisonGeneration);
                                 currentTaskId = data.task_id;
                                 fetchTraceData(currentTaskId);
                             } else if (data.event === 'progress') {
@@ -1410,27 +1402,14 @@
                             } else if (data.event === 'node_finished') {
                                 // 랭그래프 실제 노드 완료 이벤트 매핑
                                 addLog(`[System] ${data.node} 처리 완료`);
-                                if (data.status === 'INTENT_PARSED') setStep('routing', 'active');
-                                else if (data.status === 'CONTEXT_RESOLVED') {
-                                    setStep('routing', 'done');
-                                }
-                                else if (data.status === 'PLAN_CREATED') setStep('discovery', 'active');
-                                else if (data.status === 'RESULTS_AGGREGATED') {
-                                    setStep('discovery', 'reset');
-                                    setStep('routing', 'done');
-                                    setStep('report', 'active');
-                                }
-                                else if (data.status === 'MAP_REPORT_GENERATING') setStep('report', 'active');
-                                
                                 fetchTraceData(currentTaskId);
                             } else if (data.event === 'completed') {
-                                setStep(null, 'reset');
+                                ProcessingSteps.render(data.final_result);
                                 data.query = query;
                                 fetchTraceData(currentTaskId);
                                 if (RadiusResults.isRadius(data.final_result)) {
                                     RadiusResults.render(data.final_result, { map, activeLayers, originalQuery: query, submit: sendQuery });
                                     const completed = ['COMPLETED', 'SUCCESS', 'SUCCESS_EMPTY'].includes(data.final_result.status);
-                                    if (completed) setStep('report', 'done');
                                     addLog(completed ? '[System] 공간 조회 완료' : '[System] 공간 조회 조건 확인');
                                     btn.disabled = false;
                                     currentTaskId = null;
@@ -1456,8 +1435,6 @@
                                     document.getElementById("similarityScore").innerText = "-";
                                     document.getElementById("accuracyScore").innerText = "-";
                                     setAnalysisPanel("추가 정보 필요", qText, ["질의가 실행 가능한 공간 조건으로 확정되지 않았습니다.", "아래 선택지 또는 입력창에서 기준 위치, 반경, 대상 객체를 더 구체화하세요."]);
-                                    setStep('routing', 'error');
-                                    setStep('discovery', 'error');
                                     btn.disabled = false;
                                     currentTaskId = null;
                                     
@@ -1481,8 +1458,6 @@
                                 }
                                 
                                 const resultStatus = data.final_result?.status || data.status;
-                                setStep('routing', 'done');
-                                setStep('report', resultStatus === 'BLOCKED' ? 'error' : 'done');
                                 addLog(resultStatus === 'PARTIAL' ? '[System] 부분 분석: 추가 근거 필요' : resultStatus === 'BLOCKED' ? '[System] 실행 불가' : '[System] 분석 완료');
                                 
                                 let geojsonData = null;
@@ -1743,6 +1718,7 @@
                     }
                 }
             } catch (error) {
+                ExecutionView.handle({event: "error", message: error.message});
                 addLog(`[Error] 통신 오류: ${error.message}`);
                 setAnalysisPanel("통신 오류", "검색 결과를 받지 못했습니다. 연결 상태를 확인한 뒤 다시 요청해 주세요.");
                 btn.disabled = false;

@@ -59,7 +59,10 @@ def test_clarification_preserves_candidate_version_and_provenance(client, monkey
     monkeypatch.setattr(place_router, "resolve_location", resolve)
     response = client.post("/api/v1/places/resolve", json={"query": "Candidate"})
     assert response.status_code == 200
-    assert response.json() == {"status": "NEEDS_CLARIFICATION", "error_code": code, "summary": "Choose a location", "location_candidates": candidates}
+    payload = response.json()
+    assert {key: payload[key] for key in ('status', 'error_code', 'summary', 'location_candidates')} == {"status": "NEEDS_CLARIFICATION", "error_code": code, "summary": "Choose a location", "location_candidates": candidates}
+    assert payload['query_interpretation']['location_text'] == 'Candidate'
+    assert payload['search_execution']['status'] == 'NOT_RUN'
 
 
 @pytest.mark.parametrize("status,code", [("BLOCKED_DATA", "GAZETTEER_UNAVAILABLE"), ("BLOCKED_CONFIG", "INVALID_REGISTRY")])

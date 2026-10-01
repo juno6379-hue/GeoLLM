@@ -123,6 +123,13 @@ S101_HAZARD_FEATURE_NAMES = {
 }
 S101_HAZARD_RADIUS_RESULT_LIMIT = 30
 REQUESTED_SPATIAL_LAYER_TARGETS = {
+    "planned_port": {
+        "relation": "serving.planned_port_area_current",
+        "layer_id": "planned_port_area",
+        "title": "신항만예정지역",
+        "layer_type": "planned_port_area",
+        "terms": ["신항만예정지역", "신항만 예정지역"],
+    },
     "marine_gazetteer": {
         "relation": "serving.marine_gazetteer_current",
         "registry_id": "marine_gazetteer",
@@ -1083,7 +1090,6 @@ def _looks_like_legal_rag_query(query: str) -> bool:
         "\ud1b5\ud56d\uba85\ub839",
         "\ud1b5\ud56d \uaddc\uc815",
         "\ud1b5\ud56d\uaddc\uc815",
-        "\uadfc\uac70",
         "\ud574\uc0c1\uad50\ud1b5\uc548\uc804",
         "abc-999",
     ])
@@ -1369,6 +1375,10 @@ def _navigation_risk_answer(query: str, docs: list[dict]) -> str:
 
 def _looks_like_dataset_evidence_query(query: str) -> bool:
     from services.orchestrator.request_obligations import required_outputs
+    # A document search about data quality is not a request for ingestion provenance.
+    if re.search(r'(?:문서|논문|보고서).*(?:검색|찾아|요약)', query or '') and not re.search(
+            r'(?:적재|임베딩|embedding|document_chunks|provenance|처리\s*이력|Dataset[/\\]|\.csv|\.zip)', query or '', re.I):
+        return False
     if 'data_processing_provenance' in required_outputs(query):
         return True
     if re.search(r"(?:통항량|교통량).*(?:분석|집계|요약|보여)", query or ""):
@@ -1711,7 +1721,7 @@ def _looks_like_sea_parting_query(query: str) -> bool:
 def _looks_like_planned_port_query(query: str) -> bool:
     text = query or ""
     lowered = text.lower()
-    return any(term in lowered or term in text for term in ["planned port", "\uac1c\ubc1c \uc608\uc815", "\uac1c\ubc1c\uc608\uc815"])
+    return any(term in lowered or term in text for term in ["planned port", "신항만예정지역", "신항만 예정지역", "\uac1c\ubc1c \uc608\uc815", "\uac1c\ubc1c\uc608\uc815"])
 
 def _looks_like_protected_area_query(query: str) -> bool:
     text = query or ""
@@ -2064,6 +2074,10 @@ def _requested_layer_anchor_query(query: str, targets: list[dict]) -> str:
     if not text:
         return text
     anchor = text
+    # Separate the reference location from everything requested around it.
+    relation = re.search(r'부근|주변|근처|인근|반경|\d+(?:\.\d+)?\s*(?:km|m|킬로미터|미터)', text, re.I)
+    if relation:
+        return text[:relation.start()].strip()
     target_terms = sorted(
         {
             str(term)
@@ -2078,9 +2092,9 @@ def _requested_layer_anchor_query(query: str, targets: list[dict]) -> str:
         anchor = re.sub(re.escape(term), " ", anchor, flags=re.IGNORECASE)
     anchor = re.sub(r"\d+(?:\.\d+)?\s*(?:km|m|킬로미터|킬로|미터)", " ", anchor, flags=re.IGNORECASE)
     anchor = re.sub(r"(?:부근|주변|근처|반경|이내|인근|앞바다|해역|에서|의)", " ", anchor)
-    anchor = re.sub(r"(?:을|를|은|는|이|가)?\s*(?:찾아줘|찾아|보여줘|표시해줘|조회해줘|알려줘|검색해줘|분석해줘)\s*$", " ", anchor)
+    anchor = re.sub(r"(?:을|를|은|는|이|가)?\s*(?:지도(?:에|에서)\s*)?(?:찾아줘|찾아|보여줘|표시해줘|표시|조회해줘|알려줘|검색해줘|분석해줘)\s*$", " ", anchor)
     anchor = re.sub(r"\s+", " ", anchor).strip(" ,.;:!?")
-    return anchor if len(anchor) >= 2 else text
+    return anchor
 
 
 def _should_fast_execute_requested_spatial_layer(state: OrchestratorState) -> bool:
@@ -4194,6 +4208,7 @@ async def fast_accident_event_lookup_node(state: OrchestratorState) -> Orchestra
         "answer_text": answer,
         "structured_result": {
             "analysis_type": "accident_event_lookup",
+            "search_execution": {"status": "FAILED" if result.get("error") else "COMPLETED", "source": "serving.accident_events"},
             "total_count": total,
             "returned_count": len(rows),
             "terms": result.get("terms") or [],
@@ -4846,9 +4861,14 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
     targets = _requested_spatial_layer_targets(query)
     if not targets:
         return await fast_spatial_or_traffic_block_node(state)
-    anchor_query = _requested_layer_anchor_query(primary_query, targets)
+    anchor_query = _requested_layer_anchor_query(str(state.get("query") or primary_query), targets)
 
-    location = await asyncio.to_thread(resolve_payload, anchor_query, _spatial_context_dict(state))
+    spatial_context = _spatial_context_dict(state)
+    if not anchor_query and not spatial_context.get("geometry") and not spatial_context.get("place_id"):
+        location = {"status": "NEEDS_CLARIFICATION", "error_code": "LOCATION_REQUIRED", "location_candidates": [],
+                    "summary": "검색할 대상은 확인했지만 기준 위치가 없습니다. 지명이나 지도 기준점과 검색 반경을 지정해 주세요."}
+    else:
+        location = await asyncio.to_thread(resolve_payload, anchor_query, spatial_context)
     interpretation = {
         "location_text": anchor_query,
         "target_layers": [target["layer_id"] for target in targets],
@@ -5933,6 +5953,9 @@ def check_intent_parsed(state: OrchestratorState) -> str:
         return "fast_document_answer"
     if _should_fast_external_requirement(query):
         return "fast_external_data_requirement"
+    if not _looks_like_dataset_evidence_query(original_query):
+        if _looks_like_sea_parting_query(original_query) and re.search(r'예측|시간|시각|언제|일정', original_query):
+            return "fast_spatial_or_traffic_block"
     if _should_fast_execute_s101_hazard_radius(state):
         return "fast_s101_hazard_radius_execute"
     if _should_fast_execute_s101_nearest_feature(state):

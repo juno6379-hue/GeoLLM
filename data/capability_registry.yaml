@@ -51,6 +51,15 @@ router_policies:
       reason: analysis target requires Semantic Router and ExecutionValidator
       terms:
       - 사고
+      - 사건
+      - 바닷길
+      - 바다갈라짐
+      - 신항만예정지역
+      - 신항만 예정지역
+      - 보호수역
+      - 투기장
+      - 투기구역
+      - vts
       - 위험
       - 침선
       - 장애물

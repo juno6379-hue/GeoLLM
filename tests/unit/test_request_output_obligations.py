@@ -97,9 +97,19 @@ def test_accident_requests_without_filters_clarify_without_querying_db(query, mo
     monkeypatch.setattr(graph, '_query_accident_events', lambda *_: pytest.fail('Unbounded accident query must not execute'))
     result = asyncio.run(graph.fast_accident_event_lookup_node({'task_id': 'missing-filters', 'query': query}))
     assert result['final_dict']['error_code'] == 'ACCIDENT_FILTERS_REQUIRED'
-    assert result['query_execution_context']['tool_bindings'][0]['status'] == 'NOT_RUN'
+    assert result['final_dict']['structured_result']['search_execution']['status'] == 'NOT_RUN'
+    assert result['query_execution_context']['readiness'] == 'NEEDS_USER_INPUT'
 def test_registry_diagnostic_cannot_be_intercepted_as_map_navigation():
     from services.orchestrator.fast_path_policy import instant_place_navigation_decision
     decision = instant_place_navigation_decision('Resolver Registry에서 사용 가능한 해양 resolver 목록을 보여줘')
     assert decision['allowed'] is False
     assert decision['diagnostic_target'] == 'resolver_registry'
+
+
+def test_feature_definition_does_not_complete_rendering_rule_request():
+    from services.orchestrator.request_obligations import audit_outputs
+    final = audit_outputs('Obstruction 렌더링 규칙 설명해줘', {'status': 'COMPLETED', 'summary': '객체 정의',
+        'structured_result': {'documents': [{'title': 'Feature Catalogue'}]}})
+    assert final['status'] == 'PARTIAL'
+    assert 'portrayal_rule_evidence' in final['structured_result']['unmet_outputs']
+    assert '렌더링 규칙 원문 근거' in final['summary']
