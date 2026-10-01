@@ -1421,6 +1421,7 @@
                                 fetchTraceData(currentTaskId);
                                 if (RadiusResults.isRadius(data.final_result)) {
                                     RadiusResults.render(data.final_result, { map, activeLayers, originalQuery: query, submit: sendQuery });
+                                    ExecutionView.refreshSummary();
                                     const completed = ['COMPLETED', 'SUCCESS', 'SUCCESS_EMPTY'].includes(data.final_result.status);
                                     addLog(completed ? '[System] 공간 조회 완료' : '[System] 공간 조회 조건 확인');
                                     btn.disabled = false;

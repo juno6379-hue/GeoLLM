@@ -23,6 +23,31 @@ window.ExecutionView = (() => {
         if (!rank?.ranking?.length) return '아직 비교 결과가 없습니다.';
         return rank.ranking.map(key => `${names[key] || key}${Number.isFinite(rank.probabilities?.[key]) ? ` (${rank.probabilities[key].toFixed(3)})` : ''}`).join(' / ') + (rank.abstained ? ' · 판단 보류' : '');
     }
+    function locationAnalysis() {
+        if (result?.status !== 'NEEDS_CLARIFICATION' || !/입구|출구|근처|주변|부근|인근/.test(query)) return null;
+        const s = result.structured_result || {};
+        if (!['EXTERNAL_PLACE_CANDIDATES','LOCATION_UNCONFIRMED','LOCATION_REQUIRED','DISTANCE_REQUIRED','AMBIGUOUS_PLACE'].includes(result.error_code || s.error_code)) return null;
+        const location = s.query_interpretation?.location_text || s.location_text || s.extracted_slots?.location_text || '요청한 위치';
+        const lines = [`“${location}” 관련 요청의 공간 표현을 다음과 같이 해석했습니다.`];
+        if (/입구|출구/.test(query)) lines.push('입구·출구는 항만의 세부 진입·이탈 위치를 가리킵니다. 항만 전체 영역이나 중심점으로 대체하지 않으며, 해당 위치를 뒷받침하는 좌표·지형 근거가 필요합니다.');
+        if (/근처|주변|부근|인근/.test(query)) {
+            const distance = s.query_interpretation?.distance_m ?? s.distance_m;
+            lines.push(`근처·주변은 기준 위치와 검색 범위의 관계입니다. ${distance != null ? `요청에 기록된 반경은 ${distance}m입니다.` : '현재 응답에는 확정된 검색 반경이 없습니다. 반경이나 지도 검색 영역을 정해야 합니다.'}`);
+        }
+        const candidates = s.location_candidates || [];
+        if (candidates.length) {
+            const usable = candidates.filter(c => c.geometry && c.crs).length;
+            lines.push(`현재 위치 후보 ${candidates.length}개를 찾았습니다. ${usable ? `좌표·좌표계가 있는 후보 ${usable}개의 출처와 세부 위치를 확인할 수 있습니다.` : '후보의 좌표가 미확정이어서 지도에 표시할 기준점을 확정하지 못했습니다.'}`);
+        } else lines.push(result.error_code === 'DISTANCE_REQUIRED' ? '기준 위치는 확인했으며 검색 범위 확인이 남아 있습니다.' : '현재 연결된 근거에서 요청 위치의 기준점을 확정하지 못했습니다.');
+        lines.push('여기까지는 질의·위치 후보 해석 결과입니다. 요청한 지도 이동이나 공간 검색의 실행 결과는 아닙니다.');
+        return lines.join('\n\n');
+    }
+    function refreshSummary() {
+        const text = locationAnalysis();
+        if (!text) return;
+        for (const id of ['answerText','querySummaryBody']) { const el = document.getElementById(id); if (el) el.textContent = text; }
+        for (const id of ['answerStatus','querySummaryTitle']) { const el = document.getElementById(id); if (el) el.textContent = '공간 표현 해석 · 실행 조건 확인 중'; }
+    }
     function explain() {
         const host = document.getElementById('intentAnswer');
         if (!host) return;
@@ -65,8 +90,9 @@ window.ExecutionView = (() => {
                 const selectable = structured.location_candidates.filter(c => c.geometry && c.crs).length;
                 line('후보 확인', selectable ? `${structured.location_candidates.length}개 후보 중 좌표·좌표계가 있는 후보 ${selectable}개를 확인할 수 있습니다. 아래 출처·위치를 확인하여 선택하세요. 후보 선택과 권위 지명 등록은 별개입니다.` : `후보 ${structured.location_candidates.length}개는 좌표가 미확정되어 선택할 수 없습니다. 경도·위도를 지정하거나 검증된 위치 근거를 추가해야 합니다.`);
             }
-            line('현재 결과·다음 입력', result.answer_text || result.summary || result.status);
+            line('현재 결과·다음 입력', locationAnalysis() || result.answer_text || result.summary || result.status);
         }
+        refreshSummary();
     }
     function begin(text) {
         query = text; result = comparison = null; finished = false; observed = {};
@@ -107,5 +133,5 @@ window.ExecutionView = (() => {
         comparison = record; explain();
     }
     function end() { if (!finished) handle({event:'error',message:'최종 응답을 받기 전에 연결이 종료됐습니다.'}); }
-    return {begin, handle, acceptComparison, end};
+    return {begin, handle, acceptComparison, end, refreshSummary};
 })();

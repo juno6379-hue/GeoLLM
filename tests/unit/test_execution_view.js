@@ -27,3 +27,9 @@ test('all SSE events reach view before radius early return and no terminal reset
  assert.ok(!html.includes('setStep('));
  for(const match of html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))new vm.Script(match[1]);
 });
+
+test('entrance and nearby explain spatial relations without inventing execution or a default radius',()=>{
+ const x=setup();x.ui.begin('부산항 입구 근처 지명을 찾아줘');x.ui.handle({event:'completed',final_result:{status:'NEEDS_CLARIFICATION',error_code:'EXTERNAL_PLACE_CANDIDATES',structured_result:{location_text:'부산항 입구',location_candidates:[{id:'x'}]}}});
+ assert.match(x.text(),/항만 전체 영역이나 중심점으로 대체하지/);assert.match(x.text(),/확정된 검색 반경이 없습니다/);assert.match(x.text(),/후보의 좌표가 미확정/);assert.match(x.text(),/실행 결과는 아닙니다/);
+ x.ui.begin('부산항 근처 3000m 지명');x.ui.handle({event:'completed',final_result:{status:'NEEDS_CLARIFICATION',error_code:'LOCATION_UNCONFIRMED',structured_result:{location_text:'부산항',distance_m:3000}}});assert.match(x.text(),/반경은 3000m/);assert.doesNotMatch(x.text(),/확정된 검색 반경이 없습니다/);
+});
