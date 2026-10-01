@@ -125,6 +125,7 @@ S101_HAZARD_RADIUS_RESULT_LIMIT = 30
 REQUESTED_SPATIAL_LAYER_TARGETS = {
     "marine_gazetteer": {
         "relation": "serving.marine_gazetteer_current",
+        "registry_id": "marine_gazetteer",
         "layer_id": "marine_gazetteer_mof",
         "title": "\ud574\uc591\uc9c0\uba85",
         "layer_type": "marine_gazetteer",
@@ -4848,7 +4849,26 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
     anchor_query = _requested_layer_anchor_query(primary_query, targets)
 
     location = await asyncio.to_thread(resolve_payload, anchor_query, _spatial_context_dict(state))
+    interpretation = {
+        "location_text": anchor_query,
+        "target_layers": [target["layer_id"] for target in targets],
+        "target_labels": [target["title"] for target in targets],
+        "distance_m": _requested_layer_distance_m(primary_query, state),
+        "source": "query_layer_and_anchor_extraction",
+        "execution_authorized": False,
+    }
+    location = {**location, "query_interpretation": interpretation, "location_text": location.get("location_text") or anchor_query}
     if location["status"] != "RESOLVED":
+        location["search_execution"] = {"status": "NOT_RUN", "reason": location.get("error_code")}
+        if location.get("error_code") == "LOCATION_UNCONFIRMED" and not location.get("location_candidates"):
+            target_label = "·".join(interpretation["target_labels"])
+            location["summary"] = (
+                f"'{anchor_query}'를 기준으로 {target_label}을 찾는 요청으로 이해했습니다. "
+                "현재 연결된 지명 원천에서 기준 위치를 확인하지 못해 주변 검색은 실행하지 않았습니다. "
+                "검색 결과가 0건이라는 뜻은 아닙니다. 지도에서 기준점을 지정하거나 경도·위도를 입력해 주세요."
+            )
+            if interpretation["distance_m"] is None:
+                location["summary"] += f" 검색 반경도 지정해 주세요(0m 초과 {MAX_RADIUS_M / 1000:g}km 이하)."
         return _place_lookup_update(state, location, "feature_search_by_radius")
 
     base_wkt = location["geometry"]
@@ -4856,8 +4876,9 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
     distance_m = _requested_layer_distance_m(primary_query, state)
     import math
     if distance_m is None or not math.isfinite(distance_m) or not 0 < distance_m <= MAX_RADIUS_M:
-        return _place_lookup_update(state, {"status": "NEEDS_CLARIFICATION", "error_code": "DISTANCE_REQUIRED",
-            "summary": f"조회할 반경을 0m 초과 {MAX_RADIUS_M / 1000:g}km 이하로 지정해 주세요. 임의 반경을 적용하지 않았습니다."}, "feature_search_by_radius")
+        return _place_lookup_update(state, {**location, "status": "NEEDS_CLARIFICATION", "error_code": "DISTANCE_REQUIRED",
+            "search_execution": {"status": "NOT_RUN", "reason": "DISTANCE_REQUIRED"},
+            "summary": f"{location_text}의 기준 위치는 확인했습니다. 조회할 반경을 0m 초과 {MAX_RADIUS_M / 1000:g}km 이하로 지정해 주세요. 주변 검색은 아직 실행하지 않았습니다."}, "feature_search_by_radius")
     limit_per_layer = 100
     sql = """
         WITH base AS (
@@ -4891,7 +4912,8 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
             "location_text": location_text,
             "reference_geometry": base_wkt,
             "distance_m": distance_m,
-            "target_layers": [target["layer_id"] for target in targets],
+            "crs": location.get("crs") or "EPSG:4326",
+            "target_layers": [target.get("registry_id", target["layer_id"]) for target in targets],
             "analysis_type": "feature_search_by_radius",
         },
         "tools": ["postgis.radius"],
@@ -5020,6 +5042,8 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
         "structured_result": {
             "status": "COMPLETED",
             "analysis_type": "feature_search_by_radius",
+            "query_interpretation": interpretation,
+            "search_execution": {"status": "COMPLETED", "authority": "ExecutionValidator"},
             "count": len(features),
             "returned_count": len(features),
             "total_count": len(features),

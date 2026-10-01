@@ -1,5 +1,12 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-10-01 사용자 우선순위 — 지명 해석과 실행 응답 연결
+
+- [원인·변경·재현](place_query_linkage_20261001.md). Qwen은 울릉도를 추출했지만 실제 위치 원천에서 기준점을 해소하지 못했다. 해석한 지명·대상·반경을 보존하고 위치 미확인/반경 누락/검색 미실행을 답변에서 구분하도록 보완했다. 반경 누락 시 이미 확인된 위치와 출처도 유지한다.
+- 대조 검색에서 DB layer_id=marine_gazetteer_mof와 registry key=marine_gazetteer의 불일치를 발견해 수정했다. 레이어 반경 tool binding도 dwithin으로 정합화했다. ExecutionValidator 권한과 Qwen shadow 정책은 유지한다.
+- 관련 회귀 88 passed. 별도 기존 사고 조회 테스트 2개는 기대 오류 코드와 공통 Gate 반환 코드가 달라 실패했으며 이번 변경 대상 밖의 P0로 남긴다. 실제 API 최종 결과는 연결 보고서를 확인한다.
+- 다음: 울릉도 자체의 authoritative 기준 geometry 확보 및 사용자 기준점 확인 후 재조회 검증 → 일반 문서 질의의 근거/근처 정규화·오경로 → 사고 Gate 상태 정합성. 원천 확보 전 울릉항이나 모델 좌표로 울릉도를 대체하지 않는다. Phase A 전체 완료와 QLoRA 승격은 보류한다.
+
 ## 2026-10-01 Phase A 운영 원천 및 실제 브라우저 검증
 
 - [검증 결과·재현·미비점](phase_a_sources_ui_20261001.md). 운영 Agent 직접 호출 5/5: RAG 문서 2건, 사고 관계 5건, 미준비/fixture/미등록 시계열 차단. HTTP E2E와 구분한다. 시계열 binding에서 파일 존재·루트 경계·fixture 별칭·확장자를 검증하도록 수정했다.

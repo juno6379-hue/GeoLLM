@@ -65,7 +65,9 @@ class SchemaBindingAdapter:
             self._bind_tool(tool, analysis_type, None, result)
         elif analysis_type in {"feature_search_by_radius", "feature_dwithin"}:
             if slots.get("target_layers") and not slots.get("target_features"):
-                self._bind_spatial_layer_analysis("spatial_layer_overlay", slots, result)
+                for layer_id in slots["target_layers"]:
+                    self._bind_layer(layer_id, result)
+                self._bind_tool("postgis.dwithin", "feature_search_by_radius", None, result)
             else:
                 self._bind_feature_radius(route_plan, result)
         elif analysis_type in {"feature_within_area", "spatial_feature_search", "feature_search_by_area"}:
