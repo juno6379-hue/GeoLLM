@@ -2,7 +2,7 @@
 window.ExecutionView = (() => {
     const ids = ['routing', 'discovery', 'spatial', 'ais', 'knowledge', 'reasoning', 'validation', 'report'];
     const names = {PLACE_LOOKUP:'지명 찾기',SPATIAL_ANALYSIS:'공간 검색·분석',ACCIDENT_ANALYSIS:'사고 조회·분석',STANDARD_RAG:'문서 근거 검색',DATASET_PROVENANCE:'자료 적재 근거',TRAFFIC_ANALYSIS:'통항량 분석'};
-    let query = '', result = null, comparison = null, finished = false, observed = {};
+    let query = '', result = null, comparison = null, finished = false, observed = {}, coastal = null, coastalModel = null, generation = 0;
     function paint(id, status, detail) {
         const el = document.getElementById(`step-${id}`);
         if (!el) return;
@@ -39,7 +39,18 @@ window.ExecutionView = (() => {
             const usable = candidates.filter(c => c.geometry && c.crs).length;
             lines.push(`현재 위치 후보 ${candidates.length}개를 찾았습니다. ${usable ? `좌표·좌표계가 있는 후보 ${usable}개의 출처와 세부 위치를 확인할 수 있습니다.` : '후보의 좌표가 미확정이어서 지도에 표시할 기준점을 확정하지 못했습니다.'}`);
         } else lines.push(result.error_code === 'DISTANCE_REQUIRED' ? '기준 위치는 확인했으며 검색 범위 확인이 남아 있습니다.' : '현재 연결된 근거에서 요청 위치의 기준점을 확정하지 못했습니다.');
-        lines.push('여기까지는 질의·위치 후보 해석 결과입니다. 요청한 지도 이동이나 공간 검색의 실행 결과는 아닙니다.');
+        if (coastal?.documents?.length) {
+            const term = coastal.search_terms?.[0] || '';
+            const relative = /입구/.test(query) ? '입구' : /출구/.test(query) ? '출구' : '';
+            const pattern = new RegExp((term + relative).replace(/[.*+?^${}()|[\]\\]/g,'\\$&').split('').join('\\s*'));
+            const highlights = coastal.documents.filter(d => d.page_no || !coastal.documents.some(other => other.page_no && other.title === d.title));
+            for (const doc of highlights.slice(0,2)) {
+                const match = pattern.exec(doc.content), start = Math.max(0,(match?.index || 0)-30);
+                lines.push(`관련 원문 · ${doc.title} (${doc.page_no ? `PDF ${doc.page_no}쪽` : doc.section})\n…${doc.content.slice(start,start+280)}…`);
+            }
+            lines.push('위 내용은 원문 발췌이며 판·최신성 확인이 필요합니다. 항만 대표점과 입구 좌표는 구분합니다.');
+        }
+        lines.push('문서 근거 검색과 요청한 지도 이동·공간 검색은 별도입니다. 위치 확인 대기 중에는 지도 이동·공간 검색을 실행하지 않습니다.');
         return lines.join('\n\n');
     }
     function refreshSummary() {
@@ -76,6 +87,38 @@ window.ExecutionView = (() => {
             line('융합 비교', rankText(comparison.rankings?.simple_mix));
             line('비교의 의미', '후보 점수이며 정확도나 실행 승인 값이 아닙니다. Qwen 해석은 검증된 지명·좌표를 대신하지 않습니다.');
         } else line('해석 비교', '규칙·Qwen·융합 비교를 기다리는 중입니다. 실제 처리 상태는 아래에 별도로 표시합니다.');
+        if (coastal) {
+            if (coastal.status === 'COMPLETED') paint('knowledge','원문 검색 완료',`${coastal.documents.length}개 발췌. 별도 근거 조회이며 지도 실행 승인이 아닙니다.`);
+            if (coastal.embedding_coverage) line('본문·임베딩 적재', `검색 본문 ${coastal.embedding_coverage.total}개 / 임베딩 완료 ${coastal.embedding_coverage.embedded}개 · ${coastal.retrieval_method || ''}`);
+            line('항로지·항만 안내 근거 검색', coastal.status === 'COMPLETED' ? `${coastal.documents.length}개 발췌 · ${coastal.knowledge_links?.length || 0}개 출처 연결` : `${coastal.status} · 검색 완료로 보지 않습니다.`);
+            for (const doc of coastal.documents || []) {
+                const title = `${doc.title} / ${doc.page_no ? `PDF ${doc.page_no}쪽` : doc.section}`;
+                const detail = document.createElement('details'), caption = document.createElement('summary'), excerpt = document.createElement('p');
+                caption.textContent = title; excerpt.textContent = doc.content; excerpt.style.whiteSpace = 'pre-wrap';
+                detail.appendChild(caption); detail.appendChild(excerpt); host.appendChild(detail);
+                line('출처', `${doc.metadata?.source_file || doc.source_id} · ${doc.metadata?.version || '판 미확인'}${doc.metadata?.extraction_warning ? ' · ' + doc.metadata.extraction_warning : ''}`);
+            }
+            if (coastal.documents?.length) {
+                for (const port of coastal.harbour_records || []) line('연결된 항만 안내 기록', `${port.name} · ${port.properties?.ADR_KNM || ''} · ${port.properties?.ORIYR || '연도 미확인'}년 원천 · 대표점 ${JSON.stringify(port.geometry?.coordinates)} (입구 좌표 아님)`);
+                line('Qwen 설명과 근거 대조', comparison?.judgement ? '위 Qwen 응답은 의도·슬롯 해석입니다. 이 발췌는 실제 원문 검색 결과이며, Qwen이 원문을 읽고 생성한 설명으로 표시하지 않습니다.' : 'Qwen 비교 대기 중에도 원문 근거를 확인할 수 있습니다.');
+                line('자료 적용 범위', (coastal.limitations || []).join(' '));
+                const button = document.createElement('button'); button.textContent = 'Qwen에 원문 근거를 주고 설명 비교';
+                button.disabled = coastalModel?.status === 'RUNNING';
+                button.addEventListener('click', () => {
+                    const ticket = generation; coastalModel = {status:'RUNNING'}; explain();
+                    fetch(`/api/v1/coastal-explanation?query=${encodeURIComponent(query)}`)
+                        .then(r => { if (!r.ok) throw new Error('model unavailable'); return r.json(); })
+                        .then(data => { if (ticket === generation) { coastalModel=data; explain(); } })
+                        .catch(() => { if (ticket === generation) { coastalModel={status:'UNAVAILABLE'}; explain(); } });
+                });
+                host.appendChild(button);
+                if (coastalModel) {
+                    line('Qwen 원문 근거 비교', coastalModel.status);
+                    for (const quote of coastalModel.quotes || []) line(`${quote.title} / ${quote.page_no ? `PDF ${quote.page_no}쪽` : quote.section}`, quote.quote);
+                    line('인용 검증', '원문과 일치하는 인용만 표시합니다. 모델의 선택 적합도와 현재 항해 적용 가능성은 별도 검토 대상입니다.');
+                }
+            }
+        }
         if (result) {
             const structured = result.structured_result || {};
             const location = structured.query_interpretation?.location_text || structured.location_text || structured.extracted_slots?.location_text;
@@ -95,7 +138,12 @@ window.ExecutionView = (() => {
         refreshSummary();
     }
     function begin(text) {
-        query = text; result = comparison = null; finished = false; observed = {};
+        query = text; result = comparison = coastal = coastalModel = null; finished = false; observed = {};
+        const ticket = ++generation;
+        if (typeof fetch === 'function') fetch(`/api/v1/coastal-evidence?query=${encodeURIComponent(text)}`)
+            .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+            .then(data => { if (ticket === generation) { coastal = data; explain(); } })
+            .catch(() => { if (ticket === generation) { coastal = {status:'UNAVAILABLE',documents:[]}; explain(); } });
         ids.forEach(id => paint(id, '대기', '현재 질의에서 아직 관측된 실행 기록이 없습니다.'));
         paint('routing', '진행 중'); explain();
     }
@@ -107,6 +155,7 @@ window.ExecutionView = (() => {
         }
         if (event.event === 'completed') {
             finished = true; result = event.final_result || {status:event.status,summary:event.error_message};
+            if (result.coastal_evidence) coastal = result.coastal_evidence;
             // The final receipt overrides transient node messages, including fast paths.
             ids.forEach(id => paint(id,'미실행','이 전문 단계의 실행 완료 기록이 없습니다.'));
             Object.entries(observed).forEach(([id, detail]) => paint(id, '처리 기록', detail));

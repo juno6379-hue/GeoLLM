@@ -27,6 +27,14 @@ verification_statuses:
     executable: false
 
 node_types:
+  HarbourGuideRecord:
+    meaning: Source harbour guide record and its representative point; not an entrance coordinate.
+    authority_source: serving.small_harbour_guide
+    provenance_required: true
+  PlaceNameMention:
+    meaning: Source spelling of a place name; not canonical identity or resolved geometry.
+    authority_source: outputs/coastal_knowledge/chunks.jsonl
+    provenance_required: true
   Product:
     meaning: S-100 product family or product edition such as S-101.
     authority_source: data/s100_product_registry.yaml
@@ -169,6 +177,14 @@ node_types:
     provenance_required: true
 
 edge_types:
+  describesHarbourRecord:
+    subject_types: [DocumentChunk]
+    object_types: [HarbourGuideRecord]
+    default_status: CANDIDATE
+  mentionsPlaceName:
+    subject_types: [DocumentChunk]
+    object_types: [PlaceNameMention]
+    default_status: CANDIDATE
   hasInventoryGroup:
     subject_types: [KGInventory]
     object_types: [KGInventory]

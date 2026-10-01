@@ -47,6 +47,16 @@ def _load_graph() -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
                 edge = json.loads(line)
                 if edge.get("subject_id") and edge.get("object_id"):
                     edges.append(edge)
+    # Source passage -> name-mention links support retrieval only. They do not
+    # approve inferred entrance geometry or promote lexical identity to sameAs.
+    coastal = ROOT / 'outputs/coastal_knowledge'
+    if (coastal / 'nodes.jsonl').exists():
+        for line in (coastal / 'nodes.jsonl').read_text(encoding='utf-8').splitlines():
+            node = json.loads(line)
+            nodes[node['id']] = node
+    if (coastal / 'edges.jsonl').exists():
+        for line in (coastal / 'edges.jsonl').read_text(encoding='utf-8').splitlines():
+            edges.append(json.loads(line))
     return nodes, edges
 
 
@@ -266,7 +276,7 @@ def _matches(nodes: dict[str, dict[str, Any]], value: Any, types: set[str] | Non
 
 
 def _query_seeds(nodes: dict[str, dict[str, Any]], query: str) -> list[str]:
-    types = {"MarineTerm", "DerivedConcept", "Feature", "DataLayer", "DynamicTrafficLayer", "Product"}
+    types = {"MarineTerm", "DerivedConcept", "Feature", "DataLayer", "DynamicTrafficLayer", "Product", "PlaceNameMention"}
     result = []
     query_lower = query.lower()
     query_compact = re.sub(r"\s+", "", query_lower)

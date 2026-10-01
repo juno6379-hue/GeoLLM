@@ -80,6 +80,7 @@ def _finish(current, blockers, warnings):
 
 
 _LOOKUP_SOURCES = {
+    "coastal_evidence_lookup": ("knowledge.document_chunks", {"chunk_id", "source_id", "source_sha256", "metadata", "content", "embedding", "document_type", "title", "page_no", "section"}, "rag.coastal_evidence_retrieve"),
     "accident_event_lookup": ("serving.accident_events", {"event_id", "geom", "authority", "cause", "accident_type"}, "accident.event_lookup"),
     "dataset_evidence_lookup": ("knowledge.document_chunks", {"metadata", "content", "embedding"}, "rag.dataset_profile_retrieve"),
     "traffic_coverage": ("serving.dynamic_traffic_layer", {"layer_source", "observed_month"}, "diagnostics.traffic_coverage"),
@@ -123,6 +124,14 @@ def _validate_lookup(current, adapter):
         else:
             current.data_bindings = [DataBinding(dataset_id=relation, relation=relation, geometry_column="")]
         current.tool_bindings = [ToolBinding(tool_id=tool, operation=operation)]
+        if operation == 'coastal_evidence_lookup':
+            harbour_relation = 'serving.small_harbour_guide'
+            harbour = adapter._inspect_relation(harbour_relation)
+            required = {'source_id','name','properties','provenance','geom'}
+            if not harbour.get('exists') or not harbour.get('has_select') or not required <= {c['name'] for c in harbour.get('columns',[])}:
+                blockers.append('BLOCKED_DATA: harbour guide source unavailable')
+            else:
+                current.data_bindings.append(DataBinding(dataset_id=harbour_relation,relation=harbour_relation,geometry_column='geom'))
         if operation == "accident_event_lookup" and not current.slots.filters.get("terms"):
             blockers.append("NEEDS_USER_INPUT: accident filters are required")
     return _finish(current, blockers, warnings)

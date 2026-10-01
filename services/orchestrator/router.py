@@ -523,6 +523,7 @@ def _compact_agent_result_for_stream(agent_result):
         if isinstance(value, list)
     }
     compact = {
+        "coastal_evidence": result.get("coastal_evidence"),
         "task_id": result.get("task_id"),
         "agent_name": result.get("agent_name"),
         "agent_version": result.get("agent_version"),
@@ -630,6 +631,7 @@ def _compact_final_result_for_stream(final_result):
     }
     compact = {
         "processing_steps": build_processing_steps(result),
+        "coastal_evidence": result.get("coastal_evidence"),
         "status": result.get("status"),
         "error_code": result.get("error_code"),
         "agent_name": result.get("agent_name"),
@@ -672,6 +674,15 @@ def _compact_final_result_for_stream(final_result):
             compact["structured_result"][key] = structured[key]
     _preserve_spatial_stream_payload(result, compact)
     return compact
+
+
+async def _coastal_evidence_for_query(query):
+    from services.orchestrator.coastal_knowledge import retrieve
+    try:
+        return await asyncio.to_thread(retrieve, query)
+    except Exception:
+        return {'status':'UNAVAILABLE','documents':[],
+                'scope':'document_explanation_only','coordinate_authority':False}
 
 
 def _terminal_result_for_stream(state_vals: dict) -> dict:
@@ -899,6 +910,7 @@ async def stream_task(req: TaskCreateRequest):
                 payload = await asyncio.to_thread(resolve_payload, req.query, req.spatial_context or {})
                 payload = allow_display_navigation(req.query, payload, req.spatial_context)
                 final_result = _instant_place_final(task_id, req.query, payload)
+                final_result['coastal_evidence'] = await _coastal_evidence_for_query(req.query)
                 final_result["intent_comparison_id"] = comparison_id
                 observe_comparison(comparison_id, final_result)
                 from services.orchestrator.korean_query_analysis import analyze_query
@@ -997,7 +1009,10 @@ async def stream_task(req: TaskCreateRequest):
             final_status = state_snapshot.values.get("status", "FAILED")
             
             # --- Debug Trace 구성 ---
-            state_vals = state_snapshot.values
+            state_vals = dict(state_snapshot.values)
+            if isinstance(state_vals.get('final_dict'), dict):
+                state_vals['final_dict'] = {**state_vals['final_dict'],
+                    'coastal_evidence': await _coastal_evidence_for_query(req.query)}
             debug_trace = build_debug_trace(state_vals)
             _persist_state(task_id, state_vals)
             

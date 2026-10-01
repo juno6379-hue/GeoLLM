@@ -52,7 +52,8 @@ def main():
     for start in range(0,len(pending),batch_size):
         try:
             batch=pending[start:start+batch_size]
-            body=json.dumps({'model':model,'input':[row['text'] for row in batch]}).encode()
+            body=json.dumps({'model':model,'input':[row['text'] for row in batch],
+                             'options':{'num_thread':int(os.getenv('EMBEDDING_NUM_THREAD','4'))}}).encode()
             req=urllib.request.Request(endpoint,data=body,headers={'Content-Type':'application/json'})
             try:
                 with urllib.request.urlopen(req,timeout=timeout) as response:
