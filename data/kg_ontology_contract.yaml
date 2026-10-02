@@ -27,6 +27,14 @@ verification_statuses:
     executable: false
 
 node_types:
+  DatasetSource:
+    meaning: Immutable full-hash source snapshot, not an authority or current-edition claim.
+    authority_source: outputs/dataset_pipeline/raw_manifest/raw_source_manifest.json
+    provenance_required: true
+  DatasetRecordCollection:
+    meaning: Actual source-hash-filtered DB record collection; no automatic capability promotion.
+    authority_source: serving.dataset_source_records
+    provenance_required: true
   HarbourGuideRecord:
     meaning: Source harbour guide record and its representative point; not an entrance coordinate.
     authority_source: serving.small_harbour_guide
@@ -177,6 +185,10 @@ node_types:
     provenance_required: true
 
 edge_types:
+  derivedFromSource:
+    subject_types: [DocumentChunk, DatasetRecordCollection]
+    object_types: [DatasetSource]
+    default_status: CANDIDATE
   describesHarbourRecord:
     subject_types: [DocumentChunk]
     object_types: [HarbourGuideRecord]

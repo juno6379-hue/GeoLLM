@@ -8,6 +8,7 @@ def test_relative_expression_not_resolved_to_coordinates():
     assert query_terms('다대포항 항해 정보를 알려줘') == ['다대포항']
     assert query_terms('울릉도 주변 항만 정보') == ['울릉도']
     assert query_terms('없는항구XYZ123 항만 안내') == ['없는항구XYZ123']
+    assert query_terms('수로 항로 북극항로 정보를 찾아줘') == ['수로','항로','북극항로']
 
 
 def test_chunking_retains_full_text():
@@ -33,3 +34,39 @@ def test_model_cannot_invent_or_cite_unretrieved_facts():
         {'chunk_id':'a','quote':'부산항 입구의 정확한 좌표는 임의로 생성한 값입니다.'},
         {'chunk_id':'other','quote':doc['content']}],[doc])
     assert len(accepted)==1 and len(rejected)==2
+
+
+def test_spatial_timeout_retains_successful_document_evidence(monkeypatch,tmp_path):
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+    from sqlalchemy.exc import OperationalError
+    from services.orchestrator import coastal_knowledge as module
+    qec=SimpleNamespace(provenance={'execution_validation':{'authority':'ExecutionValidator'}},blockers=[])
+    monkeypatch.setattr(module,'validate_lookup_request',lambda *a:qec)
+    monkeypatch.setattr(module,'is_execution_authorized',lambda q:True)
+    monkeypatch.setattr(module,'ROOT',tmp_path)
+    doc=dict(chunk_id='c',source_id='s',source_sha256='a'*64,title='계획',page_no=1,section='page:1',content='해양공간관리계획 원문',metadata={})
+    def result(value):
+        return SimpleNamespace(mappings=lambda:SimpleNamespace(all=lambda:value,one=lambda:value))
+    first,second=MagicMock(),MagicMock()
+    first.__enter__.return_value.execute.side_effect=[None,result([doc]),result([]),result({'total':1,'embedded':0})]
+    second.__enter__.return_value.execute.side_effect=OperationalError('select',{},Exception('timeout'))
+    db=MagicMock();db.begin.side_effect=[first,second]
+    monkeypatch.setattr(module,'engine',lambda:db)
+    observed=retrieve('해양공간관리계획',scope='dataset')
+    assert observed['status']=='PARTIAL'
+    assert observed['documents']==[doc]
+    assert observed['document_lookup_status']=='COMPLETED'
+    assert observed['spatial_lookup_status']=='UNAVAILABLE'
+    assert observed['coordinate_authority'] is False
+
+
+def test_document_source_failure_is_not_a_successful_empty_search(monkeypatch):
+    from sqlalchemy.exc import OperationalError
+    from services.orchestrator import coastal_knowledge as module
+    def fail(*args,**kwargs):raise OperationalError('select',{},Exception('unavailable'))
+    monkeypatch.setattr(module,'retrieve',fail)
+    result=module.dataset_evidence('양식장',semantic=True)
+    assert result['status']=='UNAVAILABLE'
+    assert result['document_lookup_status']=='UNAVAILABLE'
+    assert result['error_code']=='DOCUMENT_SOURCE_UNAVAILABLE'

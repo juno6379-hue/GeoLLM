@@ -23,7 +23,9 @@ def query_terms(query):
                 '항만','항구','비교','설명해줘','항해정보','검색','검색해줘'}
     terms = []
     for word in words:
-        word = re.sub(r'(으로|에서|까지|관련|입구|출구|주변|근처|로|을|를|의|은|는)$', '', word)
+        stripped = re.sub(r'(으로|에서|까지|관련|입구|출구|주변|근처|로|을|를|의|은|는)$', '', word)
+        if len(stripped) >= 2 and not word.endswith(('항로','수로','도로')):
+            word = stripped
         if len(word) >= 2 and word not in excluded:
             terms.append(word)
     return list(dict.fromkeys(terms))[:8]
@@ -34,8 +36,9 @@ def engine():
     return create_engine(os.environ['S101_DB_URL'], pool_pre_ping=True)
 
 
-def retrieve(query, limit=5, semantic=False):
-    qec = validate_lookup_request({'task_id':str(uuid.uuid4()),'query':query}, 'coastal_evidence_lookup')
+def retrieve(query, limit=5, semantic=False, scope='coastal'):
+    operation = 'dataset_source_lookup' if scope == 'dataset' else 'coastal_evidence_lookup'
+    qec = validate_lookup_request({'task_id':str(uuid.uuid4()),'query':query}, operation)
     receipt = qec.provenance.get('execution_validation')
     if not is_execution_authorized(qec):
         return {'status':'BLOCKED','blockers':qec.blockers,'documents':[], 'execution_validation':receipt}
@@ -43,7 +46,7 @@ def retrieve(query, limit=5, semantic=False):
     if not terms:
         return {'status':'NEEDS_QUERY','documents':[], 'execution_validation':receipt}
     params = {f't{i}':'%' + term.replace('%','').replace('_','') + '%' for i,term in enumerate(terms)}
-    matches = ' OR '.join(f'content ILIKE :t{i}' for i in range(len(terms)))
+    matches = ' OR '.join(f'(content ILIKE :t{i} OR title ILIKE :t{i})' for i in range(len(terms)))
     score = ' + '.join(f'(CASE WHEN content ILIKE :t{i} THEN 1 ELSE 0 END)' for i in range(len(terms)))
     for i, term in enumerate(terms):
         params[f'name{i}'] = term
@@ -61,20 +64,33 @@ def retrieve(query, limit=5, semantic=False):
         vector_order = 'similarity DESC NULLS LAST,'
         method = 'source_scoped_lexical_and_vector'
     with engine().begin() as conn:
-        conn.execute(text("SET LOCAL statement_timeout = '8000'"))
+        conn.execute(text("SET LOCAL statement_timeout = '30000'"))
         rows = conn.execute(text(f'''SELECT chunk_id, source_id, source_sha256, title, page_no,
           section, content, metadata, ({score}) AS lexical_matches, {vector_sql} AS similarity FROM knowledge.document_chunks
-          WHERE document_type IN ('coastal_pilot','small_harbour_guide') AND ({matches})
+          WHERE {"document_type NOT LIKE '%profile'" if scope == 'dataset' else "document_type IN ('coastal_pilot','small_harbour_guide')"} AND ({matches})
           {'AND embedding IS NOT NULL' if semantic else ''}
-          ORDER BY lexical_matches DESC, {vector_order} CASE WHEN metadata->>'language'='ko' THEN 0 ELSE 1 END,
+          ORDER BY CASE WHEN document_type='dataset_profile' OR document_type LIKE '%_profile' THEN 1 ELSE 0 END,
+          lexical_matches DESC, {vector_order} CASE WHEN metadata->>'language'='ko' THEN 0 ELSE 1 END,
           CASE WHEN section='VOYAGE_INF' THEN 0 ELSE 1 END, chunk_id LIMIT :limit'''),
           {**params,'limit':limit * 4}).mappings().all()
         harbour_where = ' OR '.join(f'name=:name{i}' for i in range(len(terms)))
         harbours = conn.execute(text(f'''SELECT source_id,name,properties,provenance,
            ST_AsGeoJSON(geom)::json AS geometry FROM serving.small_harbour_guide
            WHERE {harbour_where} ORDER BY source_id LIMIT 5'''),params).mappings().all()
-        coverage = conn.execute(text("""SELECT count(*) AS total,count(embedding) AS embedded
-            FROM knowledge.document_chunks WHERE document_type IN ('coastal_pilot','small_harbour_guide')""")).mappings().one()
+        coverage = conn.execute(text("SELECT count(*) AS total,count(embedding) AS embedded FROM knowledge.document_chunks WHERE " +
+            ("document_type NOT LIKE '%profile'" if scope == 'dataset' else "document_type IN ('coastal_pilot','small_harbour_guide')"))).mappings().one()
+    spatial_records, spatial_error = [], None
+    if scope == 'dataset':
+        from sqlalchemy.exc import SQLAlchemyError
+        record_match = ' AND '.join(f'((source_member<>\'CSV\' AND properties::text ILIKE :t{i}) OR source_file ILIKE :t{i})' for i in range(len(terms)))
+        try:
+            with engine().begin() as conn:
+                conn.execute(text("SET LOCAL statement_timeout = '3000'"))
+                spatial_records = [dict(r) for r in conn.execute(text(f'''SELECT source_id,source_sha256,source_file,
+                  source_member,row_index,properties,geometry_valid FROM serving.dataset_source_records
+                  WHERE {record_match} LIMIT 5'''),params).mappings().all()]
+        except SQLAlchemyError as exc:
+            spatial_error = type(exc).__name__
     docs, seen = [], set()
     for row in rows:
         item = dict(row)
@@ -93,11 +109,18 @@ def retrieve(query, limit=5, semantic=False):
             edge = json.loads(line)
             if edge['subject_id'] in ids:
                 links.append(edge)
-    return {'status':'COMPLETED','query':query,'search_terms':terms,'documents':docs,'knowledge_links':links,
-            'harbour_records':[dict(r) for r in harbours],'embedding_coverage':dict(coverage),
+    if scope == 'dataset':
+        links.extend({'subject_id':d['chunk_id'],'predicate':'derivedFromSource','object_id':'dataset:'+d['source_sha256'],
+                      'provenance':{'source_sha256':d['source_sha256'],'section':d['section'],'page_no':d['page_no']},
+                      'authority':'retrieval_only'} for d in docs)
+    return {'status':'PARTIAL' if spatial_error else 'COMPLETED','query':query,'search_terms':terms,'documents':docs,'knowledge_links':links,
+            'document_lookup_status':'COMPLETED','spatial_lookup_status':'UNAVAILABLE' if spatial_error else 'COMPLETED',
+            'spatial_lookup_error':spatial_error,
+            'harbour_records':[dict(r) for r in harbours],'spatial_records':spatial_records,'embedding_coverage':dict(coverage),
             'retrieval_method':method,'execution_validation':receipt,
             'scope':'document_explanation_only','coordinate_authority':False,
             'limitations':['항만 대표점은 입구 좌표가 아닙니다.',
+                          'CSV 원천 기록은 자료명으로 검색합니다. 임의 속성/시계열 집계의 실행 adapter는 별도 검증 대상입니다.',
                           '문서 판·최신성 미검증. 소형선항만 DBF 필드에는 잘림이 있을 수 있습니다.']}
 
 
@@ -113,15 +136,16 @@ def validate_quotes(claims, docs):
         compact = re.sub(r'\s+', '', quote)
         if doc and 15 <= len(compact) <= 500 and compact in re.sub(r'\s+', '', doc['content']):
             accepted.append({'chunk_id':doc['chunk_id'],'quote':quote,'title':doc['title'],
-                             'page_no':doc['page_no'],'section':doc['section'],'source_id':doc['source_id']})
+                             'page_no':doc['page_no'],'section':doc['section'],'source_id':doc['source_id'],
+                             'source_sha256':doc.get('source_sha256')})
         else:
             rejected.append({'reason':'quote_not_in_supplied_source','claim':claim})
     return accepted, rejected
 
 
 @router.get('/coastal-explanation')
-def coastal_explanation(query: str = Query(min_length=2,max_length=1000)):
-    evidence = retrieve(query)
+def coastal_explanation(query: str = Query(min_length=2,max_length=1000), scope='coastal'):
+    evidence = retrieve(query,scope=scope)
     docs = evidence.get('documents') or []
     if not docs:
         return {'status':'NO_EVIDENCE','quotes':[]}
@@ -167,3 +191,19 @@ def coastal_explanation(query: str = Query(min_length=2,max_length=1000)):
 @router.get('/coastal-evidence')
 def coastal_evidence(query: str = Query(min_length=2,max_length=1000), semantic: bool = False):
     return retrieve(query, semantic=semantic)
+
+
+@router.get('/dataset-evidence')
+def dataset_evidence(query: str = Query(min_length=2,max_length=1000), semantic: bool = False):
+    from sqlalchemy.exc import SQLAlchemyError
+    try:
+        return retrieve(query,semantic=semantic,scope='dataset')
+    except SQLAlchemyError as exc:
+        return {'status':'UNAVAILABLE','documents':[],'error_code':'DOCUMENT_SOURCE_UNAVAILABLE',
+                'error_type':type(exc).__name__,'document_lookup_status':'UNAVAILABLE',
+                'coordinate_authority':False,'scope':'document_explanation_only'}
+
+
+@router.get('/dataset-explanation')
+def dataset_explanation(query: str = Query(min_length=2,max_length=1000)):
+    return coastal_explanation(query,scope='dataset')

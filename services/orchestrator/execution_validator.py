@@ -80,6 +80,7 @@ def _finish(current, blockers, warnings):
 
 
 _LOOKUP_SOURCES = {
+    "dataset_source_lookup": ("knowledge.document_chunks", {"chunk_id", "source_id", "source_sha256", "metadata", "content", "embedding", "document_type", "title", "page_no", "section"}, "rag.dataset_source_retrieve"),
     "coastal_evidence_lookup": ("knowledge.document_chunks", {"chunk_id", "source_id", "source_sha256", "metadata", "content", "embedding", "document_type", "title", "page_no", "section"}, "rag.coastal_evidence_retrieve"),
     "accident_event_lookup": ("serving.accident_events", {"event_id", "geom", "authority", "cause", "accident_type"}, "accident.event_lookup"),
     "dataset_evidence_lookup": ("knowledge.document_chunks", {"metadata", "content", "embedding"}, "rag.dataset_profile_retrieve"),
@@ -124,7 +125,7 @@ def _validate_lookup(current, adapter):
         else:
             current.data_bindings = [DataBinding(dataset_id=relation, relation=relation, geometry_column="")]
         current.tool_bindings = [ToolBinding(tool_id=tool, operation=operation)]
-        if operation == 'coastal_evidence_lookup':
+        if operation in {'coastal_evidence_lookup','dataset_source_lookup'}:
             harbour_relation = 'serving.small_harbour_guide'
             harbour = adapter._inspect_relation(harbour_relation)
             required = {'source_id','name','properties','provenance','geom'}
@@ -132,6 +133,14 @@ def _validate_lookup(current, adapter):
                 blockers.append('BLOCKED_DATA: harbour guide source unavailable')
             else:
                 current.data_bindings.append(DataBinding(dataset_id=harbour_relation,relation=harbour_relation,geometry_column='geom'))
+        if operation == 'dataset_source_lookup':
+            relation = 'serving.dataset_source_records'
+            source = adapter._inspect_relation(relation)
+            required = {'source_id','source_sha256','source_file','source_member','row_index','properties','geometry_valid'}
+            if not source.get('exists') or not source.get('has_select') or not required <= {c['name'] for c in source.get('columns',[])}:
+                blockers.append('BLOCKED_DATA: dataset source records unavailable')
+            else:
+                current.data_bindings.append(DataBinding(dataset_id=relation,relation=relation,geometry_column=''))
         if operation == "accident_event_lookup" and not current.slots.filters.get("terms"):
             blockers.append("NEEDS_USER_INPUT: accident filters are required")
     return _finish(current, blockers, warnings)

@@ -679,7 +679,7 @@ def _compact_final_result_for_stream(final_result):
 async def _coastal_evidence_for_query(query):
     from services.orchestrator.coastal_knowledge import retrieve
     try:
-        return await asyncio.to_thread(retrieve, query)
+        return await asyncio.to_thread(retrieve, query, scope='dataset')
     except Exception:
         return {'status':'UNAVAILABLE','documents':[],
                 'scope':'document_explanation_only','coordinate_authority':False}

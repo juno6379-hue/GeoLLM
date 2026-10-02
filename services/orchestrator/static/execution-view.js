@@ -90,7 +90,8 @@ window.ExecutionView = (() => {
         if (coastal) {
             if (coastal.status === 'COMPLETED') paint('knowledge','원문 검색 완료',`${coastal.documents.length}개 발췌. 별도 근거 조회이며 지도 실행 승인이 아닙니다.`);
             if (coastal.embedding_coverage) line('본문·임베딩 적재', `검색 본문 ${coastal.embedding_coverage.total}개 / 임베딩 완료 ${coastal.embedding_coverage.embedded}개 · ${coastal.retrieval_method || ''}`);
-            line('항로지·항만 안내 근거 검색', coastal.status === 'COMPLETED' ? `${coastal.documents.length}개 발췌 · ${coastal.knowledge_links?.length || 0}개 출처 연결` : `${coastal.status} · 검색 완료로 보지 않습니다.`);
+            line('Dataset 원문 근거 검색', coastal.status === 'COMPLETED' ? `${coastal.documents.length}개 발췌 · ${coastal.knowledge_links?.length || 0}개 출처 연결` : `${coastal.status} · 검색 완료로 보지 않습니다.`);
+            for (const record of coastal.spatial_records || []) line('공간자료 원천 기록', `${record.source_file} / ${record.source_member} / 행 ${record.row_index + 1} · geometry ${record.geometry_valid ? '검증됨' : '검토 필요'} · ${JSON.stringify(record.properties)}`);
             for (const doc of coastal.documents || []) {
                 const title = `${doc.title} / ${doc.page_no ? `PDF ${doc.page_no}쪽` : doc.section}`;
                 const detail = document.createElement('details'), caption = document.createElement('summary'), excerpt = document.createElement('p');
@@ -106,7 +107,7 @@ window.ExecutionView = (() => {
                 button.disabled = coastalModel?.status === 'RUNNING';
                 button.addEventListener('click', () => {
                     const ticket = generation; coastalModel = {status:'RUNNING'}; explain();
-                    fetch(`/api/v1/coastal-explanation?query=${encodeURIComponent(query)}`)
+                    fetch(`/api/v1/dataset-explanation?query=${encodeURIComponent(query)}`)
                         .then(r => { if (!r.ok) throw new Error('model unavailable'); return r.json(); })
                         .then(data => { if (ticket === generation) { coastalModel=data; explain(); } })
                         .catch(() => { if (ticket === generation) { coastalModel={status:'UNAVAILABLE'}; explain(); } });
@@ -140,7 +141,7 @@ window.ExecutionView = (() => {
     function begin(text) {
         query = text; result = comparison = coastal = coastalModel = null; finished = false; observed = {};
         const ticket = ++generation;
-        if (typeof fetch === 'function') fetch(`/api/v1/coastal-evidence?query=${encodeURIComponent(text)}`)
+        if (typeof fetch === 'function') fetch(`/api/v1/dataset-evidence?query=${encodeURIComponent(text)}`)
             .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
             .then(data => { if (ticket === generation) { coastal = data; explain(); } })
             .catch(() => { if (ticket === generation) { coastal = {status:'UNAVAILABLE',documents:[]}; explain(); } });

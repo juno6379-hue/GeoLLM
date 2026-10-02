@@ -1,5 +1,18 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-10-02 Dataset 전체 원천 대조·본문/공간 연결 확대
+
+- 종료 전 관측: 신규 임베딩 worker 재개 후 72/6,362개(6,290개 대기). 전체 완료가 아니다. 최종 API 검증과 별개로 브라우저 탭 새로고침은 CDP timeout으로 새 UI 결과 확인을 완료하지 못했다. 다음 세션에서 실제 웹 재질의 확인이 필요하다.
+- 사용자 우선순위로 Dataset 전체 244개 파일의 SHA-256을 대조했다. [구현·실제 관측·재개 명령](dataset_pipeline_20261002.md). 기존 profile/partial hash/파일명 추정을 본문 완료로 보지 않는 원본별 audit를 추가했다.
+- 기존 항로서지·소형선항만 8,440개는 DB에서 모두 1,024차원 임베딩 완료 확인. 이전 10월 1일의 이 항목은 해소됐다. 새 문서 32개에서 6,362개 본문을 추가 적재했으며 신규 벡터는 별도 worker 진행 중이다.
+- 누락 정적 SHP 37개 member 209,952행, CSV 17개 고유 원본 1,128,824행을 추출했다. **추출 수와 최종 DB 적재 수는 구분한다.** `outputs/dataset_pipeline/finalize.log`, `spatial_loaded.json`, `live_snapshot.json`, `audit.json` 및 실제 DB를 대조한다. Windows 대용량 bind mount 읽기 병목으로 `/tmp` 사본을 사용한다.
+- 원본 해시/본문/record collection을 연결하고 Dataset 근거·Qwen 인용 API를 웹 분석 아래와 SSE에 반영했다. ExecutionValidator의 read-only 승인만 사용하며 좌표·canonical/ontology 의미 관계를 자동 승인하지 않는다. CSV 좌표는 추론하지 않는다.
+- 실제 `해양공간관리계획`은 적재 전 0건→적재 후 원문 5건, 해양사고심판 사례집도 검색됨. Qwen 원문 없는 설명은 일반론·길이 제한 잘림이 있었고, 근거 기반 인용과 분리 보존했다. 대량 적재 중 HTTP 500 관측 후 공간 조회 실패를 별도 PARTIAL로 격리했다. 최신 API 재검증 결과는 후속 기록을 따른다.
+- P0: 신규 6,362개 임베딩 전체 완료·벡터 조회, 대량 적재 최종 행/geometry 검사, 빈 페이지 OCR 여부, 기존 본문 완전성 및 중첩 archive/바이너리·dump 검증. 수치조류의 grid/time/수치 인코딩 사양은 아직 없으며 전체 Dataset 완료가 아니다. P1: canonical 연결·원천 판 검수 및 독립 human gold. Qwen shadow/QLoRA DEFER.
+- 다음 시작점: worker/DB 확인 → `dataset_pipeline snapshot`/`audit` → `check_dataset_pipeline --model`/`--semantic`. 컨테이너 restart는 worker를 중단한다. 재개 명령은 상세 문서에 있다. 런타임 산출물과 사용자/관리자 UI의 기존 미커밋 변경은 소스 커밋에서 제외한다.
+- 최종 적재 확인: 정적 공간 209,952행(유효성·범위 통과 206,120, 제외 3,832), CSV 1,128,824행. 출처 그래프 23,418 노드/23,232 관계. Python 확장 31 passed, 후속 조회 실패 격리 관련 6 passed(중복), Node 5 passed. 검색 인덱스를 추가했다. 이 수치를 신규 임베딩 완료나 전체 Dataset 의미 연결 완료로 해석하지 않는다.
+- 최종 재배포 API: lexical 5/5 요청 완료(0.319~5.262초), 실제 bge-m3/pgvector 5/5 완료(0.560~2.703초), HTTP 오류 0. 부산항/해양공간관리계획/양식장/수로와 없는 자료를 확인했고 negative는 문서·공간 기록 모두 0건이다. 벡터 조회는 현재 임베딩된 자료에 한정된다. 신규 6,362개 전체 벡터 완료가 아니다.
+
 ## 2026-10-01 항로서지·소형선항만 본문·공간·지식 연결
 
 - 사용자 우선순위로 두 원천을 처리했다. [변경·검증·재개 방법](coastal_knowledge_20261001.md). PDF 30/HWP 28, PDF 1,644쪽, 본문 청크 8,440개를 추출·적재했다. 소형선항만 439건의 EPSG:5179→4326 변환·유효성을 확인했다. 전체 Dataset 완료가 아니다.

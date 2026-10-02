@@ -57,6 +57,14 @@ def _load_graph() -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
     if (coastal / 'edges.jsonl').exists():
         for line in (coastal / 'edges.jsonl').read_text(encoding='utf-8').splitlines():
             edges.append(json.loads(line))
+    dataset = ROOT / 'outputs/dataset_pipeline'
+    if (dataset / 'nodes.jsonl').exists():
+        for line in (dataset / 'nodes.jsonl').read_text(encoding='utf-8').splitlines():
+            node = json.loads(line)
+            nodes.setdefault(node['id'],node)
+    if (dataset / 'edges.jsonl').exists():
+        for line in (dataset / 'edges.jsonl').read_text(encoding='utf-8').splitlines():
+            edges.append(json.loads(line))
     return nodes, edges
 
 
