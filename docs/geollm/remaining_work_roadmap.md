@@ -1,5 +1,23 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-10-06 MDC 접속 설정 복구·네트워크 차단 확인
+
+- 사용자가 제공한 Oracle 접속 정보를 Git/Docker build 제외 `.env`의 `ORACLE_URL`로 저장했다. 비밀번호 특수문자는 URL 인코딩했다. `orcl`은 우선 service_name으로 설정했으며 TCP 연결 전 실패해 SID/service_name 정합성은 미검증이다. 비밀값은 소스·문서·로그에 기록하지 않는다.
+- 사용자 지정 테이블: 조위관측소 `DT`, 해양관측부이 `T_WRN_TW_BUOY`. 테이블명 제공은 스키마·자료기간·단위·물때 컬럼 확인 완료를 뜻하지 않는다.
+- 호스트에서 sandbox 밖 재시도를 포함해 Oracle 접속은 `DPY-6005`. 8초 TCP 점검은 호스트 결과 10035, backend 컨테이너 결과 11로 연결 미성립. 인증 이전 단계이며 비밀번호 오류나 DB 서비스명 오류로 단정하지 않는다. VPN/접근 허용 IP/서버 listener·방화벽 확인이 필요하다.
+- Oracle thin 드라이버를 호스트 프로젝트 venv에 설치하고 pyproject/poetry.lock에 의존성을 추가했다. backend 이미지는 아직 재빌드하지 않았고 새 환경변수도 실행 중 컨테이너에는 미적용이다. 기존 웹 서비스는 유지한다.
+- `scripts/check_mdc_connection.py`: 환경설정 로딩, 연결/호출 시간 제한, 읽기 전용 transaction, 지정 두 테이블 컬럼 및 최대 2행 조회, 오류 코드만 출력. 실패를 0행 성공으로 바꾸지 않는다. 기존 Oracle 초기화 로그도 원문 예외 대신 예외 종류만 남긴다.
+- 검증: `.venv\Scripts\python.exe -m pytest tests/unit/test_mdc_connection.py -q` → 3 passed. 실제 테이블 조회·자연어 연동 성공은 미검증이며 실행 승인도 추가하지 않았다.
+- 다음 첫 작업: MDC 네트워크 접근 복구 → `.venv\Scripts\python.exe -m scripts.check_mdc_connection` → 실제 컬럼/자료기간/관측소·시각·단위·기준면 확인 → 대조기/소조기 별도 테이블 또는 계산 근거 확인 → backend 재빌드/환경 적용 → QEC/ExecutionValidator 경유 LLM 조회 및 실제 API 정상·부정 검증. 실측·예측 조위는 KHOA API, 기타 과거 관측·물때는 MDC 원천 정책을 유지한다.
+
+## 2026-10-06 MDC 연결 재탐색·데이터 소스 정책
+
+- 사용자 지정 정책: 실측·예측 조위는 연동한 KHOA API, 기타 해양관측 과거치 및 대조기/소조기는 MDC DB를 근거로 조회한다. Qwen은 해석 보조이며 수치·물때의 사실 권위가 아니다. 자연어 연결은 아직 미완료다.
+- 기존 연결은 `data/database.py`의 `ORACLE_URL`/`get_oracle_db`이며 `check_oracle.py`도 남아 있다. `scratch/results4.txt`의 2026-07-23 로그에는 `No module named 'oracledb'`로 Oracle 초기화 실패가 기록돼 있다. 과거 설정 또는 연결 시도 흔적이며 성공 증거는 아니다.
+- 현재 `.env`, 프로세스 및 backend 컨테이너 환경에 Oracle/MDC 키가 없다. 이미지 `/app/.env`도 없다. `.env.example`의 전체 Git 변경 이력은 Oracle 값이 비어 있다. `D:\Hangman\GeoLLM` 복사본에도 실제 환경 파일은 없고 Oracle 기본값은 비어 있다. DBeaver 연결 목록은 gbenc PostgreSQL만 확인됐다. 비밀값은 출력·문서화하지 않았다.
+- P0: 실제 MDC 접속 설정 위치 복구, Oracle 드라이버/접속 검증, 읽기 전용 테이블·컬럼 조사 미완료. 연결 완료나 대조기 조회 성공으로 표시하지 않는다. 기존 API 조위를 MDC 과거치나 대조기 정보로 대체하지 않는다.
+- 다음: 과거 MDC 설정이 보관된 프로그램/파일 확인 → Oracle 읽기 전용 연결 → 관측소·시각·단위·수직기준면·물때 테이블 매핑 → registry/QEC/ExecutionValidator 경유 자연어 연결 → 실제 API에서 정상·결측·잘못된 기간 검증. 재현: `rg -n 'ORACLE_URL|get_oracle_db' data/database.py`, `rg -n 'Oracle engine' scratch/results4.txt` (접속 성공 검사가 아니라 기존 코드·실패 기록 확인).
+
 ## 2026-10-06 국립해양조사원 실측·예측 조위 API
 
 - 사용자 제공 API/인증키로 공식 operation을 확인하고 서버 proxy 및 로컬 PostGIS 저장을 구현했다. [저장 위치·API·재현·제한](tide_observation_20261006.md). 키는 Git 제외 환경설정에만 보관한다.

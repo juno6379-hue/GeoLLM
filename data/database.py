@@ -67,7 +67,8 @@ def init_engines():
             OracleSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=oracle_engine)
             logger.info("Oracle engine initialized")
         except Exception as e:
-            logger.error("Failed to initialize Oracle engine", error=str(e))
+            # Connection URLs can include credentials; never log raw exceptions.
+            logger.error("Failed to initialize Oracle engine", error_type=type(e).__name__)
             
     if enc_engine is None:
         try:
