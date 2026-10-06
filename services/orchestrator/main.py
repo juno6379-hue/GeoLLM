@@ -63,6 +63,8 @@ from services.orchestrator.place_router import router as place_router
 app.include_router(place_router, prefix="/api/v1")
 from services.orchestrator.coastal_knowledge import router as coastal_knowledge_router
 app.include_router(coastal_knowledge_router, prefix="/api/v1")
+from services.orchestrator.tide_observation import router as tide_observation_router
+app.include_router(tide_observation_router, prefix="/api/v1")
 
 from services.orchestrator.lidar_router import router as lidar_router
 app.include_router(lidar_router, prefix="/api/v1")
