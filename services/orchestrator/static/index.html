@@ -738,7 +738,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4leaflet/1.0.2/proj4leaflet.min.js"></script>
     <script src="/query-summary.js?v=20260918-router-trace"></script>
-    <script src="/radius-results.js?v=20260917-accident-points-v2"></script>
+    <script src="/radius-results.js?v=20261006-portrayal"></script>
     <script src="/intent-comparison.js?v=20260928-evidence"></script>
     <script src="/processing-steps.js?v=20261001"></script>
     <script src="/execution-view.js?v=20261001"></script>
@@ -1536,22 +1536,7 @@
                                             if (f.properties && (f.properties.is_buffer || f.properties.role === 'search_buffer')) {
                                                 return L.circle(latlng, { radius: f.properties.radius_m || 1000, color: '#3b82f6', weight: 2, fillOpacity: 0.1 });
                                             }
-                                            let nftc = f.properties ? (f.properties.nftc || 10) : 10;
-                                            let jitterLat = latlng.lat + (Math.random() - 0.5) * 0.0001;
-                                            let jitterLng = latlng.lng + (Math.random() - 0.5) * 0.0001;
-                                            let finalLatlng = [jitterLat, jitterLng];
-                                            
-                                            let iconHtml = '';
-                                            if (nftc == 159) iconHtml = '<div style="font-size:20px; line-height:24px; text-align:center;">🚢</div>';
-                                            else if (nftc == 86) iconHtml = '<div style="font-size:20px; line-height:24px; text-align:center;">🪨</div>';
-                                            else if (nftc == 10) iconHtml = '<div style="font-size:20px; line-height:24px; text-align:center;">⚓</div>';
-                                            else if (nftc == 111) iconHtml = '<div style="font-size:20px; line-height:24px; text-align:center;">💡</div>';
-                                            else if (nftc == 14) iconHtml = '<div style="font-size:20px; line-height:24px; text-align:center;">🛟</div>';
-                                            else iconHtml = '<div style="font-size:20px; line-height:24px; text-align:center;">⚠️</div>';
-                                            
-                                            return L.marker(finalLatlng, {
-                                                icon: L.divIcon({ html: iconHtml, className: 'custom-div-icon', iconSize: [24, 24], iconAnchor: [12, 12] })
-                                            });
+                                            return window.RadiusResults.symbolMarker(f, latlng, false);
                                         },
                                         onEachFeature: function (feature, layer) {
                                             if (feature.properties?.operation === 'map_navigation') {

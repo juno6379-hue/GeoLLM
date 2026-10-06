@@ -88,7 +88,8 @@
         const portrayal = row?.portrayal || {};
         const symbol = portrayal.symbol || row?.portrayal_symbol;
         const asset = portrayal.asset || row?.portrayal_symbol_asset;
-        if (symbol && asset) {
+        if (symbol && /^[A-Za-z0-9_]+$/.test(symbol) &&
+            [ `/s101-portrayal/${symbol}.svg`, `/static/s101-portrayal/${symbol}.svg` ].includes(asset)) {
             return {
                 key: String(symbol).toLowerCase(),
                 label: `${row.feature_name || "S-101 feature"} (${symbol})`,
@@ -96,28 +97,6 @@
             };
         }
         return null;
-    }
-
-    function fallbackSymbol(row) {
-        const name = row?.feature_name || row?.feature_type_name || "";
-        const symbols = {
-            Berth: { glyph: "⚓", label: "선석 (Berth)", className: "s101-fallback-berth" },
-            Obstruction: { glyph: "◇", label: "장애물 (Obstruction)", className: "s101-fallback-obstruction" },
-            Wreck: { glyph: "✕", label: "침선 (Wreck)", className: "s101-fallback-wreck" },
-            UnderwaterAwashRock: { glyph: "▲", label: "수중/간출암", className: "s101-fallback-rock" },
-            IsolatedDangerBuoy: { glyph: "!", label: "고립위험 부표", className: "s101-fallback-danger-mark" },
-            IsolatedDangerBeacon: { glyph: "!", label: "고립위험 표지", className: "s101-fallback-danger-mark" },
-            EmergencyWreckMarkingBuoy: { glyph: "W", label: "응급 침선표지 부표", className: "s101-fallback-wreck-mark" },
-            LateralBuoy: { glyph: "B", label: "측방 부표", className: "s101-fallback-aid" },
-            LateralBeacon: { glyph: "B", label: "측방 표지", className: "s101-fallback-aid" },
-            CardinalBuoy: { glyph: "C", label: "방위표지 부표", className: "s101-fallback-aid" },
-            CardinalBeacon: { glyph: "C", label: "방위표지", className: "s101-fallback-aid" },
-            SpecialPurposeGeneralBuoy: { glyph: "S", label: "특수목적 부표", className: "s101-fallback-aid" },
-            SpecialPurposeGeneralBeacon: { glyph: "S", label: "특수목적 표지", className: "s101-fallback-aid" },
-            LightAllAround: { glyph: "L", label: "전방위등", className: "s101-fallback-light" },
-            LightSectored: { glyph: "L", label: "섹터등", className: "s101-fallback-light" },
-        };
-        return symbols[name] || null;
     }
 
     function featureDisplayName(value) {
@@ -165,17 +144,6 @@
         if (name === "EmergencyWreckMarkingBuoy") return { color: "#dc2626", fillColor: "#fee2e2", label: "응급 침선표지 부표" };
         if (name.includes("Buoy") || name.includes("Beacon") || name.includes("Light")) return { color: "#2563eb", fillColor: "#dbeafe", label: "항로표지" };
         return { color: "#0f766e", fillColor: "#99f6e4", label: featureDisplayName(name) };
-    }
-
-    function symbolClass(row) {
-        const name = String(row?.feature_name || row?.feature_type_name || "").toLowerCase();
-        if (name === "obstruction") return "s101-symbol-obstruction";
-        if (name === "wreck") return "s101-symbol-wreck";
-        if (name === "underwaterawashrock") return "s101-symbol-rock";
-        if (name === "isolateddangerbuoy" || name === "isolateddangerbeacon") return "s101-symbol-danger-mark";
-        if (name === "emergencywreckmarkingbuoy") return "s101-symbol-wreck";
-        if (name.includes("buoy") || name.includes("beacon") || name.includes("light")) return "s101-symbol-aid";
-        return "";
     }
 
     function obstructionCategoryLabel(value) {
@@ -327,34 +295,45 @@
         }
         const symbol = featureSymbol(row);
         if (!symbol) {
-            const fallback = fallbackSymbol(row);
-            if (fallback) {
-                const html = `<span class="s101-fallback-symbol ${fallback.className}" title="${fallback.label}">${fallback.glyph}</span>`;
-                return L.marker(latlng, {
-                    icon: L.divIcon({
-                        className: "s101-portrayal-marker",
-                        html,
-                        iconSize: [32, 32],
-                        iconAnchor: [16, 16],
-                        popupAnchor: [0, -14],
-                    }),
-                });
-            }
-            const style = featureStyle(row);
-            return L.circleMarker(latlng, {
-                radius: 7, color: style.color, fillColor: style.fillColor, fillOpacity: 0.95, weight: 2,
+            const marker = L.circleMarker(latlng, {
+                radius: 5, color: "#64748b", fillColor: "#ffffff", fillOpacity: 0.8, weight: 1,
             });
+            marker.bindTooltip?.("Portrayal 심볼 미해결 · 원본 위치");
+            return marker;
         }
-        const html = `<img class="s101-portrayal-symbol ${symbolClass(row)}" src="${symbol.asset}" alt="${symbol.label}" title="${symbol.label}">`;
-        return L.marker(latlng, {
-            icon: L.divIcon({
+        const escape = value => String(value).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+        const icon = asset => L.divIcon({
                 className: "s101-portrayal-marker",
-                html,
+                html: `<img class="s101-portrayal-symbol" style="width:32px;height:32px;object-fit:contain;filter:none" src="${escape(asset)}" alt="${escape(symbol.label)}" title="${escape(symbol.label)}">`,
                 iconSize: [32, 32],
                 iconAnchor: [16, 16],
                 popupAnchor: [0, -14],
-            }),
-        });
+            });
+        const marker = L.marker(latlng, {icon: icon(symbol.asset)});
+        // SVG images cannot load external stylesheets. Embed the bundled palette
+        // in an image document; never insert fetched SVG into the page DOM.
+        if (typeof fetch === "function" && marker.setIcon) {
+            styledSymbol(symbol.asset).then(asset => marker.setIcon(icon(asset))).catch(() => {
+                marker.bindTooltip?.("Portrayal 심볼 로드 실패 · 원본 위치");
+            });
+        }
+        return marker;
+    }
+
+    const symbolImages = new Map();
+    function styledSymbol(asset) {
+        if (!symbolImages.has(asset)) {
+            const root = asset.replace(/\/[^/]+$/, "");
+            const request = Promise.all([asset, `${root}/daySvgStyle.css`].map(url =>
+                fetch(url).then(response => { if (!response.ok) throw new Error("symbol unavailable"); return response.text(); })
+            )).then(([svg, css]) => {
+                const image = svg.replace(/<\?xml-stylesheet[^>]*\?>/g, "")
+                    .replace(/(<svg\b[^>]*>)/, `$1<style>${css}</style>`);
+                return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(image)}`;
+            }).catch(error => { symbolImages.delete(asset); throw error; });
+            symbolImages.set(asset, request);
+        }
+        return symbolImages.get(asset);
     }
 
     function isRadiusAnalysis(result) {
@@ -1059,5 +1038,5 @@
         }
     }
 
-    window.RadiusResults = { isRadius, render, reset };
+    window.RadiusResults = { isRadius, render, reset, symbolMarker };
 })();
