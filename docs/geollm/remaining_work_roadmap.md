@@ -1,5 +1,13 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-10-06 논문 초안 분석과 실험 분리 제안
+
+- 사용자 제공 `Marine_GeoLLM_SCIE_논문초안_v0.1_KR.docx`의 본문·표·수식과 현재 QEC/Validator/Evidence/benchmark/shadow 코드를 대조했다. 논문 및 운영 소스는 수정하지 않았다. 문서 렌더러는 bundled LibreOffice 미발견으로 실패해 페이지 배치 검증은 하지 않았다.
+- 논문의 RQ1–RQ5는 semantic grounding, 실행 전 오류탐지, 실제 공간결과, recovery, evidence audit를 요구한다. 기존 shadow는 실행하지 않으며 기존 benchmark PASS는 기대 차단도 포함하므로 EVQSR/ESR로 전용할 수 없다. 기존 로그·AI 검토는 독립 human gold가 아니다.
+- 제안(아직 구현 아님): `research/marine_geollm_paper/` 독립 runner/config/baseline/fault injection/result oracle/metrics, 별도 DB snapshot·권한·volume·결과 경로. 운영의 ExecutionValidator를 끄는 전역 옵션을 추가하지 않는다. 운영 코드 SHA를 고정한 참조 실험과 논문용 개선 구현을 구분한다.
+- 우선 설계: Q1–Q6 정상·정상 빈 결과·추가 입력·원천 없음 구분, Q7 오류주입 별도 집합; 전문가 검수 및 위치/템플릿/원질의 family별 split. B0–B3/P 비교와 A3→P의 recovery 효과, A2→A3의 validator 효과를 분리한다. Evidence는 필드 존재뿐 아니라 원천 해소·주장 지지 여부를 평가한다.
+- 다음 논문 작업: gold/정답 공간결과·지표 분모·baseline 입력예산 및 삭제실험 명세 고정 → 격리 환경 → 소규모 pilot → 프로토콜 동결 → 본실험/통계. 연구 제안 단계로서 새 실험값이나 완료 수치를 만들지 않았다. MDC 및 AIS/예보는 초안의 S-101 핵심 실험과 분리한다. 운영 우선순위와 shadow/QLoRA 승인 상태를 변경하지 않는다.
+
 ## 2026-10-06 MDC 접속 설정 복구·네트워크 차단 확인
 
 - 사용자가 제공한 Oracle 접속 정보를 Git/Docker build 제외 `.env`의 `ORACLE_URL`로 저장했다. 비밀번호 특수문자는 URL 인코딩했다. `orcl`은 우선 service_name으로 설정했으며 TCP 연결 전 실패해 SID/service_name 정합성은 미검증이다. 비밀값은 소스·문서·로그에 기록하지 않는다.
