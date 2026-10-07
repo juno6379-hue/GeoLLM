@@ -11,7 +11,7 @@
             --sidebar-bg: #0f172a; --panel-bg: #ffffff; --bg-gray: #f1f5f9;
             --text-dark: #1e293b; --text-muted: #64748b; --border-light: #e2e8f0;
             --accent-blue: #0284c7; --accent-blue-hover: #0369a1; --danger: #ef4444; --success: #10b981;
-            --map-panel-height: clamp(420px, 75vh, 750px);
+            --map-panel-height: max(480px, calc(100dvh - 150px));
         }
         body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background: var(--bg-gray); color: var(--text-dark); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
@@ -60,7 +60,7 @@
         .panel-header { padding: 12px 15px; border-bottom: 1px solid var(--border-light); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; background: #f8fafc; }
         
         /* Chat Panel */
-        .chat-panel { width: 300px; min-height: 0; }
+        .chat-panel { width: 300px; flex-shrink: 0; min-height: 0; }
         .preset-prompts { padding: 15px; display: flex; flex-direction: column; gap: 10px; flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
         .preset-prompts > * { flex-shrink: 0; }
         .preset-btn { text-align: left; background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; padding: 10px; border-radius: 6px; font-size: 12px; cursor: pointer; transition: 0.2s; }
@@ -72,7 +72,9 @@
         .chat-input-wrapper button:hover { background: var(--accent-blue-hover); }
         
         /* Map Panel */
-        .map-panel { flex-grow: 1; position: relative; }
+        .map-panel { flex: 1 1 400px; min-width: 360px; position: relative; }
+        #tideObservation { flex-shrink: 0; }
+        #tideObservation > div:last-child { max-height: 420px; }
         #map { width: 100%; flex: 1 1 0; min-height: 0; }
         
         /* Results Panel */
@@ -218,7 +220,7 @@
         .radius-point-fields label { display: grid; gap: 5px; font-size: 11px; color: #475569; }
         .radius-point-fields input { min-width: 0; width: 100%; box-sizing: border-box; padding: 7px 5px; font: inherit; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 4px; }
         .radius-point-fields input[aria-invalid="true"] { border-color: #be123c; }
-        @media (max-width: 1180px) {
+        @media (max-width: 1400px) {
             .sidebar { display: none; }
             .top-row { flex-wrap: wrap; min-height: 0; }
             .map-panel { min-width: 300px; min-height: 420px; }
@@ -227,15 +229,14 @@
             .trace-card.trace-card-wide { grid-column: auto; }
             .review-layout { grid-template-columns: 1fr; }
         }
-        @media (max-width: 700px) {
-            :root { --map-panel-height: 420px; }
+        @media (max-width: 900px) {
             .navbar { padding: 0 10px; }
             .nav-actions { display: none; }
             .content-area { min-width: 0; }
             .top-row { flex-direction: column; flex-wrap: nowrap; flex-shrink: 0; }
             .chat-panel, .map-panel, .results-panel { width: 100%; min-width: 0; flex-shrink: 0; box-sizing: border-box; }
             .chat-panel { min-height: 280px; }
-            .map-panel { height: 420px; }
+            .map-panel { flex-basis: auto; }
             .results-panel { flex-basis: auto; }
             .chat-input-wrapper input { min-width: 0; }
             .pipeline-track { overflow-x: auto; justify-content: flex-start; gap: 12px; padding: 0; }

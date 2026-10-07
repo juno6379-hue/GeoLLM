@@ -22,7 +22,10 @@
         status.setAttribute('role','status');
         const results = node('div'); results.id = 'tideResults';
         const source = node('a','출처: 국립해양조사원 · 공공데이터포털'); source.href = 'https://www.data.go.kr/data/15142507/openapi.do'; source.target = '_blank'; source.rel = 'noopener';
-        body.append(form,status,results,source); panel.append(title,body); mapPanel.after(panel);
+        body.append(form,status,results,source); panel.append(title,body);
+        // Keep observations outside the chat/map/results row so they cannot
+        // consume the map's horizontal space or inherit its fixed height.
+        (mapPanel.closest('.top-row') || mapPanel).after(panel);
         async function load(history) {
             if (!form.reportValidity()) return;
             results.replaceChildren(); button.disabled = stored.disabled = true;
