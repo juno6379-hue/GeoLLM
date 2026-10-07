@@ -1,0 +1,17 @@
+{
+  "version": "2026-10-07",
+  "places": [
+    {
+      "place_id": "mof:dokdo:east-island",
+      "label": "독도",
+      "aliases": ["Dokdo", "독도 동도", "독도(동도)"],
+      "longitude": 131.86955555555556,
+      "latitude": 37.24077777777778,
+      "source_url": "https://www.mof.go.kr/doc/ko/selectDoc.do?bbsSeq=27&docSeq=20937&menuSeq=929",
+      "source_title": "해양수산부 독도의 주소와 위치",
+      "source_coordinates": "동도 북위 37도 14분 26.8초, 동경 131도 52분 10.4초",
+      "coordinate_role": "published_east_island_reference_point",
+      "note": "독도 부근 검색의 동도 기준점이며 독도 전체 경계 또는 항행 안전 기준점이 아니다."
+    }
+  ]
+}

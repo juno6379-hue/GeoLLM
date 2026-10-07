@@ -108,6 +108,14 @@ def load_catalog(*, refresh=False):
         if not refresh and _cache and _cache[0] == key and time.monotonic() - _cache[1] < _CACHE_SECONDS:
             return _cache[2]
         candidates, unavailable, invalid_names = [], [], []
+        # Published public coordinates are separate from unreviewed seed registries.
+        anchor_path = ROOT / 'data/public_place_anchors.json'
+        if anchor_path.exists():
+            for item in json.loads(anchor_path.read_text(encoding='utf-8'))['places']:
+                record = {'source_ref': item['source_url'], 'source_id': item['place_id'],
+                          'provenance': item}
+                candidates.append(_candidate(item['place_id'], item['label'], item['aliases'],
+                    f"POINT({item['longitude']} {item['latitude']})", [record]))
         sources = [
             ("S101_DB_URL", "projection.s101_feature_valid", "harbour", """
                 SELECT min(feature_instance_id)::text AS id, attributes->>'name' AS name,

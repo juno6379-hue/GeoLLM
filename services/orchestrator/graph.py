@@ -2054,23 +2054,31 @@ def _requested_layer_distance_m(query: str, state: OrchestratorState) -> float |
     import re
 
     spatial = _spatial_context_dict(state)
+    match = re.search(r"(-?\d+(?:\.\d+)?)\s*(km|\ud0ac\ub85c\ubbf8\ud130|\ud0ac\ub85c)", query or "", re.IGNORECASE)
+    if match:
+        return float(match.group(1)) * 1000.0
+    match = re.search(r"(-?\d+(?:\.\d+)?)\s*(m|\ubbf8\ud130)", query or "", re.IGNORECASE)
+    if match:
+        return float(match.group(1))
     if spatial.get("buffer_distance") is not None:
         try:
             return float(spatial["buffer_distance"])
         except (TypeError, ValueError):
-            pass
-    match = re.search(r"(\d+(?:\.\d+)?)\s*(km|\ud0ac\ub85c\ubbf8\ud130|\ud0ac\ub85c)", query or "", re.IGNORECASE)
-    if match:
-        return float(match.group(1)) * 1000.0
-    match = re.search(r"(\d+(?:\.\d+)?)\s*(m|\ubbf8\ud130)", query or "", re.IGNORECASE)
-    if match:
-        return float(match.group(1))
+            return float('nan')
     return None
 
 
 def _requested_layer_anchor_query(query: str, targets: list[dict]) -> str:
     """Extract only the location anchor from a requested spatial layer query."""
     text = re.sub(r"\s+", " ", str(query or "").strip())
+    # Correct the observed typo only for a source-backed place and place-name task.
+    if '구근' in text and targets and all(t.get('layer_type') == 'marine_gazetteer' for t in targets):
+        from services.spatial_analysis_agent.place_resolver import load_catalog
+        for candidate in load_catalog()['candidates']:
+            name = candidate['label']
+            if text.startswith(name + '구근'):
+                text = name + ' 부근' + text[len(name + '구근'):]
+                break
     if not text:
         return text
     anchor = text
@@ -4862,6 +4870,9 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
     if not targets:
         return await fast_spatial_or_traffic_block_node(state)
     anchor_query = _requested_layer_anchor_query(str(state.get("query") or primary_query), targets)
+    requested_distance = _requested_layer_distance_m(primary_query, state)
+    default_distance = requested_distance is None and all(t['layer_type'] == 'marine_gazetteer' for t in targets)
+    search_distance = 10000.0 if default_distance else requested_distance
 
     spatial_context = _spatial_context_dict(state)
     if not anchor_query and not spatial_context.get("geometry") and not spatial_context.get("place_id"):
@@ -4873,7 +4884,8 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
         "location_text": anchor_query,
         "target_layers": [target["layer_id"] for target in targets],
         "target_labels": [target["title"] for target in targets],
-        "distance_m": _requested_layer_distance_m(primary_query, state),
+        "distance_m": search_distance,
+        "distance_source": "default_marine_place_search_10km" if default_distance else "explicit_query_or_context",
         "source": "query_layer_and_anchor_extraction",
         "execution_authorized": False,
     }
@@ -4893,7 +4905,7 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
 
     base_wkt = location["geometry"]
     location_text = location["location_text"]
-    distance_m = _requested_layer_distance_m(primary_query, state)
+    distance_m = search_distance
     import math
     if distance_m is None or not math.isfinite(distance_m) or not 0 < distance_m <= MAX_RADIUS_M:
         return _place_lookup_update(state, {**location, "status": "NEEDS_CLARIFICATION", "error_code": "DISTANCE_REQUIRED",
@@ -4946,6 +4958,7 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
     }
     qec_model = QueryExecutionContext(request_id=state["task_id"], original_query=state.get("query"),
         route_plan=route_plan, slots=ExecutionSlots.from_payload(route_plan["slots"]))
+    qec_model.provenance['radius_policy'] = interpretation['distance_source']
     qec_model = await asyncio.to_thread(validate_execution_context, qec_model)
     if not is_execution_authorized(qec_model):
         return execution_gate_failure(state, qec_model)
@@ -5042,6 +5055,12 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
         f"{location_text} \uae30\uc900 {distance_m:g}m \uc774\ub0b4 "
         f"{target_titles} {len(features)}\uac74\uc744 \ucc3e\uc558\uc2b5\ub2c8\ub2e4.{sample_text}"
     )
+    if default_distance:
+        answer += " 반경을 지정하지 않아 지명 검색 기본 반경 10km를 적용했습니다. 다른 반경을 입력하면 변경할 수 있습니다."
+    if location.get('place_id') == 'mof:dokdo:east-island':
+        answer += " 기준 위치는 해양수산부가 공개한 독도 동도 위치입니다."
+    if '구근' in str(state.get('query') or '') and anchor_query == '독도':
+        answer += " 입력의 '독도구근'은 '독도 부근'으로 해석했습니다."
     layer_evidence = [
         {
             "dataset_id": target["layer_id"],
