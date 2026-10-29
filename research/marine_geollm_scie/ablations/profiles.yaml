@@ -1,0 +1,27 @@
+version: 1
+research_only: true
+profiles:
+  full_proposed:
+    status: PENDING_COMPONENTS
+    reason: "Post-validation, recovery and independent evidence correctness not established."
+  current_production:
+    status: AVAILABLE_ADAPTER
+    reason: "Use unmodified production path; actual readiness recorded per run."
+  without_ontology:
+    status: NOT_IMPLEMENTED
+    reason: "Needs isolated adapter."
+  without_bounded_expansion:
+    status: NOT_IMPLEMENTED
+    reason: "Needs isolated adapter."
+  without_qec:
+    status: NOT_IMPLEMENTED
+    reason: "Needs isolated adapter."
+  without_validator:
+    status: NOT_IMPLEMENTED
+    reason: "Never expose production bypass."
+  without_recovery:
+    status: NOT_IMPLEMENTED
+    reason: "Cannot remove an unverified full recovery loop."
+  without_evidence_validation:
+    status: NOT_IMPLEMENTED
+    reason: "Needs explicit existing check and isolated adapter."

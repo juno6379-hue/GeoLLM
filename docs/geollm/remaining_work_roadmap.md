@@ -1,5 +1,16 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-10-29 논문 병렬 파일럿과 독립 수정 에이전트
+
+- 사용자 지정 `CODEX_Marine_GeoLLM_SCIE_Results_실험프레임워크_KR.md`에 따라 `research/marine_geollm_scie/`를 만들고 프로토콜·validator/Qwen·평가 에이전트를 병렬 수행했다. 운영 라우팅/QEC/Validator 소스 변경 없음. 운영 DB는 읽기 전용으로 원본을 추출하고 연구용 `marine-scie-pilot-db`에서 실제 공간조회를 수행했다.
+- 최종 cohort는 DRAFT 31사례/114행: 언어 컴포넌트 18×3=54, 오류 fixture 7×3×2=42, 공간 6×3=18. 독립 전문가 GOLD 0. full P/B0–B3/완전한 B4·ablation·recovery·본실험 정확도는 **미완료**이며 현재는 PILOT_ONLY, 논문 결과 NOT_READY다. `research/marine_geollm_scie/RESULTS_READINESS.md`와 `protocol/pilot_findings_20261029.md`를 먼저 읽는다.
+- Qwen1.5b reviewer는 실제 21회 요청 중 19회 응답/초기 timeout2. 정상 fixture 오차단1을 보존했다. 실제 Validator의 DRAFT 예상 일치는21/21이지만 synthetic schema 진단이므로 논문 정확도로 전용하지 않는다. 연구40초와 운영180초 timeout 정책을 혼동하지 않는다.
+- S-101 원본25,300행 subset/digest/transaction 보존. 실제 radius component 정상12회(정상0건3회 포함)와 의도한 비실행6회. 정상12회 객체 집합이 독립 거리 SQL과 일치하고 실행승인 receipt 유효. 500m/0.5km 동등성 확인. 같은 원본의 SQL 정합성은 human spatial gold가 아니다. 기준점은 원본 Wreck 위 실험 좌표이며 부산항 입구라고 주장하지 않는다.
+- 별도 수정 에이전트가7개 관측을 분류했다. 운영 버그는 확정되지 않았으며 host jsonschema 누락을 기존 lock 버전으로 복구했다. 관련 테스트 host27passed/2failed →29passed, 격리29passed. 연구테스트13passed. `issues/findings.json`/`issues/triage_20261029.md`에 재현/조치/향후수정 절차가 있다. 원본 실험을 덮어쓰지 않고 수정 후에는 새 run ID를 사용한다.
+- `latest/reports/results_summary.md`, `latest/manifest.json`, R1–R7 CSV/MD, F1–F7 PNG/CSV와 실제 운영진단 D1을 생성했다. 미측정 정확도는 null/NOT_READY. 반복3회를 독립 통계표본으로 취급하지 않는다. 연구 raw·98MB 원본 snapshot은 ignored `runs/20261029_pilot/`에 유지하고 요약/코드/테스트/프로토콜만 커밋한다. 기존 사용자 UI/feedback/테스트 변경은 별도로 보존한다.
+- 재현: `.venv\Scripts\python.exe -m pytest research/marine_geollm_scie/tests -q`; `.venv\Scripts\python.exe -m research.marine_geollm_scie.runners.finalize --run-dir research/marine_geollm_scie/runs/20261029_pilot`. 신규 추론/공간 실행 명령과 snapshot 재사용 제한은 `protocol/pilot_findings_20261029.md` 참조. Windows psycopg2 접속 UnicodeDecodeError는 원인 미확정이며 컨테이너 경로로 실험했다. host Kiwi 부족 관측은 격리 결과와 별도로 남겼다.
+- 다음 논문 작업: 확정 운영오류만 독립 수정/정상·부정 API 재검증 → 입력예산 동일 B0–B3/완전한B4/full P adapter → 전문가 semantic/QEC/spatial/evidence gold 및 holdout 동결 → ablation·L1/L2/L3·bounded recovery → K5 본실험/paired 통계. 운영 P0·shadow calibration UNFITTED·QLoRA DEFER는 기존 상태를 유지한다.
+
 ## 2026-10-07 독도 부근 지명 검색 기본 반경과 위치 근거
 
 - 사용자 요청으로 해양지명 단독 검색에 반경 미지정 시 10km 기본값을 적용하고 응답/해석/QEC provenance에 표시한다. 명시 반경은 지도 문맥보다 우선하며 0·음수·50km 초과를 기본값으로 덮지 않는다. 위험객체·복합 레이어에 대한 기존 반경 정책은 변경하지 않았다.

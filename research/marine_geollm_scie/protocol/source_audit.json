@@ -1,0 +1,76 @@
+{
+  "timestamp": "2026-10-29T10:14:42.508415+00:00",
+  "git_commit_sha": "6aa70271a37a7382b2f0217f746a384e41759879",
+  "git_branch": "main",
+  "working_tree": [
+    " M data/feedback/query_quality_issues.jsonl",
+    " M docs/geollm/remaining_work_roadmap.md",
+    " M services/orchestrator/static/index.html",
+    " M tests/unit/test_place_graph_integration.py",
+    "?? \"CODEX_Marine_GeoLLM_SCIE_Results_\\354\\213\\244\\355\\227\\230\\355\\224\\204\\353\\240\\210\\354\\236\\204\\354\\233\\214\\355\\201\\254_KR.md\"",
+    "?? research/",
+    "?? services/orchestrator/static/admin-workspace.js"
+  ],
+  "files": {
+    "shared/schemas/agent.py": {
+      "sha256": "05f97785c1942eb2782d2b037bbd08fb6a8e7824892067ecde6da2fd586188c4",
+      "bytes": 14006
+    },
+    "services/orchestrator/execution_validator.py": {
+      "sha256": "2b368f5084ecdc716800a7d8ffa6296cf061d29cc59bc6286cb88bd19468a4d4",
+      "bytes": 34205
+    },
+    "services/orchestrator/kg_ontology_validator.py": {
+      "sha256": "568b7141e231099db35d2e61bdc10a159fc9d9cd201f8cd69f7a7b5e6c7c830f",
+      "bytes": 5577
+    },
+    "services/orchestrator/evidence_builder.py": {
+      "sha256": "c541085fed2d4f849d72a2a4aaa31991784f71e263bd47070278ee58c85ce898",
+      "bytes": 11882
+    },
+    "services/orchestrator/s101_radius_execution.py": {
+      "sha256": "92b5baa8fc0fa2620bde6756728ce0d44f1358ff5a5b3bb5d1ecec6dbd4568e9",
+      "bytes": 66134
+    },
+    "data/kg_ontology_contract.yaml": {
+      "sha256": "dcdfb05886ef9379dfc10fe184834eda1fb9dbd9c200430196f9171636550d32",
+      "bytes": 16355
+    },
+    "data/capability_registry.yaml": {
+      "sha256": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+      "bytes": 26607
+    },
+    "data/agent_capability_registry.yaml": {
+      "sha256": "223d1b451549708afec989456d5e9ba359a996288764855f9ecc078e4f144c3c",
+      "bytes": 5765
+    },
+    "data/query_template_registry.yaml": {
+      "sha256": "caf18983c9b44169fd518317d564d2052e737dfd94ff6a26049536dc8072e7d2",
+      "bytes": 9901
+    },
+    "data/s101_feature_catalogue_v2_parsed.json": {
+      "sha256": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "bytes": 1791692
+    },
+    "outputs/graph/kg_nodes_v2.jsonl": {
+      "sha256": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0",
+      "bytes": 4951153
+    },
+    "outputs/graph/kg_edges_v2.jsonl": {
+      "sha256": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "bytes": 4024763
+    },
+    "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml": {
+      "sha256": "2743d0689d8a2130f9b809554591d794f01cd9953f222f065ac891b590bd3cfc",
+      "bytes": 2017402
+    }
+  },
+  "s101_fc_version": "2.0.0",
+  "s100_version": null,
+  "ontology_contract_version": "0.1",
+  "python_version": "3.11.9",
+  "database_snapshot": null,
+  "runtime": null,
+  "model_version": null,
+  "note": "Static audit only. Run manifest must measure runtime/model/database and dependency versions. No credentials captured."
+}

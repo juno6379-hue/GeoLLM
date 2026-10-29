@@ -1,0 +1,8 @@
+PILOT — NOT FINAL PAPER RESULT
+
+| method | latency_ms | evqsr |
+| --- | --- | --- |
+| B4_LLM_Self_Reviewer | 12511.134933333822 | NOT_READY |
+| PRODUCTION_LINGUISTIC_COMPONENT | 306.6054259259259 | NOT_READY |
+| P_ExecutionValidator | 1.4704000038493956 | NOT_READY |
+| P_radius_component | 331.99483144445213 | NOT_READY |

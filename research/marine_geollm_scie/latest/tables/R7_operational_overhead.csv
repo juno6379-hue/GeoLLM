@@ -1,0 +1,5 @@
+﻿method,runs,distinct_cases,latency_ms_measured,latency_ms_missing,latency_ms_mean,latency_ms_p50,latency_ms_p95,latency_ms_iqr,failure_rows,input_tokens_measured,input_tokens_missing,input_tokens_mean,output_tokens_measured,output_tokens_missing,output_tokens_mean,tool_calls_measured,tool_calls_missing,tool_calls_mean,validator_ms_measured,validator_ms_missing,validator_ms_mean,repair_ms_measured,repair_ms_missing,repair_ms_mean
+B4_LLM_Self_Reviewer,21,7,21,0,12511.134933333822,7895.228699984727,40074.5582000236,7208.328099979553,2,19,2,802.3684210526316,19,2,25.736842105263158,0,21,,0,21,,0,21,
+PRODUCTION_LINGUISTIC_COMPONENT,54,18,54,0,306.6054259259259,1.2930000000000001,2.6798499999999996,0.83775,0,0,54,,0,54,,0,54,,0,54,,0,54,
+P_ExecutionValidator,21,7,21,0,1.4704000038493956,1.407700008712709,1.8945000192616135,0.371300004189834,0,0,21,,0,21,,0,21,,0,21,,0,21,
+P_radius_component,18,6,18,0,331.99483144445213,363.58823049999955,702.9008714000213,387.9722477500138,0,0,18,,0,18,,0,18,,0,18,,0,18,

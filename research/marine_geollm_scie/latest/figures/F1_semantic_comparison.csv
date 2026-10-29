@@ -1,0 +1,5 @@
+﻿method,gold_rows,feature_correct,attribute_correct,relation_correct,semantic_correct,micro_f1,macro_f1
+B4_LLM_Self_Reviewer,0,,,,,,
+PRODUCTION_LINGUISTIC_COMPONENT,0,,,,,,
+P_ExecutionValidator,0,,,,,,
+P_radius_component,0,,,,,,

@@ -1,0 +1,305 @@
+{
+  "schema_version": "marine-geollm-scie-pilot-1",
+  "run_id": "20261029_pilot",
+  "finalized_at": "2026-10-29T10:32:48.692283+00:00",
+  "publication_status": "NOT_READY",
+  "pilot_bundle_status": "COMPLETED",
+  "scope": "Diagnostic semantic classification, synthetic validator faults and spatial execution pilot; not expert-gold benchmark results.",
+  "missing_inputs": [],
+  "git_head": "6aa70271a37a7382b2f0217f746a384e41759879",
+  "git_dirty": true,
+  "source_sha256": {
+    "configs/evaluation/failure_taxonomy.yaml": "27e3fb9ecd8caf06e85f5505899ede9c8670fcf666e988eece7a8eb1e34ef400",
+    "research/marine_geollm_scie/ablations/profiles.yaml": "23d641146848dbf0b148d5847a50ef4189666b2c844dd9344b9762c5b4d7ed15",
+    "research/marine_geollm_scie/baselines/self_reviewer.py": "d379dfe764931231df833fd4d7c7a6b3a2302f060ceddfa37caa36b9cf1f776c",
+    "research/marine_geollm_scie/benchmark/category_coverage.json": "5634847a4f3e6bdae20e4b019733374412481924bacf56e94212191cde38acaa",
+    "research/marine_geollm_scie/benchmark/query_cases_v1.jsonl": "e0a98769f5bc0375272aa976bba4cb97bdf2a2c8a0e3c43c20910881935023e9",
+    "research/marine_geollm_scie/benchmark/schema.json": "af2836149f92c55f1510716e0945b7588a15fab01de507e54933b70a2833a144",
+    "research/marine_geollm_scie/evaluation/metrics.py": "31a8f33be09ebbb7f0fbd8c5ba01e1ceb2b5499d43dceca417b8f7aa14f691d9",
+    "research/marine_geollm_scie/evaluation/statistics.py": "e992fec7e7dd29cb7d9534de05a3d6b816aab871ec9d3f7a7ed8e96c7da3f866",
+    "research/marine_geollm_scie/fault_injection/pilot.py": "c5e32e5229cd46e1f6f14c10ffc19c9f313fa36101b0b8cedc951b350b850643",
+    "research/marine_geollm_scie/gold/annotation_guideline.md": "35eed7bd910220f5731ac3589a36c04a489d5876bb81f07cd1dd83cbb2ae2a5c",
+    "research/marine_geollm_scie/gold/gold_evidence_v1.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/marine_geollm_scie/gold/gold_qec_v1.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/marine_geollm_scie/gold/gold_semantics_v1.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/marine_geollm_scie/gold/gold_spatial_results_v1.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "research/marine_geollm_scie/issues/findings.json": "406ea4c9464ef10556195f380efe96f80a739da646e3f2059fa0098ba3818ad0",
+    "research/marine_geollm_scie/issues/test_timeout_triage.py": "e8ea1767651335f5c90446834a280be3ebe4d45fc570ca67086ea94188aca4f6",
+    "research/marine_geollm_scie/issues/triage_20261029.md": "64fd5d641624717e2a56068539a43d0a72b33f5216d73e85e54a803c749b7e5f",
+    "research/marine_geollm_scie/protocol/current_system_audit.md": "db28acc8249f50ec92a15df519a058f834107932593d1ddfc6c768068b467c68",
+    "research/marine_geollm_scie/protocol/experimental_protocol.md": "f855647ddc54beee7904580892b160c104694f3b90659c64a1427b570ba24b94",
+    "research/marine_geollm_scie/protocol/paper_metric_definitions.md": "ce39d9ec2a8c2bc424d452bef7726a1dce532133dc47ba47c9ff256796780d73",
+    "research/marine_geollm_scie/protocol/pilot_findings_20261029.md": "d696cd5f2fde7de989527552bdab8d3bbfe4023fa840ffac571d1b2ba4fecdf1",
+    "research/marine_geollm_scie/protocol/reproducibility_requirements.md": "5ec363fb69a1de236be9cd15741bfb1a0762626c097a866a0e6ccb7201a7d65c",
+    "research/marine_geollm_scie/protocol/source_audit.json": "97f7011470419602810650eff0233acc22dd6c7e06906e07e6e0d5b2e0844f29",
+    "research/marine_geollm_scie/README.md": "2a2d5e4c06b79192ea2709e6603e33f0cd3541404c320b940d93e93d70a59efc",
+    "research/marine_geollm_scie/reporting/build_figures.py": "0d8bedbe932aff2f79d2b2b4ad63895baad99a66928563c845f45f9b9b7f36d7",
+    "research/marine_geollm_scie/reporting/build_tables.py": "b0883d965df150daf097de23a06cda995787e671db74729053160185fbe5014c",
+    "research/marine_geollm_scie/requirements-research.txt": "632736dc5ddc195240e585a04e9828e7cad5cde1300f98ab0889ea4b05abed25",
+    "research/marine_geollm_scie/RESULTS_READINESS.md": "f671e557f4aea41700f1af40808f45a673edb29ddfe2cb978591c09e9f5a0f06",
+    "research/marine_geollm_scie/runners/finalize.py": "d7097cec89fcef939c1a5d4e1b9eb8ead9982b31f4aae87af72775bacb94ed94",
+    "research/marine_geollm_scie/runners/launch_spatial.py": "844a6beed579827f1c17a3da9a17245dff99761c2a005cda39f3c9b99881ba50",
+    "research/marine_geollm_scie/runners/semantic_pilot.py": "d41049762e3d5977f8dd9fca334580218a98a8eea0e3392d968051d135de94a3",
+    "research/marine_geollm_scie/runners/spatial_pilot.py": "137650e5a8e69781c00142cd19727c77a88d1f0ebd4b44bc1eca0125420318ab",
+    "research/marine_geollm_scie/tests/test_faults.py": "d1ab1574954ce5279e2f998909509e53515fe907af47d1193de0fce475e491d6",
+    "research/marine_geollm_scie/tests/test_metrics.py": "0d21682ec7517b19df52c173f85314b65d4b30b20dd1602d733fe08e1bd3dc06",
+    "services/orchestrator/execution_validator.py": "2b368f5084ecdc716800a7d8ffa6296cf061d29cc59bc6286cb88bd19468a4d4",
+    "services/orchestrator/route_planner.py": "31960dc4524dab5abfab3c3257303deea61ad84101021c22af243a4f171717c6",
+    "services/orchestrator/schema_binding_adapter.py": "35b7fed965ed85cd5dbe35e0d2bb55db7ce64acdd63550136b2559e6e27827af",
+    "shared/schemas/agent.py": "05f97785c1942eb2782d2b037bbd08fb6a8e7824892067ecde6da2fd586188c4",
+    "services/orchestrator/marine_s101_mapping.py": "f8b28f5c0861f83bf7fb77c14ff7c257c02ccb2f090b9ba1c0a37f8a3b14ae66",
+    "data/marine_s101_bindings.json": "3c28ee484919150d43ba2556e6f95eb71639a1789b49524c0f2a5705dca53bec",
+    "services/orchestrator/slot_evidence.py": "241d70688854949743f45522f0e7db91b8178629d5ed685e617edaae9f72e51e",
+    "data/agent_capability_registry.yaml": "223d1b451549708afec989456d5e9ba359a996288764855f9ecc078e4f144c3c",
+    "services/orchestrator/kg_ontology_validator.py": "568b7141e231099db35d2e61bdc10a159fc9d9cd201f8cd69f7a7b5e6c7c830f",
+    "services/orchestrator/evidence_builder.py": "c541085fed2d4f849d72a2a4aaa31991784f71e263bd47070278ee58c85ce898",
+    "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml": "2743d0689d8a2130f9b809554591d794f01cd9953f222f065ac891b590bd3cfc",
+    "services/orchestrator/s101_radius_execution.py": "92b5baa8fc0fa2620bde6756728ce0d44f1358ff5a5b3bb5d1ecec6dbd4568e9",
+    "data/mof_terminology_relations.json": "38c802f24d837f4ea4d5fd1d0bf1ecf15e09457aedb4245b4e6356c1eee5a9d9",
+    "outputs/graph/kg_nodes_v2.jsonl": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0",
+    "outputs/graph/kg_edges_v2.jsonl": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+    "data/kg_ontology_contract.yaml": "dcdfb05886ef9379dfc10fe184834eda1fb9dbd9c200430196f9171636550d32",
+    "data/capability_registry.yaml": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+    "services/orchestrator/marine_terminology.py": "f5fcffc2bc27f3b3027f37eb901bb4a068ec15c8445ed60fc2a3133bb645e70e",
+    "data/query_template_registry.yaml": "caf18983c9b44169fd518317d564d2052e737dfd94ff6a26049536dc8072e7d2",
+    "services/orchestrator/korean_query_analysis.py": "bcf8c76a7608287241ea95b1d1642fe6c5d4b88a9514555b082bad414c82dd9a",
+    "data/s101_feature_catalogue_v2_parsed.json": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37"
+  },
+  "input_sha256": {
+    "validator/validator_rows.jsonl": "d5293529d1d8a6a5a4b0a90a13cf0ee57d32693062571bc2225eba74f72c67ad",
+    "spatial/spatial_rows.jsonl": "0ef948ef59786a5a1858fec38579fb1886a14b5153ef8ec04dd2d21e88bc6d0c",
+    "semantic_isolated/semantic_rows.jsonl": "5c156e7fe77b9feedf6f69dd91ecc8841301d511cc80a844e4477209dde3bbaa"
+  },
+  "component_provenance": {
+    "semantic/manifest.json": {
+      "sha256": "d5f69e4d43d89d39e5dfa3593f7b344cb6ac1e25fb3bad8732f9d53a9e712304",
+      "source_hashes": {
+        "services/orchestrator/korean_query_analysis.py": "bcf8c76a7608287241ea95b1d1642fe6c5d4b88a9514555b082bad414c82dd9a",
+        "services/orchestrator/marine_s101_mapping.py": "f8b28f5c0861f83bf7fb77c14ff7c257c02ccb2f090b9ba1c0a37f8a3b14ae66",
+        "services/orchestrator/marine_terminology.py": "f5fcffc2bc27f3b3027f37eb901bb4a068ec15c8445ed60fc2a3133bb645e70e",
+        "services/orchestrator/slot_evidence.py": "241d70688854949743f45522f0e7db91b8178629d5ed685e617edaae9f72e51e",
+        "data/marine_s101_bindings.json": "3c28ee484919150d43ba2556e6f95eb71639a1789b49524c0f2a5705dca53bec",
+        "data/mof_terminology_relations.json": "38c802f24d837f4ea4d5fd1d0bf1ecf15e09457aedb4245b4e6356c1eee5a9d9",
+        "data/s101_feature_catalogue_v2_parsed.json": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37"
+      },
+      "benchmark_sha256": "e0a98769f5bc0375272aa976bba4cb97bdf2a2c8a0e3c43c20910881935023e9",
+      "timestamp": "2026-10-29T10:21:36.172781+00:00",
+      "python_version": "3.12.7",
+      "package_versions": {
+        "pydantic": "2.13.5",
+        "PyYAML": "6.0.3",
+        "kiwipiepy": null,
+        "kiwipiepy_model": null
+      }
+    },
+    "semantic/summary.json": {
+      "sha256": "7d336096620d97578eaddf005a46914d0cb54b4721e95b9284b7cc489ef09c8b",
+      "limitation": "Offline linguistic evidence/source-backed lexical subset only; no routing, QEC, validator, GIS, Qwen or final answers. Zero matches do not mean no S-101 grounding exists elsewhere."
+    },
+    "semantic_container/manifest.json": {
+      "sha256": "842cb4088c729d1b36ec4a12f23b1ca90330dfd57b22829416392ce814c9f30f",
+      "source_hashes": {
+        "services/orchestrator/korean_query_analysis.py": "bcf8c76a7608287241ea95b1d1642fe6c5d4b88a9514555b082bad414c82dd9a",
+        "services/orchestrator/marine_s101_mapping.py": "f8b28f5c0861f83bf7fb77c14ff7c257c02ccb2f090b9ba1c0a37f8a3b14ae66",
+        "services/orchestrator/marine_terminology.py": "f5fcffc2bc27f3b3027f37eb901bb4a068ec15c8445ed60fc2a3133bb645e70e",
+        "services/orchestrator/slot_evidence.py": "241d70688854949743f45522f0e7db91b8178629d5ed685e617edaae9f72e51e",
+        "data/marine_s101_bindings.json": "3c28ee484919150d43ba2556e6f95eb71639a1789b49524c0f2a5705dca53bec",
+        "data/mof_terminology_relations.json": "38c802f24d837f4ea4d5fd1d0bf1ecf15e09457aedb4245b4e6356c1eee5a9d9",
+        "data/s101_feature_catalogue_v2_parsed.json": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37"
+      },
+      "benchmark_sha256": "e0a98769f5bc0375272aa976bba4cb97bdf2a2c8a0e3c43c20910881935023e9",
+      "timestamp": "2026-10-29T10:22:40.041249+00:00",
+      "python_version": "3.12.14",
+      "package_versions": {
+        "pydantic": "2.13.5",
+        "PyYAML": "6.0.3",
+        "kiwipiepy": "0.23.2",
+        "kiwipiepy_model": "0.23.0"
+      }
+    },
+    "semantic_container/summary.json": {
+      "sha256": "ab06678106e3307792588e8a676a6e3b8428be434297cb5e5c0cd6e154e8c2ac",
+      "limitation": "Offline linguistic evidence/source-backed lexical subset only; no routing, QEC, validator, GIS, Qwen or final answers. Zero matches do not mean no S-101 grounding exists elsewhere."
+    },
+    "semantic_isolated/manifest.json": {
+      "sha256": "239c32026dfdca36cc26a0f56a95142ca6e10ff38df6d1081df2a8a869b3da69",
+      "source_hashes": {
+        "services/orchestrator/korean_query_analysis.py": "bcf8c76a7608287241ea95b1d1642fe6c5d4b88a9514555b082bad414c82dd9a",
+        "services/orchestrator/marine_s101_mapping.py": "f8b28f5c0861f83bf7fb77c14ff7c257c02ccb2f090b9ba1c0a37f8a3b14ae66",
+        "services/orchestrator/marine_terminology.py": "f5fcffc2bc27f3b3027f37eb901bb4a068ec15c8445ed60fc2a3133bb645e70e",
+        "services/orchestrator/slot_evidence.py": "241d70688854949743f45522f0e7db91b8178629d5ed685e617edaae9f72e51e",
+        "data/marine_s101_bindings.json": "3c28ee484919150d43ba2556e6f95eb71639a1789b49524c0f2a5705dca53bec",
+        "data/mof_terminology_relations.json": "38c802f24d837f4ea4d5fd1d0bf1ecf15e09457aedb4245b4e6356c1eee5a9d9",
+        "data/s101_feature_catalogue_v2_parsed.json": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37"
+      },
+      "benchmark_sha256": "e0a98769f5bc0375272aa976bba4cb97bdf2a2c8a0e3c43c20910881935023e9",
+      "timestamp": "2026-10-29T10:23:25.904464+00:00",
+      "python_version": "3.12.14",
+      "package_versions": {
+        "pydantic": "2.13.5",
+        "PyYAML": "6.0.3",
+        "kiwipiepy": "0.23.2",
+        "kiwipiepy_model": "0.23.0"
+      }
+    },
+    "semantic_isolated/summary.json": {
+      "sha256": "ab06678106e3307792588e8a676a6e3b8428be434297cb5e5c0cd6e154e8c2ac",
+      "limitation": "Offline linguistic evidence/source-backed lexical subset only; no routing, QEC, validator, GIS, Qwen or final answers. Zero matches do not mean no S-101 grounding exists elsewhere."
+    },
+    "spatial/snapshot_manifest.json": {
+      "sha256": "c08d0180a7baf9a4dc6315e94278b9ed49c47ac36892aa4a6ad28290ca81a4d4"
+    },
+    "spatial/spatial_summary.json": {
+      "sha256": "d6eb578bc39236976d9606a530cc584eb888bd193e49aedd675b44b4ccb12fa4"
+    },
+    "validator/validator_summary.json": {
+      "sha256": "acc4e3943da182b61a0376189d7940bbff0e28665690d0306cf5c3ec2e04f56a",
+      "source_hashes": {
+        "services\\orchestrator\\execution_validator.py": "2b368f5084ecdc716800a7d8ffa6296cf061d29cc59bc6286cb88bd19468a4d4",
+        "shared\\schemas\\agent.py": "05f97785c1942eb2782d2b037bbd08fb6a8e7824892067ecde6da2fd586188c4",
+        "configs\\evaluation\\failure_taxonomy.yaml": "27e3fb9ecd8caf06e85f5505899ede9c8670fcf666e988eece7a8eb1e34ef400",
+        "research\\marine_geollm_scie\\fault_injection\\pilot.py": "c5e32e5229cd46e1f6f14c10ffc19c9f313fa36101b0b8cedc951b350b850643"
+      },
+      "model_metadata_error": "timed out",
+      "limitations": [
+        "Synthetic relation metadata; no spatial correctness evidence.",
+        "DRAFT authored fault labels; diagnostic agreements are not validated accuracy.",
+        "Repeated deterministic validations are not independent samples.",
+        "B4 input is a fixed production fixture, not a self-generated plan; reviewer-only diagnostic."
+      ]
+    }
+  },
+  "source_audit": {
+    "path": "research/marine_geollm_scie/protocol/source_audit.json",
+    "sha256": "97f7011470419602810650eff0233acc22dd6c7e06906e07e6e0d5b2e0844f29",
+    "audited_source_hashes": {
+      "shared/schemas/agent.py": {
+        "sha256": "05f97785c1942eb2782d2b037bbd08fb6a8e7824892067ecde6da2fd586188c4",
+        "bytes": 14006
+      },
+      "services/orchestrator/execution_validator.py": {
+        "sha256": "2b368f5084ecdc716800a7d8ffa6296cf061d29cc59bc6286cb88bd19468a4d4",
+        "bytes": 34205
+      },
+      "services/orchestrator/kg_ontology_validator.py": {
+        "sha256": "568b7141e231099db35d2e61bdc10a159fc9d9cd201f8cd69f7a7b5e6c7c830f",
+        "bytes": 5577
+      },
+      "services/orchestrator/evidence_builder.py": {
+        "sha256": "c541085fed2d4f849d72a2a4aaa31991784f71e263bd47070278ee58c85ce898",
+        "bytes": 11882
+      },
+      "services/orchestrator/s101_radius_execution.py": {
+        "sha256": "92b5baa8fc0fa2620bde6756728ce0d44f1358ff5a5b3bb5d1ecec6dbd4568e9",
+        "bytes": 66134
+      },
+      "data/kg_ontology_contract.yaml": {
+        "sha256": "dcdfb05886ef9379dfc10fe184834eda1fb9dbd9c200430196f9171636550d32",
+        "bytes": 16355
+      },
+      "data/capability_registry.yaml": {
+        "sha256": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+        "bytes": 26607
+      },
+      "data/agent_capability_registry.yaml": {
+        "sha256": "223d1b451549708afec989456d5e9ba359a996288764855f9ecc078e4f144c3c",
+        "bytes": 5765
+      },
+      "data/query_template_registry.yaml": {
+        "sha256": "caf18983c9b44169fd518317d564d2052e737dfd94ff6a26049536dc8072e7d2",
+        "bytes": 9901
+      },
+      "data/s101_feature_catalogue_v2_parsed.json": {
+        "sha256": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+        "bytes": 1791692
+      },
+      "outputs/graph/kg_nodes_v2.jsonl": {
+        "sha256": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0",
+        "bytes": 4951153
+      },
+      "outputs/graph/kg_edges_v2.jsonl": {
+        "sha256": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+        "bytes": 4024763
+      },
+      "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml": {
+        "sha256": "2743d0689d8a2130f9b809554591d794f01cd9953f222f065ac891b590bd3cfc",
+        "bytes": 2017402
+      }
+    },
+    "changed_since_audit": []
+  },
+  "dataset_snapshots": [
+    {
+      "path": "research/marine_geollm_scie/runs/20261029_pilot/spatial/snapshot_manifest.json",
+      "sha256": "c08d0180a7baf9a4dc6315e94278b9ed49c47ac36892aa4a6ad28290ca81a4d4",
+      "source_relation": "projection.s101_feature_current",
+      "source_database": "gbhd_s101",
+      "source_transaction": "15032:15032:",
+      "captured_at": "2026-10-29 10:25:11.391795+00",
+      "source_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+      "subset_rows": 25300,
+      "scope": "bounded valid-geometry source subset; not full production database",
+      "gold_status": "DRAFT; no expert approval",
+      "bbox_epsg4326": [
+        128.9,
+        34.9,
+        129.3,
+        35.3
+      ],
+      "postgres_version": "PostgreSQL 16.15 (Debian 16.15-1.pgdg11+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit"
+    }
+  ],
+  "dataset_snapshot_status": "RECORDED",
+  "models_requested": [
+    "qwen2.5:1.5b"
+  ],
+  "model_metadata": [
+    {
+      "name": "qwen2.5:1.5b",
+      "model": "qwen2.5:1.5b",
+      "digest": "65ec06548149b04c096a120e4a6da9d4017ea809c91734ea5631e89f96ddc57b",
+      "size": 986061892,
+      "modified_at": "2026-09-25T18:24:24.6250777+09:00",
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "qwen2",
+        "families": [
+          "qwen2"
+        ],
+        "parameter_size": "1.5B",
+        "quantization_level": "Q4_K_M",
+        "context_length": 32768,
+        "embedding_length": 1536,
+        "runner": "ggml"
+      }
+    }
+  ],
+  "model_metadata_error": null,
+  "environment": {
+    "python": "3.12.7",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "packages": {
+      "numpy": "1.26.4",
+      "contourpy": "1.3.3",
+      "matplotlib": "3.11.2",
+      "pydantic": "2.13.5",
+      "shapely": "2.1.2",
+      "pytest": "8.2.2",
+      "PyYAML": "6.0.3",
+      "psycopg2-binary": "2.9.13"
+    }
+  },
+  "row_timestamps": {
+    "first": null,
+    "last": null
+  },
+  "input_file_mtimes_utc": {
+    "validator/validator_rows.jsonl": "2026-10-29T10:20:50+00:00",
+    "spatial/spatial_rows.jsonl": "2026-10-29T10:28:48+00:00",
+    "semantic_isolated/semantic_rows.jsonl": "2026-10-29T10:24:02+00:00"
+  },
+  "cases": 31,
+  "rows": 114,
+  "diagnostic_labels": "DRAFT; no human gold inferred"
+}

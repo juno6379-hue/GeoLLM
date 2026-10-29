@@ -1,0 +1,4 @@
+# Raw model responses and machine-local experiment runs are not source artifacts.
+runs/
+__pycache__/
+.pytest_cache/

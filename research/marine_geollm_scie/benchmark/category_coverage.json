@@ -1,0 +1,17 @@
+{
+  "Q1_Q6": {
+    "draft_cases": 18,
+    "per_category": 3,
+    "gold_cases": 0
+  },
+  "Q7": {
+    "status": "PENDING_VERIFICATION",
+    "schema": "schema.json#/properties/fault_spec",
+    "implementation": "../fault_injection/",
+    "note": "Separate injected-plan diagnostics; never mix with natural-query denominator."
+  },
+  "Q8": {
+    "status": "UNSUPPORTED",
+    "reason": "No independently verified cross-product snapshot and gold results supplied. No fabricated Q8 cases."
+  }
+}

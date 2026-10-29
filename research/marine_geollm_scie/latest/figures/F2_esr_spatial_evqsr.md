@@ -1,0 +1,8 @@
+PILOT — NOT FINAL PAPER RESULT
+
+| method | gold_execute_rows | semantic_correct | plan_valid | execution_success | spatial_correct | evidence_correct | evqsr | status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| B4_LLM_Self_Reviewer | 0 | NOT_READY | NOT_READY | NOT_READY | NOT_READY | NOT_READY | NOT_READY | NOT_READY |
+| PRODUCTION_LINGUISTIC_COMPONENT | 0 | NOT_READY | NOT_READY | NOT_READY | NOT_READY | NOT_READY | NOT_READY | NOT_READY |
+| P_ExecutionValidator | 0 | NOT_READY | NOT_READY | NOT_READY | NOT_READY | NOT_READY | NOT_READY | NOT_READY |
+| P_radius_component | 0 | NOT_READY | NOT_READY | NOT_READY | NOT_READY | NOT_READY | NOT_READY | NOT_READY |

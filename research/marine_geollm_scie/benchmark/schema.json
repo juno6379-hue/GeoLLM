@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Research candidate case, not QEC",
+  "type": "object",
+  "required": [
+    "case_id",
+    "query",
+    "category",
+    "annotation_status",
+    "equivalence_group",
+    "spatial_context",
+    "expected_behavior",
+    "split"
+  ],
+  "properties": {
+    "case_id": {
+      "type": "string"
+    },
+    "query": {
+      "type": "string",
+      "minLength": 1
+    },
+    "category": {
+      "enum": [
+        "Q1",
+        "Q2",
+        "Q3",
+        "Q4",
+        "Q5",
+        "Q6",
+        "Q7",
+        "Q8"
+      ]
+    },
+    "annotation_status": {
+      "enum": [
+        "DRAFT",
+        "GOLD"
+      ]
+    },
+    "equivalence_group": {
+      "type": "string"
+    },
+    "spatial_context": {
+      "type": "object"
+    },
+    "expected_behavior": {
+      "type": "string"
+    },
+    "split": {
+      "enum": [
+        "pilot",
+        "train",
+        "validation",
+        "holdout"
+      ]
+    },
+    "language": {
+      "type": "string"
+    },
+    "fault_spec": {
+      "type": "object",
+      "required": [
+        "level",
+        "code",
+        "base_case_id"
+      ],
+      "properties": {
+        "level": {
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "code": {
+          "type": "string"
+        },
+        "base_case_id": {
+          "type": "string"
+        }
+      }
+    },
+    "support_status": {
+      "enum": [
+        "SUPPORTED",
+        "UNSUPPORTED",
+        "PENDING_VERIFICATION"
+      ]
+    }
+  }
+}

@@ -1,0 +1,404 @@
+{
+  "result_class": "PILOT — NOT FINAL PAPER RESULT",
+  "publication_status": "NOT_READY",
+  "cases": 31,
+  "verified_gold_cases": 0,
+  "rows": 114,
+  "status_counts": {
+    "completed": 40,
+    "error": 2,
+    "COMPLETED": 12,
+    "NEEDS_CLARIFICATION": 3,
+    "BLOCKED": 3,
+    "COMPONENT_RETURNED": 54
+  },
+  "tables": {
+    "R1_benchmark_composition": [
+      {
+        "category": "FAULT_FIXTURE",
+        "candidate_cases": 7,
+        "verified_gold_cases": 0
+      },
+      {
+        "category": "Q1",
+        "candidate_cases": 3,
+        "verified_gold_cases": 0
+      },
+      {
+        "category": "Q2",
+        "candidate_cases": 3,
+        "verified_gold_cases": 0
+      },
+      {
+        "category": "Q3",
+        "candidate_cases": 4,
+        "verified_gold_cases": 0
+      },
+      {
+        "category": "Q4",
+        "candidate_cases": 8,
+        "verified_gold_cases": 0
+      },
+      {
+        "category": "Q5",
+        "candidate_cases": 3,
+        "verified_gold_cases": 0
+      },
+      {
+        "category": "Q6",
+        "candidate_cases": 3,
+        "verified_gold_cases": 0
+      }
+    ],
+    "R2_semantic_grounding": [
+      {
+        "method": "B4_LLM_Self_Reviewer",
+        "gold_rows": 0,
+        "feature_correct": null,
+        "attribute_correct": null,
+        "relation_correct": null,
+        "semantic_correct": null,
+        "micro_f1": null,
+        "macro_f1": null
+      },
+      {
+        "method": "PRODUCTION_LINGUISTIC_COMPONENT",
+        "gold_rows": 0,
+        "feature_correct": null,
+        "attribute_correct": null,
+        "relation_correct": null,
+        "semantic_correct": null,
+        "micro_f1": null,
+        "macro_f1": null
+      },
+      {
+        "method": "P_ExecutionValidator",
+        "gold_rows": 0,
+        "feature_correct": null,
+        "attribute_correct": null,
+        "relation_correct": null,
+        "semantic_correct": null,
+        "micro_f1": null,
+        "macro_f1": null
+      },
+      {
+        "method": "P_radius_component",
+        "gold_rows": 0,
+        "feature_correct": null,
+        "attribute_correct": null,
+        "relation_correct": null,
+        "semantic_correct": null,
+        "micro_f1": null,
+        "macro_f1": null
+      }
+    ],
+    "R3_planning_execution": [
+      {
+        "method": "B4_LLM_Self_Reviewer",
+        "gold_execute_rows": 0,
+        "semantic_correct": null,
+        "plan_valid": null,
+        "execution_success": null,
+        "spatial_correct": null,
+        "evidence_correct": null,
+        "evqsr": null,
+        "status": "NOT_READY"
+      },
+      {
+        "method": "PRODUCTION_LINGUISTIC_COMPONENT",
+        "gold_execute_rows": 0,
+        "semantic_correct": null,
+        "plan_valid": null,
+        "execution_success": null,
+        "spatial_correct": null,
+        "evidence_correct": null,
+        "evqsr": null,
+        "status": "NOT_READY"
+      },
+      {
+        "method": "P_ExecutionValidator",
+        "gold_execute_rows": 0,
+        "semantic_correct": null,
+        "plan_valid": null,
+        "execution_success": null,
+        "spatial_correct": null,
+        "evidence_correct": null,
+        "evqsr": null,
+        "status": "NOT_READY"
+      },
+      {
+        "method": "P_radius_component",
+        "gold_execute_rows": 0,
+        "semantic_correct": null,
+        "plan_valid": null,
+        "execution_success": null,
+        "spatial_correct": null,
+        "evidence_correct": null,
+        "evqsr": null,
+        "status": "NOT_READY"
+      }
+    ],
+    "R4_validator_comparison": [
+      {
+        "method": "B4_LLM_Self_Reviewer",
+        "cohort": 21,
+        "eligible": 0,
+        "measured": 0,
+        "missing_predictions": 0,
+        "TP": 0,
+        "FP": 0,
+        "FN": 0,
+        "TN": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null,
+        "false_ready_rate": null,
+        "false_block_rate": null,
+        "status": "NOT_READY"
+      },
+      {
+        "method": "PRODUCTION_LINGUISTIC_COMPONENT",
+        "cohort": 54,
+        "eligible": 0,
+        "measured": 0,
+        "missing_predictions": 0,
+        "TP": 0,
+        "FP": 0,
+        "FN": 0,
+        "TN": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null,
+        "false_ready_rate": null,
+        "false_block_rate": null,
+        "status": "NOT_READY"
+      },
+      {
+        "method": "P_ExecutionValidator",
+        "cohort": 21,
+        "eligible": 0,
+        "measured": 0,
+        "missing_predictions": 0,
+        "TP": 0,
+        "FP": 0,
+        "FN": 0,
+        "TN": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null,
+        "false_ready_rate": null,
+        "false_block_rate": null,
+        "status": "NOT_READY"
+      },
+      {
+        "method": "P_radius_component",
+        "cohort": 18,
+        "eligible": 0,
+        "measured": 0,
+        "missing_predictions": 0,
+        "TP": 0,
+        "FP": 0,
+        "FN": 0,
+        "TN": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null,
+        "false_ready_rate": null,
+        "false_block_rate": null,
+        "status": "NOT_READY"
+      }
+    ],
+    "R5_recovery": [
+      {
+        "method": "B4_LLM_Self_Reviewer",
+        "eligible": 0,
+        "recovered": 0,
+        "recovery_rate": null,
+        "first_repair_success": null,
+        "escalation_rate": null,
+        "semantic_drift_rate": null,
+        "mean_repair_iterations": null
+      },
+      {
+        "method": "PRODUCTION_LINGUISTIC_COMPONENT",
+        "eligible": 0,
+        "recovered": 0,
+        "recovery_rate": null,
+        "first_repair_success": null,
+        "escalation_rate": null,
+        "semantic_drift_rate": null,
+        "mean_repair_iterations": null
+      },
+      {
+        "method": "P_ExecutionValidator",
+        "eligible": 0,
+        "recovered": 0,
+        "recovery_rate": null,
+        "first_repair_success": null,
+        "escalation_rate": null,
+        "semantic_drift_rate": null,
+        "mean_repair_iterations": null
+      },
+      {
+        "method": "P_radius_component",
+        "eligible": 0,
+        "recovered": 0,
+        "recovery_rate": null,
+        "first_repair_success": null,
+        "escalation_rate": null,
+        "semantic_drift_rate": null,
+        "mean_repair_iterations": null
+      }
+    ],
+    "R6_ablation": [
+      {
+        "profile": "B4_LLM_Self_Reviewer",
+        "semantic_micro_f1": null,
+        "execution_success": null,
+        "spatial_correct": null,
+        "evqsr": null,
+        "status": "NOT_READY"
+      },
+      {
+        "profile": "PRODUCTION_LINGUISTIC_COMPONENT",
+        "semantic_micro_f1": null,
+        "execution_success": null,
+        "spatial_correct": null,
+        "evqsr": null,
+        "status": "NOT_READY"
+      },
+      {
+        "profile": "P_ExecutionValidator",
+        "semantic_micro_f1": null,
+        "execution_success": null,
+        "spatial_correct": null,
+        "evqsr": null,
+        "status": "NOT_READY"
+      },
+      {
+        "profile": "P_radius_component",
+        "semantic_micro_f1": null,
+        "execution_success": null,
+        "spatial_correct": null,
+        "evqsr": null,
+        "status": "NOT_READY"
+      }
+    ],
+    "R7_operational_overhead": [
+      {
+        "method": "B4_LLM_Self_Reviewer",
+        "runs": 21,
+        "distinct_cases": 7,
+        "latency_ms_measured": 21,
+        "latency_ms_missing": 0,
+        "latency_ms_mean": 12511.134933333822,
+        "latency_ms_p50": 7895.228699984727,
+        "latency_ms_p95": 40074.5582000236,
+        "latency_ms_iqr": 7208.328099979553,
+        "failure_rows": 2,
+        "input_tokens_measured": 19,
+        "input_tokens_missing": 2,
+        "input_tokens_mean": 802.3684210526316,
+        "output_tokens_measured": 19,
+        "output_tokens_missing": 2,
+        "output_tokens_mean": 25.736842105263158,
+        "tool_calls_measured": 0,
+        "tool_calls_missing": 21,
+        "tool_calls_mean": null,
+        "validator_ms_measured": 0,
+        "validator_ms_missing": 21,
+        "validator_ms_mean": null,
+        "repair_ms_measured": 0,
+        "repair_ms_missing": 21,
+        "repair_ms_mean": null
+      },
+      {
+        "method": "PRODUCTION_LINGUISTIC_COMPONENT",
+        "runs": 54,
+        "distinct_cases": 18,
+        "latency_ms_measured": 54,
+        "latency_ms_missing": 0,
+        "latency_ms_mean": 306.6054259259259,
+        "latency_ms_p50": 1.2930000000000001,
+        "latency_ms_p95": 2.6798499999999996,
+        "latency_ms_iqr": 0.83775,
+        "failure_rows": 0,
+        "input_tokens_measured": 0,
+        "input_tokens_missing": 54,
+        "input_tokens_mean": null,
+        "output_tokens_measured": 0,
+        "output_tokens_missing": 54,
+        "output_tokens_mean": null,
+        "tool_calls_measured": 0,
+        "tool_calls_missing": 54,
+        "tool_calls_mean": null,
+        "validator_ms_measured": 0,
+        "validator_ms_missing": 54,
+        "validator_ms_mean": null,
+        "repair_ms_measured": 0,
+        "repair_ms_missing": 54,
+        "repair_ms_mean": null
+      },
+      {
+        "method": "P_ExecutionValidator",
+        "runs": 21,
+        "distinct_cases": 7,
+        "latency_ms_measured": 21,
+        "latency_ms_missing": 0,
+        "latency_ms_mean": 1.4704000038493956,
+        "latency_ms_p50": 1.407700008712709,
+        "latency_ms_p95": 1.8945000192616135,
+        "latency_ms_iqr": 0.371300004189834,
+        "failure_rows": 0,
+        "input_tokens_measured": 0,
+        "input_tokens_missing": 21,
+        "input_tokens_mean": null,
+        "output_tokens_measured": 0,
+        "output_tokens_missing": 21,
+        "output_tokens_mean": null,
+        "tool_calls_measured": 0,
+        "tool_calls_missing": 21,
+        "tool_calls_mean": null,
+        "validator_ms_measured": 0,
+        "validator_ms_missing": 21,
+        "validator_ms_mean": null,
+        "repair_ms_measured": 0,
+        "repair_ms_missing": 21,
+        "repair_ms_mean": null
+      },
+      {
+        "method": "P_radius_component",
+        "runs": 18,
+        "distinct_cases": 6,
+        "latency_ms_measured": 18,
+        "latency_ms_missing": 0,
+        "latency_ms_mean": 331.99483144445213,
+        "latency_ms_p50": 363.58823049999955,
+        "latency_ms_p95": 702.9008714000213,
+        "latency_ms_iqr": 387.9722477500138,
+        "failure_rows": 0,
+        "input_tokens_measured": 0,
+        "input_tokens_missing": 18,
+        "input_tokens_mean": null,
+        "output_tokens_measured": 0,
+        "output_tokens_missing": 18,
+        "output_tokens_mean": null,
+        "tool_calls_measured": 0,
+        "tool_calls_missing": 18,
+        "tool_calls_mean": null,
+        "validator_ms_measured": 0,
+        "validator_ms_missing": 18,
+        "validator_ms_mean": null,
+        "repair_ms_measured": 0,
+        "repair_ms_missing": 18,
+        "repair_ms_mean": null
+      }
+    ]
+  },
+  "limitations": [
+    "No final-paper claims: expert adjudication and locked holdout are required.",
+    "Repeated trials are descriptive only; no unpaired significance test is reported.",
+    "Missing predictions remain null; runtime completion is not semantic or spatial truth.",
+    "R6 contains observed profiles only; causal ablation requires controlled matched runs."
+  ]
+}
