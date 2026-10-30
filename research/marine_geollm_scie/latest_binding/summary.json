@@ -1,0 +1,94 @@
+{
+  "status": "DATA_BOUND_RETRIEVAL_OBSERVED_FULL_EXPERIMENT_NOT_READY",
+  "operating_system_modified": false,
+  "production_database_writes": false,
+  "snapshot": {
+    "database": "scie_binding_v2",
+    "relations": [
+      {
+        "relation": "knowledge.document_chunks",
+        "rows": 23215,
+        "sha256": "66a7bc301a812e53be325115a5a73ed86f5fd332974d42290990383a23b06df3"
+      },
+      {
+        "relation": "serving.marine_gazetteer_current",
+        "rows": 1146,
+        "sha256": "3f931edd30279f561a129afbaa597db33c985bc59d211b9b64bd33942e4e6d7a"
+      },
+      {
+        "relation": "serving.navigation_aid_current",
+        "rows": 314,
+        "sha256": "f75d5ceb50049e732433d5b36ca6be03e88a0360bc5f8ba67b3fd92e1425cdd7"
+      },
+      {
+        "relation": "serving.island_gazetteer_current",
+        "rows": 1140,
+        "sha256": "59657fe4047aa975facc67338e4bd7ee40eaf5b834186f83dd5ce21a47188fb5"
+      },
+      {
+        "relation": "projection.s101_feature_current",
+        "rows": 25300,
+        "sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85"
+      }
+    ],
+    "roundtrip_all_match": true
+  },
+  "graph_scope": "P_current_production_no_llm",
+  "graph_rows": [
+    {
+      "case_id": "PILOT_Q1_03",
+      "status": "GRAPH_RETURNED",
+      "graph_status": "BLOCKED"
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "status": "GRAPH_RETURNED",
+      "graph_status": "BLOCKED"
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "status": "GRAPH_RETURNED",
+      "graph_status": "BLOCKED"
+    },
+    {
+      "case_id": "PILOT_Q4_01",
+      "status": "GRAPH_RETURNED",
+      "graph_status": "COMPLETED"
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "status": "GRAPH_RETURNED",
+      "graph_status": "PARTIAL"
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "status": "GRAPH_RETURNED",
+      "graph_status": "COMPLETED"
+    }
+  ],
+  "retrieval_scope": "ACTUAL_EMBEDDING_RETRIEVAL_COMPONENT_NOT_FULL_GRAPH",
+  "retrieval_cases": 9,
+  "retrieval_completed": 9,
+  "stored_embedding_model_profile_verified": false,
+  "new_contracts": "DRAFT_NOT_AUTOMATICALLY_PROMOTED_TO_GOLD",
+  "semantic_accuracy": null,
+  "evidence_accuracy": null,
+  "artifacts": [
+    {
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_snapshot_20261030_v1\\snapshot_manifest.json",
+      "sha256": "1c62941d538f25cf24eef87740d088e2d1c76cf8c6a7fd55fbd6673bb8a89a01"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_probe_20261030_v1\\manifest.json",
+      "sha256": "b7caf2a880f17eb9ebc5bc52634a560fb88f92caef27375523a630a49b9546ed"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_retrieval_20261030_v1\\manifest.json",
+      "sha256": "7f9b3b813fe3e3d12064cc93f5848998dcf540d5d651a13aa57ec531f7fb9bc9"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\runs\\20261030_binding_graph_v2_ready\\production_rows.jsonl",
+      "sha256": "1ce03f8a41de77ccf362117e837d62f4516d7047630533dfabb5a28beeb07539"
+    }
+  ]
+}

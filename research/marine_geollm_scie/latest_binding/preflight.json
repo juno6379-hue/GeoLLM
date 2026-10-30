@@ -1,0 +1,1453 @@
+{
+  "schema_version": "research.preflight.v1",
+  "recorded_at": "2026-10-30T04:45:30.605774+00:00",
+  "scope": "OFFLINE_DECLARATIONS_AND_LOCAL_ARTIFACTS_ONLY",
+  "status": "NOT_READY",
+  "scientific_scores_generated": false,
+  "model_errors_inferred": false,
+  "production_database_writes": false,
+  "observations": [
+    {
+      "kind": "DB_PROBE",
+      "scope": "REAL_DATA_BINDING_AND_VECTOR_OPERATOR_PROBE_NOT_FULL_PIPELINE",
+      "accuracy_inferred": false,
+      "probes": 5,
+      "model_calls": 0,
+      "database_writes": false
+    },
+    {
+      "kind": "GRAPH_NO_LLM",
+      "scope": "P_current_production_no_llm",
+      "accuracy_inferred": false,
+      "rows": 6,
+      "status_counts": {
+        "BLOCKED": 3,
+        "COMPLETED": 2,
+        "PARTIAL": 1
+      },
+      "differences_from_model_baselines": [
+        "LLM APIs disabled",
+        "pgvector capability retrieval disabled",
+        "external dependencies unreachable",
+        "HF_HUB_OFFLINE=1 and TRANSFORMERS_OFFLINE=1; uncached Hugging Face assets cannot be downloaded",
+        "frozen source subset; measured size is referenced in snapshot_manifest"
+      ]
+    },
+    {
+      "kind": "RETRIEVAL_COMPONENT",
+      "scope": "ACTUAL_EMBEDDING_RETRIEVAL_COMPONENT_NOT_FULL_GRAPH",
+      "accuracy_inferred": false,
+      "rows": 9,
+      "status_counts": {
+        "RETRIEVAL_COMPLETED": 9
+      },
+      "embedding_calls": 9,
+      "model": {
+        "name": "bge-m3:latest",
+        "model": "bge-m3:latest",
+        "modified_at": "2026-07-21T15:44:34.8396223+09:00",
+        "size": 1157672605,
+        "digest": "7907646426070047a77226ac3e684fbbe8410524f7b4a74d02837e43f2146bab",
+        "details": {
+          "parent_model": "",
+          "format": "gguf",
+          "family": "bert",
+          "families": [
+            "bert"
+          ],
+          "parameter_size": "566.70M",
+          "quantization_level": "F16",
+          "context_length": 8192,
+          "embedding_length": 1024,
+          "runner": "ggml"
+        },
+        "capabilities": [
+          "embedding"
+        ]
+      },
+      "model_digest_unchanged": true,
+      "stored_embedding_model_profile_verified": false,
+      "returned_candidate_counts": [
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3,
+        3
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "snapshot_manifest",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_snapshot_20261030_v1\\snapshot_manifest.json",
+      "observed_sha256": "1c62941d538f25cf24eef87740d088e2d1c76cf8c6a7fd55fbd6673bb8a89a01",
+      "expected_sha256": "1c62941d538f25cf24eef87740d088e2d1c76cf8c6a7fd55fbd6673bb8a89a01"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:0",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\data\\marine_term_dictionary.yaml",
+      "observed_sha256": "175f02f226ba064253174618eb8d8665ec416bae9ac240b7ff678df1781ae2b6",
+      "expected_sha256": "175f02f226ba064253174618eb8d8665ec416bae9ac240b7ff678df1781ae2b6"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:1",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\data\\public_place_anchors.json",
+      "observed_sha256": "e3833a5502f16be3a0a40753cb70bd415d34895631095dddab2eab97269cd27c",
+      "expected_sha256": "e3833a5502f16be3a0a40753cb70bd415d34895631095dddab2eab97269cd27c"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:2",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\data\\s101_feature_catalogue_v2_parsed.json",
+      "observed_sha256": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "expected_sha256": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:3",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\data\\s101_feature_dictionary.yaml",
+      "observed_sha256": "5246a9e61b877a0cce1786f92e00c29eadc057b8ad40f1968c952225d6987ad5",
+      "expected_sha256": "5246a9e61b877a0cce1786f92e00c29eadc057b8ad40f1968c952225d6987ad5"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:4",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\data\\spatial_layer_registry.yaml",
+      "observed_sha256": "3d6962ae1a92535f9cac41631a48994ef0f62e267b643d048719c084580b6e65",
+      "expected_sha256": "3d6962ae1a92535f9cac41631a48994ef0f62e267b643d048719c084580b6e65"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:5",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\evidence\\kg_provenance_candidates.jsonl",
+      "observed_sha256": "a7e176364d5ab386be9e0b0133a8b03a9b359e740223b487bf1ef7f7885eccfb",
+      "expected_sha256": "a7e176364d5ab386be9e0b0133a8b03a9b359e740223b487bf1ef7f7885eccfb"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:6",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\evidence\\rag_evidence_candidates.jsonl",
+      "observed_sha256": "45a85a695d0fc820c51356d5b6c2708dd8282ce60b4a763d6f070332dd92d350",
+      "expected_sha256": "45a85a695d0fc820c51356d5b6c2708dd8282ce60b4a763d6f070332dd92d350"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:7",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\evidence\\regulatory_evidence_candidates.jsonl",
+      "observed_sha256": "00c16ac577f876380e111f3ddfe24e1d4d4c0481b445a4d4587ae1b8544a6681",
+      "expected_sha256": "00c16ac577f876380e111f3ddfe24e1d4d4c0481b445a4d4587ae1b8544a6681"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:8",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\graph\\kg_edges_v2.jsonl",
+      "observed_sha256": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "expected_sha256": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:9",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\graph\\kg_nodes_v2.jsonl",
+      "observed_sha256": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0",
+      "expected_sha256": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:10",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\coastal_knowledge\\nodes.jsonl",
+      "observed_sha256": "65db99ff3805f40105c415cfe67c1c2a9600ade0f7e1083fdb554b2ba0478777",
+      "expected_sha256": "65db99ff3805f40105c415cfe67c1c2a9600ade0f7e1083fdb554b2ba0478777"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:11",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\coastal_knowledge\\edges.jsonl",
+      "observed_sha256": "d76ad04747f563fc44da28e02947d231a4ee92dd699eb614e37bd2cd098fcf25",
+      "expected_sha256": "d76ad04747f563fc44da28e02947d231a4ee92dd699eb614e37bd2cd098fcf25"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:12",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\dataset_pipeline\\nodes.jsonl",
+      "observed_sha256": "f4e115ff7f8cfa70f9442ba7bc1bb6ac1b2031686453b42e313cce0873fb7676",
+      "expected_sha256": "f4e115ff7f8cfa70f9442ba7bc1bb6ac1b2031686453b42e313cce0873fb7676"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:13",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\dataset_pipeline\\edges.jsonl",
+      "observed_sha256": "c7c2e780faa2c963c9e29c4375b7ec674a18ba31d74c7560cbda34b1fcdc2ea3",
+      "expected_sha256": "c7c2e780faa2c963c9e29c4375b7ec674a18ba31d74c7560cbda34b1fcdc2ea3"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:14",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\dictionaries\\marine_term_dictionary.yaml",
+      "observed_sha256": "01be4bf833dccc58d252e679ef2904052079f9be4ef7c30edb83e4c59aa0901a",
+      "expected_sha256": "01be4bf833dccc58d252e679ef2904052079f9be4ef7c30edb83e4c59aa0901a"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:15",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\dictionaries\\location_gazetteer.yaml",
+      "observed_sha256": "8816721d7dcdd38aa75d518b46b78c93fce3e20fe3f0eb13ea74b93817265d33",
+      "expected_sha256": "8816721d7dcdd38aa75d518b46b78c93fce3e20fe3f0eb13ea74b93817265d33"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:16",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\dictionaries\\traffic_data_dictionary.yaml",
+      "observed_sha256": "f4dad9c0d55aa1653c03d5a5fafbd406cc5ef2e3af63ec44ba1d7a1c76bab470",
+      "expected_sha256": "f4dad9c0d55aa1653c03d5a5fafbd406cc5ef2e3af63ec44ba1d7a1c76bab470"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:17",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\dictionaries\\accident_dictionary.yaml",
+      "observed_sha256": "e8eddc4878e8396f6e6cca186d49665f5336075dfb3f69f5ad4e195f4884c211",
+      "expected_sha256": "e8eddc4878e8396f6e6cca186d49665f5336075dfb3f69f5ad4e195f4884c211"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:18",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\dictionaries\\marine_term_taxonomy.yaml",
+      "observed_sha256": "f4ee11cdcb6314316feccc4ca26d050d6f32dc5c7b201ac0520edd4eef55544f",
+      "expected_sha256": "f4ee11cdcb6314316feccc4ca26d050d6f32dc5c7b201ac0520edd4eef55544f"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:19",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\services\\orchestrator\\query_normalizer.py",
+      "observed_sha256": "a1ebe3e525d33b59bc4ac8de13dd43f89d727d7534d0a3f9d8c108074a79405f",
+      "expected_sha256": "a1ebe3e525d33b59bc4ac8de13dd43f89d727d7534d0a3f9d8c108074a79405f"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "source_file:20",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\services\\orchestrator\\graph_rag_retriever.py",
+      "observed_sha256": "919c5923951d98c8d6ebbc61abe65a030b54821de1cb62a0d858f41a4f5d75ee",
+      "expected_sha256": "919c5923951d98c8d6ebbc61abe65a030b54821de1cb62a0d858f41a4f5d75ee"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "DB_PROBE:manifest",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_probe_20261030_v1\\manifest.json",
+      "observed_sha256": "b7caf2a880f17eb9ebc5bc52634a560fb88f92caef27375523a630a49b9546ed",
+      "expected_sha256": "b7caf2a880f17eb9ebc5bc52634a560fb88f92caef27375523a630a49b9546ed"
+    },
+    {
+      "category": "OBSERVATION_BINDING",
+      "key": "DB_PROBE",
+      "status": "PASS",
+      "reason_ko": "별도 실행 관측이 같은 snapshot manifest를 참조하는지 검사합니다."
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "DB_PROBE:document_storage.sql",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_probe_20261030_v1\\document_storage.sql",
+      "observed_sha256": "90b91a862c925956cccb248b13c059a4db16f7850eb1eb608749fa64bca019a9",
+      "expected_sha256": "90b91a862c925956cccb248b13c059a4db16f7850eb1eb608749fa64bca019a9"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "DB_PROBE:document_storage.json",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_probe_20261030_v1\\document_storage.json",
+      "observed_sha256": "a3188aa28bd855050a961ac40197630dd8f0b1ca25674ba3cd998d3bcbc75cec",
+      "expected_sha256": "a3188aa28bd855050a961ac40197630dd8f0b1ca25674ba3cd998d3bcbc75cec"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "DB_PROBE:vector_identity.sql",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_probe_20261030_v1\\vector_identity.sql",
+      "observed_sha256": "1284759ab00a75ed7a3209ca56c28bf149f11c13e42d9f8cc0d2709feaaeacca",
+      "expected_sha256": "1284759ab00a75ed7a3209ca56c28bf149f11c13e42d9f8cc0d2709feaaeacca"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "DB_PROBE:vector_identity.json",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_probe_20261030_v1\\vector_identity.json",
+      "observed_sha256": "476c2d5dbc58a6b990b3c537f54ac5b383fbcf958a3146bc47ad038a61b228b6",
+      "expected_sha256": "476c2d5dbc58a6b990b3c537f54ac5b383fbcf958a3146bc47ad038a61b228b6"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "DB_PROBE:document_literal_evidence.sql",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_probe_20261030_v1\\document_literal_evidence.sql",
+      "observed_sha256": "977da99d98ef453b5264fa054088a278dad46164ab62ff72fe2426ce9fbc8cbf",
+      "expected_sha256": "977da99d98ef453b5264fa054088a278dad46164ab62ff72fe2426ce9fbc8cbf"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "DB_PROBE:document_literal_evidence.json",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_probe_20261030_v1\\document_literal_evidence.json",
+      "observed_sha256": "593c7b4b0092a5c6df2a018b74c2109fc3a951200e2af9e7ed9b561b078b2d90",
+      "expected_sha256": "593c7b4b0092a5c6df2a018b74c2109fc3a951200e2af9e7ed9b561b078b2d90"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "DB_PROBE:q4_source_objects.sql",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_probe_20261030_v1\\q4_source_objects.sql",
+      "observed_sha256": "d745fe350ecbe95e65d9a3b1f01f5a543341ca345fa4a0853a2998e9f5b683bd",
+      "expected_sha256": "d745fe350ecbe95e65d9a3b1f01f5a543341ca345fa4a0853a2998e9f5b683bd"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "DB_PROBE:q4_source_objects.json",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_probe_20261030_v1\\q4_source_objects.json",
+      "observed_sha256": "13ed706d6e12d2b476cbc4b3d5d3af61f0435c224a6667f3b15a47ce471483a6",
+      "expected_sha256": "13ed706d6e12d2b476cbc4b3d5d3af61f0435c224a6667f3b15a47ce471483a6"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "DB_PROBE:spatial_coverage.sql",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_probe_20261030_v1\\spatial_coverage.sql",
+      "observed_sha256": "db2ef0413d5365abf79aacea59cba79566381f134f487897caf12b982a222683",
+      "expected_sha256": "db2ef0413d5365abf79aacea59cba79566381f134f487897caf12b982a222683"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "DB_PROBE:spatial_coverage.json",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_probe_20261030_v1\\spatial_coverage.json",
+      "observed_sha256": "05a389ba9f41e8cdf2eecc34c7f388fd08545599664e701f2bbec05253bc40de",
+      "expected_sha256": "05a389ba9f41e8cdf2eecc34c7f388fd08545599664e701f2bbec05253bc40de"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "GRAPH_NO_LLM:manifest",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\runs\\20261030_binding_graph_v2_ready\\adapter_manifest.json",
+      "observed_sha256": "80182073e864e39e52e38836b5e7bf08fdfd9b7e79614a4b21bd753ae35207c7",
+      "expected_sha256": "80182073e864e39e52e38836b5e7bf08fdfd9b7e79614a4b21bd753ae35207c7"
+    },
+    {
+      "category": "OBSERVATION_BINDING",
+      "key": "GRAPH_NO_LLM",
+      "status": "PASS",
+      "reason_ko": "별도 실행 관측이 같은 snapshot manifest를 참조하는지 검사합니다."
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "GRAPH_NO_LLM:rows",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\runs\\20261030_binding_graph_v2_ready\\production_rows.jsonl",
+      "observed_sha256": "1ce03f8a41de77ccf362117e837d62f4516d7047630533dfabb5a28beeb07539",
+      "expected_sha256": "1ce03f8a41de77ccf362117e837d62f4516d7047630533dfabb5a28beeb07539"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "GRAPH_NO_LLM:integrity_after",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\runs\\20261030_binding_graph_v2_ready\\snapshot_integrity_after.json",
+      "observed_sha256": "ccc3fae10dd021df9f4db760bba8b17988093742d4ba13491d2243af9a38833a",
+      "expected_sha256": "ccc3fae10dd021df9f4db760bba8b17988093742d4ba13491d2243af9a38833a"
+    },
+    {
+      "category": "OBSERVATION_BINDING",
+      "key": "GRAPH_NO_LLM:integrity",
+      "status": "PASS",
+      "reason_ko": "격리 graph 실행 후 원천 무변경 관측을 참조합니다. graph 반환과 실행 성공을 동일시하지 않습니다."
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "RETRIEVAL_COMPONENT:manifest",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_retrieval_20261030_v1\\manifest.json",
+      "observed_sha256": "7f9b3b813fe3e3d12064cc93f5848998dcf540d5d651a13aa57ec531f7fb9bc9",
+      "expected_sha256": "7f9b3b813fe3e3d12064cc93f5848998dcf540d5d651a13aa57ec531f7fb9bc9"
+    },
+    {
+      "category": "OBSERVATION_BINDING",
+      "key": "RETRIEVAL_COMPONENT",
+      "status": "PASS",
+      "reason_ko": "별도 실행 관측이 같은 snapshot manifest를 참조하는지 검사합니다."
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "RETRIEVAL_COMPONENT:rows",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_retrieval_20261030_v1\\retrieval_rows.jsonl",
+      "observed_sha256": "820927c252f95a02127b2bd61ee249b4619822b6e37b5d4ce2dc2c784ee7332b",
+      "expected_sha256": "820927c252f95a02127b2bd61ee249b4619822b6e37b5d4ce2dc2c784ee7332b"
+    },
+    {
+      "category": "OBSERVATION_BINDING",
+      "key": "RETRIEVAL_COMPONENT:rows",
+      "status": "PASS",
+      "reason_ko": "검색 manifest에 기록된 행 수와 원시 결과 해시를 대조했습니다."
+    },
+    {
+      "category": "MODEL_PROFILE",
+      "key": "RETRIEVAL_COMPONENT",
+      "status": "UNKNOWN",
+      "reason_ko": "질의 임베딩 호출과 저장 벡터 모델의 동일성은 별도 조건입니다. 후보 반환을 근거 정확도로 승격하지 않습니다."
+    },
+    {
+      "category": "EXECUTION_PROFILE",
+      "key": "research_db_identity",
+      "status": "PASS",
+      "reason_ko": "명시적 연구 DB 식별자와 snapshot 대상의 일치를 검사합니다.",
+      "observed_identity": {
+        "container": "marine-scie-pilot-db",
+        "database": "scie_binding_v2"
+      }
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "snapshot_capture",
+      "status": "PASS",
+      "reason_ko": "캡처 시각·트랜잭션·행 수 기록 검사입니다. DB 현재 상태를 증명하지 않습니다.",
+      "missing": []
+    },
+    {
+      "category": "RELATION_SCHEMA",
+      "key": "knowledge.document_chunks",
+      "status": "PASS",
+      "reason_ko": "manifest 선언과 필수 관계·열을 대조했습니다. 실제 DB 존재 여부는 별도 관측이 필요합니다.",
+      "missing_columns": []
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "knowledge.document_chunks:row_count",
+      "status": "PASS",
+      "reason_ko": "원천 행 수 선언 검사이며 DB 적재 행 수와 구분합니다.",
+      "declared_rows": 23215
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "knowledge.document_chunks:csv",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_snapshot_20261030_v1\\knowledge__document_chunks.csv",
+      "observed_sha256": "66a7bc301a812e53be325115a5a73ed86f5fd332974d42290990383a23b06df3",
+      "expected_sha256": "66a7bc301a812e53be325115a5a73ed86f5fd332974d42290990383a23b06df3"
+    },
+    {
+      "category": "DATABASE_LOAD_OBSERVATION",
+      "key": "knowledge.document_chunks",
+      "status": "PASS",
+      "reason_ko": "별도 로더가 기록한 COPY 재출력 해시·행 수와 원천을 대조했습니다. 현재 DB를 재접속한 결과는 아닙니다.",
+      "observed_rows": 23215,
+      "roundtrip_sha256": "66a7bc301a812e53be325115a5a73ed86f5fd332974d42290990383a23b06df3"
+    },
+    {
+      "category": "RELATION_SCHEMA",
+      "key": "serving.marine_gazetteer_current",
+      "status": "PASS",
+      "reason_ko": "manifest 선언과 필수 관계·열을 대조했습니다. 실제 DB 존재 여부는 별도 관측이 필요합니다.",
+      "missing_columns": []
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "serving.marine_gazetteer_current:row_count",
+      "status": "PASS",
+      "reason_ko": "원천 행 수 선언 검사이며 DB 적재 행 수와 구분합니다.",
+      "declared_rows": 1146
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "serving.marine_gazetteer_current:csv",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_snapshot_20261030_v1\\serving__marine_gazetteer_current.csv",
+      "observed_sha256": "3f931edd30279f561a129afbaa597db33c985bc59d211b9b64bd33942e4e6d7a",
+      "expected_sha256": "3f931edd30279f561a129afbaa597db33c985bc59d211b9b64bd33942e4e6d7a"
+    },
+    {
+      "category": "DATABASE_LOAD_OBSERVATION",
+      "key": "serving.marine_gazetteer_current",
+      "status": "PASS",
+      "reason_ko": "별도 로더가 기록한 COPY 재출력 해시·행 수와 원천을 대조했습니다. 현재 DB를 재접속한 결과는 아닙니다.",
+      "observed_rows": 1146,
+      "roundtrip_sha256": "3f931edd30279f561a129afbaa597db33c985bc59d211b9b64bd33942e4e6d7a"
+    },
+    {
+      "category": "RELATION_SCHEMA",
+      "key": "serving.navigation_aid_current",
+      "status": "PASS",
+      "reason_ko": "manifest 선언과 필수 관계·열을 대조했습니다. 실제 DB 존재 여부는 별도 관측이 필요합니다.",
+      "missing_columns": []
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "serving.navigation_aid_current:row_count",
+      "status": "PASS",
+      "reason_ko": "원천 행 수 선언 검사이며 DB 적재 행 수와 구분합니다.",
+      "declared_rows": 314
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "serving.navigation_aid_current:csv",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_snapshot_20261030_v1\\serving__navigation_aid_current.csv",
+      "observed_sha256": "f75d5ceb50049e732433d5b36ca6be03e88a0360bc5f8ba67b3fd92e1425cdd7",
+      "expected_sha256": "f75d5ceb50049e732433d5b36ca6be03e88a0360bc5f8ba67b3fd92e1425cdd7"
+    },
+    {
+      "category": "DATABASE_LOAD_OBSERVATION",
+      "key": "serving.navigation_aid_current",
+      "status": "PASS",
+      "reason_ko": "별도 로더가 기록한 COPY 재출력 해시·행 수와 원천을 대조했습니다. 현재 DB를 재접속한 결과는 아닙니다.",
+      "observed_rows": 314,
+      "roundtrip_sha256": "f75d5ceb50049e732433d5b36ca6be03e88a0360bc5f8ba67b3fd92e1425cdd7"
+    },
+    {
+      "category": "RELATION_SCHEMA",
+      "key": "serving.island_gazetteer_current",
+      "status": "PASS",
+      "reason_ko": "manifest 선언과 필수 관계·열을 대조했습니다. 실제 DB 존재 여부는 별도 관측이 필요합니다.",
+      "missing_columns": []
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "serving.island_gazetteer_current:row_count",
+      "status": "PASS",
+      "reason_ko": "원천 행 수 선언 검사이며 DB 적재 행 수와 구분합니다.",
+      "declared_rows": 1140
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "serving.island_gazetteer_current:csv",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_snapshot_20261030_v1\\serving__island_gazetteer_current.csv",
+      "observed_sha256": "59657fe4047aa975facc67338e4bd7ee40eaf5b834186f83dd5ce21a47188fb5",
+      "expected_sha256": "59657fe4047aa975facc67338e4bd7ee40eaf5b834186f83dd5ce21a47188fb5"
+    },
+    {
+      "category": "DATABASE_LOAD_OBSERVATION",
+      "key": "serving.island_gazetteer_current",
+      "status": "PASS",
+      "reason_ko": "별도 로더가 기록한 COPY 재출력 해시·행 수와 원천을 대조했습니다. 현재 DB를 재접속한 결과는 아닙니다.",
+      "observed_rows": 1140,
+      "roundtrip_sha256": "59657fe4047aa975facc67338e4bd7ee40eaf5b834186f83dd5ce21a47188fb5"
+    },
+    {
+      "category": "RELATION_SCHEMA",
+      "key": "projection.s101_feature_current",
+      "status": "PASS",
+      "reason_ko": "manifest 선언과 필수 관계·열을 대조했습니다. 실제 DB 존재 여부는 별도 관측이 필요합니다.",
+      "missing_columns": []
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "projection.s101_feature_current:row_count",
+      "status": "PASS",
+      "reason_ko": "원천 행 수 선언 검사이며 DB 적재 행 수와 구분합니다.",
+      "declared_rows": 25300
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "projection.s101_feature_current:csv",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_snapshot_20261030_v1\\projection__s101_feature_current.csv",
+      "observed_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+      "expected_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85"
+    },
+    {
+      "category": "DATABASE_LOAD_OBSERVATION",
+      "key": "projection.s101_feature_current",
+      "status": "PASS",
+      "reason_ko": "별도 로더가 기록한 COPY 재출력 해시·행 수와 원천을 대조했습니다. 현재 DB를 재접속한 결과는 아닙니다.",
+      "observed_rows": 25300,
+      "roundtrip_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85"
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "environment_probe",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_binding_probe_20261030_v1\\manifest.json",
+      "observed_sha256": "b7caf2a880f17eb9ebc5bc52634a560fb88f92caef27375523a630a49b9546ed",
+      "expected_sha256": "b7caf2a880f17eb9ebc5bc52634a560fb88f92caef27375523a630a49b9546ed"
+    },
+    {
+      "category": "ENVIRONMENT",
+      "key": "runtime_probe",
+      "status": "PASS",
+      "reason_ko": "환경 관측 결과이며 모델 오류 또는 정상 질의 차단으로 분류하지 않습니다.",
+      "observed_at": "2026-10-30T04:45:19.474090+00:00",
+      "timestamp_kind": "POST_HOC_ARTIFACT_REVIEW_NOT_EXECUTION_TIME"
+    },
+    {
+      "category": "EXECUTION_PROFILE",
+      "key": "embedding",
+      "status": "PASS",
+      "reason_ko": "임베딩 호출 비활성은 명시적 프로파일 제약입니다. 모델 오류로 간주하지 않습니다.",
+      "embedding_required": false,
+      "embedding_enabled": false
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "references",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\contracts_v4\\task_contracts_DRAFT.jsonl",
+      "observed_sha256": "de3be5c5b9a69a7b1ab717d64aa724315b131268377ce75cd816395d16fdfdbd",
+      "expected_sha256": "de3be5c5b9a69a7b1ab717d64aa724315b131268377ce75cd816395d16fdfdbd"
+    },
+    {
+      "category": "REFERENCE_APPROVAL",
+      "key": "PILOT_Q1_01",
+      "status": "BLOCKED",
+      "reason_ko": "사용자 승인과 독립 전문가 검수는 구분합니다. 승인은 완전한 계약을 뜻하지 않습니다.",
+      "review_kind": null,
+      "independent_expert_review": false
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q1_01:semantic",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q1_01:qec",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q1_01:evidence",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q1_01:enabled",
+      "status": "BLOCKED",
+      "reason_ko": "새 의무분해 계약은 평가 활성화되지 않았습니다. 원래 참조의 승인을 전이하지 않습니다."
+    },
+    {
+      "category": "REFERENCE_APPROVAL",
+      "key": "PILOT_Q1_02",
+      "status": "BLOCKED",
+      "reason_ko": "사용자 승인과 독립 전문가 검수는 구분합니다. 승인은 완전한 계약을 뜻하지 않습니다.",
+      "review_kind": null,
+      "independent_expert_review": false
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q1_02:semantic",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q1_02:qec",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q1_02:evidence",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q1_02:enabled",
+      "status": "BLOCKED",
+      "reason_ko": "새 의무분해 계약은 평가 활성화되지 않았습니다. 원래 참조의 승인을 전이하지 않습니다."
+    },
+    {
+      "category": "REFERENCE_APPROVAL",
+      "key": "PILOT_Q1_03",
+      "status": "BLOCKED",
+      "reason_ko": "사용자 승인과 독립 전문가 검수는 구분합니다. 승인은 완전한 계약을 뜻하지 않습니다.",
+      "review_kind": null,
+      "independent_expert_review": false
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q1_03:semantic",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q1_03:qec",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q1_03:evidence",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q1_03:enabled",
+      "status": "BLOCKED",
+      "reason_ko": "새 의무분해 계약은 평가 활성화되지 않았습니다. 원래 참조의 승인을 전이하지 않습니다."
+    },
+    {
+      "category": "REFERENCE_APPROVAL",
+      "key": "PILOT_Q2_01",
+      "status": "BLOCKED",
+      "reason_ko": "사용자 승인과 독립 전문가 검수는 구분합니다. 승인은 완전한 계약을 뜻하지 않습니다.",
+      "review_kind": null,
+      "independent_expert_review": false
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q2_01:semantic",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q2_01:qec",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q2_01:evidence",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q2_01:enabled",
+      "status": "BLOCKED",
+      "reason_ko": "새 의무분해 계약은 평가 활성화되지 않았습니다. 원래 참조의 승인을 전이하지 않습니다."
+    },
+    {
+      "category": "REFERENCE_APPROVAL",
+      "key": "PILOT_Q2_02",
+      "status": "BLOCKED",
+      "reason_ko": "사용자 승인과 독립 전문가 검수는 구분합니다. 승인은 완전한 계약을 뜻하지 않습니다.",
+      "review_kind": null,
+      "independent_expert_review": false
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q2_02:semantic",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q2_02:qec",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q2_02:evidence",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q2_02:enabled",
+      "status": "BLOCKED",
+      "reason_ko": "새 의무분해 계약은 평가 활성화되지 않았습니다. 원래 참조의 승인을 전이하지 않습니다."
+    },
+    {
+      "category": "REFERENCE_APPROVAL",
+      "key": "PILOT_Q2_03",
+      "status": "BLOCKED",
+      "reason_ko": "사용자 승인과 독립 전문가 검수는 구분합니다. 승인은 완전한 계약을 뜻하지 않습니다.",
+      "review_kind": null,
+      "independent_expert_review": false
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q2_03:semantic",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q2_03:qec",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q2_03:evidence",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q2_03:enabled",
+      "status": "BLOCKED",
+      "reason_ko": "새 의무분해 계약은 평가 활성화되지 않았습니다. 원래 참조의 승인을 전이하지 않습니다."
+    },
+    {
+      "category": "REFERENCE_APPROVAL",
+      "key": "PILOT_Q3_01",
+      "status": "BLOCKED",
+      "reason_ko": "사용자 승인과 독립 전문가 검수는 구분합니다. 승인은 완전한 계약을 뜻하지 않습니다.",
+      "review_kind": null,
+      "independent_expert_review": false
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q3_01:semantic",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q3_01:qec",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q3_01:evidence",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q3_01:spatial",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q3_01:enabled",
+      "status": "BLOCKED",
+      "reason_ko": "새 의무분해 계약은 평가 활성화되지 않았습니다. 원래 참조의 승인을 전이하지 않습니다."
+    },
+    {
+      "category": "INPUT_CONTRACT",
+      "key": "PILOT_Q3_01:aoi",
+      "status": "UNKNOWN",
+      "reason_ko": "이 검사 입력에 검색영역이 제공되지 않았습니다. 기준점만으로 반경·AOI를 생성하지 않습니다."
+    },
+    {
+      "category": "COVERAGE",
+      "key": "PILOT_Q3_01:completeness",
+      "status": "UNKNOWN",
+      "reason_ko": "객체군·시간·원천 coverage 검증 근거가 별도로 필요합니다."
+    },
+    {
+      "category": "REFERENCE_APPROVAL",
+      "key": "PILOT_Q3_02",
+      "status": "BLOCKED",
+      "reason_ko": "사용자 승인과 독립 전문가 검수는 구분합니다. 승인은 완전한 계약을 뜻하지 않습니다.",
+      "review_kind": null,
+      "independent_expert_review": false
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q3_02:semantic",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q3_02:qec",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q3_02:evidence",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q3_02:spatial",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q3_02:enabled",
+      "status": "BLOCKED",
+      "reason_ko": "새 의무분해 계약은 평가 활성화되지 않았습니다. 원래 참조의 승인을 전이하지 않습니다."
+    },
+    {
+      "category": "INPUT_CONTRACT",
+      "key": "PILOT_Q3_02:aoi",
+      "status": "UNKNOWN",
+      "reason_ko": "이 검사 입력에 검색영역이 제공되지 않았습니다. 기준점만으로 반경·AOI를 생성하지 않습니다."
+    },
+    {
+      "category": "COVERAGE",
+      "key": "PILOT_Q3_02:completeness",
+      "status": "UNKNOWN",
+      "reason_ko": "객체군·시간·원천 coverage 검증 근거가 별도로 필요합니다."
+    },
+    {
+      "category": "REFERENCE_APPROVAL",
+      "key": "PILOT_Q3_03",
+      "status": "BLOCKED",
+      "reason_ko": "사용자 승인과 독립 전문가 검수는 구분합니다. 승인은 완전한 계약을 뜻하지 않습니다.",
+      "review_kind": null,
+      "independent_expert_review": false
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q3_03:semantic",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q3_03:qec",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q3_03:evidence",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q3_03:spatial",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q3_03:enabled",
+      "status": "BLOCKED",
+      "reason_ko": "새 의무분해 계약은 평가 활성화되지 않았습니다. 원래 참조의 승인을 전이하지 않습니다."
+    },
+    {
+      "category": "INPUT_CONTRACT",
+      "key": "PILOT_Q3_03:aoi",
+      "status": "UNKNOWN",
+      "reason_ko": "이 검사 입력에 검색영역이 제공되지 않았습니다. 기준점만으로 반경·AOI를 생성하지 않습니다."
+    },
+    {
+      "category": "COVERAGE",
+      "key": "PILOT_Q3_03:completeness",
+      "status": "UNKNOWN",
+      "reason_ko": "객체군·시간·원천 coverage 검증 근거가 별도로 필요합니다."
+    },
+    {
+      "category": "REFERENCE_APPROVAL",
+      "key": "PILOT_Q4_01",
+      "status": "BLOCKED",
+      "reason_ko": "사용자 승인과 독립 전문가 검수는 구분합니다. 승인은 완전한 계약을 뜻하지 않습니다.",
+      "review_kind": null,
+      "independent_expert_review": false
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q4_01:semantic",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q4_01:qec",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q4_01:evidence",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q4_01:spatial",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q4_01:enabled",
+      "status": "BLOCKED",
+      "reason_ko": "새 의무분해 계약은 평가 활성화되지 않았습니다. 원래 참조의 승인을 전이하지 않습니다."
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "PILOT_Q4_01:aoi_reference",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_dokdo_reference_20261030_v2\\spatial_reference.json",
+      "observed_sha256": "cf7e407ec904661093a187e15391b42bc668a6e6ef5f75ead3f96c3f495cb9fb",
+      "expected_sha256": "cf7e407ec904661093a187e15391b42bc668a6e6ef5f75ead3f96c3f495cb9fb"
+    },
+    {
+      "category": "INPUT_CONTRACT",
+      "key": "PILOT_Q4_01:aoi",
+      "status": "PASS",
+      "reason_ko": "명시적 AOI 계약 artifact를 참조합니다. bbox 포함 검사는 별도 미측정입니다."
+    },
+    {
+      "category": "COVERAGE",
+      "key": "PILOT_Q4_01:bbox",
+      "status": "UNKNOWN",
+      "reason_ko": "AOI 계약은 제공됐지만 bbox coverage는 이 검사에서 대조하지 않았습니다."
+    },
+    {
+      "category": "COVERAGE",
+      "key": "PILOT_Q4_01:completeness",
+      "status": "UNKNOWN",
+      "reason_ko": "객체군·시간·원천 coverage 검증 근거가 별도로 필요합니다."
+    },
+    {
+      "category": "REFERENCE_APPROVAL",
+      "key": "PILOT_Q4_02",
+      "status": "BLOCKED",
+      "reason_ko": "사용자 승인과 독립 전문가 검수는 구분합니다. 승인은 완전한 계약을 뜻하지 않습니다.",
+      "review_kind": null,
+      "independent_expert_review": false
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q4_02:semantic",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q4_02:qec",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q4_02:evidence",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q4_02:spatial",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q4_02:enabled",
+      "status": "BLOCKED",
+      "reason_ko": "새 의무분해 계약은 평가 활성화되지 않았습니다. 원래 참조의 승인을 전이하지 않습니다."
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "PILOT_Q4_02:aoi_reference",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_dokdo_reference_20261030_v2\\spatial_reference.json",
+      "observed_sha256": "cf7e407ec904661093a187e15391b42bc668a6e6ef5f75ead3f96c3f495cb9fb",
+      "expected_sha256": "cf7e407ec904661093a187e15391b42bc668a6e6ef5f75ead3f96c3f495cb9fb"
+    },
+    {
+      "category": "INPUT_CONTRACT",
+      "key": "PILOT_Q4_02:aoi",
+      "status": "PASS",
+      "reason_ko": "명시적 AOI 계약 artifact를 참조합니다. bbox 포함 검사는 별도 미측정입니다."
+    },
+    {
+      "category": "COVERAGE",
+      "key": "PILOT_Q4_02:bbox",
+      "status": "UNKNOWN",
+      "reason_ko": "AOI 계약은 제공됐지만 bbox coverage는 이 검사에서 대조하지 않았습니다."
+    },
+    {
+      "category": "COVERAGE",
+      "key": "PILOT_Q4_02:completeness",
+      "status": "UNKNOWN",
+      "reason_ko": "객체군·시간·원천 coverage 검증 근거가 별도로 필요합니다."
+    },
+    {
+      "category": "REFERENCE_APPROVAL",
+      "key": "PILOT_Q4_03",
+      "status": "BLOCKED",
+      "reason_ko": "사용자 승인과 독립 전문가 검수는 구분합니다. 승인은 완전한 계약을 뜻하지 않습니다.",
+      "review_kind": null,
+      "independent_expert_review": false
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q4_03:semantic",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q4_03:qec",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q4_03:evidence",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q4_03:spatial",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q4_03:enabled",
+      "status": "BLOCKED",
+      "reason_ko": "새 의무분해 계약은 평가 활성화되지 않았습니다. 원래 참조의 승인을 전이하지 않습니다."
+    },
+    {
+      "category": "DATA_PROVENANCE",
+      "key": "PILOT_Q4_03:aoi_reference",
+      "status": "PASS",
+      "reason_ko": "기대 해시와 파일을 대조했습니다.",
+      "path": "D:\\An_GeoLLM\\outputs\\scie_dokdo_reference_20261030_v2\\spatial_reference.json",
+      "observed_sha256": "cf7e407ec904661093a187e15391b42bc668a6e6ef5f75ead3f96c3f495cb9fb",
+      "expected_sha256": "cf7e407ec904661093a187e15391b42bc668a6e6ef5f75ead3f96c3f495cb9fb"
+    },
+    {
+      "category": "INPUT_CONTRACT",
+      "key": "PILOT_Q4_03:aoi",
+      "status": "PASS",
+      "reason_ko": "명시적 AOI 계약 artifact를 참조합니다. bbox 포함 검사는 별도 미측정입니다."
+    },
+    {
+      "category": "COVERAGE",
+      "key": "PILOT_Q4_03:bbox",
+      "status": "UNKNOWN",
+      "reason_ko": "AOI 계약은 제공됐지만 bbox coverage는 이 검사에서 대조하지 않았습니다."
+    },
+    {
+      "category": "COVERAGE",
+      "key": "PILOT_Q4_03:completeness",
+      "status": "UNKNOWN",
+      "reason_ko": "객체군·시간·원천 coverage 검증 근거가 별도로 필요합니다."
+    },
+    {
+      "category": "REFERENCE_APPROVAL",
+      "key": "PILOT_Q5_01",
+      "status": "BLOCKED",
+      "reason_ko": "사용자 승인과 독립 전문가 검수는 구분합니다. 승인은 완전한 계약을 뜻하지 않습니다.",
+      "review_kind": null,
+      "independent_expert_review": false
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q5_01:semantic",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q5_01:qec",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q5_01:evidence",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q5_01:spatial",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q5_01:enabled",
+      "status": "BLOCKED",
+      "reason_ko": "새 의무분해 계약은 평가 활성화되지 않았습니다. 원래 참조의 승인을 전이하지 않습니다."
+    },
+    {
+      "category": "INPUT_CONTRACT",
+      "key": "PILOT_Q5_01:aoi",
+      "status": "UNKNOWN",
+      "reason_ko": "이 검사 입력에 검색영역이 제공되지 않았습니다. 기준점만으로 반경·AOI를 생성하지 않습니다."
+    },
+    {
+      "category": "COVERAGE",
+      "key": "PILOT_Q5_01:completeness",
+      "status": "UNKNOWN",
+      "reason_ko": "객체군·시간·원천 coverage 검증 근거가 별도로 필요합니다."
+    },
+    {
+      "category": "REFERENCE_APPROVAL",
+      "key": "PILOT_Q5_02",
+      "status": "BLOCKED",
+      "reason_ko": "사용자 승인과 독립 전문가 검수는 구분합니다. 승인은 완전한 계약을 뜻하지 않습니다.",
+      "review_kind": null,
+      "independent_expert_review": false
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q5_02:semantic",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q5_02:qec",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q5_02:evidence",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q5_02:spatial",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q5_02:enabled",
+      "status": "BLOCKED",
+      "reason_ko": "새 의무분해 계약은 평가 활성화되지 않았습니다. 원래 참조의 승인을 전이하지 않습니다."
+    },
+    {
+      "category": "INPUT_CONTRACT",
+      "key": "PILOT_Q5_02:aoi",
+      "status": "UNKNOWN",
+      "reason_ko": "이 검사 입력에 검색영역이 제공되지 않았습니다. 기준점만으로 반경·AOI를 생성하지 않습니다."
+    },
+    {
+      "category": "COVERAGE",
+      "key": "PILOT_Q5_02:completeness",
+      "status": "UNKNOWN",
+      "reason_ko": "객체군·시간·원천 coverage 검증 근거가 별도로 필요합니다."
+    },
+    {
+      "category": "REFERENCE_APPROVAL",
+      "key": "PILOT_Q5_03",
+      "status": "BLOCKED",
+      "reason_ko": "사용자 승인과 독립 전문가 검수는 구분합니다. 승인은 완전한 계약을 뜻하지 않습니다.",
+      "review_kind": null,
+      "independent_expert_review": false
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q5_03:semantic",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q5_03:qec",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q5_03:evidence",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q5_03:spatial",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q5_03:enabled",
+      "status": "BLOCKED",
+      "reason_ko": "새 의무분해 계약은 평가 활성화되지 않았습니다. 원래 참조의 승인을 전이하지 않습니다."
+    },
+    {
+      "category": "INPUT_CONTRACT",
+      "key": "PILOT_Q5_03:aoi",
+      "status": "UNKNOWN",
+      "reason_ko": "이 검사 입력에 검색영역이 제공되지 않았습니다. 기준점만으로 반경·AOI를 생성하지 않습니다."
+    },
+    {
+      "category": "COVERAGE",
+      "key": "PILOT_Q5_03:completeness",
+      "status": "UNKNOWN",
+      "reason_ko": "객체군·시간·원천 coverage 검증 근거가 별도로 필요합니다."
+    },
+    {
+      "category": "REFERENCE_APPROVAL",
+      "key": "PILOT_Q6_01",
+      "status": "BLOCKED",
+      "reason_ko": "사용자 승인과 독립 전문가 검수는 구분합니다. 승인은 완전한 계약을 뜻하지 않습니다.",
+      "review_kind": null,
+      "independent_expert_review": false
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q6_01:semantic",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q6_01:qec",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q6_01:evidence",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q6_01:enabled",
+      "status": "BLOCKED",
+      "reason_ko": "새 의무분해 계약은 평가 활성화되지 않았습니다. 원래 참조의 승인을 전이하지 않습니다."
+    },
+    {
+      "category": "REFERENCE_APPROVAL",
+      "key": "PILOT_Q6_02",
+      "status": "BLOCKED",
+      "reason_ko": "사용자 승인과 독립 전문가 검수는 구분합니다. 승인은 완전한 계약을 뜻하지 않습니다.",
+      "review_kind": null,
+      "independent_expert_review": false
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q6_02:semantic",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q6_02:qec",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q6_02:evidence",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q6_02:enabled",
+      "status": "BLOCKED",
+      "reason_ko": "새 의무분해 계약은 평가 활성화되지 않았습니다. 원래 참조의 승인을 전이하지 않습니다."
+    },
+    {
+      "category": "REFERENCE_APPROVAL",
+      "key": "PILOT_Q6_03",
+      "status": "BLOCKED",
+      "reason_ko": "사용자 승인과 독립 전문가 검수는 구분합니다. 승인은 완전한 계약을 뜻하지 않습니다.",
+      "review_kind": null,
+      "independent_expert_review": false
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q6_03:semantic",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q6_03:qec",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q6_03:evidence",
+      "status": "BLOCKED",
+      "reason_ko": "필수 평가계약의 명시적 완결성을 검사합니다. 점수는 계산하지 않습니다."
+    },
+    {
+      "category": "EVALUATION_CONTRACT",
+      "key": "PILOT_Q6_03:enabled",
+      "status": "BLOCKED",
+      "reason_ko": "새 의무분해 계약은 평가 활성화되지 않았습니다. 원래 참조의 승인을 전이하지 않습니다."
+    }
+  ],
+  "config_sha256": "bc6b519292544bd4a991c04839d61059effb59adcd5120925d3167445b3abd2d"
+}

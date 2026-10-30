@@ -17,14 +17,25 @@ import uuid
 
 METHOD = "P_current_production_no_llm"
 SELECTED = {"PILOT_Q1_03", "PILOT_Q2_03", "PILOT_Q3_03", "PILOT_Q4_01", "PILOT_Q5_03", "PILOT_Q6_03"}
+ALLOWED_DATABASES = {"scie_pilot", "scie_binding_v2"}
 
 
 def require_isolation():
     if os.environ.get("SCIE_ISOLATED_GRAPH") != "1" or not Path("/.dockerenv").exists():
         raise RuntimeError("Requires explicitly isolated Docker research worker")
+    database = os.environ.get("SCIE_RESEARCH_DATABASE", "scie_pilot")
+    if database not in ALLOWED_DATABASES:
+        raise RuntimeError("Research database is not allowlisted")
+    if database != "scie_pilot":
+        manifest = Path(os.environ.get("SCIE_SNAPSHOT_MANIFEST", "__missing__"))
+        if not manifest.is_file():
+            raise RuntimeError("Expanded research database requires snapshot manifest")
+        snapshot = json.loads(manifest.read_text(encoding="utf-8"))
+        if snapshot.get("status") != "LOADED_VERIFIED" or snapshot.get("db_identity") != {"container":"marine-scie-pilot-db", "database":database}:
+            raise RuntimeError("Snapshot manifest does not identify the loaded research database")
     for key in ("S101_DB_URL", "POSTGIS_URL"):
         parsed = urlsplit(os.environ.get(key, ""))
-        if parsed.hostname != "marine-scie-pilot-db" or parsed.path != "/scie_pilot":
+        if parsed.hostname != "marine-scie-pilot-db" or parsed.path != "/" + database:
             raise RuntimeError(f"{key} must point only to isolated research snapshot")
     if os.environ.get("DISABLE_LLM_API") != "1":
         raise RuntimeError("This profile disables model APIs and is not model-matched Full P")
@@ -145,7 +156,8 @@ def run_benchmark(benchmark, output_dir, repeats=3, timeout=90):
         "status_counts": {s: sum(r["status"] == s for r in rows) for s in {r["status"] for r in rows}},
         "full_P_completed": False, "operating_conditions_equal_to_llm_baselines": False,
         "isolated_state_paths": {"graph_checkpoint": "in-process MemorySaver; new process per case",
-            "feedback": "/work/data/feedback tmpfs", "logs": str(output), "db": "marine-scie-pilot-db/scie_pilot read-only"}}
+            "feedback": "/work/data/feedback tmpfs", "logs": str(output),
+            "db": "marine-scie-pilot-db/" + os.environ.get("SCIE_RESEARCH_DATABASE", "scie_pilot") + " read-only"}}
     (output/"production_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
     return summary
 

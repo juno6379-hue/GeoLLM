@@ -1,0 +1,12 @@
+{
+  "status": "DRAFT_REVIEW_REQUIRED",
+  "count": 18,
+  "reference_sha256": "a69cda7558eca74c8d869de6fc80653c51541ab2cc4a7cb628e3fd065b27558c",
+  "registry_sha256": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+  "contracts_sha256": "de3be5c5b9a69a7b1ab717d64aa724315b131268377ce75cd816395d16fdfdbd",
+  "generator_sha256": "097f76bc7a80c626814a3bfa7fb87242adc95280af1adb110a503063b6d86b68",
+  "model_results_read": false,
+  "production_modified": false,
+  "approved_v3_modified": false,
+  "presentation_revision": "Distinguish missing spatial oracle from nonspatial tasks; contract rows unchanged."
+}

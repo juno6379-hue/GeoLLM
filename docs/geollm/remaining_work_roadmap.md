@@ -1,5 +1,16 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-10-30 다음 우선 작업 — 평가계약·연구 원천 연결
+
+- 사용자의 논문 우선 작업에 따라 [연결 결과](../../research/marine_geollm_scie/latest_binding/report_KR.md), [재현·제한](../../research/marine_geollm_scie/protocol/research_binding_v2_KR.md)을 작성했다. 운영 코드·운영 DB를 변경하지 않고 이전 연구 DB도 보존했다.
+- 18개 task-obligation/capability/QEC/근거 계약과 9개 FC 정의·속성·출처 답안 후보를 만들었다. XML 2.0.0의 정의·기하·binding·다중도·허용코드·XPath/hash를 검증했다. 기존 approved_v3 18건은 불변; 새 해석은 DRAFT/미승인으로 분리한다. 초기 기하 파서 실패는 수정·검산하고 원본 실패 산출물을 보존했다.
+- 별도 연구 DB `marine-scie-pilot-db/scie_binding_v2`: 문서23,215/해양지명1,146/항로표지314/섬지명1,140/부산권S-101 25,300행. 다섯 관계 원본 COPY와 적재 후 COPY의 SHA256 전부 일치. source는 REPEATABLE READ/READ ONLY. `outputs/scie_binding_snapshot_20261030_v1/snapshot_manifest.json`은 LOADED_VERIFIED, mounted graph/사전 등21파일 해시 포함. 문서 embedding17,593/미완료5,622, source ID/hash 누락0. 전체 Dataset 임베딩 완료가 아니다.
+- 실제 READ ONLY probe5개에서 지명11개·Wreck 발췌3개·벡터 자기거리0·coverage를 확인했다. 원문 문서질의9개는 실제 bge-m3→연구DB에서 각3개 반환. 저장벡터 생성 profile 미확인 및 근거 적합도 미채점이며 유사도를 정확도로 해석하지 않는다. 원시 `outputs/scie_binding_probe_20261030_v1/`, `outputs/scie_binding_retrieval_20261030_v1/`.
+- 새 noLLM graph6건: Q1/Q2/Q3 BLOCKED, Q4 COMPLETED11, Q5 PARTIAL0/속성설명누락, Q6 COMPLETED 문서3. relation binding은 해소됐지만 일부 경로의 임베딩 API 차단은 profile 제한이다. Q6 exact/lexical 원천 경로 성공과 구분한다. 최초 상대경로 Docker mount 실패125는 보존, launcher resolve 보완 후 `runs/20261030_binding_graph_v2_ready/` 실행0 및 snapshot 전후 불변 검증.
+- 새 P0후보: selected AOI 없는 공간질의가 wreck 키워드로 document_search를 선택. P1후보: 정규화 age→재령의 부분치환이 AnchorageArea를 손상. Q6는 원문 기반 대체 경로로 성공했으므로 정규화오류를 답변 실패로 자동 집계하지 않는다. [독립 감사·재현](../../research/marine_geollm_scie/issues/research_data_binding_audit_20261030.md). 이번에는 운영 수정 대신 별도 backlog로 남겼다.
+- 최종 연구 테스트 **117 passed**. preflight v2 193검사의 실제 원천/관계/로드/관측 연결은 확인했고 신규 계약 DRAFT·저장embedding profile·AOI/coverage 미확정은 NOT_READY로 유지한다. 결과는 research/marine_geollm_scie/latest_binding/에 보존하며 기존 Results/latest를 덮지 않았다.
+- 다음: 새 계약/최소근거 범위 검수 → 연구 전용 embedding/model profile 고정·full graph 연결 → 위 운영결함 별도 수정·정상/부정 검증 → 필요한 공간 coverage/AOI/시설중복·경계 고정 → 실행형 baseline/full P·오류주입/recovery/ablation/미노출 평가. snapshot 새 DB가 이미 있으면 생성기가 거절하며 삭제·덮어쓰기로 재실행하지 않는다. shadow calibration UNFITTED/QLoRA DEFER 유지.
+
 ## 2026-10-30 RQ 병렬 실험·사용자 승인 v3·공간 정답 검산
 
 - 사용자의 논문 실험 우선순위에 따라 승인/프로토콜, RQ 평가, 별도 운영 수정 에이전트로 병렬 수행했다. [최신 인계](../../research/marine_geollm_scie/protocol/rq_v2_execution_20261030_KR.md), [RQ 결과](../../research/marine_geollm_scie/results/latest/reports/final_results_summary.md), [18개 승인 현황](../../research/marine_geollm_scie/benchmark/approved_v3/승인현황_KR.md)을 먼저 확인한다. 아래 이전 DRAFT 0건 표기는 승인 이전 이력이다.

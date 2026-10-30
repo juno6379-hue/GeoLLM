@@ -34,3 +34,38 @@ def test_launcher_fails_closed_on_network_or_env_mask(tmp_path):
     with pytest.raises(RuntimeError): isolation_metadata(mask, {"Internal": False})
     mask.write_text("not-empty")
     with pytest.raises(RuntimeError): isolation_metadata(mask, {"Internal": True})
+
+
+def test_expanded_database_requires_explicit_manifest_and_allowlist(tmp_path):
+    from research.marine_geollm_scie.runners.launch_production import snapshot_selection
+    with pytest.raises(ValueError): snapshot_selection('production')
+    with pytest.raises(ValueError): snapshot_selection('scie_binding_v2')
+    manifest = tmp_path / 'snapshot.json'
+    manifest.write_text('{"status":"LOADED_VERIFIED","db_identity":{"container":"marine-scie-pilot-db","database":"scie_binding_v2"},"relations":[],"files":[]}')
+    path, data = snapshot_selection('scie_binding_v2', manifest)
+    assert path == manifest.resolve() and data['db_identity']['database'] == 'scie_binding_v2'
+
+
+def test_adapter_rejects_database_url_outside_selected_snapshot(monkeypatch, tmp_path):
+    from pathlib import Path
+    monkeypatch.setattr(Path, 'exists', lambda _: True)
+    monkeypatch.setenv('SCIE_ISOLATED_GRAPH', '1')
+    monkeypatch.setenv('SCIE_RESEARCH_DATABASE', 'scie_binding_v2')
+    manifest = tmp_path / 'snapshot.json'
+    manifest.write_text('{"status":"LOADED_VERIFIED","db_identity":{"container":"marine-scie-pilot-db","database":"scie_binding_v2"}}')
+    monkeypatch.setenv('SCIE_SNAPSHOT_MANIFEST', str(manifest))
+    monkeypatch.setenv('S101_DB_URL', 'postgresql://marine-scie-pilot-db/scie_pilot')
+    with pytest.raises(RuntimeError, match='isolated research snapshot'): require_isolation()
+
+
+def test_snapshot_rejects_unloaded_or_changed_csv(tmp_path):
+    import json
+    from research.marine_geollm_scie.runners.launch_production import snapshot_selection
+    manifest = tmp_path / 'snapshot.json'
+    manifest.write_text(json.dumps({'status':'EXPORTED', 'db_identity':{'container':'marine-scie-pilot-db','database':'scie_binding_v2'}}))
+    with pytest.raises(ValueError, match='loaded'): snapshot_selection('scie_binding_v2', manifest)
+    data = {'status':'LOADED_VERIFIED', 'db_identity':{'container':'marine-scie-pilot-db','database':'scie_binding_v2'},
+        'relations':[{'csv_path':'rows.csv','sha256':'invalid'}], 'files':[]}
+    (tmp_path / 'rows.csv').write_text('changed')
+    manifest.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match='changed'): snapshot_selection('scie_binding_v2', manifest)
