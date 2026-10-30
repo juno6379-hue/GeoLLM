@@ -11,8 +11,10 @@ from urllib.parse import urlsplit
 ROOT = Path(__file__).resolve().parents[3]
 TARGET_CONTAINER = 'marine-scie-pilot-db'
 TARGET_DATABASE = 'scie_binding_v2'
+ALLOWED_DATABASES = {'scie_binding_v2', 'scie_model_v3'}
 RELATIONS = ('knowledge.document_chunks', 'serving.marine_gazetteer_current',
              'serving.navigation_aid_current', 'serving.island_gazetteer_current')
+MODEL_RELATIONS = (*RELATIONS, 'knowledge.capability_embeddings')
 OLD = 'research/marine_geollm_scie/runs/20261029_pilot/spatial'
 
 
@@ -52,11 +54,11 @@ def export(output):
             cur.execute("SET LOCAL statement_timeout='180s'")
             cur.execute('SELECT txid_current_snapshot()::text, transaction_timestamp()::text')
             manifest['source_transaction'], manifest['captured_at'] = cur.fetchone()
-            for relation in RELATIONS:
+            for relation in (MODEL_RELATIONS if TARGET_DATABASE == 'scie_model_v3' else RELATIONS):
                 cur.execute('SELECT attname, format_type(atttypid,atttypmod) FROM pg_attribute WHERE attrelid=%s::regclass AND attnum>0 AND NOT attisdropped ORDER BY attnum', (relation,))
                 columns = cur.fetchall()
                 identifier = sql.Identifier(*relation.split('.'))
-                key = 'chunk_id' if relation.startswith('knowledge.') else 'source_id'
+                key = 'chunk_id' if relation == 'knowledge.document_chunks' else 'id' if relation == 'knowledge.capability_embeddings' else 'source_id'
                 cur.execute(sql.SQL('SELECT count(*), count(DISTINCT {}) FROM {}').format(sql.Identifier(key), identifier))
                 total, unique = cur.fetchone()
                 if total != unique: raise ValueError('Snapshot order key is not unique: '+relation)
@@ -68,10 +70,13 @@ def export(output):
                 record = {'relation':relation, 'columns':columns, 'rows':cur.fetchone()[0],
                     'csv_path':name, 'sha256':digest(output/name), 'selection_sql':query.as_string(conn),
                     'coverage':{'selection':'ALL_ROWS_IN_SOURCE_RELATION', 'national_completeness_verified':False}}
-                if relation.startswith('knowledge.'):
+                if relation == 'knowledge.document_chunks':
                     cur.execute('SELECT count(*) FILTER(WHERE embedding IS NOT NULL), count(*) FILTER(WHERE source_sha256 IS NULL OR source_id IS NULL), count(*) FILTER(WHERE metadata @> %s::jsonb) FROM knowledge.document_chunks',
                         (json.dumps({'product_id':'S-101','version':'2.0.0','product_specification':'INT.IHO.S-101.2.0'}),))
                     record['embedding_rows'], record['missing_lineage_rows'], record['production_default_filter_rows'] = cur.fetchone()
+                elif relation == 'knowledge.capability_embeddings':
+                    cur.execute('SELECT count(embedding),min(vector_dims(embedding)),max(vector_dims(embedding)) FROM knowledge.capability_embeddings')
+                    record['embedding_rows'],record['min_embedding_dimension'],record['max_embedding_dimension']=cur.fetchone()
                 else:
                     cur.execute(sql.SQL('SELECT ST_Extent(geometry)::text, count(*) FILTER(WHERE geometry IS NULL OR NOT ST_IsValid(geometry)) FROM {}').format(identifier))
                     record['extent'], record['invalid_or_null_geometry_rows'] = cur.fetchone()
@@ -122,7 +127,7 @@ def load(output):
     verified = []
     for record in manifest['relations']:
         relation = record['relation']
-        if relation not in (*RELATIONS, 'projection.s101_feature_current'): raise ValueError('Unknown relation')
+        if relation not in (*MODEL_RELATIONS, 'projection.s101_feature_current'): raise ValueError('Unknown relation')
         # Column definitions came from format_type in the authenticated read-only snapshot.
         definitions = ','.join('"'+name.replace('"','""')+'" '+dtype for name,dtype in record['columns'])
         psql('CREATE TABLE '+relation+' ('+definitions+');', TARGET_DATABASE)
@@ -132,7 +137,7 @@ def load(output):
         count = int(psql('SELECT count(*) FROM '+relation+';',TARGET_DATABASE))
         if count != record['rows']: raise ValueError('Loaded row count mismatch')
         # COPY back in the exact export order to verify content as well as count.
-        key = 'chunk_id' if relation.startswith('knowledge.') else 'feature_instance_id' if relation.startswith('projection.') else 'source_id'
+        key = 'chunk_id' if relation == 'knowledge.document_chunks' else 'id' if relation == 'knowledge.capability_embeddings' else 'feature_instance_id' if relation.startswith('projection.') else 'source_id'
         target_copy = output/(record['csv_path']+'.loaded')
         with target_copy.open('wb') as stream:
             subprocess.run(['docker','exec',TARGET_CONTAINER,'psql','-X','-q','-U','postgres','-d',TARGET_DATABASE,
@@ -162,7 +167,7 @@ def launch(output):
         '--mount',f'type=bind,source={output.parent},target=/out',
         '--workdir','/work','--env','PYTHONDONTWRITEBYTECODE=1','--env','SCIE_SOURCE_DSN='+source,
         'docker-backend','python','-m','research.marine_geollm_scie.runners.binding_snapshot',
-        '--worker-export','--output','/out/'+output.name]
+        '--worker-export','--output','/out/'+output.name,'--database',TARGET_DATABASE]
     proc = subprocess.run(command,capture_output=True,timeout=600)
     if proc.returncode:
         if output.exists():
@@ -175,7 +180,9 @@ def launch(output):
 if __name__ == '__main__':
     p=argparse.ArgumentParser();p.add_argument('--output',type=Path,required=True)
     p.add_argument('--worker-export',action='store_true');p.add_argument('--load-only',action='store_true')
+    p.add_argument('--database',choices=sorted(ALLOWED_DATABASES),default=TARGET_DATABASE)
     a=p.parse_args()
+    TARGET_DATABASE=a.database
     if a.worker_export: export(a.output)
     elif a.load_only: load(a.output.resolve())
     else: launch(a.output.resolve())

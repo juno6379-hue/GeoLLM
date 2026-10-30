@@ -1,0 +1,12 @@
+{
+  "status": "AGENT_FINALIZED_UNDER_USER_DIRECTION",
+  "count": 18,
+  "independent_human_review": false,
+  "source_v3_preserved": true,
+  "source_v4_preserved": true,
+  "contract_sha256": "262597b5b94d01d34f16c12deef0fe60c62c7d6b51cbc0abcd4eb06fc9f61562",
+  "generator_sha256": "47af64971e3c6186dfcc71423cb11b7f695758bc22cc9ac86e0b4f8870f000d6",
+  "reference_sha256": "a69cda7558eca74c8d869de6fc80653c51541ab2cc4a7cb628e3fd065b27558c",
+  "model_results_read": false,
+  "authority": "User directed agent to finalize answer scope; this is not independent human GOLD."
+}

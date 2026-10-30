@@ -1,5 +1,14 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-10-30 사용자 요청 중단·GitHub 푸시 인계
+
+- **PAUSED_BY_USER. 명시적인 재개 요청 전 실행을 다시 시작하지 않는다.** [중단 위치·실측·재개 명령](../../research/marine_geollm_scie/protocol/pause_20261030_KR.md)을 먼저 읽는다. 이후 사용자 요청으로 이번 준비 코드·테스트·문서를 커밋/푸시한다. 중단·커밋은 실험 완료가 아니다.
+- 미완료5,622개 중 **176개 신규 임베딩 commit, 5,446개 잔여**를 실제 DB 재조회로 확인했다. 전체23,215/임베딩17,769; dataset_source_text6,362/임베딩916. 전용worker 중지·bge-m3 unload, 다른 웹/DB 서비스 유지. 로컬 progress/manifest는 PAUSED_BY_USER. 재개는 같은 폴더와 NULL 조건으로 저장 배치를 건너뛴다.
+- frozen_v5 18문항 답안범위 확정(AGENT_FINALIZED_UNDER_USER_DIRECTION/독립human=false), 기존v3/v4불변. Qwen/bge digest고정·연구모델proxy·전체18 graph·B0–B4 90조건 실제도구 비교·사후보고서 및 순차supervisor 코드를 준비했다. **새 모델비교·supervisor는 실행하지 않았고 scie_model_v3도 아직 없다.** 임베딩 완료를 수동 flag로 우회하지 않는다.
+- 새 snapshot은 capability_embeddings 원천21행/21벡터를 여섯 번째 관계로 포함하고 capability pgvector=true gate를 적용하도록 준비했다. 원천 존재는 확인했지만 실제 새 snapshot/graph 검증은 미수행. 기존8469벡터의 모델metadata 미확정, 공간coverage/AOI·독립holdout/K5/recovery/ablation 제한은 유지한다.
+- 커밋 전 관련 단위 **148 passed (33.80s)**. 전체 임베딩·실행 비교 완료를 뜻하지 않는다. 런타임 outputs/logs와 기존 사용자 UI/feedback/place integration test 변경은 커밋에서 분리한다.
+- 다음 재개: 원문 인계·Git/컨테이너/잔여COUNT 확인 → embedding worker 재개·0잔여/차원/hash 검증 → 새로운 모델 snapshot/profile → graph18 및 baseline90 K1 → 실제 산출물 검토·오류 별도 수정 → 후속K5/미노출 평가. Qwen shadow/QLoRA 정책은 변경하지 않는다.
+
 ## 2026-10-30 다음 우선 작업 — 평가계약·연구 원천 연결
 
 - 사용자의 논문 우선 작업에 따라 [연결 결과](../../research/marine_geollm_scie/latest_binding/report_KR.md), [재현·제한](../../research/marine_geollm_scie/protocol/research_binding_v2_KR.md)을 작성했다. 운영 코드·운영 DB를 변경하지 않고 이전 연구 DB도 보존했다.
