@@ -1,21 +1,26 @@
-# PILOT — NOT FINAL PAPER RESULT
+# 논문 실험 파일럿 결과 요약
 
-Publication status: **NOT_READY**
+**논문 본실험 준비 상태: 미완료(NOT_READY)**
 
-Cases: 31; verified expert GOLD: 0; run rows: 114.
+평가 사례는 31개, 실행 기록은 114개입니다. 독립 전문가가 검수·승인한 정답(GOLD)은 **0개**입니다.
 
-- No final-paper claims: expert adjudication and locked holdout are required.
-- Repeated trials are descriptive only; no unpaired significance test is reported.
-- Missing predictions remain null; runtime completion is not semantic or spatial truth.
-- R6 contains observed profiles only; causal ablation requires controlled matched runs.
+| 실험 | 실행 기록 | 관측 결과 |
+|---|---:|---|
+| Qwen 검토기(B4_LLM_Self_Reviewer) | 21 | 응답 완료 19회, 시간 초과 오류 2회 |
+| 운영 언어 분석 컴포넌트(PRODUCTION_LINGUISTIC_COMPONENT) | 54 | 컴포넌트 반환 54회 |
+| 실행 검증기(P_ExecutionValidator) | 21 | 검증 호출 완료 21회 |
+| 반경 공간조회(P_radius_component) | 18 | 조회 완료 12회, 추가 확인 필요 3회, 실행 차단 3회 |
 
-Operational latency uses observed samples and lists missing counts. Fault diagnostics are separate from expert-scored results.
+공간조회 완료 12회의 객체 집합은 독립 거리 SQL 결과와 **12/12 일치**했습니다. 같은 데이터 스냅샷을 사용한 정합성 검사이며, 전문가가 판정한 공간 정답 정확도는 아닙니다.
 
-## Observed diagnostic runs
+## 결과 해석 시 주의사항
 
-- `B4_LLM_Self_Reviewer`: 21 rows; states {'error': 2, 'completed': 19}.
-- `PRODUCTION_LINGUISTIC_COMPONENT`: 54 rows; states {'COMPONENT_RETURNED': 54}.
-- `P_ExecutionValidator`: 21 rows; states {'completed': 21}.
-- `P_radius_component`: 18 rows; states {'COMPLETED': 12, 'NEEDS_CLARIFICATION': 3, 'BLOCKED': 3}. Independent SQL object-set consistency: 12/12 (same snapshot, not expert gold).
+- 현재 결과는 파일럿입니다. 논문 성능 주장에는 전문가 검수·최종 판정과 고정된 독립 평가셋이 필요합니다.
+- 반복 실행은 동작과 시간의 관측에 사용했습니다. 반복 횟수를 독립 표본 수로 세거나 통계적 유의성을 주장하지 않습니다.
+- 미측정 값은 `null`로 유지합니다. 실행 완료가 의미 해석이나 공간 결과의 정확성을 보장하지 않습니다.
+- R6는 관측한 실행 구성을 표시합니다. 구성요소 제거 효과를 판단하려면 동일 조건의 통제 실험이 필요합니다.
+- 처리시간은 실제 관측값을 사용하고 누락 수를 함께 기록합니다. 인위적 오류 진단과 전문가 정답 기반 평가는 구분합니다.
 
-Production linguistic analysis, ExecutionValidator and radius execution are separate component cohorts, not the full proposed pipeline. B4 reviews supplied fixtures; it does not generate and repair its own plans. B0–B3, full P, controlled ablations and recovery are not executed.
+운영 언어 분석, 실행 검증, 반경 공간조회는 서로 다른 컴포넌트 실험입니다. 전체 제안 파이프라인(P)을 실행한 결과가 아닙니다. 현재 B4는 제공된 계획을 검토하며, 계획을 직접 생성·수정하는 완전한 B4가 아닙니다. B0–B3, 전체 P, 통제된 구성요소 제거 실험, 오류 복구 실험은 아직 수행하지 않았습니다.
+
+[상세 분석 및 재현 방법](../../protocol/pilot_findings_20261029.md) · [준비 상태와 남은 작업](../../RESULTS_READINESS.md) · [오류 분류와 수정 기록](../../issues/triage_20261029.md)

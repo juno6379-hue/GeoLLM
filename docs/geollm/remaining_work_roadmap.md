@@ -1,5 +1,10 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-10-30 논문 실험 결과 문서 한글화
+
+- 사용자 요청에 따라 연구 결과 요약(`latest/reports/results_summary.md`), 상세 분석·재현 방법(`protocol/pilot_findings_20261029.md`), 준비 상태(`RESULTS_READINESS.md`)를 한글로 바꿨다. 요약 생성 코드도 한글 출력으로 변경했다.
+- 원시 기록·측정 수치·manifest·운영 코드는 변경하지 않았다. 31사례/114기록/GOLD 0, PILOT_ONLY 및 본실험 NOT_READY 상태를 유지한다. 오류 분류 문서는 기존 한글본을 사용한다. 다음 연구 작업과 운영 P0 우선순위는 아래 인계를 따른다.
+
 ## 2026-10-29 논문 병렬 파일럿과 독립 수정 에이전트
 
 - 사용자 지정 `CODEX_Marine_GeoLLM_SCIE_Results_실험프레임워크_KR.md`에 따라 `research/marine_geollm_scie/`를 만들고 프로토콜·validator/Qwen·평가 에이전트를 병렬 수행했다. 운영 라우팅/QEC/Validator 소스 변경 없음. 운영 DB는 읽기 전용으로 원본을 추출하고 연구용 `marine-scie-pilot-db`에서 실제 공간조회를 수행했다.

@@ -1,35 +1,49 @@
-# 2026-10-29 measured pilot and next steps
+# 2026-10-29 파일럿 실험 상세 결과와 다음 작업
 
-The final input cohort is 31 unique DRAFT cases and 114 rows: linguistic 18×3, fault 7×3×2, spatial 6×3. These are three different component experiments; pooling them as end-to-end accuracy is invalid.
+최종 평가 대상은 서로 다른 **미승인(DRAFT) 사례 31개**, 실행 기록 **114개**입니다. 언어 분석 18×3회, 오류 진단 7×3×2방법, 공간조회 6×3회로 구성됩니다. 서로 다른 컴포넌트 실험이므로 합쳐서 전체 질의응답 정확도를 계산할 수 없습니다.
 
-- Actual Qwen `qwen2.5:1.5b`: first two reviewer calls timed out (40-second configured request timeout); 19 later responses parsed. One valid control was incorrectly declared invalid. The other 18 parsed answers agreed with authored DRAFT labels. No publication accuracy claim.
-- Actual ExecutionValidator: 21/21 DRAFT diagnostic agreements, using synthetic schema metadata only. It did not execute GIS.
-- Offline linguistic component: 54 returns with Kiwi available in the isolated container, no deterministic repeat differences. Source lexical-subset mappings were zero; this narrow function does not represent the full semantic pipeline. Host venv lacks Kiwi; those observations remain separately preserved.
-- Real PostGIS component: a read-only REPEATABLE READ export of valid S-101 rows intersecting bbox [128.9,34.9,129.3,35.3] yielded 25,300 source rows. The CSV, schema and transaction/digest are preserved locally. A separate `marine-scie-pilot-db` loads this subset; the production radius executor queries it read-only.
-- Anchor is a point on an actual source Wreck, not a claim about the centre or entrance of Busan Harbour. 500m/0.5km each return the same 3 objects, 2km hazard query returns 5. A deterministic +0.0001° x/y offset with 0.1m radius returns zero successfully. 0m and 50,001m are not executed. Twelve successful runs agree with independent distance SQL; their authorization receipts validate. Expert spatial GOLD remains unavailable.
-- Initial Windows psycopg2 connection attempts raised UnicodeDecodeError before export. Container-network execution succeeded; no source DB writes were performed. The initial spatial measurement adapter incorrectly treated COMPLETED as unsuccessful; that research-only measurement bug was fixed, raw preliminary rows retained, and the final experiment rerun. Preliminary rows are excluded from the final denominator.
+## 실제 관측 결과
 
-## Reproduce
+- **Qwen 검토기**: `qwen2.5:1.5b`를 실제 호출했습니다. 최초 2회는 설정된 요청 제한 40초 내에 응답하지 못했고, 이후 19회는 응답을 해석했습니다. 정상 계획 1건을 잘못 차단했고, 나머지 응답 18개는 작성자가 부여한 DRAFT 예상 판정과 일치했습니다. 이를 논문 정확도로 주장하지 않습니다.
+- **실행 검증기(ExecutionValidator)**: DRAFT 예상 판정과 21/21 일치했습니다. 인위적으로 구성한 스키마 메타데이터를 사용한 진단이며, 이 실험에서는 GIS를 실행하지 않았습니다.
+- **오프라인 언어 분석**: 격리 컨테이너에서 Kiwi를 사용할 수 있었고 54회 모두 반환했습니다. 동일 입력의 반복 출력 차이는 없었습니다. 좁은 범위의 원천 어휘 연결 함수에서 연결 수는 0이었지만, 이는 전체 의미 해석 파이프라인의 실패를 뜻하지 않습니다. 호스트 가상환경의 Kiwi 미사용 관측은 별도로 보존했습니다.
+- **실제 공간 DB 조회**: S-101 원본 중 경계 상자 `[128.9,34.9,129.3,35.3]`과 겹치는 유효 도형 25,300행을 읽기 전용 `REPEATABLE READ` 트랜잭션으로 추출했습니다. 원본 CSV, 스키마, 트랜잭션 식별자와 해시를 로컬에 보존했습니다. 별도 `marine-scie-pilot-db`에 적재한 뒤 운영 반경 조회 실행기가 읽기 전용으로 조회했습니다.
+- **공간 결과**: 기준점은 실제 원본 침선(Wreck) 도형 위의 점이며, 부산항 중심이나 입구를 의미하지 않습니다. 500m와 0.5km는 동일한 객체 3개, 2km 위험객체 조회는 5개를 반환했습니다. 기준점의 x·y를 각각 +0.0001° 이동하고 반경 0.1m로 조회한 경우는 정상 완료·0건이었습니다. 0m와 50,001m 요청은 실행하지 않았습니다. 정상 실행 12회 모두 독립 거리 SQL과 객체 집합이 일치하고 실행 승인 기록도 유효했습니다. 전문가 공간 정답(GOLD)은 아직 없습니다.
+- **환경·측정 문제**: 초기 Windows psycopg2 연결에서 추출 전에 `UnicodeDecodeError`가 발생했습니다. 컨테이너 내부 연결로는 성공했으며 원본 DB에 쓰기는 수행하지 않았습니다. 초기 연구용 측정 코드가 `COMPLETED`를 성공으로 집계하지 않는 문제를 수정하고 재실행했습니다. 초기 기록은 보존하되 최종 집계에서 제외했습니다.
 
-From repository root, keep the production source revision and dataset digest fixed. Do not overwrite prior raw runs.
+## 재현 방법
+
+저장소 루트에서 실행합니다. 운영 소스 버전과 데이터 해시를 고정하고 기존 원시 기록을 덮어쓰지 않습니다.
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest research/marine_geollm_scie/tests -q
 .\.venv\Scripts\python.exe -m research.marine_geollm_scie.fault_injection.pilot --output-dir research/marine_geollm_scie/runs/NEW_RUN/validator --repeats 3
 ```
 
-For offline semantic analysis use the recorded container image with `--network none`, repository mounted read-only, output separately writable, `GEOLLM_RESEARCH_GIT_SHA` set to the tested revision, and `python -m research.marine_geollm_scie.runners.semantic_pilot --output /out --repeats 3 --environment isolated_container_network_none`. No `.env` is passed. Host venv results are not equivalent when Kiwi is unavailable. The final runner automatically writes normalized rows and refuses existing artifacts; these output safeguards were added after the first pilot, whose raw component predictions remain unchanged.
+오프라인 언어 분석은 기록된 컨테이너 이미지에서 `--network none`을 적용하고 저장소를 읽기 전용으로, 출력 경로를 별도의 쓰기 가능 경로로 연결합니다. `GEOLLM_RESEARCH_GIT_SHA`에는 검증 대상 소스 버전을 지정합니다.
 
-`runners.launch_spatial --output-dir .../spatial` creates a new research-only container and fails if the fixed research container name already exists. To repeat against the preserved snapshot, use `--reuse-snapshot`, preserve the prior `spatial_rows.jsonl` under a distinct archival filename first, and keep the database unchanged. The runner checks the CSV digest and only permits target database `scie_pilot`. Source credentials are consumed from existing Docker configuration without printing or saving them. Existing production containers are not rebuilt or removed.
+```text
+python -m research.marine_geollm_scie.runners.semantic_pilot --output /out --repeats 3 --environment isolated_container_network_none
+```
 
-The finalizer reads only `validator/validator_rows.jsonl`, `semantic_isolated/semantic_rows.jsonl`, and `spatial/spatial_rows.jsonl`; completion summaries are required. Run `python -m research.marine_geollm_scie.runners.finalize --run-dir ...` after all three finish. It writes an explicit diagnostic-only `latest` bundle. Raw responses and 98MB source export remain under ignored `runs/`; reviewed summary artifacts and source are committed separately.
+`.env`는 전달하지 않습니다. Kiwi를 사용할 수 없는 호스트 결과와 격리환경 결과를 동등하게 취급하지 않습니다. 최종 실행기는 정규화된 기록을 자동 저장하고 기존 산출물이 있으면 실행을 거부합니다. 이 출력 보호 기능은 첫 파일럿 후 추가했으며 원시 예측은 변경하지 않았습니다.
 
-## Next execution order
+`runners.launch_spatial --output-dir .../spatial`은 연구 전용 컨테이너를 만들며 동일한 고정 이름의 컨테이너가 이미 있으면 실패합니다. 보존한 스냅샷을 재사용하려면 기존 `spatial_rows.jsonl`을 별도 이름으로 보존한 뒤 `--reuse-snapshot`을 사용합니다. DB 내용은 변경하지 않습니다. 실행기는 CSV 해시를 확인하고 대상 DB를 `scie_pilot`으로 제한합니다. 원본 접속 정보는 기존 Docker 설정에서 읽되 출력하거나 저장하지 않습니다. 운영 컨테이너는 재빌드하거나 삭제하지 않습니다.
 
-1. Separate fix-agent triage: reproduce suspected production errors; preserve this baseline, classify environment/model/measurement faults separately; regression-test confirmed fixes and rerun under a new run ID.
-2. Build B0–B3 and complete B4 self-generated-plan/full-P adapters with equal retrieval/tool/token budgets and full QEC/evidence receipts. Current reviewer-only B4 is not final B4.
-3. Independent expert semantic/QEC/spatial/evidence annotation and adjudication, family-level split and locked holdout; expand coverage before comparative accuracy claims.
-4. Isolated ablation and L1/L2/L3 fault coverage; actual bounded recovery with measured semantic drift.
-5. Frozen K=5 main experiments, paired/cluster-aware statistics, source-audited R1–R7/F1–F7 publication results.
+최종 집계기는 다음 세 입력과 완료 요약을 사용합니다.
 
-Operational P0 and Qwen calibration/QLoRA gates remain separate from these research tasks.
+- `validator/validator_rows.jsonl`
+- `semantic_isolated/semantic_rows.jsonl`
+- `spatial/spatial_rows.jsonl`
+
+세 실험이 끝나면 `python -m research.marine_geollm_scie.runners.finalize --run-dir ...`를 실행합니다. 진단용임을 명시한 `latest` 결과를 생성합니다. 원시 응답과 약 98MB 원본 추출 파일은 Git에서 제외한 `runs/`에 남기며, 검토한 요약·코드·문서를 별도로 커밋합니다.
+
+## 다음 실행 순서
+
+1. 별도 수정 에이전트가 운영 오류 후보를 재현합니다. 기준 실험을 보존하고 환경·모델·측정 오류를 구분하며, 확정된 수정은 회귀검사 후 새 실행 ID로 재검증합니다.
+2. 검색·도구·토큰 예산을 동일하게 맞춘 B0–B3, 계획 생성까지 포함한 B4, 전체 제안 파이프라인(P)의 실행 연결을 구현합니다. 전체 QEC와 근거·승인 기록을 보존합니다.
+3. 독립 전문가가 의미·QEC·공간·근거 정답을 작성하고 이견을 최종 판정합니다. 유사 질의군 단위로 데이터를 분리하고 독립 평가셋을 고정합니다. 비교 정확도 주장 전에 사례 범위를 확대합니다.
+4. 격리된 구성요소 제거 실험과 L1/L2/L3 오류 주입을 구현합니다. 제한된 횟수의 실제 복구와 복구 중 의미 변경을 측정합니다.
+5. 조건을 고정한 K=5 본실험, 사례별 대응·군집 구조를 고려한 통계검정, 출처를 검증한 R1–R7 표와 F1–F7 그림을 작성합니다.
+
+운영 P0와 Qwen 점수 보정·QLoRA 승인 조건은 논문 실험과 별도로 관리합니다.
