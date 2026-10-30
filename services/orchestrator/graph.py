@@ -2071,6 +2071,9 @@ def _requested_layer_distance_m(query: str, state: OrchestratorState) -> float |
 def _requested_layer_anchor_query(query: str, targets: list[dict]) -> str:
     """Extract only the location anchor from a requested spatial layer query."""
     text = re.sub(r"\s+", " ", str(query or "").strip())
+    matched, reference = slot_extractor.extract_english_radius_reference(text)
+    if matched:
+        return reference or ""
     # Correct the observed typo only for a source-backed place and place-name task.
     if '구근' in text and targets and all(t.get('layer_type') == 'marine_gazetteer' for t in targets):
         from services.spatial_analysis_agent.place_resolver import load_catalog
@@ -4875,6 +4878,11 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
     search_distance = 10000.0 if default_distance else requested_distance
 
     spatial_context = _spatial_context_dict(state)
+    english_reference, _ = slot_extractor.extract_english_radius_reference(str(state.get("query") or primary_query))
+    if english_reference and anchor_query and not any(spatial_context.get(key) for key in ("base_location", "location_text", "geometry", "place_id")):
+        # The parsed reference is a complete name, not free text in which a
+        # resolver may select the only known substring of several places.
+        spatial_context = {**spatial_context, "location_text": anchor_query}
     if not anchor_query and not spatial_context.get("geometry") and not spatial_context.get("place_id"):
         location = {"status": "NEEDS_CLARIFICATION", "error_code": "LOCATION_REQUIRED", "location_candidates": [],
                     "summary": "검색할 대상은 확인했지만 기준 위치가 없습니다. 지명이나 지도 기준점과 검색 반경을 지정해 주세요."}

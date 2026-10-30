@@ -1,0 +1,6 @@
+PILOT — NOT FINAL PAPER RESULT
+
+| cohort | method | executable_rows | successful_execution_rows | distinct_cases | equivalence_groups | approval_basis | ESR | SCR | CGE | SSFR | execution_correctness_gap | missing_execution | missing_spatial | status | operational_execution_measured | operational_execution_true | operational_scope_note |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| LIVE_Q4_AFTER_LOCATION_FIX | P_current_production_live | 3 | 3 | 3 | 1 | USER_APPROVED_AI_ASSISTED_NOT_INDEPENDENT_EXPERT | 1.0 | 1.0 | 1.0 | 0.0 | 0.0 | 0 | 0 | PILOT_ONLY | 3 | 3 | 명시적 실행 관측과 사용자 승인 공간 참조 대조를 구분; 독립 전문가 정답 또는 full pipeline 성능으로 간주하지 않음 |
+| LIVE_Q4_BEFORE_LOCATION_FIX | P_current_production_live | 3 | 2 | 3 | 1 | USER_APPROVED_AI_ASSISTED_NOT_INDEPENDENT_EXPERT | 0.6666666666666666 | 0.6666666666666666 | 1.0 | 0.0 | 0.0 | 0 | 0 | PILOT_ONLY | 3 | 2 | 명시적 실행 관측과 사용자 승인 공간 참조 대조를 구분; 독립 전문가 정답 또는 full pipeline 성능으로 간주하지 않음 |

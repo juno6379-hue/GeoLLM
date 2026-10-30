@@ -1,5 +1,16 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-10-30 RQ 병렬 실험·사용자 승인 v3·공간 정답 검산
+
+- 사용자의 논문 실험 우선순위에 따라 승인/프로토콜, RQ 평가, 별도 운영 수정 에이전트로 병렬 수행했다. [최신 인계](../../research/marine_geollm_scie/protocol/rq_v2_execution_20261030_KR.md), [RQ 결과](../../research/marine_geollm_scie/results/latest/reports/final_results_summary.md), [18개 승인 현황](../../research/marine_geollm_scie/benchmark/approved_v3/승인현황_KR.md)을 먼저 확인한다. 아래 이전 DRAFT 0건 표기는 승인 이전 이력이다.
+- 사용자 명시 승인에 따라 새 approved_v3 참조 18건에 human_approval=true/GOLD를 기록했다. 원본 AI DRAFT와 XLSX는 보존했다. 독립 전문가 검수 0·holdout 0이며 AI 기원과 사용자 승인 이력을 분리한다. QEC 부분 슬롯 8건, 전체 의미/근거 집합 미확정; 사용자 승인이 미확정 필드를 자동 완성하지 않는다.
+- Q4는 승인받은 해양수산부 독도 동도 기준점·2022 해양지명 CSV·5000m 이하로 고정했다. 원본 1,146행을 파싱하고 Vincenty와 연구 PostGIS geography로 전 행 검산: 포함 집합 일치, 최대 거리 차이 0.000004477m. 원본 ID44–54의 11개 지명이 세 동등표현의 동일 정답이며 독립 공간 표본은 1그룹이다. 최초 파서 45행 실패 기록도 보존했다. 다른 공간 6사례는 AOI/coverage/경계 미확정이며 부산권 Wreck snapshot의 0건을 독도 정답으로 전용하지 않는다.
+- 실제 격리 graph smoke 6건에서 5건은 원천/문서 binding 등의 차단, 1건은 공간 0건 완료였다. planning90행·semantic54행·fault42행·spatial18행과 서로 다른 실행 범위로 보존했다. 계획 JSON·GRAPH_RETURNED·SQL 정합성을 전체 의미/공간 정확도로 합치지 않는다. shadow calibration UNFITTED·QLoRA DEFER 정책은 그대로다.
+- 실제 API에서 복합 조회의 속성 설명 누락을 COMPLETED로 반환하던 오류를 수정했다. 설명 근거가 없으면 PARTIAL이며 공간 SUCCESS_EMPTY는 별도 보존한다. 최종 정상/부정 API 7건에서 계약 상태 확인. S-101 FC 설명 생성기 자체는 아직 미구현이다. 영어 거리 뒤 기준점 추출은 실제 fast path와 공통 helper로 연결했고 전체 기준명을 exact 계약으로 전달하여 복수 기준점의 첫 지명만 실행하는 오류도 수정했다. 최종 API 8관측에서 독도/BUSAN HANG 완료, 모호·누락·미등록·범위 초과 확인 요청을 구분했다. 중간 실패 run은 삭제하지 않는다.
+- 최종 연구 테스트 88 passed, JS 검수자료 테스트 2 passed, 운영 수정 단위 33 passed. Q4 원문 3질의의 수정 후 실제 API는 모두 11개 원본 ID 집합 일치, 최대 거리 오차 0.004921m 미만; 관측 전후 소스 hash 동일. 수정 전 2/3에서 수정 후 3/3으로 바뀌었지만 하나의 개발 지리조건이며 holdout/모델우열이 아니다. 최종 raw는 outputs/scie_q4_live_20261030_after_location_fix/, 채점은 outputs/scie_q4_score_20261030_after_fix/에 보존했다. runtime 원시 기록은 ignored runs/outputs에, 코드·승인 참조·요약 표/그림은 연구 디렉터리에 분리한다. 운영 코드에서 연구/GOLD import 없음.
+- 다음 논문 순서: 최신 manifest·Q4 원시 기록 확인 → 남은 semantic/QEC/evidence와 공간 AOI·coverage 계약 확정 → 실행형 B3/full P/P0/P1/H와 bounded recovery/ablation → 미노출 holdout·독립 검수·K5/군집 통계. 코드 수정 후 재실행은 runtime recovery 실험이 아니다. 운영 P0 우선순위는 아래 기존 로드맵을 따른다.
+- 재현: `.venv/Scripts/python.exe -m pytest research/marine_geollm_scie/tests -q`; `runners.q4_live_observation`, `runners.score_q4_observations`, `runners.rq_results`의 명령과 원시 run 위치는 최신 인계를 따른다. 기존 출력 덮어쓰기 금지.
+
 ## 2026-10-30 논문 검수자료 v2 반영
 
 - 사용자 지정 A Dataset근거 v2/B v2/합의수정본 v2를 찾았고, 합의문 A/B SHA256·실제 파일 및 18개 원문/ID 일치를 검증했다. [반영 결과와 다음 순서](../../research/marine_geollm_scie/protocol/review_v2_integration_KR.md). 18개 모두 AI DRAFT/human_approval=false 유지, human GOLD 0. B의 요약 셀 대신 전체 필드도 보존했다.

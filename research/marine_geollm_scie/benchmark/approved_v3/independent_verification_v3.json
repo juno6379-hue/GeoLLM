@@ -1,0 +1,19 @@
+{
+  "checked_at_utc": "2026-10-30T03:56:40.617506+00:00",
+  "reference_sha256": "a69cda7558eca74c8d869de6fc80653c51541ab2cc4a7cb628e3fd065b27558c",
+  "reference_rows": 18,
+  "approved_ai_assisted": 18,
+  "independent_expert": 0,
+  "qec_partial_cases": 8,
+  "spatial_cases": 3,
+  "gold_audit_sha256": "2812e33d9989c17e9b7041f0a6e0186ddbfae3d6f010b8b0bf9cc8d3b439990e",
+  "original_workbook_hashes_match": true,
+  "source_reference_hash_match": true,
+  "oracle_hashes_match": true,
+  "generator_snapshot_lineending_repair": {
+    "before_sha256": "f97d369d13c802e714359530ee2980eb68e0f066524a1eab10f62649309af4e3",
+    "after_sha256": "a4079cb89ca796c53ab44f5f7a19cddff08000a89e046684e15214466fa62203",
+    "reason": "Windows CRLF introduced by snapshot write_text; restored original LF bytes matching existing manifest.code_sha256"
+  },
+  "evaluation_reference_and_approval_manifest_changed": false
+}

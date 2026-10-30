@@ -1,0 +1,12 @@
+{
+  "reviewer": "AI_REVIEWER_B",
+  "review_kind": "AI_PRE_REVIEW",
+  "human_approval": false,
+  "rows": 18,
+  "blank_source_sha256": "4a36bf7d199b8d26946bff0d5c496768adb9ffff9605ad95a4d576966d04b4b1",
+  "output_sha256": "d4f2d73c0236d2a38c3bc2169278a04cc23df9bc7dbe276d262e6595a2f34f8e",
+  "fc_parsed_sha256": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+  "fc_xml_hash_verified": true,
+  "independence": "A answers/model predictions not read; only B blank packet/query/FC/source anchor read",
+  "limitations": "현재 대화의 시스템 개발 맥락은 알고 있으므로 인간 검수자 간 독립성 또는 통계적 blinded human review로 주장하지 않음"
+}

@@ -1,0 +1,55 @@
+{
+  "schema_version": "user_approval_reference.v3",
+  "recorded_at_utc": "2026-10-30T03:45:41.306722+00:00",
+  "approval_event": {
+    "explicit_user_approval": true,
+    "verbatim_user_request": "DRAFT·human_approval=false  를 True로 변경해서 진행하자...공간 정답 객체 ID도 넣어줘...",
+    "event_timestamp": null,
+    "client_date": "2026-10-30",
+    "timezone": "Asia/Seoul",
+    "approval_source": "Explicit user message in current Codex chat",
+    "spatial_scope_approval": {
+      "verbatim_question": "독도 공간 정답은 현재 시스템에 등록된 해양수산부 ‘독도 동도 기준점’을 사용하고, Q4는 제공된 2022 해양지명 CSV에서 5km 이내 원본 ID를 계산하는 조건으로 고정할까요? 승인 전에도 이 조건의 후보 ID와 거리 검산은 진행하겠습니다.",
+      "verbatim_answer": "동도 기준점·2022 CSV로 고정",
+      "event_timestamp": null
+    }
+  },
+  "event_timestamp_provided": false,
+  "source_path": "D:\\An_GeoLLM\\outputs\\scie_review_v2_20261030\\annotations_DRAFT.jsonl",
+  "source_sha256": "9653b9605147f955871126d7e2e49f0e9c72f009a44a52391049afd0afa415bd",
+  "source_manifest_sha256": "f65f9c0bae12a5ace5fadafc1eb0fcc314016563109c3ce7a78ae6c687fbdd45",
+  "original_workbooks": [
+    {
+      "path": "D:\\An_GeoLLM\\outputs\\scie_annotation_ai_prefill_20261030\\합의검토_18사례_AI합의수정본_v2.xlsx",
+      "sha256": "97ee97567ddf224a65ed592c4f09bb4cfb47e60700d656984b2a76ad3d0c95c3"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\outputs\\scie_annotation_ai_prefill_20261030\\검수자A_18사례_AI사전검토_Dataset근거_v2.xlsx",
+      "sha256": "298e56ee5f401620c29d18908c031da467b362ae76326978ef8ecda1f1014a61"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\outputs\\scie_annotation_ai_prefill_20261030\\검수자B_18사례_AI사전검토_v2.xlsx",
+      "sha256": "feb4b38125c9ae17af790ef70b18bdd0610b1553db4d8705dd3ebabca4d8db9b"
+    }
+  ],
+  "benchmark_sha256": "e0a98769f5bc0375272aa976bba4cb97bdf2a2c8a0e3c43c20910881935023e9",
+  "code_sha256": "a4079cb89ca796c53ab44f5f7a19cddff08000a89e046684e15214466fa62203",
+  "reference_path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\approved_v3\\evaluation_references.jsonl",
+  "reference_sha256": "a69cda7558eca74c8d869de6fc80653c51541ab2cc4a7cb628e3fd065b27558c",
+  "cases": 18,
+  "human_approval": true,
+  "review_kind": "USER_APPROVED_AI_ASSISTED",
+  "independent_expert_review": false,
+  "two_reviewers": false,
+  "holdout_eligible": false,
+  "spatial_cases_with_verified_oracle": 3,
+  "spatial_oracle": {
+    "path": "D:\\An_GeoLLM\\outputs\\scie_dokdo_reference_20261030_v2\\spatial_reference.json",
+    "sha256": "cf7e407ec904661093a187e15391b42bc668a6e6ef5f75ead3f96c3f495cb9fb",
+    "all_distances_path": "D:\\An_GeoLLM\\outputs\\scie_dokdo_reference_20261030_v2\\all_distances.jsonl",
+    "all_distances_sha256": "a26e347dd6405046f9ac96987177a0d03eb03a69e12f55d4b977e6e55466570e",
+    "source_csv_sha256": "bbc3f1c347f6048b0befdf5102959078ffc29c22cdc4412a98586e76cddb0464"
+  },
+  "original_files_modified": false,
+  "model_calls": 0
+}

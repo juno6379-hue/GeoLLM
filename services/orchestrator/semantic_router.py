@@ -221,7 +221,33 @@ class DynamicSlotExtractor:
 
         return None
 
+    @staticmethod
+    def extract_english_radius_reference(query: str) -> tuple[bool, Optional[str]]:
+        # English radius syntax puts the reference after the distance. Do not
+        # bind the command prefix ("Find ... within") as a place name. This is
+        # only a textual candidate; the place resolver still verifies sources.
+        english_radius = list(re.finditer(
+            r"\bwithin\s+[+-]?\d+(?:\.\d+)?\s*(?:km|kilomet(?:er|re)s?|m|met(?:er|re)s?)\b",
+            query, flags=re.IGNORECASE))
+        if english_radius:
+            if len(english_radius) != 1:
+                return True, None
+            suffix = query[english_radius[0].end():]
+            reference = re.match(r"\s+of\b\s*(.*)$", suffix, flags=re.IGNORECASE)
+            if not reference:
+                return True, None
+            location = re.split(
+                r"\s+(?:and|then)\s+(?:explain|describe|show|list|find|compare)\b",
+                reference.group(1), maxsplit=1, flags=re.IGNORECASE)[0].strip().rstrip('.!?').strip()
+            # Keep multiple place mentions intact for ambiguity resolution;
+            # never select the first place or manufacture missing geometry.
+            return True, location or None
+        return False, None
+
     def extract_location_before_distance(self, query: str) -> Optional[str]:
+        matched, reference = self.extract_english_radius_reference(query)
+        if matched:
+            return reference
         pattern = r"(.+?)\s*\d+(?:\.\d+)?\s*(?:km|킬로|키로|m|미터)\s*(?:이내|내|안|반경)?"
 
         match = re.search(pattern, query, flags=re.IGNORECASE)

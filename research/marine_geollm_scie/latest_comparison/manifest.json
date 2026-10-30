@@ -1,0 +1,719 @@
+{
+  "run_id": "20261030_comparison_v2b",
+  "started_at": "2026-10-30T01:16:21.376609+00:00",
+  "status": "COMPLETED",
+  "publication_status": "NOT_READY",
+  "scope": "B0-B4 observable planning only; no GIS execution",
+  "git_commit_sha": "9131f96fcbe01c824393b932f037717bd64bac99",
+  "git_dirty": true,
+  "model_metadata": {
+    "name": "qwen2.5:1.5b",
+    "model": "qwen2.5:1.5b",
+    "modified_at": "2026-09-25T18:24:24.6250777+09:00",
+    "size": 986061892,
+    "digest": "65ec06548149b04c096a120e4a6da9d4017ea809c91734ea5631e89f96ddc57b",
+    "details": {
+      "parent_model": "",
+      "format": "gguf",
+      "family": "qwen2",
+      "families": [
+        "qwen2"
+      ],
+      "parameter_size": "1.5B",
+      "quantization_level": "Q4_K_M",
+      "context_length": 32768,
+      "embedding_length": 1536,
+      "runner": "ggml"
+    },
+    "capabilities": [
+      "completion",
+      "tools"
+    ]
+  },
+  "temperature": 0.2,
+  "repeats": 3,
+  "random_seeds": [
+    42,
+    43,
+    44
+  ],
+  "generation_budget": {
+    "per_condition_total_max_tokens": 768,
+    "B4_initial": 384,
+    "B4_review": 384,
+    "other_single_call": 768
+  },
+  "context_tokens": 8192,
+  "evidence_max_chars": 6000,
+  "timeout_seconds_per_call": 180,
+  "warmup": "none; initial load latency and failures retained",
+  "schedule": [
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B0",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B1",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B2",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B3",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B4",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B1",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B2",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B3",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B4",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B0",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B2",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B3",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B4",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B0",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B1",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q4_01",
+      "method": "B3",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q4_01",
+      "method": "B4",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q4_01",
+      "method": "B0",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q4_01",
+      "method": "B1",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q4_01",
+      "method": "B2",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B4",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B0",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B1",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B2",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B3",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B0",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B1",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B2",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B3",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B4",
+      "repeat": 0,
+      "seed": 42
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B1",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B2",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B3",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B4",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B0",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B2",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B3",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B4",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B0",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B1",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B3",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B4",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B0",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B1",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B2",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q4_01",
+      "method": "B4",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q4_01",
+      "method": "B0",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q4_01",
+      "method": "B1",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q4_01",
+      "method": "B2",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q4_01",
+      "method": "B3",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B0",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B1",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B2",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B3",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B4",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B1",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B2",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B3",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B4",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B0",
+      "repeat": 1,
+      "seed": 43
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B2",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B3",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B4",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B0",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B1",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B3",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B4",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B0",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B1",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B2",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B4",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B0",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B1",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B2",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B3",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q4_01",
+      "method": "B0",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q4_01",
+      "method": "B1",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q4_01",
+      "method": "B2",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q4_01",
+      "method": "B3",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q4_01",
+      "method": "B4",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B1",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B2",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B3",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B4",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B0",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B2",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B3",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B4",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B0",
+      "repeat": 2,
+      "seed": 44
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B1",
+      "repeat": 2,
+      "seed": 44
+    }
+  ],
+  "benchmark_sha256": "e0a98769f5bc0375272aa976bba4cb97bdf2a2c8a0e3c43c20910881935023e9",
+  "source_sha256": {
+    "research\\marine_geollm_scie\\baselines\\self_reviewer.py": "d379dfe764931231df833fd4d7c7a6b3a2302f060ceddfa37caa36b9cf1f776c",
+    "research\\marine_geollm_scie\\baselines\\evidence_packets.py": "71e2af071bfc41b48510b8362469eb114445578026cbdcd93ed91b8d40ecc032",
+    "research\\marine_geollm_scie\\baselines\\production_adapter.py": "d14f3414ee8b9a06e95bf92bc4051e7352cbd1218214f85e46f5f61d17e15299",
+    "research\\marine_geollm_scie\\baselines\\plan_comparison.py": "a7d40125404207ccc2f6e37110920745a24a95d57c04d3013aa6d0a2bf32d01e",
+    "research\\marine_geollm_scie\\runners\\compare_plans.py": "eab43d6f6fcc26698d27411d15ec2e5dd1ae687cb9fb3ef20885e2cf54f19cc9",
+    "shared\\schemas\\agent.py": "05f97785c1942eb2782d2b037bbd08fb6a8e7824892067ecde6da2fd586188c4"
+  },
+  "packet_file_sha256": "1a583ce4e1ddd0931dd68b93693bea7e212436487d1b5fef192151fb9c454bcc",
+  "plan_output_schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "action",
+      "intent",
+      "target_features",
+      "attributes",
+      "spatial_relation",
+      "location_text",
+      "radius_m",
+      "crs",
+      "tool_calls",
+      "evidence_refs",
+      "missing_inputs",
+      "answer"
+    ],
+    "properties": {
+      "action": {
+        "enum": [
+          "explain",
+          "search",
+          "clarify",
+          "unsupported"
+        ]
+      },
+      "intent": {
+        "type": "string"
+      },
+      "target_features": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "attributes": {
+        "type": "array",
+        "items": {
+          "type": "object"
+        }
+      },
+      "spatial_relation": {
+        "enum": [
+          "none",
+          "dwithin",
+          "within",
+          "intersects",
+          "nearest",
+          "adjacent"
+        ]
+      },
+      "location_text": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "radius_m": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "crs": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "tool_calls": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "tool_id",
+            "arguments"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "tool_id": {
+              "type": "string"
+            },
+            "arguments": {
+              "type": "object"
+            }
+          }
+        }
+      },
+      "evidence_refs": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "missing_inputs": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "answer": {
+        "type": "string"
+      }
+    }
+  },
+  "human_gold_cases": 0,
+  "python_version": "3.12.7",
+  "limitations": [
+    "Convenience pilot subset, not representative benchmark",
+    "No semantic gold or execution accuracy",
+    "B3 is typed tool planning, not an executing tool agent",
+    "B4 self-review does not grant execution authority",
+    "P condition uses a separate unchanged production adapter; its conditions must be reported separately"
+  ],
+  "ended_at": "2026-10-30T02:43:10.499846+00:00",
+  "rows": 90,
+  "rows_sha256": "a03cfd12862621dcfe3e89c75c2aa1254a9300e5e7400dc936befe384a85b028"
+}

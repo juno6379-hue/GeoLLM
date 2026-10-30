@@ -1,0 +1,44 @@
+{
+  "scientific_figures": [
+    {
+      "name": "RQ1_conditions",
+      "status": "NOT_READY_PLACEHOLDER_ONLY",
+      "reason": "complete evaluation contracts and controlled full-profile runs missing; available user-approved Q4 measurements are shown separately"
+    },
+    {
+      "name": "RQ2_error_matrix",
+      "status": "NOT_READY_PLACEHOLDER_ONLY",
+      "reason": "complete evaluation contracts and controlled full-profile runs missing; available user-approved Q4 measurements are shown separately"
+    },
+    {
+      "name": "RQ3_execution_spatial_gap",
+      "status": "NOT_READY_PLACEHOLDER_ONLY",
+      "reason": "complete evaluation contracts and controlled full-profile runs missing; available user-approved Q4 measurements are shown separately"
+    },
+    {
+      "name": "RQ4_recovery",
+      "status": "NOT_READY_PLACEHOLDER_ONLY",
+      "reason": "complete evaluation contracts and controlled full-profile runs missing; available user-approved Q4 measurements are shown separately"
+    },
+    {
+      "name": "RQ5_reliability_cost",
+      "status": "NOT_READY_PLACEHOLDER_ONLY",
+      "reason": "complete evaluation contracts and controlled full-profile runs missing; available user-approved Q4 measurements are shown separately"
+    },
+    {
+      "name": "ablation_failure_types",
+      "status": "NOT_READY_PLACEHOLDER_ONLY",
+      "reason": "complete evaluation contracts and controlled full-profile runs missing; available user-approved Q4 measurements are shown separately"
+    }
+  ],
+  "observational_figures": [
+    {
+      "name": "D1_observed_cost.png",
+      "status": "ACTUAL_MEASURED_COST_ONLY"
+    },
+    {
+      "name": "D2_internal_spatial.png",
+      "status": "USER_APPROVED_INTERNAL_COMPARISON_NOT_HOLDOUT"
+    }
+  ]
+}

@@ -1,0 +1,2298 @@
+{
+  "run_id": "20261030_rq_v2_reanalysis_04_userapproved_before_after",
+  "analysis_recorded_at": "2026-10-30T04:09:34.207798+00:00",
+  "analysis_only": true,
+  "status": "ANALYSIS_ARTIFACTS_COMPLETE_SCIENTIFIC_RESULTS_NOT_READY",
+  "scientific_completion": false,
+  "git_sha_at_analysis": "e0be420b9abdf42f0a3d7c4a2345493ac32490da",
+  "git_dirty_at_analysis": true,
+  "source_runs": [
+    {
+      "cohort": "PLAN_ONLY",
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\runs\\20261030_comparison_v2b\\comparison_rows.jsonl",
+      "sha256": "a03cfd12862621dcfe3e89c75c2aa1254a9300e5e7400dc936befe384a85b028",
+      "rows": 90,
+      "recorded_metadata": [
+        {
+          "path": "research\\marine_geollm_scie\\runs\\20261030_comparison_v2b\\manifest.json",
+          "sha256": "86af6c48379574b5b7aa171a89166edb80f33d7f83715922bdeb5e202e821946",
+          "recorded": {
+            "run_id": "20261030_comparison_v2b",
+            "started_at": "2026-10-30T01:16:21.376609+00:00",
+            "status": "COMPLETED",
+            "publication_status": "NOT_READY",
+            "scope": "B0-B4 observable planning only; no GIS execution",
+            "git_commit_sha": "9131f96fcbe01c824393b932f037717bd64bac99",
+            "git_dirty": true,
+            "model_metadata": {
+              "name": "qwen2.5:1.5b",
+              "model": "qwen2.5:1.5b",
+              "modified_at": "2026-09-25T18:24:24.6250777+09:00",
+              "size": 986061892,
+              "digest": "65ec06548149b04c096a120e4a6da9d4017ea809c91734ea5631e89f96ddc57b",
+              "details": {
+                "parent_model": "",
+                "format": "gguf",
+                "family": "qwen2",
+                "families": [
+                  "qwen2"
+                ],
+                "parameter_size": "1.5B",
+                "quantization_level": "Q4_K_M",
+                "context_length": 32768,
+                "embedding_length": 1536,
+                "runner": "ggml"
+              },
+              "capabilities": [
+                "completion",
+                "tools"
+              ]
+            },
+            "temperature": 0.2,
+            "repeats": 3,
+            "random_seeds": [
+              42,
+              43,
+              44
+            ],
+            "generation_budget": {
+              "per_condition_total_max_tokens": 768,
+              "B4_initial": 384,
+              "B4_review": 384,
+              "other_single_call": 768
+            },
+            "context_tokens": 8192,
+            "evidence_max_chars": 6000,
+            "timeout_seconds_per_call": 180,
+            "warmup": "none; initial load latency and failures retained",
+            "schedule": [
+              {
+                "case_id": "PILOT_Q1_03",
+                "method": "B0",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q1_03",
+                "method": "B1",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q1_03",
+                "method": "B2",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q1_03",
+                "method": "B3",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q1_03",
+                "method": "B4",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q2_03",
+                "method": "B1",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q2_03",
+                "method": "B2",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q2_03",
+                "method": "B3",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q2_03",
+                "method": "B4",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q2_03",
+                "method": "B0",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q3_03",
+                "method": "B2",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q3_03",
+                "method": "B3",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q3_03",
+                "method": "B4",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q3_03",
+                "method": "B0",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q3_03",
+                "method": "B1",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q4_01",
+                "method": "B3",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q4_01",
+                "method": "B4",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q4_01",
+                "method": "B0",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q4_01",
+                "method": "B1",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q4_01",
+                "method": "B2",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q5_03",
+                "method": "B4",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q5_03",
+                "method": "B0",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q5_03",
+                "method": "B1",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q5_03",
+                "method": "B2",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q5_03",
+                "method": "B3",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q6_03",
+                "method": "B0",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q6_03",
+                "method": "B1",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q6_03",
+                "method": "B2",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q6_03",
+                "method": "B3",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q6_03",
+                "method": "B4",
+                "repeat": 0,
+                "seed": 42
+              },
+              {
+                "case_id": "PILOT_Q1_03",
+                "method": "B1",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q1_03",
+                "method": "B2",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q1_03",
+                "method": "B3",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q1_03",
+                "method": "B4",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q1_03",
+                "method": "B0",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q2_03",
+                "method": "B2",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q2_03",
+                "method": "B3",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q2_03",
+                "method": "B4",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q2_03",
+                "method": "B0",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q2_03",
+                "method": "B1",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q3_03",
+                "method": "B3",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q3_03",
+                "method": "B4",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q3_03",
+                "method": "B0",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q3_03",
+                "method": "B1",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q3_03",
+                "method": "B2",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q4_01",
+                "method": "B4",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q4_01",
+                "method": "B0",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q4_01",
+                "method": "B1",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q4_01",
+                "method": "B2",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q4_01",
+                "method": "B3",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q5_03",
+                "method": "B0",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q5_03",
+                "method": "B1",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q5_03",
+                "method": "B2",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q5_03",
+                "method": "B3",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q5_03",
+                "method": "B4",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q6_03",
+                "method": "B1",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q6_03",
+                "method": "B2",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q6_03",
+                "method": "B3",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q6_03",
+                "method": "B4",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q6_03",
+                "method": "B0",
+                "repeat": 1,
+                "seed": 43
+              },
+              {
+                "case_id": "PILOT_Q1_03",
+                "method": "B2",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q1_03",
+                "method": "B3",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q1_03",
+                "method": "B4",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q1_03",
+                "method": "B0",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q1_03",
+                "method": "B1",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q2_03",
+                "method": "B3",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q2_03",
+                "method": "B4",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q2_03",
+                "method": "B0",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q2_03",
+                "method": "B1",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q2_03",
+                "method": "B2",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q3_03",
+                "method": "B4",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q3_03",
+                "method": "B0",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q3_03",
+                "method": "B1",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q3_03",
+                "method": "B2",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q3_03",
+                "method": "B3",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q4_01",
+                "method": "B0",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q4_01",
+                "method": "B1",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q4_01",
+                "method": "B2",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q4_01",
+                "method": "B3",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q4_01",
+                "method": "B4",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q5_03",
+                "method": "B1",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q5_03",
+                "method": "B2",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q5_03",
+                "method": "B3",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q5_03",
+                "method": "B4",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q5_03",
+                "method": "B0",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q6_03",
+                "method": "B2",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q6_03",
+                "method": "B3",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q6_03",
+                "method": "B4",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q6_03",
+                "method": "B0",
+                "repeat": 2,
+                "seed": 44
+              },
+              {
+                "case_id": "PILOT_Q6_03",
+                "method": "B1",
+                "repeat": 2,
+                "seed": 44
+              }
+            ],
+            "benchmark_sha256": "e0a98769f5bc0375272aa976bba4cb97bdf2a2c8a0e3c43c20910881935023e9",
+            "source_sha256": {
+              "research\\marine_geollm_scie\\baselines\\self_reviewer.py": "d379dfe764931231df833fd4d7c7a6b3a2302f060ceddfa37caa36b9cf1f776c",
+              "research\\marine_geollm_scie\\baselines\\evidence_packets.py": "71e2af071bfc41b48510b8362469eb114445578026cbdcd93ed91b8d40ecc032",
+              "research\\marine_geollm_scie\\baselines\\production_adapter.py": "d14f3414ee8b9a06e95bf92bc4051e7352cbd1218214f85e46f5f61d17e15299",
+              "research\\marine_geollm_scie\\baselines\\plan_comparison.py": "a7d40125404207ccc2f6e37110920745a24a95d57c04d3013aa6d0a2bf32d01e",
+              "research\\marine_geollm_scie\\runners\\compare_plans.py": "eab43d6f6fcc26698d27411d15ec2e5dd1ae687cb9fb3ef20885e2cf54f19cc9",
+              "shared\\schemas\\agent.py": "05f97785c1942eb2782d2b037bbd08fb6a8e7824892067ecde6da2fd586188c4"
+            },
+            "packet_file_sha256": "1a583ce4e1ddd0931dd68b93693bea7e212436487d1b5fef192151fb9c454bcc",
+            "plan_output_schema": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "action",
+                "intent",
+                "target_features",
+                "attributes",
+                "spatial_relation",
+                "location_text",
+                "radius_m",
+                "crs",
+                "tool_calls",
+                "evidence_refs",
+                "missing_inputs",
+                "answer"
+              ],
+              "properties": {
+                "action": {
+                  "enum": [
+                    "explain",
+                    "search",
+                    "clarify",
+                    "unsupported"
+                  ]
+                },
+                "intent": {
+                  "type": "string"
+                },
+                "target_features": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "attributes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "spatial_relation": {
+                  "enum": [
+                    "none",
+                    "dwithin",
+                    "within",
+                    "intersects",
+                    "nearest",
+                    "adjacent"
+                  ]
+                },
+                "location_text": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "radius_m": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "crs": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "tool_calls": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "tool_id",
+                      "arguments"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "tool_id": {
+                        "type": "string"
+                      },
+                      "arguments": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                },
+                "evidence_refs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "missing_inputs": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "answer": {
+                  "type": "string"
+                }
+              }
+            },
+            "human_gold_cases": 0,
+            "python_version": "3.12.7",
+            "limitations": [
+              "Convenience pilot subset, not representative benchmark",
+              "No semantic gold or execution accuracy",
+              "B3 is typed tool planning, not an executing tool agent",
+              "B4 self-review does not grant execution authority",
+              "P condition uses a separate unchanged production adapter; its conditions must be reported separately"
+            ],
+            "ended_at": "2026-10-30T02:43:10.499846+00:00",
+            "rows": 90,
+            "rows_sha256": "a03cfd12862621dcfe3e89c75c2aa1254a9300e5e7400dc936befe384a85b028"
+          }
+        }
+      ]
+    },
+    {
+      "cohort": "SEMANTIC_COMPONENT",
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\runs\\20261029_pilot\\semantic_isolated\\semantic_rows.jsonl",
+      "sha256": "5c156e7fe77b9feedf6f69dd91ecc8841301d511cc80a844e4477209dde3bbaa",
+      "rows": 54,
+      "recorded_metadata": [
+        {
+          "path": "research\\marine_geollm_scie\\runs\\20261029_pilot\\semantic_isolated\\manifest.json",
+          "sha256": "239c32026dfdca36cc26a0f56a95142ca6e10ff38df6d1081df2a8a869b3da69",
+          "recorded": {
+            "timestamp": "2026-10-29T10:23:25.904464+00:00",
+            "experiment": "production_linguistic_evidence_component",
+            "not_full_proposed": true,
+            "repeats": 3,
+            "unique_cases": 18,
+            "statistical_units": "case/equivalence_cluster; deterministic repeats not independent",
+            "model_backend": null,
+            "ollama_used": false,
+            "database_used": false,
+            "benchmark_sha256": "e0a98769f5bc0375272aa976bba4cb97bdf2a2c8a0e3c43c20910881935023e9",
+            "source_hashes": {
+              "services/orchestrator/korean_query_analysis.py": "bcf8c76a7608287241ea95b1d1642fe6c5d4b88a9514555b082bad414c82dd9a",
+              "services/orchestrator/marine_s101_mapping.py": "f8b28f5c0861f83bf7fb77c14ff7c257c02ccb2f090b9ba1c0a37f8a3b14ae66",
+              "services/orchestrator/marine_terminology.py": "f5fcffc2bc27f3b3027f37eb901bb4a068ec15c8445ed60fc2a3133bb645e70e",
+              "services/orchestrator/slot_evidence.py": "241d70688854949743f45522f0e7db91b8178629d5ed685e617edaae9f72e51e",
+              "data/marine_s101_bindings.json": "3c28ee484919150d43ba2556e6f95eb71639a1789b49524c0f2a5705dca53bec",
+              "data/mof_terminology_relations.json": "38c802f24d837f4ea4d5fd1d0bf1ecf15e09457aedb4245b4e6356c1eee5a9d9",
+              "data/s101_feature_catalogue_v2_parsed.json": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37"
+            },
+            "python_version": "3.12.14",
+            "package_versions": {
+              "pydantic": "2.13.5",
+              "PyYAML": "6.0.3",
+              "kiwipiepy": "0.23.2",
+              "kiwipiepy_model": "0.23.0"
+            },
+            "kiwi_enabled_environment": "true",
+            "git_commit_sha": "6aa70271a37a7382b2f0217f746a384e41759879",
+            "gold_count": 0,
+            "isolation": {
+              "network": "none",
+              "repo_mount": "read_only",
+              "env_file_loaded": false,
+              "image": "docker-backend",
+              "output_mount": "/out"
+            },
+            "runner_sha256": "d41049762e3d5977f8dd9fca334580218a98a8eea0e3392d968051d135de94a3"
+          }
+        },
+        {
+          "path": "research\\marine_geollm_scie\\runs\\20261029_pilot\\semantic_isolated\\summary.json",
+          "sha256": "ab06678106e3307792588e8a676a6e3b8428be434297cb5e5c0cd6e154e8c2ac",
+          "recorded": {
+            "rows": 54,
+            "unique_cases": 18,
+            "status_counts": {
+              "COMPONENT_RETURNED": 54
+            },
+            "analyzer_status_counts": {
+              "AVAILABLE": 54
+            },
+            "cases_with_repeat_disagreement": [],
+            "rows_with_source_mappings": 0,
+            "gold_count": 0,
+            "accuracy": null,
+            "limitation": "Offline linguistic evidence/source-backed lexical subset only; no routing, QEC, validator, GIS, Qwen or final answers. Zero matches do not mean no S-101 grounding exists elsewhere."
+          }
+        }
+      ]
+    },
+    {
+      "cohort": "FAULT_FIXTURE",
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\runs\\20261029_pilot\\validator\\validator_rows.jsonl",
+      "sha256": "d5293529d1d8a6a5a4b0a90a13cf0ee57d32693062571bc2225eba74f72c67ad",
+      "rows": 42,
+      "recorded_metadata": []
+    },
+    {
+      "cohort": "SPATIAL_COMPONENT",
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\runs\\20261029_pilot\\spatial\\spatial_rows.jsonl",
+      "sha256": "0ef948ef59786a5a1858fec38579fb1886a14b5153ef8ec04dd2d21e88bc6d0c",
+      "rows": 18,
+      "recorded_metadata": [
+        {
+          "path": "research\\marine_geollm_scie\\runs\\20261029_pilot\\spatial\\snapshot_manifest.json",
+          "sha256": "c08d0180a7baf9a4dc6315e94278b9ed49c47ac36892aa4a6ad28290ca81a4d4",
+          "recorded": {
+            "source_relation": "projection.s101_feature_current",
+            "source_database": "gbhd_s101",
+            "source_transaction": "15032:15032:",
+            "captured_at": "2026-10-29 10:25:11.391795+00",
+            "postgres_version": "PostgreSQL 16.15 (Debian 16.15-1.pgdg11+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit",
+            "bbox_epsg4326": [
+              128.9,
+              34.9,
+              129.3,
+              35.3
+            ],
+            "selection_sql": "SELECT * FROM projection.s101_feature_current WHERE geometry && ST_MakeEnvelope(128.9,34.9,129.3,35.3,4326) AND ST_IsValid(geometry) ORDER BY feature_instance_id",
+            "columns": [
+              [
+                "feature_instance_id",
+                "bigint"
+              ],
+              [
+                "dataset_id",
+                "bigint"
+              ],
+              [
+                "dataset_version_id",
+                "bigint"
+              ],
+              [
+                "feature_record_id",
+                "bigint"
+              ],
+              [
+                "feature_type_code",
+                "integer"
+              ],
+              [
+                "foid_agen",
+                "integer"
+              ],
+              [
+                "foid_fidn",
+                "bigint"
+              ],
+              [
+                "foid_fids",
+                "integer"
+              ],
+              [
+                "lifecycle_status",
+                "text"
+              ],
+              [
+                "attributes",
+                "jsonb"
+              ],
+              [
+                "geometry",
+                "geometry"
+              ],
+              [
+                "rebuilt_at",
+                "timestamp with time zone"
+              ],
+              [
+                "raw_feature_type_code",
+                "integer"
+              ],
+              [
+                "feature_type_name",
+                "text"
+              ],
+              [
+                "min_scale",
+                "integer"
+              ],
+              [
+                "max_scale",
+                "integer"
+              ],
+              [
+                "product_specification",
+                "text"
+              ],
+              [
+                "dataset_name",
+                "text"
+              ]
+            ],
+            "source_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+            "scope": "bounded valid-geometry source subset; not full production database",
+            "gold_status": "DRAFT; no expert approval",
+            "subset_rows": 25300,
+            "test_anchor": {
+              "feature_instance_id": 560495,
+              "geometry": "POINT(129.1894508 35.0225944)",
+              "meaning": "experimental point on actual source Wreck; not a named harbour reference"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cohort": "GRAPH_SMOKE",
+      "path": "research/marine_geollm_scie/runs/20261030_rq_v2_graph_smoke/production_rows.jsonl",
+      "sha256": "cb9ec8944d6947143f41205c2e18653b0924401daf77078e5f3784caccc49c3f",
+      "rows": 6,
+      "recorded_metadata": [
+        {
+          "path": "research\\marine_geollm_scie\\runs\\20261030_rq_v2_graph_smoke\\adapter_manifest.json",
+          "sha256": "96570d10fc916e6fac091e51916ff6ef8d87f09386bbdef11c4cd83cf5edd451",
+          "recorded": {
+            "method": "P_current_production_no_llm",
+            "image_id": "sha256:0f7ebcb357ad77d90920b94a0f50fdb151bb390e32f7fb12910afdcfef4c2dd1",
+            "network_internal": true,
+            "network_id": "a8b0f454b355efa9cd1329fce4e2346761d337d099ff8e7488d727e9d36b5b39",
+            "dotenv_mask_source_size_bytes": 0,
+            "dotenv_file_blocked_by_empty_bind_mount": true,
+            "production_envfile_used": false,
+            "source_mount": "/work read-only",
+            "differences_from_model_baselines": [
+              "LLM APIs disabled",
+              "pgvector capability retrieval disabled",
+              "external dependencies unreachable",
+              "HF_HUB_OFFLINE=1 and TRANSFORMERS_OFFLINE=1; uncached Hugging Face assets cannot be downloaded",
+              "frozen source subset; measured size is referenced in snapshot_manifest"
+            ],
+            "import_diagnostic": {
+              "enabled_for_session": true,
+              "delay_seconds": 45,
+              "output": "/out/import_stack.log",
+              "contents": "stack frames only; no locals or environment; cancelled after import"
+            },
+            "snapshot_manifest": {
+              "path": "research\\marine_geollm_scie\\runs\\20261029_pilot\\spatial\\snapshot_manifest.json",
+              "sha256": "c08d0180a7baf9a4dc6315e94278b9ed49c47ac36892aa4a6ad28290ca81a4d4",
+              "measured_metadata": {
+                "source_relation": "projection.s101_feature_current",
+                "source_database": "gbhd_s101",
+                "source_transaction": "15032:15032:",
+                "captured_at": "2026-10-29 10:25:11.391795+00",
+                "postgres_version": "PostgreSQL 16.15 (Debian 16.15-1.pgdg11+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 10.2.1-6) 10.2.1 20210110, 64-bit",
+                "bbox_epsg4326": [
+                  128.9,
+                  34.9,
+                  129.3,
+                  35.3
+                ],
+                "selection_sql": "SELECT * FROM projection.s101_feature_current WHERE geometry && ST_MakeEnvelope(128.9,34.9,129.3,35.3,4326) AND ST_IsValid(geometry) ORDER BY feature_instance_id",
+                "columns": [
+                  [
+                    "feature_instance_id",
+                    "bigint"
+                  ],
+                  [
+                    "dataset_id",
+                    "bigint"
+                  ],
+                  [
+                    "dataset_version_id",
+                    "bigint"
+                  ],
+                  [
+                    "feature_record_id",
+                    "bigint"
+                  ],
+                  [
+                    "feature_type_code",
+                    "integer"
+                  ],
+                  [
+                    "foid_agen",
+                    "integer"
+                  ],
+                  [
+                    "foid_fidn",
+                    "bigint"
+                  ],
+                  [
+                    "foid_fids",
+                    "integer"
+                  ],
+                  [
+                    "lifecycle_status",
+                    "text"
+                  ],
+                  [
+                    "attributes",
+                    "jsonb"
+                  ],
+                  [
+                    "geometry",
+                    "geometry"
+                  ],
+                  [
+                    "rebuilt_at",
+                    "timestamp with time zone"
+                  ],
+                  [
+                    "raw_feature_type_code",
+                    "integer"
+                  ],
+                  [
+                    "feature_type_name",
+                    "text"
+                  ],
+                  [
+                    "min_scale",
+                    "integer"
+                  ],
+                  [
+                    "max_scale",
+                    "integer"
+                  ],
+                  [
+                    "product_specification",
+                    "text"
+                  ],
+                  [
+                    "dataset_name",
+                    "text"
+                  ]
+                ],
+                "source_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+                "scope": "bounded valid-geometry source subset; not full production database",
+                "gold_status": "DRAFT; no expert approval",
+                "subset_rows": 25300,
+                "test_anchor": {
+                  "feature_instance_id": 560495,
+                  "geometry": "POINT(129.1894508 35.0225944)",
+                  "meaning": "experimental point on actual source Wreck; not a named harbour reference"
+                }
+              }
+            },
+            "source_hashes": {
+              "services\\orchestrator\\graph.py": "3652a48838b84be4f902dd4cef662c635c744d6280a3c53395a191652ef5983e",
+              "research\\marine_geollm_scie\\baselines\\production_adapter.py": "d14f3414ee8b9a06e95bf92bc4051e7352cbd1218214f85e46f5f61d17e15299",
+              "research\\marine_geollm_scie\\benchmark\\query_cases_v1.jsonl": "e0a98769f5bc0375272aa976bba4cb97bdf2a2c8a0e3c43c20910881935023e9"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cohort": "LIVE_Q4_BEFORE_LOCATION_FIX",
+      "path": "outputs/scie_q4_score_20261030_before_fix/scored_rows.jsonl",
+      "sha256": "babd5c5c449349da55c9dd9db6475929a5cc13c20f01e80b910343d3bbafed5c",
+      "rows": 3,
+      "recorded_metadata": [
+        {
+          "path": "outputs\\scie_q4_score_20261030_before_fix\\summary.json",
+          "sha256": "19f6961c10ac658db89bd29159946bf87f87e212df0f5baa536243768dc429d0",
+          "recorded": {
+            "rows": 3,
+            "independent_equivalence_groups": 1,
+            "approved_by_user": true,
+            "independent_expert_review": false,
+            "raw_path": "D:\\An_GeoLLM\\outputs\\scie_q4_live_20261030_v1\\api_rows.jsonl",
+            "raw_sha256": "072cea5b2a9eebb4a978b7c3f2a5aefb0abbea17609c389ef67bea30350c997e",
+            "oracle_path": "D:\\An_GeoLLM\\outputs\\scie_dokdo_reference_20261030_v2\\spatial_reference.json",
+            "oracle_sha256": "cf7e407ec904661093a187e15391b42bc668a6e6ef5f75ead3f96c3f495cb9fb",
+            "execution_success_count": 2,
+            "spatial_exact_count": 2,
+            "missing_spatial_evaluation_count": 1,
+            "limitation": "Three equivalent development queries, one geographic group, live API observation only; not comparative model or holdout accuracy."
+          }
+        }
+      ]
+    },
+    {
+      "cohort": "LIVE_Q4_AFTER_LOCATION_FIX",
+      "path": "outputs/scie_q4_score_20261030_after_fix/scored_rows.jsonl",
+      "sha256": "488b6d89f69e3b431bae7c7f3d539919f5bb8457d0cf6d55387bf071ed0d9d23",
+      "rows": 3,
+      "recorded_metadata": [
+        {
+          "path": "outputs\\scie_q4_score_20261030_after_fix\\summary.json",
+          "sha256": "3abf76d761b235dda45e24b57e8558156d99fcd622332a6a68627f45f38bc5bf",
+          "recorded": {
+            "rows": 3,
+            "independent_equivalence_groups": 1,
+            "approved_by_user": true,
+            "independent_expert_review": false,
+            "raw_path": "D:\\An_GeoLLM\\outputs\\scie_q4_live_20261030_after_location_fix\\api_rows.jsonl",
+            "raw_sha256": "3f8ac8a36cb3ef0a0d9315450c2144890b010f6dd98ab2bb3d923a9a510d6c26",
+            "oracle_path": "D:\\An_GeoLLM\\outputs\\scie_dokdo_reference_20261030_v2\\spatial_reference.json",
+            "oracle_sha256": "cf7e407ec904661093a187e15391b42bc668a6e6ef5f75ead3f96c3f495cb9fb",
+            "execution_success_count": 3,
+            "spatial_exact_count": 3,
+            "missing_spatial_evaluation_count": 0,
+            "distance_evaluated_case_count": 3,
+            "distance_correct_case_count": 3,
+            "distance_evaluated_object_count": 33,
+            "production_source_stability": "CAPTURE_BEFORE_AFTER_MATCH",
+            "capture_manifest_sha256": "935ad8de2e4df4ee19f07f40b24458b509dfe8aebfa02c6a48f3b4a25ca65841",
+            "limitation": "Three equivalent development queries, one geographic group, live API observation only; not comparative model or holdout accuracy."
+          }
+        }
+      ]
+    }
+  ],
+  "condition_metadata": {
+    "path": "D:\\An_GeoLLM\\outputs\\scie_rq_v2_audit_20261030\\condition_metadata.jsonl",
+    "sha256": "19a9cfa0f025265c07bd1c57cabdf1624650727a212d2cd656bb1c0e69caddfd",
+    "post_hoc": true
+  },
+  "gold_audit": {
+    "path": "outputs\\scie_rq_v3_approval_20261030\\gold_audit_v3.json",
+    "sha256": "2812e33d9989c17e9b7041f0a6e0186ddbfae3d6f010b8b0bf9cc8d3b439990e",
+    "audit": {
+      "schema_version": "gold_audit.v1",
+      "read_only": true,
+      "scan_roots": [
+        "D:\\An_GeoLLM\\research",
+        "D:\\An_GeoLLM\\outputs"
+      ],
+      "filename_markers": [
+        "gold",
+        "annotation",
+        "adjudication",
+        "reference",
+        "승인",
+        "검수",
+        "합의"
+      ],
+      "scope_note": "Filename-bounded scan, not proof that no unlabelled external gold exists. No annotation text copied into audit.",
+      "approval_gate": "existing is_gold + human_approval is True + non-AI annotator_ids; factual validation still required",
+      "audit_code_sha256": "98edcddd048f77700120505b0b76de472180de7918e3cc92b420af4636ec16c6",
+      "files": [
+        {
+          "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\review_exports\\20261030_pilot18\\adjudication_DRAFT.jsonl",
+          "sha256": "afa30b23f15c4c9f53cedf19aa287a9d74bb47b6f2e9c22457ae161c8b1ad7bd",
+          "bytes": 15768,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "DRAFT": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\review_exports\\20261030_pilot18\\reviewer_A\\annotations_DRAFT.jsonl",
+          "sha256": "72fa944e0a644b0e5899f406f1a2851ea8e33a60fa96f2bd9af47e5e205cf9a5",
+          "bytes": 185548,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "DRAFT": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\review_exports\\20261030_pilot18\\reviewer_B\\annotations_DRAFT.jsonl",
+          "sha256": "4a36bf7d199b8d26946bff0d5c496768adb9ffff9605ad95a4d576966d04b4b1",
+          "bytes": 185548,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "DRAFT": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\review_exports\\20261030_ai_prefill\\adjudication_DRAFT.before_959dffd92da6.jsonl",
+          "sha256": "959dffd92da6ac77bad95a1fefb8f597b28a72ab3d9a13686d336d17a6579cbe",
+          "bytes": 489307,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "DRAFT": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\review_exports\\20261030_ai_prefill\\adjudication_DRAFT.jsonl",
+          "sha256": "494980ab6e1b1ca8e418b879e8b277279d1d53ee246268906dede32fc4858f08",
+          "bytes": 494509,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "DRAFT": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\review_exports\\20261030_ai_prefill\\reviewer_A\\annotations_DRAFT.jsonl",
+          "sha256": "9168081eed107c84282d90c24b3e8c41ec401cd998f115abb3325e86243b782a",
+          "bytes": 364272,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "DRAFT": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 18,
+            "qec": 18,
+            "spatial": 0,
+            "evidence": 18,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\review_exports\\20261030_ai_prefill\\reviewer_B\\annotations_DRAFT.jsonl",
+          "sha256": "d4f2d73c0236d2a38c3bc2169278a04cc23df9bc7dbe276d262e6595a2f34f8e",
+          "bytes": 578245,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "DRAFT": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\approved_v3\\evaluation_references.jsonl",
+          "sha256": "a69cda7558eca74c8d869de6fc80653c51541ab2cc4a7cb628e3fd065b27558c",
+          "bytes": 1384103,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 18,
+          "annotation_status_counts": {
+            "GOLD": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 8,
+            "spatial": 3,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\gold\\gold_evidence_v1.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0,
+          "status": "READ",
+          "row_count": 0,
+          "unique_case_count": 0,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {},
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\gold\\gold_qec_v1.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0,
+          "status": "READ",
+          "row_count": 0,
+          "unique_case_count": 0,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {},
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\gold\\gold_semantics_v1.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0,
+          "status": "READ",
+          "row_count": 0,
+          "unique_case_count": 0,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {},
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\gold\\gold_spatial_results_v1.jsonl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "bytes": 0,
+          "status": "READ",
+          "row_count": 0,
+          "unique_case_count": 0,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {},
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\results\\20261030_rq_v2_reanalysis_02\\tables\\benchmark_gold_composition.csv",
+          "sha256": "6a777740838978be10852f772facab4f74d9854c6e1bf0271870c6102aa20723",
+          "bytes": 986,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "None": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\results\\latest\\tables\\benchmark_gold_composition.csv",
+          "sha256": "6a777740838978be10852f772facab4f74d9854c6e1bf0271870c6102aa20723",
+          "bytes": 986,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "None": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\korean-intent-shadow\\development-reference-review-v3.jsonl",
+          "sha256": "858e3b23e8f7f50001a7b69829f15d8ebbbd963b3b14da24be59c1cea24a6712",
+          "bytes": 327029,
+          "status": "READ",
+          "row_count": 0,
+          "unique_case_count": 0,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {},
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\korean-intent-shadow\\development-reference-review-v4.jsonl",
+          "sha256": "b1084e58504e01dee3f7dad8e38cc2e0bf0e77c1cf003a57396b66be7c49f272",
+          "bytes": 353799,
+          "status": "READ",
+          "row_count": 0,
+          "unique_case_count": 0,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {},
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\korean-intent-shadow\\development-reference-review-v5.jsonl",
+          "sha256": "9fa1985fcfa70cbcc31cf0ba63672ea4404956002a04d657f20bc958d5488b6b",
+          "bytes": 354741,
+          "status": "READ",
+          "row_count": 0,
+          "unique_case_count": 0,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {},
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\korean-intent-shadow\\live-reference-contracts-v1.jsonl",
+          "sha256": "4842e2bc3abb82ff8f48a2e6b38564010e7065b2d6b6bf1550df0db63e55a219",
+          "bytes": 2635,
+          "status": "READ",
+          "row_count": 0,
+          "unique_case_count": 0,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {},
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\korean-intent-shadow\\live-reference-contracts-v2.jsonl",
+          "sha256": "3e84fc24e4829d28fc2ceca9f69f6a9b1f020771a82c6f26d88ff48d722e4174",
+          "bytes": 17866097,
+          "status": "READ",
+          "row_count": 0,
+          "unique_case_count": 0,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {},
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\korean-intent-shadow\\live-reference-contracts-v3.jsonl",
+          "sha256": "c43b857b1af36689b511211feb87b15789a07502fc5dd2fd46a7598ee8ac66b8",
+          "bytes": 17946366,
+          "status": "READ",
+          "row_count": 0,
+          "unique_case_count": 0,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {},
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\korean-intent-shadow\\paired-reference-contract-v3.json",
+          "sha256": "a29cea4823c4aa85ce8ad6c11434d760ba59cf18aee16cab329a72e99ec0c603",
+          "bytes": 38761,
+          "status": "READ",
+          "row_count": 0,
+          "unique_case_count": 0,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {},
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\korean-intent-shadow\\paired-reference-contract-v4.json",
+          "sha256": "a29cea4823c4aa85ce8ad6c11434d760ba59cf18aee16cab329a72e99ec0c603",
+          "bytes": 38761,
+          "status": "READ",
+          "row_count": 0,
+          "unique_case_count": 0,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {},
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_annotation_20261030\\검수자A_18사례_DRAFT.xlsx",
+          "sha256": "a4e6bdb5e814dcb61ab02b0eb45ac718a35b73b34351e3fc099d12393354658d",
+          "bytes": 42684,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "DRAFT": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_annotation_20261030\\검수자B_18사례_DRAFT.xlsx",
+          "sha256": "e1051027e8439d1b368a14fc923f9eab03b75f76449a9b3974e10c6365789394",
+          "bytes": 42684,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "DRAFT": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_annotation_20261030\\합의검토_18사례_DRAFT.xlsx",
+          "sha256": "d41f374fc2f1fdbe9be20df189a6c4dea10b8cebc549d96123ba3e1d9dc8be84",
+          "bytes": 42314,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "DRAFT": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_annotation_ai_prefill_20261030\\검수자A_18사례_AI사전검토.xlsx",
+          "sha256": "83789e46f4dd4a739c0e03a8fcb4db42c754b531b6e861dda5a5fce626bacc40",
+          "bytes": 117632,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "AI 사전검토 · 사용자 승인 대기 · GOLD 아님": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_annotation_ai_prefill_20261030\\검수자A_18사례_AI사전검토_Dataset근거_v2.xlsx",
+          "sha256": "298e56ee5f401620c29d18908c031da467b362ae76326978ef8ecda1f1014a61",
+          "bytes": 50598,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "DRAFT": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_annotation_ai_prefill_20261030\\검수자B_18사례_AI사전검토_Dataset근거.xlsx",
+          "sha256": "f06c89c7a6139e0d40748ea6eb3768f3e0cc3756d525e2f645fd9341570414fd",
+          "bytes": 50016,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "DRAFT": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_annotation_ai_prefill_20261030\\검수자B_18사례_AI사전검토_v2.xlsx",
+          "sha256": "feb4b38125c9ae17af790ef70b18bdd0610b1553db4d8705dd3ebabca4d8db9b",
+          "bytes": 200677,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "AI 사전검토 · 사용자 승인 대기 · GOLD 아님": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_annotation_ai_prefill_20261030\\합의검토_18사례_AI사전검토.xlsx",
+          "sha256": "df76639783fac437e7bdd764d2de4804bbc79211af297b34c31ed5c1ce50168d",
+          "bytes": 160648,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "AI 사전검토 · 사용자 승인 대기 · GOLD 아님": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_annotation_ai_prefill_20261030\\합의검토_18사례_AI합의수정본_v2.xlsx",
+          "sha256": "97ee97567ddf224a65ed592c4f09bb4cfb47e60700d656984b2a76ad3d0c95c3",
+          "bytes": 60437,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "DRAFT": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_annotation_ai_prefill_20261030\\합의검토_18사례_AI합의초안_Dataset근거.xlsx",
+          "sha256": "18f19aa382abcf9c0a8acff7afcd1e3637e5df00b0fa5e7b7b360cb1746e2d75",
+          "bytes": 49284,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "DRAFT": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_annotation_ai_prefill_20261030\\previous_scope_draft\\합의검토_18사례_AI사전검토.xlsx",
+          "sha256": "7a503d42f3fdbe4589b43cbb322ed821d6294ba5ccc0aa1ed4778c48ef5240db",
+          "bytes": 158520,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "AI 사전검토 · 사용자 승인 대기 · GOLD 아님": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_review_v2_20261030\\annotations_DRAFT.jsonl",
+          "sha256": "9653b9605147f955871126d7e2e49f0e9c72f009a44a52391049afd0afa415bd",
+          "bytes": 1298279,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "DRAFT": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_review_v2_20261030\\검수자A_18사례_AI사전검토_Dataset근거_v2.xlsx",
+          "sha256": "298e56ee5f401620c29d18908c031da467b362ae76326978ef8ecda1f1014a61",
+          "bytes": 50598,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "DRAFT": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_review_v2_20261030\\검수자B_18사례_AI사전검토_v2.xlsx",
+          "sha256": "feb4b38125c9ae17af790ef70b18bdd0610b1553db4d8705dd3ebabca4d8db9b",
+          "bytes": 200677,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "AI 사전검토 · 사용자 승인 대기 · GOLD 아님": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_review_v2_20261030\\합의검토_18사례_AI합의수정본_v2.xlsx",
+          "sha256": "97ee97567ddf224a65ed592c4f09bb4cfb47e60700d656984b2a76ad3d0c95c3",
+          "bytes": 60437,
+          "status": "READ",
+          "row_count": 18,
+          "unique_case_count": 18,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {
+            "DRAFT": 18
+          },
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_rq_v2_audit_20261030\\gold_audit.json",
+          "sha256": "6126d733fd23b9f4c4d19eb3a2ff6e5f5f8b95a1f4dfe5336834405f3ad7e397",
+          "bytes": 22133,
+          "status": "READ",
+          "row_count": 0,
+          "unique_case_count": 0,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {},
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_rq_v2_audit_20261030\\gold_audit_before_explicit_approval.json",
+          "sha256": "0727fff88ae569b6d3654b7f5b766734d9102320f406d223d934553b63db0386",
+          "bytes": 21311,
+          "status": "READ",
+          "row_count": 0,
+          "unique_case_count": 0,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {},
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_rq_v2_audit_20261030\\gold_audit_initial_counting.json",
+          "sha256": "e583f683b0a55b477db62cc7dfe17b6373940cee3d360cf35ed49c5fc3e52ca7",
+          "bytes": 20576,
+          "status": "READ",
+          "row_count": 0,
+          "unique_case_count": 0,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {},
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_dokdo_reference_20261030_v1\\spatial_reference.json",
+          "sha256": "feb5cd2e86cf38e62b4d99b15643bd1056a401577fdde7eebfc37dcdf7d07056",
+          "bytes": 13335,
+          "status": "READ",
+          "row_count": 0,
+          "unique_case_count": 0,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {},
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_dokdo_reference_20261030_v2\\spatial_reference.json",
+          "sha256": "cf7e407ec904661093a187e15391b42bc668a6e6ef5f75ead3f96c3f495cb9fb",
+          "bytes": 13467,
+          "status": "READ",
+          "row_count": 0,
+          "unique_case_count": 0,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {},
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        },
+        {
+          "path": "D:\\An_GeoLLM\\outputs\\scie_rq_v3_approval_20261030\\gold_audit.json",
+          "sha256": "5389f377444ca59f2d357edb0330548ec128cc691de473afa2a5c31bb8726845",
+          "bytes": 24464,
+          "status": "READ",
+          "row_count": 0,
+          "unique_case_count": 0,
+          "approval_eligible_count": 0,
+          "annotation_status_counts": {},
+          "component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          },
+          "draft_or_unapproved_component_counts": {
+            "semantic": 0,
+            "qec": 0,
+            "spatial": 0,
+            "evidence": 0,
+            "fault": 0
+          }
+        }
+      ],
+      "components": {
+        "semantic": {
+          "eligible_unique_cases": 0,
+          "status": "NOT_READY"
+        },
+        "qec": {
+          "eligible_unique_cases": 8,
+          "status": "CANDIDATES_REQUIRE_REVIEW"
+        },
+        "spatial": {
+          "eligible_unique_cases": 3,
+          "status": "CANDIDATES_REQUIRE_REVIEW"
+        },
+        "evidence": {
+          "eligible_unique_cases": 0,
+          "status": "NOT_READY"
+        },
+        "fault": {
+          "eligible_unique_cases": 0,
+          "status": "NOT_READY"
+        }
+      },
+      "approval_cohorts_unique_cases": {
+        "user_approved_ai_assisted": 18,
+        "independent_expert_explicit": 0,
+        "other_approved": 0
+      },
+      "paper_ready": false,
+      "gold_modified": false
+    }
+  },
+  "gold_scoring_adapter_status": "USER_APPROVED_INTERNAL_REFERENCE",
+  "approved_reference_file": {
+    "path": "research/marine_geollm_scie/benchmark/approved_v3/evaluation_references.jsonl",
+    "sha256": "a69cda7558eca74c8d869de6fc80653c51541ab2cc4a7cb628e3fd065b27558c"
+  },
+  "approved_reference_cases": 18,
+  "user_approved_ai_assisted_cases": 18,
+  "independent_expert_gold_cases": 0,
+  "evaluator_limitations": [
+    "semantic label-set score is not full semantic accuracy",
+    "reference completeness is not claim support",
+    "semantic label F1 requires explicit approved labels; polygon/nearest oracle scoring is not enabled in this reanalysis runner",
+    "McNemar repeat 0 was selected post hoc for this descriptive reanalysis; no preregistration claimed"
+  ],
+  "required_missing": [
+    "complete independent semantic/spatial/evidence references",
+    "holdout",
+    "K5",
+    "matched P0/P1/H",
+    "recovery evaluation",
+    "controlled ablations"
+  ],
+  "analysis_source_sha256": {
+    "research\\marine_geollm_scie\\runners\\rq_results.py": "c1abdd20eaa66bacdfb4a6d926193acc219404885a15373a540b73a277931435",
+    "research\\marine_geollm_scie\\evaluation\\rq_metrics.py": "2bf8d92a5e55505873e056f31cf4c2c44ac3607874e86f5fbb2b136367b94f49"
+  },
+  "analysis_runner_made_model_calls": false,
+  "analysis_runner_modified_production": false,
+  "analysis_runner_modified_reference_files": false,
+  "source_runs_may_span_production_revisions": true
+}

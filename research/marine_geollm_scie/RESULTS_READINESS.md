@@ -1,3 +1,36 @@
+# 논문 실험 준비 상태 — 2026-10-30 사용자 승인 v3
+
+**사용자가 AI 보조 검토 18건을 승인했습니다. 논문 본실험 전체는 여전히 NOT_READY입니다.** 사용자 승인 완료와 자동 평가 가능한 정답 범위를 구분합니다. 독립 전문가 검수는 0건이며, 이 18개는 이미 노출된 파일럿으로 holdout이 아닙니다.
+
+[18개 사례별 승인 현황](benchmark/approved_v3/승인현황_KR.md), [사용자 승인 manifest](benchmark/approved_v3/approval_manifest.json), [이번 작업 인계](protocol/rq_v2_execution_20261030_KR.md)를 먼저 확인합니다. 아래 과거 이력의 DRAFT·승인 0건은 **승인 이전 시점**의 기록이며 현재 사용자 승인 상태를 뜻하지 않습니다.
+
+| 항목 | 현재 상태 | 확인 범위와 남은 요건 |
+|---|---|---|
+| 사용자 승인 참조 | PILOT_ONLY | USER_APPROVED_AI_ASSISTED 18건, human_approval=true. 원본 DRAFT/XLSX는 보존 |
+| 독립 전문가·holdout | NOT_READY | 독립 전문가 0건, 독립 A/B 검수와 미노출 holdout 없음 |
+| 의미 정답 자동평가 | NOT_READY | 합의 서술은 승인됐지만 필수 완전 label 집합은 미확정. 후보 집합을 정답으로 승격하지 않음 |
+| QEC 부분 슬롯 | PILOT_ONLY | 8건에 원문 명시 위치·거리만 전사. 전체 계획 타당성이나 완전 QEC 정답 아님 |
+| 공간 정답 참조 | PILOT_ONLY | Q4 3개 동등표현에 같은 실제 CSV ID44–54 각11개. 동도 기준점·2022 CSV·5000m 조건 승인 및 두 거리 계산 검산 |
+| 다른 공간 과업 | NOT_READY | 6개 공간 사례는 AOI·원천 coverage·대상 의미 등이 미확정. 비공간 9개는 공간 정답 대상 아님 |
+| 근거 정답 자동평가 | NOT_READY | 승인된 원문 근거는 보존했지만 필수 참조집합·주장 지지의 완전한 자동 판정은 미확정 |
+| B0–B4 계획 비교 | PILOT_ONLY | 기존 6문항×5방법×3반복=90행. 계획 생성 비교이며 B3 실제 GIS agent/full P 비교가 아님 |
+| 생산 graph 진단 | PILOT_ONLY | 별도 격리 graph 진단 보존. 모델·검색 조건이 다른 P_current_production_no_llm을 P0/P1과 혼동하지 않음 |
+| 수정 후 실제 API | PILOT_ONLY | 정상·부정 8개 관측을 분리 확인. 원본 Q4 세 표현은 수정 전 2/3 실행·집합 일치 → 수정 후 3/3 실행·11개 ID 집합 일치. 거리 최대 오차 0.004921m 미만. 같은 지리조건 1그룹이며 모델 비교·holdout이 아님 |
+| full P / P0·P1 비교 | NOT_READY | 동일 조건 end-to-end GIS·post-validation·evidence·bounded recovery 비교 미완료 |
+| RQ1 조건별 효과 | NOT_READY | 사후 조건 메타데이터만 준비. 독립 의미정답·조건별 충분한 사례·대응 통계 필요 |
+| RQ2 오류별 보완성 | NOT_READY | 기존 오류 진단과 승인된 독립 fault GOLD를 구분. 전체 오류 taxonomy·동일 paired 조건 확장 필요 |
+| RQ3 실행–공간정답 차이 | PILOT_ONLY | Q4 한정 oracle 준비. 동일 source snapshot의 실행 결과만 비교 가능하며 전체 방법·전체 공간 과업의 gap은 미완료 |
+| RQ4 복구·의미 보존 | NOT_READY | 실제 bounded repair와 독립 의미·공간 검증, drift 계측 미완료 |
+| RQ5 비용 대비 신뢰성 | PILOT_ONLY | 관측된 지연·토큰 등만 보고. 신뢰성 지표 미측정 구간의 Pareto 우월성 주장 불가 |
+| ablation / 통계 / K5 | NOT_READY | 삭제실험·미노출 holdout·충분한 paired 사례·본실험 반복 및 통계 미완료 |
+| RQ 표·그림·보고서 | PILOT_ONLY | 자동 산출물 존재는 과학적 완료를 의미하지 않음. latest manifest의 run_id·승인종류·snapshot을 확인 |
+
+Q4 세 질의는 같은 표현 그룹이고 같은 11개 객체를 사용합니다. 33개 독립 객체나 세 독립 정답 검증으로 세지 않습니다. 실제 지명·거리·좌표 해석 정책은 [독도 공간 참조](protocol/dokdo_spatial_reference_v3_KR.md)에 있습니다.
+
+최신 RQ 보고서: [해석](results/latest/reports/SCIE_RESULTS_INTERPRETATION.md), [최종 요약](results/latest/reports/final_results_summary.md), [manifest](results/latest/manifest.json). 수정 전후 run은 분리하고, 진행 중 수정 후 API 수치는 확인된 원시 결과와 해시를 받은 뒤 갱신합니다.
+
+## 승인 이전의 보존 이력
+
 # 논문 실험 준비 상태 — 2026-10-29 파일럿 기준
 
 2026-10-30 후속: [v2 검토자료 반영](protocol/review_v2_integration_KR.md)을 우선 확인한다. 사용자 지정 AI 검토자료 18건을 연결하고, 별도 B0–B4 계획 생성 비교 6문항/90출력을 사후 진단했다. DRAFT 18건은 인간 GOLD가 아니며 아래 본실험 NOT_READY 상태를 바꾸지 않는다. 아래 표는 10월 29일 파일럿 이력이다.

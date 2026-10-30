@@ -1,0 +1,24 @@
+{
+  "review_kind": "AI_PRE_REVIEW",
+  "human_approval": false,
+  "status": "AI_REVIEW_COMPLETE_HUMAN_APPROVAL_PENDING",
+  "cases": 18,
+  "source_hashes": {
+    "reviewer_A": "9168081eed107c84282d90c24b3e8c41ec401cd998f115abb3325e86243b782a",
+    "reviewer_B": "d4f2d73c0236d2a38c3bc2169278a04cc23df9bc7dbe276d262e6595a2f34f8e",
+    "adjudication": "494980ab6e1b1ca8e418b879e8b277279d1d53ee246268906dede32fc4858f08"
+  },
+  "fc": {
+    "path": "data/s101_feature_catalogue_v2_parsed.json",
+    "sha256": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+    "version": "2.0.0"
+  },
+  "xml": {
+    "path": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml",
+    "sha256": "2743d0689d8a2130f9b809554591d794f01cd9953f222f065ac891b590bd3cfc"
+  },
+  "gold_written": false,
+  "model_predictions_used": false,
+  "kappa": null,
+  "synthesis_script_sha256": "da15da848e7b076fcc891851299ac271a75641c066ccfee71bb35a7581c96faf"
+}

@@ -1,0 +1,633 @@
+{
+  "audit_type": "POST_HOC_PROVENANCE_AUDIT",
+  "recorded_at": "2026-10-30T02:43:10.937770+00:00",
+  "warning": "Current branch/package observations were measured after the run; they are not evidence of the runtime state at model-call time.",
+  "original_manifest_sha256": "86af6c48379574b5b7aa171a89166edb80f33d7f83715922bdeb5e202e821946",
+  "branch_recorded_at_run": null,
+  "current_branch_observed_at_audit": "main",
+  "host_package_versions_observed_at_audit": {
+    "jsonschema": "4.26.0",
+    "pydantic": "2.13.5",
+    "PyYAML": "6.0.3"
+  },
+  "plan_output_schema_sha256_canonical": "d4587790d06cd122ef68f5b9a307c6b3f5fb31a3087d2e08bfa9e83451bb6324",
+  "schema_hash_encoding": "UTF-8 JSON ensure_ascii=False, sort_keys=True, separators=(comma,colon)",
+  "source_hash_basis": "Only hashes already recorded in source packets; source files were not re-read or re-hashed.",
+  "packet_recorded_sources": [
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/categoryOfWreck",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/defaultClearanceDepth",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/expositionOfSounding",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/height",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/interoperabilityIdentifier",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/pictorialRepresentation",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/qualityOfVerticalMeasurement",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/radarConspicuous",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B2",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:34",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B2",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:36",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B2",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:38",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B4",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:34",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B4",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:36",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q1_03",
+      "method": "B4",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:38",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/categoryOfWreck",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/defaultClearanceDepth",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/expositionOfSounding",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/height",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/interoperabilityIdentifier",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/pictorialRepresentation",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/qualityOfVerticalMeasurement",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/radarConspicuous",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B2",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:34",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B2",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:36",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B2",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:38",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B4",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:34",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B4",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:36",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q2_03",
+      "method": "B4",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:38",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/categoryOfWreck",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/defaultClearanceDepth",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/expositionOfSounding",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/height",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/interoperabilityIdentifier",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/pictorialRepresentation",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/qualityOfVerticalMeasurement",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/radarConspicuous",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B2",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:1235",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B2",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:1236",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B2",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:1237",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B2",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:1240",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B4",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:1235",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B4",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:1236",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B4",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:1237",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q3_03",
+      "method": "B4",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:1240",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/categoryOfWreck",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/defaultClearanceDepth",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/expositionOfSounding",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/height",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/interoperabilityIdentifier",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/pictorialRepresentation",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/qualityOfVerticalMeasurement",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/radarConspicuous",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B2",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:34",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B2",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:36",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B2",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:38",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B4",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:34",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B4",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:36",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q5_03",
+      "method": "B4",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:38",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "features/AnchorageArea",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/categoryOfAnchorage",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B1",
+      "path": "data/s101_feature_catalogue_v2_parsed.json",
+      "locator": "attributes/scaleMinimum",
+      "sha256_recorded_in_packet": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+      "nodes_path": null,
+      "nodes_sha256_recorded_in_packet": null
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B2",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:34",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B2",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:36",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B2",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:38",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B4",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:34",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B4",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:36",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    },
+    {
+      "case_id": "PILOT_Q6_03",
+      "method": "B4",
+      "path": "outputs/graph/kg_edges_v2.jsonl",
+      "locator": "line:38",
+      "sha256_recorded_in_packet": "a25b0a7a3a015fa415afb81cc1f099032a88eef437226de8c42d33792a6a9b87",
+      "nodes_path": "outputs/graph/kg_nodes_v2.jsonl",
+      "nodes_sha256_recorded_in_packet": "4a9c691a9632f90437c2aacb96623bb99252fe9ff0f6e2a2a0555bf24dbbdee0"
+    }
+  ],
+  "prompt_template_hash_at_run": null,
+  "prompt_template_hash_status": "NOT_RECORDED_AT_RUN",
+  "prompt_trace_note": "Per-call exact prompt hashes are in prompt_trace_index.csv; these are not a shared template hash.",
+  "embedding": {
+    "status": "NOT_USED",
+    "scope": "B0-B4 lexical evidence retrieval; no embedding model inference in this comparison"
+  },
+  "database": {
+    "status": "NOT_USED_B0_B4",
+    "scope": "Plan-only comparison; no GIS execution or database query"
+  },
+  "production_P": "Separate conditions: no database/embedding assumption is transferred to P_current_production_no_llm."
+}

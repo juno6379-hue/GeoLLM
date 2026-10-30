@@ -1,0 +1,16 @@
+{
+  "cases": 18,
+  "reviewer_files": 2,
+  "annotation_status": "DRAFT",
+  "gold_written": false,
+  "holdout_eligible": false,
+  "provenance": {
+    "benchmark_path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\query_cases_v1.jsonl",
+    "benchmark_sha256": "e0a98769f5bc0375272aa976bba4cb97bdf2a2c8a0e3c43c20910881935023e9",
+    "source_packet_path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\runs\\20261030_comparison_v2\\evidence_packets\\packets.jsonl",
+    "source_packet_sha256": "d8233d672d15622fe58f43d1c33e7005a28d8aa12480dbbe43255faee7b5939f",
+    "exporter_sha256": "bf8cedf38713c79c79324ca6bffaf1ac13049339c0437bfcafd924279fb12f0f",
+    "source_role": "retrieval_material_not_gold",
+    "model_answers_included": false
+  }
+}
