@@ -1,5 +1,14 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-10-30 논문 검수자료 v2 반영
+
+- 사용자 지정 A Dataset근거 v2/B v2/합의수정본 v2를 찾았고, 합의문 A/B SHA256·실제 파일 및 18개 원문/ID 일치를 검증했다. [반영 결과와 다음 순서](../../research/marine_geollm_scie/protocol/review_v2_integration_KR.md). 18개 모두 AI DRAFT/human_approval=false 유지, human GOLD 0. B의 요약 셀 대신 전체 필드도 보존했다.
+- 완료된 B0–B4 planning run `20261030_comparison_v2b` 6문항×5방법×3반복=90행의 해시를 확인하고 v2 합의와 연결했다. 신규 모델 호출 없음. 제한된 사후 슬롯 진단에서 재검토 30출력/계획 미제공 1출력. 정확도·실행 성공률이 아니며 나머지 12문항/full P/실행형 B3/ablation/recovery는 미완료다.
+- 원본 CSV 재확인: 해양지명 1,146행/독도 포함 14/정확 값 0, 부산청 항로표지 314행/등대 포함 50/독도 포함 0. 원천 coverage·geometry·spatial GOLD 승인 아님. 원본·통합 JSONL·90행 대조 보고서는 `outputs/scie_review_v2_20261030/`에 보존했다.
+- 검증: 신규 XLSX 파서·원문/해시/승인 상태·누락 슬롯 진단과 기존 metrics 테스트 **13 passed**. 운영 서비스/DB/라우팅 변경 없음. Docker backend와 연구 DB 실행 상태만 확인했으며 이번 작업에서 API 재검증은 하지 않았다.
+- 다음 논문 작업: v2 미확정 geometry/거리/경계/시설 중복 정책 검수 → 고정 Dataset 독립 spatial oracle·Q4 동등표현 비교 → 사전 고정 평가 기준으로 나머지 사례/holdout → 실행형 baseline/full P·ablation/recovery. 실제 운영 오류는 API 재현 후 별도 수정한다. P0 잔여·shadow calibration UNFITTED·QLoRA DEFER 유지.
+- 재현: `.venv/Scripts/python.exe -m research.marine_geollm_scie.runners.review_v2_diagnostics --input-dir outputs/scie_annotation_ai_prefill_20261030 --model-run research/marine_geollm_scie/runs/20261030_comparison_v2b --output outputs/scie_review_v2_<새이름>`; 동일 출력 덮어쓰기 금지.
+
 ## 2026-10-30 논문 실험 결과 문서 한글화
 
 - 사용자 요청에 따라 연구 결과 요약(`latest/reports/results_summary.md`), 상세 분석·재현 방법(`protocol/pilot_findings_20261029.md`), 준비 상태(`RESULTS_READINESS.md`)를 한글로 바꿨다. 요약 생성 코드도 한글 출력으로 변경했다.

@@ -13,6 +13,8 @@ def test_gold_requires_human_provenance():
     assert not is_gold({'review_status':'GOLD'})
     assert not is_gold({**GOLD,'adjudication_status':'PENDING'})
     assert is_gold(GOLD)
+    assert not is_gold({**GOLD,'review_kind':'AI_PRE_REVIEW'})
+    assert not is_gold({**GOLD,'human_approval':False})
 
 
 def test_missing_is_not_empty_or_zero():
@@ -63,9 +65,13 @@ def test_paired_statistics_do_not_count_repeats_as_cases():
 
 def test_report_never_promotes_runtime_gold(tmp_path):
     (tmp_path/'manifest.json').write_text('{}')
-    cases=[{'case_id':'c','category':'Q1','review_status':'DRAFT','expected_behavior':'EXECUTE'}]
+    cases=[{'case_id':'c','category':'Q1','review_status':'DRAFT','expected_behavior':'EXECUTE'},
+           {'case_id':'ai','category':'Q1',**GOLD,'expected_behavior':'EXECUTE',
+            'review_kind':'AI_PRE_REVIEW','human_approval':False}]
     rows=[{'case_id':'c','method':'B0','status':'error','latency_ms':12,**GOLD,
-           **dict.fromkeys(COMPONENTS,True)}]
+           **dict.fromkeys(COMPONENTS,True)},
+          {'case_id':'ai','method':'B0','status':'completed','latency_ms':12,**GOLD,
+           'review_kind':'HUMAN_REVIEW','human_approval':True,**dict.fromkeys(COMPONENTS,True)}]
     result=report(tmp_path,cases,rows)
     assert result['verified_gold_cases']==0
     assert result['tables'][NAMES[2]][0]['evqsr'] is None

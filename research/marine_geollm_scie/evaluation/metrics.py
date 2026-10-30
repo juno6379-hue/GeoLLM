@@ -5,6 +5,9 @@ import statistics
 
 
 def is_gold(row):
+    # AI-filled review forms are assistance, never independent expert approval.
+    if row.get('human_approval') is False or row.get('review_kind') == 'AI_PRE_REVIEW':
+        return False
     return (row.get('review_status', row.get('annotation_status', row.get('label_status'))) == 'GOLD'
             and bool(row.get('annotator_ids')) and row.get('adjudication_status') == 'APPROVED')
 

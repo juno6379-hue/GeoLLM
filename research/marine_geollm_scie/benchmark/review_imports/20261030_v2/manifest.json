@@ -1,0 +1,34 @@
+{
+  "status": "DRAFT_REFERENCE_INTEGRATED",
+  "cases": 18,
+  "model_rows": 90,
+  "human_gold_cases": 0,
+  "review_groups": {
+    "주요보완": 8,
+    "일치+보완": 8,
+    "일치": 1,
+    "주요수정": 1
+  },
+  "model_rows_sha256": "a03cfd12862621dcfe3e89c75c2aa1254a9300e5e7400dc936befe384a85b028",
+  "model_run": "research\\marine_geollm_scie\\runs\\20261030_comparison_v2b",
+  "sources": [
+    {
+      "path": "D:\\An_GeoLLM\\outputs\\scie_annotation_ai_prefill_20261030\\합의검토_18사례_AI합의수정본_v2.xlsx",
+      "sha256": "97ee97567ddf224a65ed592c4f09bb4cfb47e60700d656984b2a76ad3d0c95c3"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\outputs\\scie_annotation_ai_prefill_20261030\\검수자A_18사례_AI사전검토_Dataset근거_v2.xlsx",
+      "sha256": "298e56ee5f401620c29d18908c031da467b362ae76326978ef8ecda1f1014a61"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\outputs\\scie_annotation_ai_prefill_20261030\\검수자B_18사례_AI사전검토_v2.xlsx",
+      "sha256": "feb4b38125c9ae17af790ef70b18bdd0610b1553db4d8705dd3ebabca4d8db9b"
+    }
+  ],
+  "source_hash_links_verified": true,
+  "accuracy": null,
+  "kappa": null,
+  "protocol": "Post-hoc structural slot diagnostics only, 6 pilot cases, 3 repeats, B0-B4 planning only",
+  "code_sha256": "6b0d75574b904819524577c02a9972f136db9e7ad81598e86f8897988439cbd8",
+  "annotations_sha256": "9653b9605147f955871126d7e2e49f0e9c72f009a44a52391049afd0afa415bd"
+}

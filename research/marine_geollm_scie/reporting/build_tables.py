@@ -35,7 +35,8 @@ def report(run_dir, cases, rows):
     for raw in rows:
         c = case_map.get(raw.get('case_id'), {})
         r = {**c, **raw}
-        for key in ('review_status','annotation_status','label_status','annotator_ids','adjudication_status'):
+        for key in ('review_status','annotation_status','label_status','annotator_ids','adjudication_status',
+                    'review_kind','human_approval'):
             r.pop(key, None)
             if key in c:
                 r[key] = c[key]

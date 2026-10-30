@@ -1,0 +1,49 @@
+[
+  {
+    "path": "D:\\An_GeoLLM\\Dataset\\해양수산부 부산지방해양수산청_항로표지정보_20250623.csv",
+    "sha256": "ed296df40e0063008df9fa8521ce666820f20fc0441add388fa8cfaf09c624e6",
+    "encoding": "cp949",
+    "rows": 314,
+    "columns": [
+      "순번",
+      "이름",
+      "사용 유무",
+      "주소",
+      "위치"
+    ],
+    "dokdo_any_field_rows": 0,
+    "dokdo_exact_any_field_rows": 0,
+    "lighthouse_any_field_rows": 50,
+    "scope": "CSV content inventory only; no coordinate, coverage or spatial GOLD approval"
+  },
+  {
+    "path": "D:\\An_GeoLLM\\Dataset\\해양수산부_공동활용체계_해양지명_20221231.csv",
+    "sha256": "bbc3f1c347f6048b0befdf5102959078ffc29c22cdc4412a98586e76cddb0464",
+    "encoding": "cp949",
+    "rows": 1146,
+    "columns": [
+      "공간정보일련번호",
+      "지명명",
+      "지명영문명",
+      "토지유형",
+      "도분초위도1",
+      "도분초경도1",
+      "도분초위도2",
+      "도분초경도2",
+      "수심높이너비설명",
+      "지명유래설명",
+      "해양지위치정보",
+      "해양지명1",
+      "해양지명2",
+      "해양지명3",
+      "읍면동명",
+      "법령고시번호",
+      "원천자료명",
+      "공간정보"
+    ],
+    "dokdo_any_field_rows": 14,
+    "dokdo_exact_any_field_rows": 0,
+    "lighthouse_any_field_rows": 4,
+    "scope": "CSV content inventory only; no coordinate, coverage or spatial GOLD approval"
+  }
+]
