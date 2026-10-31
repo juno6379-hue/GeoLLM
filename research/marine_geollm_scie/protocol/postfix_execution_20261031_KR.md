@@ -69,3 +69,9 @@ K5는 P18문항×5회와 B0–B4의18문항×5방법×5회, 총540행이다. 사
 ## 첫 P 반복 완료·baseline K5 진입
 
 graph_repeat_0 18/18, EXECUTION_OBSERVED, source_unchanged_after=true, 초기화85/85오류없음. 생성10/10 HTTP200/JSON객체 및 문항embedding20/20성공. 상태COMPLETED10/PARTIAL4/NEEDS_CLARIFICATION4. 같은평가기로기계검사7통과/5실패/6미측정포함이며첫회잠정결과다. interim_graph_repeat0_audit.json에원본/평가기/계약hash와문항별검사요약을저장했다. 현재baselines_k5 RUNNING이고전체K5완료가아니다. 관련소스·검수자료커밋 a8d73e4,원격push없음.
+
+## K5 진행 중 모델 서버 오류와 병행 부하 기록
+
+2026-10-31 20:27 KST 확인: baseline449/450, completed419/invalid_response28/error2. HTTP500 원본은 row157 PILOT_Q5_02 B1 repeat1(70.993초), row433 PILOT_Q5_03 B1 repeat4(107.607초). 서버stdout16:53:30/20:16:19 KST와 대조했으며 후속 HTTP200 처리 확인. 별도 에이전트의 stderr 검색으로 상세원인을 찾지 못해 timeout/메모리부족으로 단정하지 않는다. 원본 유지, K5종료 후 동일prompt/options 별도재현. http500_audit_v2.json 보존.
+
+20:07~20:19 KST 전후 운영Dataset 읽기전용 파일hash/DB/lexical감사가 병행됐다. 추가모델호출/소스변경은 없었지만 CPU/IO부하의 지연 영향은 배제할 수 없다. 특히 두 번째500과 시각이 겹치며 인과관계는 미확정이다. 최종 지연 비교의 교란요인으로 명시한다. 독립GOLD 미수령 유지.
