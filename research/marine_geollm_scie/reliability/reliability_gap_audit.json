@@ -1,0 +1,555 @@
+{
+  "schema_version": "1.0",
+  "audited_git_sha": "08e03dbcae6aa52c60fdb78cb290bbe1725b9ae8",
+  "git_dirty": true,
+  "audit_date": "2026-11-01",
+  "production_complete": false,
+  "independent_gold_complete": false,
+  "new_eight_method_results_available": false,
+  "production_change": "Unknown-coverage empty observations are qualified, not definitive geographic absence",
+  "verification": {
+    "targeted_fixture_tests": "7 passed",
+    "live_api": {
+      "report": "docs/geollm/reliability_verification_20261101.md",
+      "v2_checks": "3/3",
+      "v1_failure": "DB_TIMEOUT preserved; unresolved",
+      "source_unchanged": true
+    },
+    "scope": "No model/DB calls by audit agent",
+    "related_regression_tests": "57 passed, 34 warnings in 24.36s",
+    "command": ".venv/Scripts/python.exe -m pytest tests/unit/test_spatial_empty_coverage.py tests/unit/test_execution_validator.py tests/unit/test_agent_execution_contracts.py tests/unit/test_kg_ontology_validator.py -q --disable-warnings",
+    "parent_regression_tests": "162 passed; research 39 passed, overlapping agent suites not summed"
+  },
+  "sources_sha256": {
+    "data/query_template_registry.yaml": "caf18983c9b44169fd518317d564d2052e737dfd94ff6a26049536dc8072e7d2",
+    "services/orchestrator/context_resolver.py": "5d1ea529759f2223ee5d95605aec0e076a5cd49aca72f6a953cd74f3bc00df3e",
+    "services/orchestrator/evidence_builder.py": "c541085fed2d4f849d72a2a4aaa31991784f71e263bd47070278ee58c85ce898",
+    "services/orchestrator/execution_validator.py": "a72c631e563713724234cb09ea087a216e7a22633bf53483bb45220bb3c319b1",
+    "services/orchestrator/request_obligations.py": "d4b9218f0b438dde09d547824dd82a23942883299efbc0830387fdfe84f8ce9b",
+    "services/orchestrator/s101_radius_execution.py": "e287cefa7ae78db2a8b2efb49b1bad808c5526a4ba91ab79f1465d14ff15339f",
+    "services/orchestrator/schema_binding_adapter.py": "35b7fed965ed85cd5dbe35e0d2bb55db7ce64acdd63550136b2559e6e27827af",
+    "shared/schemas/agent.py": "05f97785c1942eb2782d2b037bbd08fb6a8e7824892067ecde6da2fd586188c4"
+  },
+  "cases": [
+    {
+      "case_id": "R-A1",
+      "title_ko": "잘못된 Feature",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/s101_radius_execution.py:138"
+      ],
+      "finding_ko": "승인된 target 집합·명시 제외어 검사와 모호한 등대 차단은 존재. 일반 자연어 의미 일치 및 시설 단위 해소는 미완료.",
+      "test_file": "tests/unit/test_s101_radius_execution.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-A2",
+      "title_ko": "의미 과잉 확장",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/s101_radius_execution.py:138"
+      ],
+      "finding_ko": "승인된 target 집합·명시 제외어 검사와 모호한 등대 차단은 존재. 일반 자연어 의미 일치 및 시설 단위 해소는 미완료.",
+      "test_file": "tests/unit/test_s101_radius_execution.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-A3",
+      "title_ko": "다의적 해양 용어",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/s101_radius_execution.py:138"
+      ],
+      "finding_ko": "승인된 target 집합·명시 제외어 검사와 모호한 등대 차단은 존재. 일반 자연어 의미 일치 및 시설 단위 해소는 미완료.",
+      "test_file": "tests/unit/test_s101_radius_execution.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-B1",
+      "title_ko": "최근접의 반경 오해",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/execution_validator.py:501"
+      ],
+      "finding_ko": "nearest gate는 반경 필수 아님. 모든 라우터에서 explicit nearest 우선 및 실제 최근접 executor까지 보장되지 않음.",
+      "test_file": "tests/unit/test_execution_validator.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-B2",
+      "title_ko": "모호한 근접 표현",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/s101_radius_execution.py:90"
+      ],
+      "finding_ko": "이 radius 경로는 명시거리 없으면 clarification. _distance_policy는 명시입력 기록하나 통합 policy_id/version/출처 구분은 부족. 문서의 1km 예시는 운영 default가 아님.",
+      "test_file": "tests/unit/test_s101_radius_execution.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-B3",
+      "title_ko": "선택 영역 누락",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/execution_validator.py:489"
+      ],
+      "finding_ko": "AOI 필수 gate와 query contract 있음. 전 경로 GIS 미실행 계측은 연구 observer에 한정되고 외부도구 관측은 미완료.",
+      "test_file": "tests/unit/test_catalogue_document_and_spatial_contracts.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-B4",
+      "title_ko": "잘못된 기준기하",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/context_resolver.py:109"
+      ],
+      "finding_ko": "문맥/레이어 해소 존재. 연구 polygon1137770은 운영 canonical 정책이 아님. geometry 종류·경계 predicate의 전 경로 정책 통일 미완료.",
+      "test_file": "tests/unit/test_spatial_layer_contracts.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-B5",
+      "title_ko": "경계 술어 미확정",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/context_resolver.py:109"
+      ],
+      "finding_ko": "문맥/레이어 해소 존재. 연구 polygon1137770은 운영 canonical 정책이 아님. geometry 종류·경계 predicate의 전 경로 정책 통일 미완료.",
+      "test_file": "tests/unit/test_spatial_layer_contracts.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-B6",
+      "title_ko": "면 거리 계산 오류",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "data/query_template_registry.yaml:31"
+      ],
+      "finding_ko": "radius SQL geography 거리 계산 존재. 모든 polygon 경로가 minimum geometry distance를 보존하는지는 종단 검증 필요.",
+      "test_file": "tests/unit/test_s101_radius_execution.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-C1",
+      "title_ko": "자료 공간범위 밖",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/s101_radius_execution.py:655"
+      ],
+      "finding_ko": "이번 radius/bbox 후처리에서 coverage 미검증 0행은 PARTIAL/NO_EVIDENCE와 실제 observed_count=0 분리. 실제 coverage 검증 전 gate/검증된 SUCCESS_EMPTY 경로 및 다른 executor는 미완료.",
+      "test_file": "tests/unit/test_spatial_empty_coverage.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-C2",
+      "title_ko": "부분 자료범위",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/schema_binding_adapter.py:330"
+      ],
+      "finding_ko": "metadata_only/미적재 차단 및 시간자료 전용 계약은 존재. 일반 공간/문서의 대상별 부분범위·최신성 증명 gate는 없음.",
+      "test_file": "tests/unit/test_time_series_source_contract.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-C3",
+      "title_ko": "오래된 snapshot",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/schema_binding_adapter.py:330"
+      ],
+      "finding_ko": "metadata_only/미적재 차단 및 시간자료 전용 계약은 존재. 일반 공간/문서의 대상별 부분범위·최신성 증명 gate는 없음.",
+      "test_file": "tests/unit/test_time_series_source_contract.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-D1",
+      "title_ko": "FC에 없는 Feature",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/execution_validator.py:461"
+      ],
+      "finding_ko": "source_attribute_search는 실제 mapping/filters/FC hash 일치를 다시 검사. 모든 generic plan의 FC feature/attribute/codelist 의미 검증을 뜻하지 않음. KG validator는 node/edge 구조·provenance 검사이지 사용자 의도 정답검사 아님.",
+      "test_file": "tests/unit/test_attribute_execution_contract.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-D2",
+      "title_ko": "Feature에 없는 속성",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/execution_validator.py:461"
+      ],
+      "finding_ko": "source_attribute_search는 실제 mapping/filters/FC hash 일치를 다시 검사. 모든 generic plan의 FC feature/attribute/codelist 의미 검증을 뜻하지 않음. KG validator는 node/edge 구조·provenance 검사이지 사용자 의도 정답검사 아님.",
+      "test_file": "tests/unit/test_attribute_execution_contract.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-D3",
+      "title_ko": "CodeList 혼동",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/execution_validator.py:461"
+      ],
+      "finding_ko": "source_attribute_search는 실제 mapping/filters/FC hash 일치를 다시 검사. 모든 generic plan의 FC feature/attribute/codelist 의미 검증을 뜻하지 않음. KG validator는 node/edge 구조·provenance 검사이지 사용자 의도 정답검사 아님.",
+      "test_file": "tests/unit/test_attribute_execution_contract.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-D4",
+      "title_ko": "스키마와 실제 값 혼동",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/s101_radius_execution.py:973"
+      ],
+      "finding_ko": "실제 attributes와 객체ID/버전/근거는 반환됨. 모든 객체 실제 값 ↔ FC definition/code locator 결합은 운영 종단 미완료.",
+      "test_file": "tests/unit/test_attribute_execution_contract.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-E1",
+      "title_ko": "단위 정규화",
+      "status": "IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/s101_radius_execution.py:90"
+      ],
+      "finding_ko": "확인한 radius 경로의 단위 파싱/비유한·음수·충돌·상한 검사 존재. 이 상태는 해당 경로 코드 범위이며 전체 서비스 정확도 아님.",
+      "test_file": "tests/unit/test_s101_radius_execution.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-E2",
+      "title_ko": "잘못된 거리",
+      "status": "IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/s101_radius_execution.py:90"
+      ],
+      "finding_ko": "확인한 radius 경로의 단위 파싱/비유한·음수·충돌·상한 검사 존재. 이 상태는 해당 경로 코드 범위이며 전체 서비스 정확도 아님.",
+      "test_file": "tests/unit/test_s101_radius_execution.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-E3",
+      "title_ko": "CRS 불일치",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/execution_validator.py:485"
+      ],
+      "finding_ko": "source attribute 검색 및 radius 준비에서 EPSG:4326 검사. 일반 validator의 전체 binding SRID와 geometry CRS/변환 사슬 검증은 부족.",
+      "test_file": "tests/unit/test_attribute_execution_contract.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-F1",
+      "title_ko": "도구 불가",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/schema_binding_adapter.py:312"
+      ],
+      "finding_ko": "등록 도구/template 및 relation/geometry/code column/SELECT 권한 gate 존재. 실제 도구 liveness와 실행 직전 schema drift 및 전 경로 security 검증은 별도 필요.",
+      "test_file": "tests/unit/test_execution_validator.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-F2",
+      "title_ko": "템플릿 누락",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/schema_binding_adapter.py:312"
+      ],
+      "finding_ko": "등록 도구/template 및 relation/geometry/code column/SELECT 권한 gate 존재. 실제 도구 liveness와 실행 직전 schema drift 및 전 경로 security 검증은 별도 필요.",
+      "test_file": "tests/unit/test_execution_validator.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-F3",
+      "title_ko": "스키마 변경",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/schema_binding_adapter.py:312"
+      ],
+      "finding_ko": "등록 도구/template 및 relation/geometry/code column/SELECT 권한 gate 존재. 실제 도구 liveness와 실행 직전 schema drift 및 전 경로 security 검증은 별도 필요.",
+      "test_file": "tests/unit/test_execution_validator.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-F4",
+      "title_ko": "권한 부족",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/schema_binding_adapter.py:312"
+      ],
+      "finding_ko": "등록 도구/template 및 relation/geometry/code column/SELECT 권한 gate 존재. 실제 도구 liveness와 실행 직전 schema drift 및 전 경로 security 검증은 별도 필요.",
+      "test_file": "tests/unit/test_execution_validator.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-G1",
+      "title_ko": "승인 후 계획 변경",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/execution_validator.py:21"
+      ],
+      "finding_ko": "slots/spatial/data/tool 변경 hash 무효화, merge_slot_patch 승인 제거 존재. semantic_resolution/feature_bindings/snapshot_versions/provenance의 정책변경은 현재 hash 대상 아님.",
+      "test_file": "tests/unit/test_agent_execution_contracts.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-H1",
+      "title_ko": "복합 과업 부분 완료",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/request_obligations.py:134"
+      ],
+      "finding_ko": "출력 obligation 감사와 PARTIAL 강등 존재. spatial/evidence별 완전성·비교 공통범위·객체 oracle까지 전면 검사하지 않음.",
+      "test_file": "tests/unit/test_composite_attribute_obligations.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-H2",
+      "title_ko": "비교 산출물 누락",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/request_obligations.py:134"
+      ],
+      "finding_ko": "출력 obligation 감사와 PARTIAL 강등 존재. spatial/evidence별 완전성·비교 공통범위·객체 oracle까지 전면 검사하지 않음.",
+      "test_file": "tests/unit/test_composite_attribute_obligations.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-H3",
+      "title_ko": "하위작업 범위 불일치",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/request_obligations.py:134"
+      ],
+      "finding_ko": "출력 obligation 감사와 PARTIAL 강등 존재. spatial/evidence별 완전성·비교 공통범위·객체 oracle까지 전면 검사하지 않음.",
+      "test_file": "tests/unit/test_composite_attribute_obligations.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-I1",
+      "title_ko": "시설 중복",
+      "status": "NOT_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/s101_radius_execution.py:978"
+      ],
+      "finding_ko": "feature ID 중복검사만 있고 동일 실재 시설 across feature dedup의 고정 정책/근거는 없음.",
+      "test_file": "tests/unit/test_s101_radius_execution.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-J1",
+      "title_ko": "객체와 근거 불일치",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/evidence_builder.py:176"
+      ],
+      "finding_ko": "객체 source/version/evidence ID 및 KG/RAG 구분 존재. source 적합성/공식판/설명판 동등성은 모든 응답에 검사되지 않음.",
+      "test_file": "tests/unit/test_attribute_execution_contract.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-J2",
+      "title_ko": "KG를 공식 정의로 대체",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/evidence_builder.py:176"
+      ],
+      "finding_ko": "객체 source/version/evidence ID 및 KG/RAG 구분 존재. source 적합성/공식판/설명판 동등성은 모든 응답에 검사되지 않음.",
+      "test_file": "tests/unit/test_attribute_execution_contract.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-J3",
+      "title_ko": "근거 판 불일치",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/evidence_builder.py:176"
+      ],
+      "finding_ko": "객체 source/version/evidence ID 및 KG/RAG 구분 존재. source 적합성/공식판/설명판 동등성은 모든 응답에 검사되지 않음.",
+      "test_file": "tests/unit/test_attribute_execution_contract.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-K1",
+      "title_ko": "의미 보존 복구",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "shared/schemas/agent.py:241"
+      ],
+      "finding_ko": "slot patch 이력/재검증과 연구 lossless compiler 존재. bounded recovery 이후 의미보존 측정·권한/coverage 불변식의 공통 operational engine은 미완료.",
+      "test_file": "tests/unit/test_agent_execution_contracts.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-K2",
+      "title_ko": "복구 중 의미 변형",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "shared/schemas/agent.py:241"
+      ],
+      "finding_ko": "slot patch 이력/재검증과 연구 lossless compiler 존재. bounded recovery 이후 의미보존 측정·권한/coverage 불변식의 공통 operational engine은 미완료.",
+      "test_file": "tests/unit/test_agent_execution_contracts.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-K3",
+      "title_ko": "복구로 자료 부재 우회",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "shared/schemas/agent.py:241"
+      ],
+      "finding_ko": "slot patch 이력/재검증과 연구 lossless compiler 존재. bounded recovery 이후 의미보존 측정·권한/coverage 불변식의 공통 operational engine은 미완료.",
+      "test_file": "tests/unit/test_agent_execution_contracts.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-K4",
+      "title_ko": "복구로 권한 우회",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "shared/schemas/agent.py:241"
+      ],
+      "finding_ko": "slot patch 이력/재검증과 연구 lossless compiler 존재. bounded recovery 이후 의미보존 측정·권한/coverage 불변식의 공통 operational engine은 미완료.",
+      "test_file": "tests/unit/test_agent_execution_contracts.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-L1",
+      "title_ko": "과거를 현재로 표현",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/schema_binding_adapter.py:330"
+      ],
+      "finding_ko": "metadata_only/미적재 차단 및 시간자료 전용 계약은 존재. 일반 공간/문서의 대상별 부분범위·최신성 증명 gate는 없음.",
+      "test_file": "tests/unit/test_time_series_source_contract.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-L2",
+      "title_ko": "필수 시간 누락",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/execution_validator.py:562"
+      ],
+      "finding_ko": "traffic/time-series의 기간/원천 계약 존재. 전체 temporal operation의 required/default provenance 일관성 미완료.",
+      "test_file": "tests/unit/test_traffic_period_contract.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-M1",
+      "title_ko": "빈 결과와 실패 혼동",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/s101_radius_execution.py:655"
+      ],
+      "finding_ko": "이번 radius/bbox 후처리에서 coverage 미검증 0행은 PARTIAL/NO_EVIDENCE와 실제 observed_count=0 분리. 실제 coverage 검증 전 gate/검증된 SUCCESS_EMPTY 경로 및 다른 executor는 미완료.",
+      "test_file": "tests/unit/test_spatial_empty_coverage.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-M2",
+      "title_ko": "결과 잘림",
+      "status": "IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/s101_radius_execution.py:981"
+      ],
+      "finding_ko": "확인한 radius/bbox 경로 count/returned/offset/truncated 분리와 반환수·중복 검증 존재. 전체 executor로 일반화한 완료 아님.",
+      "test_file": "tests/unit/test_s101_radius_execution.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    },
+    {
+      "case_id": "R-M3",
+      "title_ko": "숨은 기본값",
+      "status": "PARTIALLY_IMPLEMENTED",
+      "scope": "INSPECTED_CODE_PATH_ONLY",
+      "evidence": [
+        "services/orchestrator/s101_radius_execution.py:90"
+      ],
+      "finding_ko": "이 radius 경로는 명시거리 없으면 clarification. _distance_policy는 명시입력 기록하나 통합 policy_id/version/출처 구분은 부족. 문서의 1km 예시는 운영 default가 아님.",
+      "test_file": "tests/unit/test_s101_radius_execution.py",
+      "verification": "STATIC_CODE_AUDIT; fixture tests separately reported",
+      "live_api_verified": false
+    }
+  ]
+}

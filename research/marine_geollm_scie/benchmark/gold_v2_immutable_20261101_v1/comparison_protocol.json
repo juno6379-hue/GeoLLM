@@ -1,0 +1,112 @@
+{
+  "version": "gold_v2_preflight_20261031",
+  "status": "AWAITING_ORACLE_AND_METHOD_VALIDATION",
+  "user_approved_obligations": true,
+  "independent_expert_review_complete": false,
+  "gold_passed_to_generation": false,
+  "latest_reference_manifest": "research/marine_geollm_scie/benchmark/gold_v2_20261031_r2/manifest.json",
+  "approved_scope_partition": {
+    "in_snapshot": ["PILOT_Q3_02", "PILOT_Q5_02"],
+    "out_of_coverage_safe_abstention": ["PILOT_Q3_01", "PILOT_Q5_01", "PILOT_Q5_03"],
+    "missing_input": ["PILOT_Q3_03"],
+    "out_of_coverage_spatial_gold": null,
+    "out_of_coverage_expected": "BLOCKED_DATA or DATA_OUT_OF_SCOPE; optional source-bound document PARTIAL_RESPONSE",
+    "no_zero_result_substitution": true,
+    "additional_busan_cases": "Separate supplementary cohort; never replace original Dokdo cases or claim unseen holdout"
+  },
+  "methods": {
+    "B0": "Direct LLM",
+    "B1": "Text RAG",
+    "B2": "Ontology/KG",
+    "B3": "Tool Agent",
+    "B4": "LLM Review",
+    "P0": "QEC + Deterministic Validator",
+    "H": "LLM Review + Deterministic Validator",
+    "P1": "Full Marine GeoLLM"
+  },
+  "matched_branch_design": {
+    "approval": "User explicitly approved frozen B3 initial plan branching",
+    "shared_initial_plan": ["B3", "B4", "P0", "H"],
+    "initial_plan_hash_required": true,
+    "B3": "Execute unchanged initial plan",
+    "B4": "LLM review then execute reviewed plan",
+    "P0": "Lossless QEC compilation then Deterministic Validator; no model review or semantic repair",
+    "H": "LLM review then lossless QEC compilation then same Deterministic Validator",
+    "shared_review_artifact": ["B4", "H"],
+    "P1": "Independent full GeoLLM path, same query/source/GOLD; not a paired validator-only effect",
+    "compilation_allowed": ["literal field renaming", "explicit km to m conversion", "feature scalar to singleton list"],
+    "compilation_forbidden": ["infer missing CRS", "resolve missing geometry", "correct feature", "select missing dataset", "repair plan", "infer omitted child task fields from other tasks"],
+    "missing_fields": "null in typed QEC; MISSING in compiler provenance",
+    "validator_semantic_mutation": "fail experiment branch before execution",
+    "shared_generation_cost": "record once and report amortized and standalone accounting separately"
+  },
+  "comparison_rules": {
+    "same_gold_manifest_sha256_for_all_methods": true,
+    "same_benchmark_inputs_and_context": true,
+    "same_source_snapshot": true,
+    "gold_object_ids_excluded_from_prompts": true,
+    "runtime_evidence_required_for_execution_claims": true,
+    "model_claim_of_execution_is_not_execution_log": true,
+    "record_per_stage_tokens_latency_and_retries": true,
+    "safety_sandbox_is_not_deterministic_semantic_validator": true,
+    "missing_methods_must_not_be_aliased": true
+  },
+  "case_obligations": {
+    "PILOT_Q3_01": {
+      "spatial_gold": null,
+      "expected_behavior": "DATA_OUT_OF_SCOPE",
+      "nearest_facility_rule_applies_to": "future in-scope supplementary lighthouse case only",
+      "max_radius_m": null,
+      "requires": ["facility_dedup_mapping", "representative_coordinate_policy", "tie_policy", "distance_tolerance", "source_scope"]
+    },
+    "PILOT_Q3_02": {
+      "spatial_gold": "Complete AnchorageArea ID set under frozen approved Busan harbour boundary predicate",
+      "requires": ["approved_boundary", "boundary_predicate", "duplicate_object_policy", "source_scope"]
+    },
+    "PILOT_Q3_03": {
+      "semantic_gold": {"feature": "Wreck", "operator": "intersects"},
+      "qec_gold": {"selected_geometry": "REQUIRED"},
+      "expected_behavior": "NEEDS_USER_INPUT",
+      "blocker": "MISSING_REFERENCE_GEOMETRY",
+      "execution_gold": {"execution_attempted": false}
+    },
+    "PILOT_Q5_01": {
+      "current_spatial_gold": null,
+      "current_spatial_expected": "Both Lighthouse and Wreck BLOCKED_DATA; optional standard evidence partial response",
+      "required_object_sets": ["Lighthouse", "Wreck"],
+      "radius_m": 5000,
+      "reference": "approved Dokdo east-island anchor",
+      "evidence_per_object_and_target": true,
+      "full_success": "both target sets exact AND both evidence obligations satisfied AND no omitted subtask",
+      "missing_target_is_not_empty_set": true
+    },
+    "PILOT_Q5_02": {
+      "required_object_sets": ["AnchorageArea", "RestrictedArea"],
+      "radius_m": 2000,
+      "reference": "Canonical single snapshot harbour polygon 1137770 / 101KR00658D00.000",
+      "comparison_criteria": ["per-type counts", "per-type min/max geodesic distance", "FC feature definition evidence", "source/reference coverage disclosure"],
+      "source_coverage_disclosure_required": true,
+      "full_success": "both target sets exact AND frozen comparison criteria satisfied AND source coverage disclosed"
+    },
+    "PILOT_Q5_03": {
+      "current_spatial_gold": null,
+      "current_spatial_expected": "Wreck BLOCKED_DATA; FC attributes evaluated as separate optional document/evidence task",
+      "instance_value_linkage_applies_to": "future in-scope supplementary Wreck case only",
+      "required_object_sets": ["Wreck"],
+      "radius_m": 5000,
+      "reference": "approved Dokdo east-island anchor",
+      "requires_per_object": ["object_id", "observed_attribute_path", "observed_attribute_value", "FC_feature_binding_path", "FC_attribute_definition", "FC_edition", "FC_source_hash", "FC_locator", "enumeration_meaning_when_applicable"],
+      "FC_definition_only_is_insufficient": true,
+      "invent_missing_object_values": false,
+      "flattened_complex_attribute_parent_requires_verification": true,
+      "empty_spatial_set_does_not_validate_attribute_linkage": true
+    }
+  },
+  "replay_policy": {
+    "gold_only_change": "Rescore immutable raw in a new output directory, only if all required observations exist; absent observations remain unmeasured",
+    "behavior_code_change": "New frozen full benchmark execution for all eight methods",
+    "observer_only_change": "New observations required for missing execution logs; do not splice new trace into old output",
+    "current_decision": "FULL_RERUN_REQUIRED_AFTER_ORACLE_AND_ADAPTER_GATES",
+    "reason": "Production changed after K5, observation instrumentation changed, old B0-B4 allowed bounded tools for every method, and P0/H have no matched full benchmark runs"
+  }
+}

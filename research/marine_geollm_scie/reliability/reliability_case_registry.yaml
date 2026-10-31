@@ -1,0 +1,1710 @@
+schema_version: '1.0'
+status: POLICY_SPECIFICATION_NOT_EXPERIMENT_RESULT
+source_document: CODEX_GeoLLM_GeoAgent_Reliability_Cases_Judgment_Policy_KR.md
+source_sha256: ebcc6cd5db9e3be25e638de306439ae4c69ca0a167a1a700c2300649388dc975
+git_sha_at_definition: 08e03dbcae6aa52c60fdb78cb290bbe1725b9ae8
+git_dirty_at_definition: true
+production_enabled: false
+frozen_gold_modified: false
+cases:
+- case_id: R-A1
+  title_ko: 잘못된 Feature
+  category: A
+  query_example: 가라앉은 배를 찾아줘
+  trigger:
+    description_ko: 침선 요구에 Obstruction 계획
+  failure_scenario: 침선 요구에 Obstruction 계획
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: 의미 불일치 해결 전 실행 금지
+  forbidden_behavior:
+  - 다른 Feature로 성공 처리
+  required_qec_information:
+  - original_query
+  - target_features
+  related_code: &id001
+  - services/orchestrator/kg_ontology_validator.py
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: HYBRID
+  detector_superiority_measured: false
+  rq:
+  - RQ1
+  - RQ2
+  metrics:
+  - condition_contract_satisfaction
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_A1
+- case_id: R-A2
+  title_ko: 의미 과잉 확장
+  category: A
+  query_example: Wreck만 찾아줘
+  trigger:
+    description_ko: Wreck를 hazard 전체로 확대
+  failure_scenario: Wreck를 hazard 전체로 확대
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: 대상 범위 불일치 검토 및 실행 보류
+  forbidden_behavior:
+  - Rock/Obstruction 묵시 추가
+  required_qec_information:
+  - original_query
+  - target_features
+  related_code: *id001
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: LLM_REVIEW_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ1
+  - RQ2
+  metrics:
+  - condition_contract_satisfaction
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_A2
+- case_id: R-A3
+  title_ko: 다의적 해양 용어
+  category: A
+  query_example: 등대를 찾아줘
+  trigger:
+    description_ko: 구조물/등화/시설 해석에 따라 결과 변경
+  failure_scenario: 구조물/등화/시설 해석에 따라 결과 변경
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: 집합·시설 중복 정책 해소 또는 NEEDS_USER_INPUT
+  forbidden_behavior:
+  - 모호한 시설을 단일 Feature로 확정
+  required_qec_information:
+  - target_features
+  - resolved_target_set
+  - dedup_policy
+  related_code: *id001
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: HYBRID
+  detector_superiority_measured: false
+  rq:
+  - RQ1
+  - RQ2
+  metrics:
+  - condition_contract_satisfaction
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_A3
+- case_id: R-B1
+  title_ko: 최근접의 반경 오해
+  category: B
+  query_example: 독도에서 가장 가까운 등대
+  trigger:
+    description_ko: nearest를 임의 dwithin으로 치환
+  failure_scenario: nearest를 임의 dwithin으로 치환
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: nearest/top_k=1 유지; coverage 별도 판단
+  forbidden_behavior:
+  - 임의 최대반경 주입
+  required_qec_information:
+  - spatial_relation
+  - distance_m
+  - top_k
+  related_code: &id002
+  - services/orchestrator/context_resolver.py
+  - services/orchestrator/s101_radius_execution.py
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: HYBRID
+  detector_superiority_measured: false
+  rq:
+  - RQ1
+  - RQ2
+  - RQ3
+  metrics:
+  - condition_contract_satisfaction
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  - execution_success
+  - spatial_correctness_if_oracle_available
+  - silent_spatial_failure_if_oracle_available
+  - evidence_correctness
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_B1
+- case_id: R-B2
+  title_ko: 모호한 근접 표현
+  category: B
+  query_example: 독도 부근의 등대
+  trigger:
+    description_ko: 반경 미명시
+  failure_scenario: 반경 미명시
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: 승인된 일반 정책과 provenance 또는 NEEDS_USER_INPUT
+  forbidden_behavior:
+  - 사례별 숨은 1km 기본값
+  required_qec_information:
+  - distance_m
+  - distance_source
+  - policy_id
+  - policy_version
+  related_code: *id002
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: HYBRID
+  detector_superiority_measured: false
+  rq:
+  - RQ1
+  - RQ2
+  - RQ5
+  metrics:
+  - condition_contract_satisfaction
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  - latency_ms
+  - input_tokens
+  - output_tokens
+  - tool_calls
+  - human_escalation_rate
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_B2
+- case_id: R-B3
+  title_ko: 선택 영역 누락
+  category: B
+  query_example: Find wrecks intersecting the selected area.
+  trigger:
+    description_ko: 선택 geometry 없음
+  failure_scenario: 선택 geometry 없음
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: NEEDS_USER_INPUT/MISSING_REFERENCE_GEOMETRY; GIS 미실행
+    readiness: NEEDS_USER_INPUT
+    blocker: MISSING_REFERENCE_GEOMETRY
+    execution_attempted: false
+    execution_started: false
+    tool_called: false
+    sql_executed: false
+    observation_scope: SPATIAL_EXECUTION_ONLY
+  forbidden_behavior:
+  - 임의 AOI 생성 또는 공간 SQL 실행
+  required_qec_information:
+  - reference_geometry
+  - execution_observation
+  related_code: *id002
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ1
+  - RQ2
+  - RQ3
+  metrics:
+  - condition_contract_satisfaction
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  - execution_success
+  - spatial_correctness_if_oracle_available
+  - silent_spatial_failure_if_oracle_available
+  - evidence_correctness
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_B3
+- case_id: R-B4
+  title_ko: 잘못된 기준기하
+  category: B
+  query_example: 부산항 영역 안의 정박지
+  trigger:
+    description_ko: 면을 대표점으로 축약
+  failure_scenario: 면을 대표점으로 축약
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: 출처·버전·hash를 갖는 확정 polygon 사용
+  forbidden_behavior:
+  - centroid로 contains 대체
+  required_qec_information:
+  - reference_geometry
+  - geometry_hash
+  - reference_geometry_source
+  related_code: *id002
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: HYBRID
+  detector_superiority_measured: false
+  rq:
+  - RQ2
+  - RQ3
+  metrics:
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  - execution_success
+  - spatial_correctness_if_oracle_available
+  - silent_spatial_failure_if_oracle_available
+  - evidence_correctness
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_B4
+- case_id: R-B5
+  title_ko: 경계 술어 미확정
+  category: B
+  query_example: 부산항 안의 경계 접촉 정박지
+  trigger:
+    description_ko: within/covers/intersects 미고정
+  failure_scenario: within/covers/intersects 미고정
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: BLOCKED_CONFIG 또는 연구 UNRESOLVED_POLICY
+  forbidden_behavior:
+  - 관측 결과를 보고 술어 변경
+  required_qec_information:
+  - boundary_policy
+  - spatial_relation
+  related_code: *id002
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ2
+  - RQ3
+  metrics:
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  - execution_success
+  - spatial_correctness_if_oracle_available
+  - silent_spatial_failure_if_oracle_available
+  - evidence_correctness
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_B5
+- case_id: R-B6
+  title_ko: 면 거리 계산 오류
+  category: B
+  query_example: 부산항 주변 2km 정박지
+  trigger:
+    description_ko: centroid 거리 사용
+  failure_scenario: centroid 거리 사용
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: polygon 대 geometry 최소 지오데식 거리
+  forbidden_behavior:
+  - 경계선 거리 또는 중심점 거리 대체
+  required_qec_information:
+  - distance_calculation_policy
+  - reference_geometry
+  - crs
+  related_code: *id002
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: POST_EXECUTION_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ3
+  metrics:
+  - execution_success
+  - spatial_correctness_if_oracle_available
+  - silent_spatial_failure_if_oracle_available
+  - evidence_correctness
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_B6
+- case_id: R-C1
+  title_ko: 자료 공간범위 밖
+  category: C
+  query_example: 독도 등대 검색과 부산-only source
+  trigger:
+    description_ko: 질의영역 coverage 부족
+  failure_scenario: 질의영역 coverage 부족
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: BLOCKED_DATA; result_count=null
+    readiness: BLOCKED_DATA
+    result_count: null
+    spatial_gold: null
+    coverage_status: OUT_OF_COVERAGE
+    execution_attempted: false
+  forbidden_behavior:
+  - 실세계 0건 선언
+  required_qec_information:
+  - coverage_status
+  - source_scope
+  - coverage_geometry_ref
+  related_code: &id003
+  - services/orchestrator/schema_binding_adapter.py
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ1
+  - RQ2
+  - RQ3
+  - RQ5
+  metrics:
+  - safe_abstention_accuracy
+  - coverage_awareness
+  - false_ready_rate
+  - false_block_rate
+  - latency_ms
+  - input_tokens
+  - output_tokens
+  - tool_calls
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_C1
+- case_id: R-C2
+  title_ko: 부분 자료범위
+  category: C
+  query_example: 제한구역 전체를 찾아줘
+  trigger:
+    description_ko: entry-restricted subset만 존재
+  failure_scenario: entry-restricted subset만 존재
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: 범위 공개 PARTIAL 또는 완전성 필수면 BLOCKED_DATA
+  forbidden_behavior:
+  - subset count를 전체 count로 표현
+  required_qec_information:
+  - source_scope
+  - result_scope
+  related_code: *id003
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ1
+  - RQ2
+  - RQ3
+  metrics:
+  - condition_contract_satisfaction
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  - execution_success
+  - spatial_correctness_if_oracle_available
+  - silent_spatial_failure_if_oracle_available
+  - evidence_correctness
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_C2
+- case_id: R-C3
+  title_ko: 오래된 snapshot
+  category: C
+  query_example: 현재 제한구역을 찾아줘
+  trigger:
+    description_ko: freshness 요구 불충족
+  failure_scenario: freshness 요구 불충족
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: BLOCKED_DATA 또는 허용된 과거 범위만 명시
+  forbidden_behavior:
+  - 과거 snapshot을 현재로 서술
+  required_qec_information:
+  - snapshot_versions
+  - temporal_requirement
+  related_code: *id003
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ1
+  - RQ2
+  - RQ5
+  metrics:
+  - condition_contract_satisfaction
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  - latency_ms
+  - input_tokens
+  - output_tokens
+  - tool_calls
+  - human_escalation_rate
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_C3
+- case_id: R-D1
+  title_ko: FC에 없는 Feature
+  category: D
+  query_example: Lighthouse Feature를 검색해줘
+  trigger:
+    description_ko: 지정 FC에 Feature 없음
+  failure_scenario: 지정 FC에 Feature 없음
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: FEATURE_NOT_IN_CATALOGUE; 재해소 또는 BLOCKED_CONFIG
+  forbidden_behavior:
+  - 존재하지 않는 FC Feature로 실행
+  required_qec_information:
+  - feature_bindings
+  - catalogue_version
+  related_code: &id004
+  - services/orchestrator/kg_ontology_validator.py
+  - data/s101_feature_catalogue_v2_parsed.json
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ2
+  metrics:
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_D1
+- case_id: R-D2
+  title_ko: Feature에 없는 속성
+  category: D
+  query_example: Wreck.imaginaryDepthValue
+  trigger:
+    description_ko: attributeBinding에 없음
+  failure_scenario: attributeBinding에 없음
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: ATTRIBUTE_NOT_IN_FEATURE 차단
+  forbidden_behavior:
+  - 허용 속성처럼 설명
+  required_qec_information:
+  - feature_bindings
+  - attributes
+  related_code: *id004
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ2
+  metrics:
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_D2
+- case_id: R-D3
+  title_ko: CodeList 혼동
+  category: D
+  query_example: RESTRN과 CATREA를 알려줘
+  trigger:
+    description_ko: 속성 identity/code/Feature binding 혼동
+  failure_scenario: 속성 identity/code/Feature binding 혼동
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: 원천 FC identity 및 permitted_values 확인
+  forbidden_behavior:
+  - 다른 속성 코드 의미 전용
+  required_qec_information:
+  - attributes
+  - feature_bindings
+  - snapshot_versions
+  related_code: *id004
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ2
+  metrics:
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_D3
+- case_id: R-D4
+  title_ko: 스키마와 실제 값 혼동
+  category: D
+  query_example: 이 Wreck의 속성을 설명해줘
+  trigger:
+    description_ko: FC 허용 속성을 객체 실제값으로 표시
+  failure_scenario: FC 허용 속성을 객체 실제값으로 표시
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: 실제 object 값과 FC 정의/코드/locator 연결
+  forbidden_behavior:
+  - 미수집 객체값 생성
+  required_qec_information:
+  - object_id
+  - instance_attributes
+  - evidence
+  related_code: *id004
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: POST_EXECUTION_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ1
+  - RQ3
+  metrics:
+  - condition_contract_satisfaction
+  - execution_success
+  - spatial_correctness_if_oracle_available
+  - silent_spatial_failure_if_oracle_available
+  - evidence_correctness
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_D4
+- case_id: R-E1
+  title_ko: 단위 정규화
+  category: E
+  query_example: 5km와 5000m 검색
+  trigger:
+    description_ko: 명시 단위 차이
+  failure_scenario: 명시 단위 차이
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: 5000m 등가 변환 및 원문·변환 provenance
+  forbidden_behavior:
+  - 명시값 변경
+  required_qec_information:
+  - distance_m
+  - unit
+  - provenance
+  related_code: &id005
+  - services/orchestrator/execution_validator.py
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ2
+  - RQ4
+  metrics:
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  - recovery_success
+  - semantic_preservation
+  - joint_recovery_success
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_E1
+- case_id: R-E2
+  title_ko: 잘못된 거리
+  category: E
+  query_example: 허용 최대반경을 넘겨 검색해줘
+  trigger:
+    description_ko: 음수/0/비유한/최대정책 초과
+  failure_scenario: 음수/0/비유한/최대정책 초과
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: 현재 명시된 거리정책 위반 차단
+  forbidden_behavior:
+  - 자동 clamp 후 원문 실행 주장
+  required_qec_information:
+  - distance_m
+  - policy_version
+  related_code: *id005
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ2
+  - RQ5
+  metrics:
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  - latency_ms
+  - input_tokens
+  - output_tokens
+  - tool_calls
+  - human_escalation_rate
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_E2
+- case_id: R-E3
+  title_ko: CRS 불일치
+  category: E
+  query_example: 다른 SRID geometry로 검색
+  trigger:
+    description_ko: 입력·source·tool CRS 불일치
+  failure_scenario: 입력·source·tool CRS 불일치
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: 승인 변환 없으면 BLOCKED_CONFIG
+  forbidden_behavior:
+  - SRID 표기만 바꿔 실행
+  required_qec_information:
+  - crs
+  - data_bindings
+  - reference_geometry
+  related_code: *id005
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ2
+  - RQ4
+  metrics:
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  - recovery_success
+  - semantic_preservation
+  - joint_recovery_success
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_E3
+- case_id: R-F1
+  title_ko: 도구 불가
+  category: F
+  query_example: 사용 불가 도구로 검색
+  trigger:
+    description_ko: runtime tool unavailable
+  failure_scenario: runtime tool unavailable
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: BLOCKED_CONFIG; 등가 fallback만 별도 검증
+  forbidden_behavior:
+  - 의미 다른 도구로 우회
+  required_qec_information:
+  - tool
+  - tool_bindings
+  related_code: &id006
+  - services/orchestrator/schema_binding_adapter.py
+  - services/orchestrator/execution_validator.py
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ2
+  - RQ4
+  - RQ5
+  metrics:
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  - recovery_success
+  - semantic_preservation
+  - joint_recovery_success
+  - latency_ms
+  - input_tokens
+  - output_tokens
+  - tool_calls
+  - human_escalation_rate
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_F1
+- case_id: R-F2
+  title_ko: 템플릿 누락
+  category: F
+  query_example: 미등록 query template 실행
+  trigger:
+    description_ko: 필수 template 없음
+  failure_scenario: 필수 template 없음
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: BLOCKED_CONFIG
+  forbidden_behavior:
+  - SQL 추측 생성
+  required_qec_information:
+  - query_template
+  - tool_bindings
+  related_code: *id006
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ2
+  metrics:
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_F2
+- case_id: R-F3
+  title_ko: 스키마 변경
+  category: F
+  query_example: 기존 열로 검색
+  trigger:
+    description_ko: 실DB column과 registry 불일치
+  failure_scenario: 실DB column과 registry 불일치
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: SCHEMA_CHANGED/BLOCKED_CONFIG
+  forbidden_behavior:
+  - 실패를 0건으로 변환
+  required_qec_information:
+  - data_bindings
+  - snapshot_versions
+  related_code: *id006
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ2
+  - RQ3
+  metrics:
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  - execution_success
+  - spatial_correctness_if_oracle_available
+  - silent_spatial_failure_if_oracle_available
+  - evidence_correctness
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_F3
+- case_id: R-F4
+  title_ko: 권한 부족
+  category: F
+  query_example: 권한 없는 자료를 검색해줘
+  trigger:
+    description_ko: security scope 거부
+  failure_scenario: security scope 거부
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: BLOCKED_POLICY
+  forbidden_behavior:
+  - 대체 도구로 권한 우회
+  required_qec_information:
+  - security
+  - tool_bindings
+  related_code: *id006
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ2
+  - RQ4
+  metrics:
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  - recovery_success
+  - semantic_preservation
+  - joint_recovery_success
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_F4
+- case_id: R-G1
+  title_ko: 승인 후 계획 변경
+  category: G
+  query_example: 승인 반경을 변경해 실행
+  trigger:
+    description_ko: current hash와 승인 hash 불일치
+  failure_scenario: current hash와 승인 hash 불일치
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: 승인 무효; 재검증 전 미실행
+  forbidden_behavior:
+  - 기존 승인 재사용
+  required_qec_information:
+  - revision
+  - provenance
+  - slots
+  related_code:
+  - shared/schemas/agent.py
+  - services/orchestrator/execution_validator.py
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ2
+  - RQ3
+  metrics:
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  - execution_success
+  - spatial_correctness_if_oracle_available
+  - silent_spatial_failure_if_oracle_available
+  - evidence_correctness
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_G1
+- case_id: R-H1
+  title_ko: 복합 과업 부분 완료
+  category: H
+  query_example: 등대와 Wreck 및 각각 근거
+  trigger:
+    description_ko: 일부 대상/근거만 완료
+  failure_scenario: 일부 대상/근거만 완료
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: 필수 네 산출물 모두 충족 전 PARTIAL
+  forbidden_behavior:
+  - Wreck 성공만으로 full success
+  required_qec_information:
+  - subtasks
+  - task_results
+  - evidence
+  related_code: &id007
+  - services/orchestrator/graph.py
+  - shared/schemas/agent.py
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: POST_EXECUTION_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ1
+  - RQ3
+  metrics:
+  - condition_contract_satisfaction
+  - execution_success
+  - spatial_correctness_if_oracle_available
+  - silent_spatial_failure_if_oracle_available
+  - evidence_correctness
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_H1
+- case_id: R-H2
+  title_ko: 비교 산출물 누락
+  category: H
+  query_example: 정박지와 제한구역을 비교해줘
+  trigger:
+    description_ko: 두 검색만 있고 비교 없음
+  failure_scenario: 두 검색만 있고 비교 없음
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: 비교 기준·결과·source scope 포함 전 PARTIAL
+  forbidden_behavior:
+  - 검색 완료를 비교 완료로 표시
+  required_qec_information:
+  - subtasks
+  - comparison
+  - source_scope
+  related_code: *id007
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: POST_EXECUTION_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ1
+  - RQ3
+  metrics:
+  - condition_contract_satisfaction
+  - execution_success
+  - spatial_correctness_if_oracle_available
+  - silent_spatial_failure_if_oracle_available
+  - evidence_correctness
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_H2
+- case_id: R-H3
+  title_ko: 하위작업 범위 불일치
+  category: H
+  query_example: 두 유형의 개수를 비교해줘
+  trigger:
+    description_ko: 한쪽 전체 다른쪽 subset
+  failure_scenario: 한쪽 전체 다른쪽 subset
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: comparison_scope_compatible=false와 한계 공개
+  forbidden_behavior:
+  - 전체 빈도 차이로 해석
+  required_qec_information:
+  - source_scope
+  - comparison
+  related_code: *id007
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: POST_EXECUTION_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ1
+  - RQ3
+  metrics:
+  - condition_contract_satisfaction
+  - execution_success
+  - spatial_correctness_if_oracle_available
+  - silent_spatial_failure_if_oracle_available
+  - evidence_correctness
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_H3
+- case_id: R-I1
+  title_ko: 시설 중복
+  category: I
+  query_example: 가장 가까운 등대 1개
+  trigger:
+    description_ko: 동일 시설 구조물/등화 복수 Feature
+  failure_scenario: 동일 시설 구조물/등화 복수 Feature
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: 사전 시설 식별·dedup 정책 적용
+  forbidden_behavior:
+  - Feature 수를 시설 수로 단정
+  required_qec_information:
+  - dedup_policy
+  - facility_id
+  - object_id
+  related_code:
+  - services/orchestrator/s101_radius_execution.py
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: POST_EXECUTION_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ2
+  - RQ3
+  metrics:
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  - execution_success
+  - spatial_correctness_if_oracle_available
+  - silent_spatial_failure_if_oracle_available
+  - evidence_correctness
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_I1
+- case_id: R-J1
+  title_ko: 객체와 근거 불일치
+  category: J
+  query_example: 찾은 객체의 근거를 알려줘
+  trigger:
+    description_ko: ID는 맞지만 source locator 틀림
+  failure_scenario: ID는 맞지만 source locator 틀림
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: 객체별 근거 별도 실패 판정
+  forbidden_behavior:
+  - 공간 정답이면 evidence도 정답 처리
+  required_qec_information:
+  - object_id
+  - evidence
+  - snapshot_versions
+  related_code: &id008
+  - services/orchestrator/evidence_builder.py
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: POST_EXECUTION_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ3
+  metrics:
+  - execution_success
+  - spatial_correctness_if_oracle_available
+  - silent_spatial_failure_if_oracle_available
+  - evidence_correctness
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_J1
+- case_id: R-J2
+  title_ko: KG를 공식 정의로 대체
+  category: J
+  query_example: 공식 FC 정의를 알려줘
+  trigger:
+    description_ko: 파생 KG 설명만 제공
+  failure_scenario: 파생 KG 설명만 제공
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: 공식 원문 edition/locator 필요
+  forbidden_behavior:
+  - KG 요약을 공식 원문이라고 주장
+  required_qec_information:
+  - evidence
+  - source_scope
+  related_code: *id008
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: HYBRID
+  detector_superiority_measured: false
+  rq:
+  - RQ1
+  - RQ3
+  metrics:
+  - condition_contract_satisfaction
+  - execution_success
+  - spatial_correctness_if_oracle_available
+  - silent_spatial_failure_if_oracle_available
+  - evidence_correctness
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_J2
+- case_id: R-J3
+  title_ko: 근거 판 불일치
+  category: J
+  query_example: S-101 해당 판 정의를 알려줘
+  trigger:
+    description_ko: Feature와 근거 edition 다름
+  failure_scenario: Feature와 근거 edition 다름
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: WRONG_VERSION; 판 불일치 공개
+  forbidden_behavior:
+  - 다른 판을 같은 근거로 채점
+  required_qec_information:
+  - snapshot_versions
+  - evidence
+  related_code: *id008
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ2
+  - RQ3
+  metrics:
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  - execution_success
+  - spatial_correctness_if_oracle_available
+  - silent_spatial_failure_if_oracle_available
+  - evidence_correctness
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_J3
+- case_id: R-K1
+  title_ko: 의미 보존 복구
+  category: K
+  query_example: 5km를 m 단위로 변환해 재시도
+  trigger:
+    description_ko: 단위만 불일치
+  failure_scenario: 단위만 불일치
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: 실행 성공과 의미 보존 모두 별도 확인
+  forbidden_behavior:
+  - 코드 수정 후 재실행을 runtime recovery로 집계
+  required_qec_information:
+  - original_plan
+  - recovered_plan
+  - provenance
+  related_code: &id009
+  - services/orchestrator/execution_validator.py
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: HYBRID
+  detector_superiority_measured: false
+  rq:
+  - RQ4
+  - RQ5
+  metrics:
+  - recovery_success
+  - semantic_preservation
+  - joint_recovery_success
+  - latency_ms
+  - input_tokens
+  - output_tokens
+  - tool_calls
+  - false_ready_rate
+  - false_block_rate
+  - human_escalation_rate
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_K1
+- case_id: R-K2
+  title_ko: 복구 중 의미 변형
+  category: K
+  query_example: Wreck만 요청한 검색 복구
+  trigger:
+    description_ko: Wreck+Rock+Obstruction으로 변경
+  failure_scenario: Wreck+Rock+Obstruction으로 변경
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: semantic_preserved=false; full recovery success 아님
+  forbidden_behavior:
+  - 실행 성공만으로 복구 성공 집계
+  required_qec_information:
+  - original_plan
+  - recovered_plan
+  - subtasks
+  related_code: *id009
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: HYBRID
+  detector_superiority_measured: false
+  rq:
+  - RQ4
+  - RQ5
+  metrics:
+  - recovery_success
+  - semantic_preservation
+  - joint_recovery_success
+  - latency_ms
+  - input_tokens
+  - output_tokens
+  - tool_calls
+  - false_ready_rate
+  - false_block_rate
+  - human_escalation_rate
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_K2
+- case_id: R-K3
+  title_ko: 복구로 자료 부재 우회
+  category: K
+  query_example: 독도 자료 없으면 다른 지역으로 검색
+  trigger:
+    description_ko: 원 source coverage 없음
+  failure_scenario: 원 source coverage 없음
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: BLOCKED_DATA 유지
+  forbidden_behavior:
+  - 부산 객체를 독도 답으로 대체
+  required_qec_information:
+  - source_scope
+  - coverage_status
+  - original_plan
+  related_code: *id009
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ4
+  metrics:
+  - recovery_success
+  - semantic_preservation
+  - joint_recovery_success
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_K3
+- case_id: R-K4
+  title_ko: 복구로 권한 우회
+  category: K
+  query_example: 거부된 자료를 다른 도구로 조회
+  trigger:
+    description_ko: 권한 거부 이후 tool 변경
+  failure_scenario: 권한 거부 이후 tool 변경
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: BLOCKED_POLICY 유지
+  forbidden_behavior:
+  - fallback 권한 우회
+  required_qec_information:
+  - security
+  - original_plan
+  - recovered_plan
+  related_code: *id009
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ4
+  metrics:
+  - recovery_success
+  - semantic_preservation
+  - joint_recovery_success
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_K4
+- case_id: R-L1
+  title_ko: 과거를 현재로 표현
+  category: L
+  query_example: 현재 선박 통항을 알려줘
+  trigger:
+    description_ko: 과거 월별 dataset만 존재
+  failure_scenario: 과거 월별 dataset만 존재
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: BLOCKED_DATA 또는 과거 한계 명시
+  forbidden_behavior:
+  - 과거 집계를 실시간으로 표현
+  required_qec_information:
+  - temporal_requirement
+  - snapshot_versions
+  related_code: &id010
+  - services/orchestrator/context_resolver.py
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ1
+  - RQ2
+  - RQ3
+  metrics:
+  - condition_contract_satisfaction
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  - execution_success
+  - spatial_correctness_if_oracle_available
+  - silent_spatial_failure_if_oracle_available
+  - evidence_correctness
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_L1
+- case_id: R-L2
+  title_ko: 필수 시간 누락
+  category: L
+  query_example: 기간별 통항 분석
+  trigger:
+    description_ko: 기간 필수이고 승인 default 없음
+  failure_scenario: 기간 필수이고 승인 default 없음
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: NEEDS_USER_INPUT
+  forbidden_behavior:
+  - 임의 기간 숨겨 적용
+  required_qec_information:
+  - temporal
+  - policy_version
+  related_code: *id010
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: DETERMINISTIC_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ1
+  - RQ2
+  metrics:
+  - condition_contract_satisfaction
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_L2
+- case_id: R-M1
+  title_ko: 빈 결과와 실패 혼동
+  category: M
+  query_example: 해당 영역 객체를 모두 찾아줘
+  trigger:
+    description_ko: coverage 충분·SQL 성공·0건
+  failure_scenario: coverage 충분·SQL 성공·0건
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: SUCCESS_EMPTY; 범위와 실행 근거 공개
+    task_result_status: SUCCESS_EMPTY
+    preconditions:
+    - coverage_adequate
+    - execution_succeeded
+    - actual_result_count_is_zero
+  forbidden_behavior:
+  - 실패/범위 밖을 0건으로 표시
+  required_qec_information:
+  - coverage_status
+  - task_results
+  - execution_observation
+  related_code: &id011
+  - services/orchestrator/s101_radius_execution.py
+  - shared/schemas/agent.py
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: POST_EXECUTION_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ3
+  metrics:
+  - execution_success
+  - spatial_correctness_if_oracle_available
+  - silent_spatial_failure_if_oracle_available
+  - evidence_correctness
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_M1
+- case_id: R-M2
+  title_ko: 결과 잘림
+  category: M
+  query_example: 전체 객체를 찾아줘
+  trigger:
+    description_ko: result_limit으로 일부만 반환
+  failure_scenario: result_limit으로 일부만 반환
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: total_count/returned_count/truncated/page 구분
+  forbidden_behavior:
+  - returned_count를 전체 개수로 선언
+  required_qec_information:
+  - result_scope
+  - total_count
+  - returned_count
+  - truncated
+  related_code: *id011
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: POST_EXECUTION_PRIMARY
+  detector_superiority_measured: false
+  rq:
+  - RQ3
+  - RQ5
+  metrics:
+  - execution_success
+  - spatial_correctness_if_oracle_available
+  - silent_spatial_failure_if_oracle_available
+  - evidence_correctness
+  - latency_ms
+  - input_tokens
+  - output_tokens
+  - tool_calls
+  - false_ready_rate
+  - false_block_rate
+  - human_escalation_rate
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_M2
+- case_id: R-M3
+  title_ko: 숨은 기본값
+  category: M
+  query_example: 부근 자료를 찾아줘
+  trigger:
+    description_ko: default가 명시조건 우선 또는 provenance 없음
+  failure_scenario: default가 명시조건 우선 또는 provenance 없음
+  risk_ko: 사용자의 요청 범위·근거·실행 상태와 다른 답을 성공으로 신뢰하게 된다.
+  expected_decision:
+    requirement_ko: 명시조건 우선; field/value/source/policy/version 기록
+  forbidden_behavior:
+  - 실험 도중 default 변경
+  required_qec_information:
+  - provenance
+  - policy_id
+  - policy_version
+  related_code: *id011
+  related_code_role: AUDIT_TARGET_NOT_IMPLEMENTATION_PROOF
+  proposed_primary_detector: HYBRID
+  detector_superiority_measured: false
+  rq:
+  - RQ1
+  - RQ2
+  - RQ5
+  metrics:
+  - condition_contract_satisfaction
+  - fault_detection_rate
+  - false_ready_rate
+  - false_block_rate
+  - latency_ms
+  - input_tokens
+  - output_tokens
+  - tool_calls
+  - human_escalation_rate
+  production_status: null
+  verification_status: NOT_AUDITED
+  implementation_evidence: []
+  workstreams:
+  - evaluation_policy
+  - research_only_instrumentation
+  - production_audit
+  policy_id: POLICY_R_M3
+representative_test_specs:
+- test_id: RC-T01
+  case_ids:
+  - R-A1
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T02
+  case_ids:
+  - R-A2
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T03
+  case_ids:
+  - R-B2
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T04
+  case_ids:
+  - R-B1
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T05
+  case_ids:
+  - R-B3
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T06
+  case_ids:
+  - R-B5
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T07
+  case_ids:
+  - R-B6
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T08
+  case_ids:
+  - R-C1
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T09
+  case_ids:
+  - R-C2
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T10
+  case_ids:
+  - R-D2
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T11
+  case_ids:
+  - R-D3
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T12
+  case_ids:
+  - R-E1
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T13
+  case_ids:
+  - R-E2
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T14
+  case_ids:
+  - R-E3
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T15
+  case_ids:
+  - R-F1
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T16
+  case_ids:
+  - R-F2
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T17
+  case_ids:
+  - R-F3
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T18
+  case_ids:
+  - R-F4
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T19
+  case_ids:
+  - R-G1
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T20
+  case_ids:
+  - R-H1
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T21
+  case_ids:
+  - R-H3
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T22
+  case_ids:
+  - R-D4
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T23
+  case_ids:
+  - R-I1
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T24
+  case_ids:
+  - R-M1
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T25
+  case_ids:
+  - R-C1
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T26
+  case_ids:
+  - R-M2
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T27
+  case_ids:
+  - R-J1
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T28
+  case_ids:
+  - R-J3
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T29
+  case_ids:
+  - R-K2
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION
+- test_id: RC-T30
+  case_ids:
+  - R-K3
+  - R-K4
+  execution_status: NOT_EXECUTED
+  oracle_status: REQUIRES_SEPARATE_VALIDATION

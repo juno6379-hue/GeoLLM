@@ -1,0 +1,122 @@
+{
+  "status": "ORACLE_SCOPE_REVIEW_REQUIRED",
+  "model_comparison_started": false,
+  "snapshot_manifest_sha256": "2dbef0a5fd639ac130617f6e28e13038068a55f14e963b18f0cc28ae35b7f260",
+  "source_checks": [
+    {
+      "relation": "serving.navigation_aid_current",
+      "expected_sha256": "f75d5ceb50049e732433d5b36ca6be03e88a0360bc5f8ba67b3fd92e1425cdd7",
+      "actual_sha256": "f75d5ceb50049e732433d5b36ca6be03e88a0360bc5f8ba67b3fd92e1425cdd7",
+      "matches": true,
+      "coverage": {
+        "selection": "ALL_ROWS_IN_SOURCE_RELATION",
+        "national_completeness_verified": false
+      }
+    },
+    {
+      "relation": "projection.s101_feature_current",
+      "expected_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+      "actual_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+      "matches": true,
+      "coverage": {
+        "selection": "BOUNDED_SUBSET",
+        "bbox_epsg4326": [
+          128.9,
+          34.9,
+          129.3,
+          35.3
+        ],
+        "national_completeness_verified": false,
+        "dokdo_coverage": false
+      }
+    }
+  ],
+  "anchor": {
+    "place_id": "mof:dokdo:east-island",
+    "label": "독도",
+    "aliases": [
+      "Dokdo",
+      "독도 동도",
+      "독도(동도)"
+    ],
+    "longitude": 131.86955555555556,
+    "latitude": 37.24077777777778,
+    "source_url": "https://www.mof.go.kr/doc/ko/selectDoc.do?bbsSeq=27&docSeq=20937&menuSeq=929",
+    "source_title": "해양수산부 독도의 주소와 위치",
+    "source_coordinates": "동도 북위 37도 14분 26.8초, 동경 131도 52분 10.4초",
+    "coordinate_role": "published_east_island_reference_point",
+    "note": "독도 부근 검색의 동도 기준점이며 독도 전체 경계 또는 항행 안전 기준점이 아니다."
+  },
+  "anchor_file_sha256": "e3833a5502f16be3a0a40753cb70bd415d34895631095dddab2eab97269cd27c",
+  "code_sha256": "2f15b63095e1da75be717e76f29a7efc190fca0d7258c341063a105bd526757e",
+  "feature_counts": {
+    "AnchorageArea": 43,
+    "HarbourAreaAdministrative": 43,
+    "Wreck": 172,
+    "LightAllAround": 579,
+    "Building": 210,
+    "Landmark": 487,
+    "RestrictedArea": 66,
+    "LightSectored": 113
+  },
+  "lighthouse_candidate_count": 50,
+  "nearest_snapshot_candidate": {
+    "id": "211e38f215da614f074a5372",
+    "name": "길천포방파제등대",
+    "valid": true,
+    "active": true,
+    "aid_no": "A00001",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        129.2843611111111,
+        35.32519444444445
+      ]
+    },
+    "properties": {
+      "순번": "A00001",
+      "위치": "35-19-30.7N, 129-17-03.7E",
+      "이름": "길천포방파제등대",
+      "주소": "부산광역시 기장군 장안읍 길천리 길천방파제 끝단",
+      "사용 유무": "Y"
+    },
+    "provenance": {
+      "encoding": "cp949",
+      "source_asset": "Dataset/해양수산부 부산지방해양수산청_항로표지정보_20250623.csv",
+      "source_sha256": "ed296df40e0063008df9fa8521ce666820f20fc0441add388fa8cfaf09c624e6",
+      "ingestion_script": "scripts/ingest_requested_dataset_layers.py"
+    },
+    "dokdo_distance_m": 314814.81776536,
+    "independent_vincenty_m": 314814.8177659736,
+    "difference_m": 6.136251613497734e-07
+  },
+  "maximum_point_distance_disagreement_m": 2.484186552464962e-06,
+  "duplicate_aid_numbers": {},
+  "dokdo_5km_snapshot_wreck_ids": [],
+  "dokdo_5km_snapshot_lighthouse_ids": [],
+  "empty_set_is_real_world_gold": false,
+  "harbour_polygon_checks_agree": true,
+  "canonical_boundary_id": 1137770,
+  "harbour_candidate_counts": {
+    "AnchorageArea": {
+      "harbour_covers": 0,
+      "harbour_intersects": 0,
+      "harbour_2km": 3
+    },
+    "RestrictedArea": {
+      "harbour_covers": 0,
+      "harbour_intersects": 5,
+      "harbour_2km": 21
+    }
+  },
+  "instance_fc_link_count": 805,
+  "instance_fc_unresolved_count": 0,
+  "q5_03_linkage_evaluation_ready": false,
+  "blockers": [
+    "SOURCE_SCOPE_NOT_FIXED",
+    "FACILITY_DEDUP_POLICY_NOT_FIXED",
+    "BUSAN_BOUNDARY_AND_2KM_REFERENCE_NOT_APPROVED",
+    "EIGHT_METHOD_IMPLEMENTATIONS_NOT_MATCHED"
+  ],
+  "independent_human_gold": false
+}

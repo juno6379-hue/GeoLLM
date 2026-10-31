@@ -1,5 +1,15 @@
 # GeoLLM 현재 상태와 다음 작업
 
+
+## 2026-11-01 신뢰성 정책 분리·운영 빈 결과 오류 수정
+
+- 사용자 지정 Reliability Judgment Policy를 3에이전트로 정책40사례/대표명세30개·운영감사·연구동결 검사로 분리 구현하고 주에이전트가 통합검증했다. [분리 정책](reliability_delivery_policy.md), [실제 검증·재현·남은 작업](reliability_verification_20261101.md), [논문 결과 위치](../../research/marine_geollm_scie/RESULTS_INDEX_KR.md). 30명세는 NOT_EXECUTED이며 논문 실험 결과가 아니다.
+- radius/bbox의 coverage 미검증 SQL0행을 SUCCESS_EMPTY로 확정하던 오류를 PARTIAL/NO_EVIDENCE·UNKNOWN·확정count=null/observed_count=0으로 수정. 실제조회성공은 보존하고 GIS 미실행이라 하지 않는다. 실행 전 coverage gate·다른executor·시설dedup·recovery 의미보존은 미완료.
+- 주검증 운영162passed/연구39passed, 감사40ID·소스hash·GOLD immutable8파일/18사례 일치. 실제SSE v2 3/3: 부산1m 관측0/PARTIAL, 1km25개정상, 60km차단. 최초v1 POINT(150 0)1km DB_TIMEOUT73.735초는 원본보존/미해결. outputs/reliability_empty_runtime_20261101_v1,v2. UI브라우저검증 아님.
+- GOLD immutable manifest feb9ef9851553fe53c12b0733b1747d3c238fb64c7b6bffd2ae848a35e6b1c5c 불변. 연구 report gate는 구현/단위검증 완료지만 실제runner연결 미완료. **새8방법모델실험 미실행**. production 변경으로 새동결전체재실행 필수; 기존 K5를 새결과로 재사용금지. 독립GOLD미수령/shadow/QLoRA보류 유지.
+- 다음: 시간초과 SQL단계재현→권위coverage·정책계약/Validator gate→8방법adapter·fault/recovery동일조건연결→새frozen실행·RQ별분모/오류/지연보고. 운영UI/기존feedback변경보존. 이번 로컬커밋만 수행하며 push 요청 없음.
+
+
 ## 2026-11-01 GOLD v2 Oracle·동일 초기 계획·P0 무손실 컴파일
 
 - 사용자 승인: 독도 Q3-01/Q5-01/Q5-03은 OUT_OF_COVERAGE Safe Abstention, 공간 GOLD=null이며 0건 아님. Q3-03은 추가입력/미실행. 별도 부산권 보충 문항은 원래18개와 분리한다. [검증·설계·다음 실행](../../research/marine_geollm_scie/protocol/gold_v2_oracle_and_paired_design_20261101_KR.md).

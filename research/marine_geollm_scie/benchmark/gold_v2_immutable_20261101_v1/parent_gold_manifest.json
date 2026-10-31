@@ -1,0 +1,18 @@
+{
+  "version": "GOLD_v2_20261031",
+  "status": "REFERENCES_FROZEN_EVALUATOR_INTEGRATION_REQUIRED",
+  "count": 18,
+  "contract_sha256": "550f85c18d902e6895e9affe87b896785a9d150162181153c0d9dd423621bad4",
+  "parent_contract_sha256": "262597b5b94d01d34f16c12deef0fe60c62c7d6b51cbc0abcd4eb06fc9f61562",
+  "oracle_audit_summary_sha256": "0b7f30e293b2464cebedc2805b9522f95efca178a05e8c0409d59a0f2338fe7c",
+  "oracle_query_sha256": "91df69a4fe25211ead9f3a905c4ec376d08ec188377c2f0353e2dad2c863b9b4",
+  "snapshot_manifest_sha256": "2dbef0a5fd639ac130617f6e28e13038068a55f14e963b18f0cc28ae35b7f260",
+  "source_scope_authority": "User approved in-scope vs out-of-coverage partition on 2026-10-31",
+  "independent_expert_review_complete": false,
+  "all_evaluators_implemented": false,
+  "all_eight_methods_validated": false,
+  "model_comparison_ready": false,
+  "canonical_boundary_sha256": "a0f4408850683c987840531e436ff5698af3b9e39bab700098a453727ff5f63b",
+  "generator_sha256": "183fe4c6a4515b5860f2ec8ad55d7a4ae4ea50ae16d78c3d465f9e4229205585",
+  "old_raw_and_gold_preserved": true
+}

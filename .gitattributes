@@ -25,3 +25,6 @@
 *.h5 binary
 *.glb binary
 *.docx binary
+
+# Frozen benchmark manifests hash exact bytes, including line endings.
+research/marine_geollm_scie/benchmark/gold_v2_immutable_20261101_v1/** -text -working-tree-encoding whitespace=cr-at-eol

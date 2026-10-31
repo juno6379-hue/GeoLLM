@@ -1,0 +1,29 @@
+[
+  {
+    "relation": "serving.navigation_aid_current",
+    "expected_sha256": "f75d5ceb50049e732433d5b36ca6be03e88a0360bc5f8ba67b3fd92e1425cdd7",
+    "actual_sha256": "f75d5ceb50049e732433d5b36ca6be03e88a0360bc5f8ba67b3fd92e1425cdd7",
+    "matches": true,
+    "coverage": {
+      "selection": "ALL_ROWS_IN_SOURCE_RELATION",
+      "national_completeness_verified": false
+    }
+  },
+  {
+    "relation": "projection.s101_feature_current",
+    "expected_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+    "actual_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+    "matches": true,
+    "coverage": {
+      "selection": "BOUNDED_SUBSET",
+      "bbox_epsg4326": [
+        128.9,
+        34.9,
+        129.3,
+        35.3
+      ],
+      "national_completeness_verified": false,
+      "dokdo_coverage": false
+    }
+  }
+]

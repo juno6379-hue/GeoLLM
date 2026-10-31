@@ -1,0 +1,359 @@
+schema_version: '1.0'
+production_enabled: false
+scope: RESEARCH_SPECIFICATION_AND_PRODUCTION_REVIEW_REQUIREMENTS
+default_distance_m: null
+example_default_distance_m: 1000
+example_is_adopted_policy: false
+methods:
+- B0
+- B1
+- B2
+- B3
+- B4
+- P0
+- H
+- P1
+matched_plan:
+  branches:
+  - B3
+  - B4
+  - P0
+  - H
+  same_initial_plan_hash: true
+  review_shared_by:
+  - B4
+  - H
+  p0_compilation: LOSSLESS_NO_INFERENCE
+  missing_fields: PRESERVE_MISSING
+status_layers:
+  plan:
+  - DRAFT
+  - NEEDS_USER_INPUT
+  - BLOCKED_CONFIG
+  - BLOCKED_DATA
+  - BLOCKED_POLICY
+  - PLAN_READY
+  - EXECUTION_READY
+  agent_partial: PARTIAL
+  task_empty: SUCCESS_EMPTY
+  research_only:
+  - UNRESOLVED_POLICY
+  - DATA_OUT_OF_SCOPE
+precedence:
+- USER_EXPLICIT
+- EXPLICIT_SEMANTIC_OPERATOR
+- AUTHORITATIVE_RESOLUTION
+- DEFAULT_POLICY
+execution_authority: ExecutionValidator
+missing_observation: null
+policies:
+- policy_id: POLICY_R_A1
+  case_ids:
+  - R-A1
+  version: '1.0'
+  requirement:
+    requirement_ko: 의미 불일치 해결 전 실행 금지
+  production_enforcement_verified: false
+- policy_id: POLICY_R_A2
+  case_ids:
+  - R-A2
+  version: '1.0'
+  requirement:
+    requirement_ko: 대상 범위 불일치 검토 및 실행 보류
+  production_enforcement_verified: false
+- policy_id: POLICY_R_A3
+  case_ids:
+  - R-A3
+  version: '1.0'
+  requirement:
+    requirement_ko: 집합·시설 중복 정책 해소 또는 NEEDS_USER_INPUT
+  production_enforcement_verified: false
+- policy_id: POLICY_R_B1
+  case_ids:
+  - R-B1
+  version: '1.0'
+  requirement:
+    requirement_ko: nearest/top_k=1 유지; coverage 별도 판단
+  production_enforcement_verified: false
+- policy_id: POLICY_R_B2
+  case_ids:
+  - R-B2
+  version: '1.0'
+  requirement:
+    requirement_ko: 승인된 일반 정책과 provenance 또는 NEEDS_USER_INPUT
+  production_enforcement_verified: false
+- policy_id: POLICY_R_B3
+  case_ids:
+  - R-B3
+  version: '1.0'
+  requirement:
+    requirement_ko: NEEDS_USER_INPUT/MISSING_REFERENCE_GEOMETRY; GIS 미실행
+    readiness: NEEDS_USER_INPUT
+    blocker: MISSING_REFERENCE_GEOMETRY
+    execution_attempted: false
+    execution_started: false
+    tool_called: false
+    sql_executed: false
+    observation_scope: SPATIAL_EXECUTION_ONLY
+  production_enforcement_verified: false
+- policy_id: POLICY_R_B4
+  case_ids:
+  - R-B4
+  version: '1.0'
+  requirement:
+    requirement_ko: 출처·버전·hash를 갖는 확정 polygon 사용
+  production_enforcement_verified: false
+- policy_id: POLICY_R_B5
+  case_ids:
+  - R-B5
+  version: '1.0'
+  requirement:
+    requirement_ko: BLOCKED_CONFIG 또는 연구 UNRESOLVED_POLICY
+  production_enforcement_verified: false
+- policy_id: POLICY_R_B6
+  case_ids:
+  - R-B6
+  version: '1.0'
+  requirement:
+    requirement_ko: polygon 대 geometry 최소 지오데식 거리
+  production_enforcement_verified: false
+- policy_id: POLICY_R_C1
+  case_ids:
+  - R-C1
+  version: '1.0'
+  requirement:
+    requirement_ko: BLOCKED_DATA; result_count=null
+    readiness: BLOCKED_DATA
+    result_count: null
+    spatial_gold: null
+    coverage_status: OUT_OF_COVERAGE
+    execution_attempted: false
+  production_enforcement_verified: false
+- policy_id: POLICY_R_C2
+  case_ids:
+  - R-C2
+  version: '1.0'
+  requirement:
+    requirement_ko: 범위 공개 PARTIAL 또는 완전성 필수면 BLOCKED_DATA
+  production_enforcement_verified: false
+- policy_id: POLICY_R_C3
+  case_ids:
+  - R-C3
+  version: '1.0'
+  requirement:
+    requirement_ko: BLOCKED_DATA 또는 허용된 과거 범위만 명시
+  production_enforcement_verified: false
+- policy_id: POLICY_R_D1
+  case_ids:
+  - R-D1
+  version: '1.0'
+  requirement:
+    requirement_ko: FEATURE_NOT_IN_CATALOGUE; 재해소 또는 BLOCKED_CONFIG
+  production_enforcement_verified: false
+- policy_id: POLICY_R_D2
+  case_ids:
+  - R-D2
+  version: '1.0'
+  requirement:
+    requirement_ko: ATTRIBUTE_NOT_IN_FEATURE 차단
+  production_enforcement_verified: false
+- policy_id: POLICY_R_D3
+  case_ids:
+  - R-D3
+  version: '1.0'
+  requirement:
+    requirement_ko: 원천 FC identity 및 permitted_values 확인
+  production_enforcement_verified: false
+- policy_id: POLICY_R_D4
+  case_ids:
+  - R-D4
+  version: '1.0'
+  requirement:
+    requirement_ko: 실제 object 값과 FC 정의/코드/locator 연결
+  production_enforcement_verified: false
+- policy_id: POLICY_R_E1
+  case_ids:
+  - R-E1
+  version: '1.0'
+  requirement:
+    requirement_ko: 5000m 등가 변환 및 원문·변환 provenance
+  production_enforcement_verified: false
+- policy_id: POLICY_R_E2
+  case_ids:
+  - R-E2
+  version: '1.0'
+  requirement:
+    requirement_ko: 현재 명시된 거리정책 위반 차단
+  production_enforcement_verified: false
+- policy_id: POLICY_R_E3
+  case_ids:
+  - R-E3
+  version: '1.0'
+  requirement:
+    requirement_ko: 승인 변환 없으면 BLOCKED_CONFIG
+  production_enforcement_verified: false
+- policy_id: POLICY_R_F1
+  case_ids:
+  - R-F1
+  version: '1.0'
+  requirement:
+    requirement_ko: BLOCKED_CONFIG; 등가 fallback만 별도 검증
+  production_enforcement_verified: false
+- policy_id: POLICY_R_F2
+  case_ids:
+  - R-F2
+  version: '1.0'
+  requirement:
+    requirement_ko: BLOCKED_CONFIG
+  production_enforcement_verified: false
+- policy_id: POLICY_R_F3
+  case_ids:
+  - R-F3
+  version: '1.0'
+  requirement:
+    requirement_ko: SCHEMA_CHANGED/BLOCKED_CONFIG
+  production_enforcement_verified: false
+- policy_id: POLICY_R_F4
+  case_ids:
+  - R-F4
+  version: '1.0'
+  requirement:
+    requirement_ko: BLOCKED_POLICY
+  production_enforcement_verified: false
+- policy_id: POLICY_R_G1
+  case_ids:
+  - R-G1
+  version: '1.0'
+  requirement:
+    requirement_ko: 승인 무효; 재검증 전 미실행
+  production_enforcement_verified: false
+- policy_id: POLICY_R_H1
+  case_ids:
+  - R-H1
+  version: '1.0'
+  requirement:
+    requirement_ko: 필수 네 산출물 모두 충족 전 PARTIAL
+  production_enforcement_verified: false
+- policy_id: POLICY_R_H2
+  case_ids:
+  - R-H2
+  version: '1.0'
+  requirement:
+    requirement_ko: 비교 기준·결과·source scope 포함 전 PARTIAL
+  production_enforcement_verified: false
+- policy_id: POLICY_R_H3
+  case_ids:
+  - R-H3
+  version: '1.0'
+  requirement:
+    requirement_ko: comparison_scope_compatible=false와 한계 공개
+  production_enforcement_verified: false
+- policy_id: POLICY_R_I1
+  case_ids:
+  - R-I1
+  version: '1.0'
+  requirement:
+    requirement_ko: 사전 시설 식별·dedup 정책 적용
+  production_enforcement_verified: false
+- policy_id: POLICY_R_J1
+  case_ids:
+  - R-J1
+  version: '1.0'
+  requirement:
+    requirement_ko: 객체별 근거 별도 실패 판정
+  production_enforcement_verified: false
+- policy_id: POLICY_R_J2
+  case_ids:
+  - R-J2
+  version: '1.0'
+  requirement:
+    requirement_ko: 공식 원문 edition/locator 필요
+  production_enforcement_verified: false
+- policy_id: POLICY_R_J3
+  case_ids:
+  - R-J3
+  version: '1.0'
+  requirement:
+    requirement_ko: WRONG_VERSION; 판 불일치 공개
+  production_enforcement_verified: false
+- policy_id: POLICY_R_K1
+  case_ids:
+  - R-K1
+  version: '1.0'
+  requirement:
+    requirement_ko: 실행 성공과 의미 보존 모두 별도 확인
+  production_enforcement_verified: false
+- policy_id: POLICY_R_K2
+  case_ids:
+  - R-K2
+  version: '1.0'
+  requirement:
+    requirement_ko: semantic_preserved=false; full recovery success 아님
+  production_enforcement_verified: false
+- policy_id: POLICY_R_K3
+  case_ids:
+  - R-K3
+  version: '1.0'
+  requirement:
+    requirement_ko: BLOCKED_DATA 유지
+  production_enforcement_verified: false
+- policy_id: POLICY_R_K4
+  case_ids:
+  - R-K4
+  version: '1.0'
+  requirement:
+    requirement_ko: BLOCKED_POLICY 유지
+  production_enforcement_verified: false
+- policy_id: POLICY_R_L1
+  case_ids:
+  - R-L1
+  version: '1.0'
+  requirement:
+    requirement_ko: BLOCKED_DATA 또는 과거 한계 명시
+  production_enforcement_verified: false
+- policy_id: POLICY_R_L2
+  case_ids:
+  - R-L2
+  version: '1.0'
+  requirement:
+    requirement_ko: NEEDS_USER_INPUT
+  production_enforcement_verified: false
+- policy_id: POLICY_R_M1
+  case_ids:
+  - R-M1
+  version: '1.0'
+  requirement:
+    requirement_ko: SUCCESS_EMPTY; 범위와 실행 근거 공개
+    task_result_status: SUCCESS_EMPTY
+    preconditions:
+    - coverage_adequate
+    - execution_succeeded
+    - actual_result_count_is_zero
+  production_enforcement_verified: false
+- policy_id: POLICY_R_M2
+  case_ids:
+  - R-M2
+  version: '1.0'
+  requirement:
+    requirement_ko: total_count/returned_count/truncated/page 구분
+  production_enforcement_verified: false
+- policy_id: POLICY_R_M3
+  case_ids:
+  - R-M3
+  version: '1.0'
+  requirement:
+    requirement_ko: 명시조건 우선; field/value/source/policy/version 기록
+  production_enforcement_verified: false
+promotion_gates:
+- reproduce_original_failure
+- general_policy_not_case_literal
+- independent_normal_and_negative_tests
+- actual_api_verification
+- source_policy_hash_freeze
+- full_benchmark_rerun_after_production_change
+scientific_limits:
+- No independent human GOLD result is asserted
+- Detector assignment is hypothesis, not measured superiority
+- 30 representative specifications are not 30 passed runtime tests
+- Research canonical boundary does not establish production legal harbour boundary
+- No operating default radius is adopted by this registry

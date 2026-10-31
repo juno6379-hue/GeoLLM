@@ -1,0 +1,63 @@
+{
+  "version": "GOLD_v2_immutable_v1",
+  "created_at": "2026-10-31T15:10:24.366220+00:00",
+  "files": [
+    {
+      "name": "answer_contracts.jsonl",
+      "sha256": "550f85c18d902e6895e9affe87b896785a9d150162181153c0d9dd423621bad4",
+      "source": "research\\marine_geollm_scie\\benchmark\\gold_v2_20261031_r2\\answer_contracts.jsonl"
+    },
+    {
+      "name": "canonical_busan_boundary.json",
+      "sha256": "a0f4408850683c987840531e436ff5698af3b9e39bab700098a453727ff5f63b",
+      "source": "research\\marine_geollm_scie\\benchmark\\gold_v2_20261031_r2\\canonical_busan_boundary.json"
+    },
+    {
+      "name": "parent_gold_manifest.json",
+      "sha256": "2c1ce116f03de8b6ae315ec282a2dc13acb5a1c3f943355f17e11ee7cdd6d013",
+      "source": "research\\marine_geollm_scie\\benchmark\\gold_v2_20261031_r2\\manifest.json"
+    },
+    {
+      "name": "queries.jsonl",
+      "sha256": "e0a98769f5bc0375272aa976bba4cb97bdf2a2c8a0e3c43c20910881935023e9",
+      "source": "research\\marine_geollm_scie\\benchmark\\query_cases_v1.jsonl"
+    },
+    {
+      "name": "comparison_protocol.json",
+      "sha256": "9bfdc4502ac2f841c5039da25b952e2ce5e5e4d19a5b2e31dd5a845d80362af3",
+      "source": "research\\marine_geollm_scie\\protocol\\gold_v2_comparison_contract.json"
+    },
+    {
+      "name": "oracle_checks.json",
+      "sha256": "0b7f30e293b2464cebedc2805b9522f95efca178a05e8c0409d59a0f2338fe7c",
+      "source": "outputs\\gold_v2_oracle_audit_20261031_v3\\summary.json"
+    },
+    {
+      "name": "oracle_query.sql",
+      "sha256": "91df69a4fe25211ead9f3a905c4ec376d08ec188377c2f0353e2dad2c863b9b4",
+      "source": "outputs\\gold_v2_oracle_audit_20261031_v3\\independent_queries.sql"
+    },
+    {
+      "name": "source_checks.json",
+      "sha256": "c21d0e768cef625a64feae95d3371dd37826d6af82f61a40302973581ae46461",
+      "source": "outputs\\gold_v2_oracle_audit_20261031_v3\\source_checks.json"
+    }
+  ],
+  "case_count": 18,
+  "methods": [
+    "B0",
+    "B1",
+    "B2",
+    "B3",
+    "B4",
+    "P0",
+    "H",
+    "P1"
+  ],
+  "immutability": "exclusive creation + SHA256 manifest; any change requires a new bundle ID",
+  "independent_expert_review_complete": false,
+  "benchmark_freeze_complete": true,
+  "execution_ready_is_separate_gate": true,
+  "old_results_reusable": false,
+  "supplementary_busan_cases_included": false
+}
