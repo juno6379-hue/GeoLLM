@@ -1,6 +1,31 @@
 # GeoLLM 현재 상태와 다음 작업
 
 
+## 2026-11-01 GOLD v2 8방법 새 동결 v2 재실행 — 최신 인계
+
+- **실제 실행중**: `research/marine_geollm_scie/runs/20261101_gold_v2_eight_k1_v2/status.json`, 부모 PID33808. 새 snapshot `outputs/scie_gold_v2_eight_snapshot_20261101_v2/snapshot_manifest.json`. 실행중 소스/모델/공통입력/GOLD/예산 변경 및 중복 worker 금지. 실제 PID와 status를 우선 확인한다.
+- 운영 수정 `6508224`: 명시 nearest를 radius로 변환하지 않고 미지원 사유로 차단, 실제 선택 대상에서 빠진 복합 family/미지원 비교를 차단. 지원 복수 검색 유지. [운영 검증](fast_path_contract_fix_20261101.md). 4 실제SSE: nearest UNSUPPORTED_OPERATOR, 비교 UNSUPPORTED_COMPOSITE_TASK, Wreck0행 PARTIAL/UNKNOWN, Wreck+Obstruction18건 COMPLETED. 최초 초기화 연결실패 v1 별도보존. shadow4건은 모두종료했지만 multi는 selection/score mismatch 실패다.
+- 연구 수정 `27445e6`: 모델 source=list와 잘못된 구조를 교정하지 않고 실패 보존; projector/report 장애 격리, nonfinite JSON거절, 새공통V2schema covers지원. 주검증 통합121passed, 운영guard 축소후40passed(중복합산금지). v1 원본59파일hash 동일, immutableGOLD8파일 재검증. [연구 실행 조건](../../research/marine_geollm_scie/protocol/eight_execution_20261101_KR.md).
+- 기존 place graph suite 28passed/1failed: execution_revision3→QEC1. 새guard 비활성화 재현도실패, 과거commit재생은아님. 기존dirty테스트/UI는보존. 승인coverage/nearest등대/canonicalpolygon인터페이스/복합비교는 미완료; 정확한차단과 전체기능완성을 혼동하지 않는다.
+- v2 freeze/profiles exit0, 연구DB6관계 전체hash 재검증 완료 후 graph 실행 중(자식30760). v2는 P1도신규실행하고 B0/B1/B2/B3/B4/P0/H/P1 각18=144, 별도fault9×3=27 및 report_with_faults/comparison_KR.md까지 supervisor가 순차진행한다. v1 실패관측 재사용금지. 768토큰절단 등실제모델실패도포함, 독립GOLD미수령으로 인간정확도/과학적완료주장금지.
+- heartbeat `geollm-gold-v2-8` 30분 점검 활성. 상태변화없으면조용히종료, 원본hash/완료gate/실제PID 확인. 실패시원본보존→별도수정·테스트→소스변경이면새전체run. 보고서·인계완료후자동점검종료. 결과목록은 research/marine_geollm_scie/RESULTS_INDEX_KR.md. push 요청없음.
+
+## 2026-11-01 GOLD v2 8방법 v1 중단 원인·새 동결 재실행 준비
+
+- `runs/20261101_gold_v2_eight_k1_v1`은 P1 18/18 이후 comparison 10행에서 STOPPED_REQUIRES_REVIEW. 원인은 `v2_answer_projection.render`가 모델의 source=list를 coverage dict key로 사용한 TypeError. 모델 오답과 연구 harness 오류를 구분하며 원본 run/snapshot/log는 보존한다. 실제 supervisor/runner PID 종료 확인.
+- 별도 연구 에이전트가 malformed 응답을 자동 교정하지 않고 실패 관측으로 보존하도록 수정·회귀 검증 중. 운영 에이전트는 nearest→radius 오변환 및 composite 대상 누락 gate를 별도로 보완 중. 평가 에이전트는 보고서/fault 경로를 독립 감사한다. 수정 후 새 snapshot/run에서 P1 포함 전체8방법을 다시 실행해야 한다.
+- 첫 paired case B3/B4/P0/H 초기plan hash 동일, B4/H review hash 동일. B2의 768토큰 소진 JSON 절단과 B1 첫문항 근거0개를 실제 제한으로 보존한다. 예산은 실행 중 변경하지 않는다. P1의 잔여 실패는 [별도 원인·수정 계획](next_reliability_fixes_20261101.md)에 기록했다.
+- 후속 heartbeat `geollm-gold-v2-8` 생성: 30분 간격, 최신 인계/실제PID/원본hash/완료gate 점검. 중복 실행 금지, 변화 없는 점검은 조용히 유지, 보고서와 인계 완료 후 종료. 독립 GOLD 미수령, scientific_completion=false.
+- 다음: 수정 테스트와 실제 운영 API 검증 → 운영/연구 별도 커밋 → 새 frozen v2 전체144+fault27 → 보고서·원시hash 검증. 현재 전체 비교 완료 아님.
+
+## 2026-11-01 운영 coverage·시간초과 보완 후 GOLD v2 8방법 K1 실제 실행
+
+- 사용자 승인으로 운영과 연구를 3에이전트로 분리. 운영7c7f9ff: 서버 hash-pinned coverage 계약 검사, UNKNOWN 최근접/완전성필수 차단, 승인hash에coverage포함, SQL단계계측. 실제 승인된 운영coverage 원천은 아직 없으므로 UNKNOWN을 꾸미지 않음. [운영검증](coverage_gate_20261101.md).
+- 재현된 DB_TIMEOUT은 feature_code_verification 30,049.747ms/57014. 운영 gbhd_s101에 name/code covering index 추가; 전후56쌍hash동일, IndexOnlyScan 확인. 원천행/연구DB/timeout변경없음. API v2 3/3: 부산1m0행PARTIAL, 1km25건성공,60km차단. 관련177passed; cold-cache SLO완료 아님.
+- 연구7c8fefc: 동일query/common source input/모델/snapshot, B3/B4/P0/H 공유계획 및B4/H공유검토, P0lossless, 실제read-only SQL/nativeValidator, 긴polygon stdin지원, 직접psycopg2/SQLAlchemy 공간계측, 실제raw채점/report. 주검증63passed 및 실제polygon covers0/dwithin정박지3·제한21확인. 별도통제fault9×3=27예정, 인간GOLD아님.
+- **당시 시작 기록(현재 v1 중단·원본보존):** research/marine_geollm_scie/runs/20261101_gold_v2_eight_k1_v1/status.json. 부모31440; 실제PID/status와로그 대조필수. freeze 완료: outputs/scie_gold_v2_eight_snapshot_20261101_v1/snapshot_manifest.json, 6관계전체재추출hash동일,272소스동결. 현재graph→7분기126+P1새18합계144→보고서→fault27→통합보고서. 모델/운영API추가호출·동결소스편집 금지. 코드변경은새run전체재실행.
+- 현재완료값은실제 status/graph/current_case.json/production_rows.jsonl/comparison/manifest.json을확인. 예상관측을완료로기록하지않음. 중복worker금지, 실패원본보존. 최종보고서는 report_with_faults/comparison_KR.md 예정(생성전없음). 이전K5/goldimmutable원본불변. 독립GOLD미수령, shadow/QLoRA보류.
+
 ## 2026-11-01 신뢰성 정책 분리·운영 빈 결과 오류 수정
 
 - 사용자 지정 Reliability Judgment Policy를 3에이전트로 정책40사례/대표명세30개·운영감사·연구동결 검사로 분리 구현하고 주에이전트가 통합검증했다. [분리 정책](reliability_delivery_policy.md), [실제 검증·재현·남은 작업](reliability_verification_20261101.md), [논문 결과 위치](../../research/marine_geollm_scie/RESULTS_INDEX_KR.md). 30명세는 NOT_EXECUTED이며 논문 실험 결과가 아니다.
