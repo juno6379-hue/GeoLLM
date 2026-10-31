@@ -51,7 +51,7 @@ def validate_profile(profile,snapshot):
             and capabilities.get('min_embedding_dimension')==1024 and capabilities.get('max_embedding_dimension')==1024):
         raise ValueError('Complete 1024-dimensional capability embedding snapshot required')
 
-def main(output,snapshot_path,profile_path):
+def main(output,snapshot_path,profile_path,benchmark_path=None):
     out=Path(output).resolve(); snapshot_path=Path(snapshot_path).resolve();profile_path=Path(profile_path).resolve()
     snapshot=json.loads(snapshot_path.read_text(encoding='utf-8'));profile=json.loads(profile_path.read_text(encoding='utf-8'))
     validate_profile(profile,snapshot);verify_files(snapshot,snapshot_path.parent)
@@ -65,7 +65,13 @@ def main(output,snapshot_path,profile_path):
     network=json.loads(subprocess.check_output(['docker','network','inspect',NETWORK]))[0]
     isolation=isolation_metadata(mask,network)
     image=subprocess.check_output(['docker','image','inspect','docker-backend','--format','{{.Id}}'],text=True).strip()
-    benchmark=ROOT/'research/marine_geollm_scie/benchmark/query_cases_v1.jsonl'
+    benchmark=(Path(benchmark_path).resolve() if benchmark_path else ROOT/'research/marine_geollm_scie/benchmark/query_cases_v1.jsonl')
+    if not benchmark.is_relative_to(ROOT):
+        raise ValueError('Research benchmark must be inside the readonly workspace')
+    original_cases=[json.loads(x) for x in (ROOT/'research/marine_geollm_scie/benchmark/query_cases_v1.jsonl').read_text(encoding='utf-8').splitlines() if x.strip()]
+    supplied_cases=[json.loads(x) for x in benchmark.read_text(encoding='utf-8').splitlines() if x.strip()]
+    if len(supplied_cases)!=18 or [(c['case_id'],c['query']) for c in supplied_cases]!=[(c['case_id'],c['query']) for c in original_cases]:
+        raise ValueError('Original ordered 18 queries required; only declared common source inputs may differ')
     source_files=graph_source_files(ROOT)
     source_hashes={p.relative_to(ROOT).as_posix():sha(p) for p in source_files}
     manifest={'method':'P_current_production_model_enabled_restricted','scope':'Actual production graph entry, 18 original cases K1; capability pgvector enabled; external/coverage restrictions remain; not unrestricted Full P or equal planning budget', 'capability_retrieval':{'pgvector_enabled':True,'relation':'knowledge.capability_embeddings','snapshot_metadata':next(r for r in snapshot['relations'] if r['relation']=='knowledge.capability_embeddings'),'fallback':'production fallback only if actual retrieval fails; recorded in graph trace'},'snapshot_manifest_sha256':sha(snapshot_path),'profile_sha256':sha(profile_path),'model_profile':profile,'image_id':image,'benchmark_sha256':sha(benchmark),'source_hashes':source_hashes,'isolation':isolation,'cache_policy':'semantic answer cache reset per case; same production singleton other caches','network_policy':'worker only internal network; proxy dual network and endpoint/model allowlist; no ports published','conditions':{'LLM_MODEL':'qwen2.5:1.5b','EMBEDDING_MODEL':'bge-m3','model_budget':'production per-call settings preserved; proxy records actual requests','PGOPTIONS':'default_transaction_read_only=on','OLLAMA_BASE_URL':'http://marine-scie-model-proxy:11434'}}
@@ -99,7 +105,7 @@ def main(output,snapshot_path,profile_path):
         env.update(graph_condition_environment(profile))
         cmd=['docker','run','--rm','--name','marine-scie-model-worker','--network',NETWORK,'--label','marine.scie.research=true',*common,'--mount',f'type=bind,source={snapshot_path},target=/snapshot.json,readonly','--tmpfs','/work/logs:rw','--tmpfs','/work/data/feedback:rw']
         for key,value in env.items():cmd+=['--env',key+'='+value]
-        cmd += [image,'python','-m','research.marine_geollm_scie.runners.model_graph_session','--benchmark','/work/research/marine_geollm_scie/benchmark/query_cases_v1.jsonl','--output','/out','--profile','/model_profile.json','--snapshot','/snapshot.json']
+        cmd += [image,'python','-m','research.marine_geollm_scie.runners.model_graph_session','--benchmark','/work/'+benchmark.relative_to(ROOT).as_posix(),'--output','/out','--profile','/model_profile.json','--snapshot','/snapshot.json']
         try:
             completed=subprocess.run(cmd,capture_output=True,timeout=13000)
         except subprocess.TimeoutExpired as exc:
@@ -132,11 +138,11 @@ def main(output,snapshot_path,profile_path):
     finally:
         if proxy_started:subprocess.run(['docker','stop',PROXY],capture_output=True)
         verify_files(snapshot,snapshot_path.parent)
-        unchanged=all(sha(ROOT/p)==digest for p,digest in source_hashes.items()) and sha(profile_path)==manifest['profile_sha256'] and sha(snapshot_path)==manifest['snapshot_manifest_sha256']
+        unchanged=all(sha(ROOT/p)==digest for p,digest in source_hashes.items()) and sha(profile_path)==manifest['profile_sha256'] and sha(snapshot_path)==manifest['snapshot_manifest_sha256'] and sha(benchmark)==manifest['benchmark_sha256']
         manifest['source_unchanged_after']=unchanged
         (out/'model_graph_manifest.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
         if not unchanged:raise RuntimeError('Research source/profile changed during run')
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('--output',required=True);p.add_argument('--snapshot',required=True);p.add_argument('--profile',required=True)
-    a=p.parse_args();main(a.output,a.snapshot,a.profile)
+    p=argparse.ArgumentParser();p.add_argument('--output',required=True);p.add_argument('--snapshot',required=True);p.add_argument('--profile',required=True);p.add_argument('--benchmark')
+    a=p.parse_args();main(a.output,a.snapshot,a.profile,a.benchmark)

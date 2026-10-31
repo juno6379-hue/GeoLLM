@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 import uuid
 from research.marine_geollm_scie.baselines.production_adapter import observable,extract_artifacts
 from research.marine_geollm_scie.runners.model_graph_conditions import graph_condition,validate_condition_environment
-from research.marine_geollm_scie.runners.execution_observer import ExecutionObserver
+from research.marine_geollm_scie.runners.spatial_execution_observer import SpatialExecutionObserver as ExecutionObserver
 
 METHOD='P_current_production_model_enabled_restricted'
 

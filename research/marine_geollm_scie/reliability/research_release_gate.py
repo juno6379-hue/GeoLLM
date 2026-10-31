@@ -51,7 +51,16 @@ def report_gate(*, case_ids, repeats, observations, execution_identity,
         if not b4.get('review_artifact_sha256') or b4.get('review_artifact_sha256') != hybrid.get('review_artifact_sha256'):
             errors.append('SHARED_REVIEW_MISMATCH:'+str(key))
         for method in ('P0', 'H'):
-            if rows.get(method, {}).get('lossless_compilation_verified') is not True:
+            branch = rows.get(method, {})
+            trace = branch.get('execution_observation') or {}
+            observed_rejection = (
+                branch.get('compilation_status') in {'NOT_ATTEMPTED_INVALID_INITIAL', 'NOT_ATTEMPTED_REVIEW_ERROR', 'REJECTED'}
+                and bool(branch.get('compilation_failure_reason'))
+                and branch.get('execution_callback_invoked') is False
+                and trace.get('observation_complete') is True
+                and all(trace.get(field) is False for field in (
+                    'execution_attempted','execution_started','tool_called','sql_executed')))
+            if branch.get('lossless_compilation_verified') is not True and not observed_rejection:
                 errors.append('LOSSLESS_COMPILATION_UNVERIFIED:'+str(key)+':'+method)
     return {
         'observation_comparison_complete': not errors,

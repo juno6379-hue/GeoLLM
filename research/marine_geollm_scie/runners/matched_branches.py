@@ -7,6 +7,7 @@ failed branches. It never interprets callback invocation as GIS execution.
 import copy
 import hashlib
 import json
+import time
 from pathlib import Path
 
 
@@ -34,7 +35,7 @@ def load_frozen(path):
     return artifact
 
 
-def run_branches(initial_path, output, *, reviewer, validator, executor):
+def run_branches(initial_path, output, *, reviewer, validator, executor, query=None):
     """Reviewer returns {plan, call}; validator accepts and returns actual QEC.
 
     Caller must supply research-isolated, source-pinned adapters. No production
@@ -56,6 +57,7 @@ def run_branches(initial_path, output, *, reviewer, validator, executor):
         save_new(out/'review_failure.json',{'initial_plan_hash':root_hash,'error_type':review_error})
     rows=[]
     for method in ('B3','B4','P0','H'):
+        branch_started=time.perf_counter()
         row={'method':method,'case_id':original['case_id'],'repeat':original['repeat'],
              'initial_plan_hash':root_hash,'execution_callback_invoked':False,
              'execution_observation':None,'status':'STARTED'}
@@ -68,7 +70,8 @@ def run_branches(initial_path, output, *, reviewer, validator, executor):
                 row['candidate_plan']=copy.deepcopy(candidate)
                 allowed=True
                 if method in ('P0','H'):
-                    compiled=compile_plan(copy.deepcopy(candidate))
+                    compiled=compile_plan(copy.deepcopy(candidate),query=query,
+                                          request_id=f"{original['case_id']}:{original['repeat']}:{method}")
                     row['compilation_traces']=[item['trace'] for item in compiled]
                     validated=[validate_without_repair(item,validator) for item in compiled]
                     row['validated_qecs']=[q.model_dump(mode='json') for q in validated]
@@ -78,6 +81,7 @@ def run_branches(initial_path, output, *, reviewer, validator, executor):
                 if allowed:
                     row['execution_callback_invoked']=True
                     row['execution']=executor(copy.deepcopy(candidate))
+                    row['execution_observation']=row['execution'].get('execution_observation')
                     row['status']='EXECUTOR_RETURNED'
                 else:
                     row['status']='VALIDATOR_BLOCKED'
@@ -85,6 +89,7 @@ def run_branches(initial_path, output, *, reviewer, validator, executor):
             row.update(status='BRANCH_ERROR',error_type=type(exc).__name__)
         if load_frozen(initial_path)['plan_hash']!=root_hash:
             raise ValueError('Frozen initial artifact changed during branching')
+        row['branch_latency_ms']=(time.perf_counter()-branch_started)*1000
         save_new(out/(method+'.json'),row)
         rows.append(row)
     save_new(out/'manifest.json',{'initial_plan_hash':root_hash,

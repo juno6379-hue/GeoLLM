@@ -65,3 +65,23 @@ def test_lossless_and_direct_baseline_required():
     errors = gate(observations)['errors']
     assert any(x.startswith('LOSSLESS_COMPILATION_UNVERIFIED') for x in errors)
     assert any(x.startswith('B0_NOT_DIRECT_LLM') for x in errors)
+
+
+def test_observed_rejected_compilation_is_valid_failure_data():
+    observations=rows()
+    branch=next(r for r in observations if r['method']=='P0')
+    branch.update(lossless_compilation_verified=False, compilation_status='REJECTED',
+        compilation_failure_reason='Unsupported literal unit', execution_callback_invoked=False,
+        execution_observation={'observation_complete':True,'execution_attempted':False,
+            'execution_started':False,'tool_called':False,'sql_executed':False})
+    assert gate(observations)['observation_comparison_complete']
+    branch['execution_observation']['tool_called']=True
+    assert not gate(observations)['observation_comparison_complete']
+
+
+def test_unobserved_rejected_compilation_is_not_certified_nonexecution():
+    observations=rows()
+    branch=next(r for r in observations if r['method']=='H')
+    branch.update(lossless_compilation_verified=False, compilation_status='NOT_ATTEMPTED_REVIEW_ERROR',
+        compilation_failure_reason='TimeoutError', execution_callback_invoked=False)
+    assert not gate(observations)['observation_comparison_complete']
