@@ -1,6 +1,16 @@
 # GeoLLM 현재 상태와 다음 작업
 
 
+## 2026-11-01 GOLD v2 8방법 K1 관측 완료·논문 결론 미완료
+
+- v2 `runs/20261101_gold_v2_eight_k1_v2`는 03:39:02 KST COMPLETED_OBSERVATIONS/DONE, 전체단계exit0. 8방법각18=144고유관측+별도fault27 완료. 실제부모33808/비교22936 종료 확인. [한글 결과·실패 원인](../../research/marine_geollm_scie/protocol/eight_results_20261101_KR.md), [통합 보고서](../../research/marine_geollm_scie/runs/20261101_gold_v2_eight_k1_v2/report_with_faults/comparison_KR.md).
+- 최종주검증:144rawhash/272동결파일/공유계획·검토/fault27원본·계약·Oracle/보고서hash 일치. outputs/gold_v2_eight_final_verification_20261101.json. 모델digest사후gate통과. v1실패원본불변, 미측정제외·gate우회없음.
+- P1 기계계약8/18, 공간실행·공간정답각3/5, 성공한3건중silentfailure0, coverage행동0/3. 일반정확도·무오류주장금지. B0/B1 0/15측정, B2 0/14, B3/B4 2/14, P0/H 0/14(각전체18). 비교미측정분모보존.
+- 통제LLM검토9회모두정상HTTP/stop이나 `{invalid,reason,plan}` 대신bareplan반환: schema불충족, B4검출9미측정/H5미측정/복구시도0. timeout아님. P0 FalseReady4/8: CRS/Feature/대상확장/반경의미변경누락; 검출4중1은compiler거절. FalseBlock0/1, 인간검수아님.
+- 추가평가제한: P1 성공3건은동일dokdo_radius_5km 질의군. baseline미실행 execution_succeeded=null/P1=false의비대칭발견, 별도평가버전으로공통정의검증필요. 현보고서ESR직접순위비교금지.
+- 다음우선: 별도개발조건에서review응답계약검증→원질의와계획의의미보존Validator검사(자동교정금지)→승인coverage/참조polygon·nearest/복합실행 및 revision·shadow오류→새동결전체비교·반복·독립GOLD. scientific_completion/rq1_to_rq5_complete/production_release_approved 모두false. 완료는관측과보고서에한정.
+- 이run의보고서·인계완료로heartbeat geollm-gold-v2-8 종료. 운영UI/dirty테스트·feedback 보존, 원본runtime출력은소스커밋과분리. push요청없음.
+
 ## 2026-11-01 GOLD v2 8방법 새 동결 v2 재실행 — 최신 인계
 
 - **실제 실행중**: `research/marine_geollm_scie/runs/20261101_gold_v2_eight_k1_v2/status.json`, 부모 PID33808. 새 snapshot `outputs/scie_gold_v2_eight_snapshot_20261101_v2/snapshot_manifest.json`. 실행중 소스/모델/공통입력/GOLD/예산 변경 및 중복 worker 금지. 실제 PID와 status를 우선 확인한다.
