@@ -1,5 +1,13 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-11-01 GOLD v2 Oracle·동일 초기 계획·P0 무손실 컴파일
+
+- 사용자 승인: 독도 Q3-01/Q5-01/Q5-03은 OUT_OF_COVERAGE Safe Abstention, 공간 GOLD=null이며 0건 아님. Q3-03은 추가입력/미실행. 별도 부산권 보충 문항은 원래18개와 분리한다. [검증·설계·다음 실행](../../research/marine_geollm_scie/protocol/gold_v2_oracle_and_paired_design_20261101_KR.md).
+- 단일 snapshot 부산항 polygon1137770/101KR00658D00.000을 고정(법적 전체항계 주장 없음). 실제 DB2관계 COPY hash 일치, 독립 SQL/Shapely109객체 판정 일치. Q3-02 covers0, Q5-02 2km 정박지3/제한구역21. Wreck172의 실제값805개 FC연결은 부산권 진단이며 독도 GOLD로 전용하지 않는다. v1 SQLtimeout/v2 union 판정1불일치 원본보존, 단일polygon v3검산통과.
+- 최신참조 benchmark/gold_v2_20261031_r2/manifest.json, 계약hash550f85c18d902e6895e9affe87b896785a9d150162181153c0d9dd423621bad4. 이전 첫생성 gold_v2_20261031은 준비이력이며 r2가최신. 연구 raw outputs/gold_v2_oracle_audit_20261031_v3는소스와분리. K5/frozen_v5불변.
+- B3/B4/P0/H는같은 frozen initial plan/hash; B4/H검토결과도공유. P0/H분기에lossless QEC컴파일을강제: 명시단위변환만허용, CRS/geometry/dataset누락그대로, feature/소스교정금지, Validator의슬롯변경·dataset자동선택시branch오류. 승인권한추가없음. 관련33tests passed.
+- **아직8조건모델비교미실행/model_comparison_ready=false**. 다음은실제B0/B1/B2·paired reviewer/Validator/executor·P1단일polygon어댑터검증→GIS와문서SQL구분관측→v2채점통합→새동결K1전체8조건/K5. 운영SchemaBindingAdapter의자동binding이P0무손실원칙을위반하지않는지실제검증필수. 기존K5 B0도구허용을새DirectLLM으로이름만바꿔재사용금지. 독립GOLD검수미수령/QLoRA보류 유지.
+
 ## 2026-10-31 Q3-03 사용자 승인 비실행 GOLD·연구 harness 관측
 
 - [계약·검증·범위](../../research/marine_geollm_scie/protocol/q303_execution_gold_20261031_KR.md). 별도 q303_behavior_v1: Wreck/intersects, selected_geometry REQUIRED, NEEDS_USER_INPUT/MISSING_REFERENCE_GEOMETRY, 네 실행 필드 false. 기존 frozen_v5/K5 원본·점수 불변(6 raw hash 재확인).
