@@ -1,5 +1,13 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-10-31 K5 540관측 완료·운영 종단 점검 시작
+
+- K5 v2 20:44:50KST COMPLETED_OBSERVATIONS/DONE, baseline450/P90 전체 기대집합·원시hash·소스246·모델digest 및 P5회 warmup gate 재검증. 연구worker/proxy/부모종료 확인. [한글결과](../../research/marine_geollm_scie/protocol/k5_results_20261031_KR.md), run/report/comparison_KR.md. 독립GOLD미수령·scientific_completion=false 유지.
+- P각회7기계통과/5미충족/6미측정포함, 통과여부변동0(측정12문항). Qwen50/50 HTTP200,3.237~23.038초. Baseline schema420/invalid28/error2. 전체 의미정확도/모델우열아님. 지연의 순서/계산예산/운영감사병행 교란 명시.
+- 별도 HTTP500 재현2건 모두HTTP200/스키마통과(74.831/87.474초), 원인미상·원본실패불변. outputs/k5_http500_reproduction_20261031. 양식장 공간오류는 readonly SQL pgcode57014/statement_timeout3초 재현, 수로는5행1.85초 정상. 모듈 import 실패후 /app runpy로 재검증한 기록을 구분한다.
+- 운영 종단6질의 runner PID26052 시작: outputs/dataset_live_followup_20261031_v1/status.json, rows.json, *_events.json, manifest.json. stdout/stderr outputs/dataset_audit_20261031/live_followup.*.log. 스크립트 outputs/dataset_audit_20261031/run_live_followup.py, 소스변경 없이 실제SSE→comparison완료대기→semantic→Qwen인용 순차. 운영 자체shadow/semanticprior 병행은 서비스현상으로 보존.
+- 다음: 실제PID/로그확인(중복runner금지)→6질의완료/오류 및 최종본문에근거반영여부대조→Dataset보고서·인계갱신→자동점검종료. 실패원본보존, raw연구결과수정금지. 55파일처리미확인/OCR/수치조류/canonical의미연결미완료는 별도남은작업으로 명시한다.
+
 ## 2026-10-31 K5 baseline450 완료·P 두 번째 반복 진입
 
 - 20:27:54 KST baseline450 원시관측 완료/exit0/완료gate 및 hash 검증 통과. completed420/invalid_response28/HTTP500 error2이며 의미정확도가 아니다. 새 stage graph_repeat_1, supervisor8920/child19884 생존 확인. P 나머지72 및 최종보고서는 아직 미완료.

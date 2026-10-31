@@ -53,3 +53,7 @@ router.py 일반 SSE는 graph 실행 종료 후 final_dict에 coastal_evidence�
 4. canonical 객체와 의미 관계·원천 판 검수. 답변 생성 이전에 검증된 근거를 공급하도록 개선 여부 판단 및 별도 변경·실제 API 검증. 지금 동결 소스는 변경하지 않았다.
 
 원시 자료: outputs/dataset_audit_20261031/{raw_manifest/raw_source_manifest.json,hash_comparison.json,live_snapshot.json,audit.json,audit.md,live_lexical_probes.json}. 후속 automation geollm-k5에 K5 종료 후 운영 종단 검증을 추가했다. 현재 전체 점검 완료가 아니며 이번 소스/DB mutation 없음.
+
+## K5 종료 후 운영 점검 시작
+
+K5가20:44:50KST 종료된 뒤 모델서버500 별도재현2건을 마쳤다. 운영6질의 SSE/semantic/Qwen 인용은 outputs/dataset_live_followup_20261031_v1에서 순차진행중이며 완료아님. 공간SQL별도readonly재현에서 양식장 pgcode57014/statement_timeout3초 확인, 수로5행1.85초 성공. 원본 공간오류를 전부 동일원인으로 단정하지 않는다.
