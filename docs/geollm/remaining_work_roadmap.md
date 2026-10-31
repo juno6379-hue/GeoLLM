@@ -1,5 +1,14 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-10-31 운영 Dataset 재감사·종단 답변 검증 대기
+
+- 사용자 요청으로 [운영 Dataset 감사](dataset_audit_20261031.md)를 수행했다. 원본244개/고유hash229, 기존manifest와 전체hash 변경0. 운영DB 문서23,215/벡터23,215지만 profile311 포함이며 전체 원본 처리 완료가 아니다.
+- 새 원본별audit: 추출32/record추출42/기존본문완전성미검증84/기존record미검증31/형식별확인55. 공간원천1,338,776행·유효geometry206,120; 정적공간3,832 제외와 CSV 무geometry를 구분한다. 그래프23,232관계 전부derivedFromSource이며 canonical 의미 관계 완료 아님.
+- 실제 lexical 근거API8건:6완료/양식장·수로2PARTIAL(공간OperationalError), 본문은 positive7개 각5건/negative0. 부산항입구 상위 사고사례집의 현재 안내 관련성 미검증. 원본 outputs/dataset_audit_20261031.
+- 일반SSE는 최종답변 생성 뒤 coastal_evidence를 추가하며 근거패널 검색을 본문 활용 완료로 보지 않는다. semantic도 ILIKE 필터/lexical 우선. K5 실행 중 추가모델호출/소스변경 없이 점검했으며 신규종단생성 검증은 대기.
+- 다음: K5완료→운영 SSE/semantic/Qwen 인용 및 본문 대조 별도run→공간오류격리재현→55개형식/중첩archive/OCR·canonical 의미 연결 검수. automation geollm-k5에 후속을 추가했으며 운영점검까지 마친 뒤 종료. 연구독립GOLD미수령·동결조건 유지.
+
+
 ## 2026-10-31 K5 v2 실제 재개 — 현재 실행 기준
 
 - **후속확인: graph_repeat_0 18/18완료, 현재 baselines_k5 RUNNING.** 초기화85/85·Qwen생성10/10 HTTP200/JSON객체, 소스불변gate통과. 첫P기계채점7통과/5실패/6미측정포함(의미정확도아님), 상태COMPLETED10/PARTIAL4/NEEDS_CLARIFICATION4. interim_graph_repeat0_audit.json 보존. baseline450과P나머지4회·최종보고서는진행대기/실행중이며완료아님. 구현·검수자료로컬커밋 a8d73e4,원격push없음.
