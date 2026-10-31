@@ -99,6 +99,22 @@ def contract_problem(query: str, analysis: dict, spatial_context: dict | None = 
                 'message': '설명할 지도 객체를 선택해주세요. 실제 객체 ID와 원천 정보를 확인해야 해당 객체의 근거를 조회할 수 있습니다.'}
     if not requires_execution(query):
         return None
+    context = spatial_context or {}
+    if hasattr(context, 'model_dump'):
+        context = context.model_dump()
+    selected_intersection = re.search(r'\bintersect(?:ing|s)?\b|교차', query, re.I) and re.search(r'selected\s+(?:area|polygon)|선택.*(?:영역|구역|폴리곤)', query, re.I)
+    if selected_intersection:
+        selected = context.get('selected_feature') or {}
+        geometry = context.get('geometry') or context.get('selected_area') or selected.get('geometry')
+        if not geometry:
+            return {'status': 'NEEDS_CLARIFICATION', 'code': 'AOI_REQUIRED', 'missing_slots': ['selected_area_geometry'],
+                    'message': '교차 검색할 영역의 다각형을 지도에서 선택해주세요. 기준 영역이 없어 공간 검색을 실행하지 않았습니다.'}
+        return {'status': 'BLOCKED', 'code': 'INTERSECTION_EXECUTION_NOT_SUPPORTED', 'missing_slots': [],
+                'message': '선택 영역은 받았지만 교차 조건을 검증하는 실행 경로가 아직 연결되지 않았습니다. 반경 검색이나 문서 검색으로 대체하지 않았습니다.'}
+    from services.orchestrator.request_semantics import missing_map_scope
+    if missing_map_scope(query, context):
+        return {'status': 'NEEDS_CLARIFICATION', 'code': 'MAP_SCOPE_REQUIRED', 'missing_slots': ['map_search_scope'],
+                'message': '지도에 표시할 객체의 검색 위치나 영역을 지정해 주세요. 지도 영역·선택한 위치·지명 없이 전체 자료를 임의로 조회하지 않았습니다.'}
     active = [c for c in analysis.get('constraints', []) if c['scope_status'] == 'EXPLICIT_LOCAL_SCOPE']
     context = spatial_context or {}
     has_context = any(context.get(k) for k in ('geometry', 'map_bounds', 'viewport', 'selected_feature', 'selected_features', 'clicked_point', 'place_id'))
@@ -125,7 +141,12 @@ def guard_result(state: dict, analysis: dict, problem: dict) -> dict:
             'slots': {'quantity_evidence': analysis['slots'], 'constraints': analysis['constraints'],
                       'unresolved_slots': problem['missing_slots']},
             'execution_ready': False, 'tools': [], 'clarification_required': status == 'NEEDS_CLARIFICATION'}
-    context = {'readiness': status, 'blockers': [problem['code']], 'tool_bindings': [], 'data_bindings': [], 'execution_status': 'NOT_RUN'}
+    from shared.schemas.agent import QueryExecutionContext, PlanStatus
+    readiness = PlanStatus.NEEDS_USER_INPUT if status == 'NEEDS_CLARIFICATION' else PlanStatus.BLOCKED_CONFIG
+    context = QueryExecutionContext(request_id=state['task_id'], original_query=state.get('query'),
+                                    route_plan=plan, readiness=readiness,
+                                    blockers=[problem['code']], provenance={'execution_status': 'NOT_RUN'}).model_dump(mode='json')
+    context['execution_status'] = 'NOT_RUN'
     final = {'task_id': state['task_id'], 'status': status, 'error_code': problem['code'],
              'answer_text': problem['message'], 'summary': problem['message'],
              'structured_result': {'count': None, 'korean_query_analysis': analysis},

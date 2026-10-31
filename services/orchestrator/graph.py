@@ -2525,6 +2525,13 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
                 'candidate_trace': candidate_trace, 'status': AgentStatus.COMPLETED,
                 'state_history': log_transition(AgentStatus.RECEIVED, AgentStatus.COMPLETED,
                                                actor='PublicCatalogueAttribute')}
+    from services.orchestrator.catalogue_document import build_catalogue_document_response
+    document_response = await asyncio.to_thread(build_catalogue_document_response, state)
+    if document_response is not None:
+        _attach_candidate_trace(state, document_response['final_dict'])
+        return {**document_response, 'public_catalogue_handled': True, 'candidate_trace': candidate_trace,
+                'status': AgentStatus.COMPLETED,
+                'state_history': log_transition(AgentStatus.RECEIVED, AgentStatus.COMPLETED, actor='PublicCatalogueDocument')}
     from services.orchestrator.request_obligations import required_outputs
     if set(required_outputs(original_query)) & {'selected_feature_evidence', 'portrayal_symbol_binding'}:
         from services.orchestrator.selected_feature_evidence import execute
@@ -2860,7 +2867,9 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
             try:
                 if llm_api_enabled():
                     model_name = os.environ.get("LLM_MODEL", "gpt-4o-mini")
-                    llm = ChatOpenAI(model=model_name, temperature=0)
+                    from services.orchestrator.routing_timeout import routing_timeout_seconds, invoke_routing_fallback
+                    fallback_timeout = routing_timeout_seconds()
+                    llm = ChatOpenAI(model=model_name, temperature=0, timeout=fallback_timeout, max_retries=0)
                     sys_msg = SystemMessage(content='''당신은 해양공간 지능분석 플랫폼의 Intent Parser(오케스트레이터)입니다.
                 다음 지시문을 엄격히 준수하여 순수 JSON 형태로만 응답하세요.
 
@@ -2898,7 +2907,7 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
                     "execution_plan": "실행 계획 절차",
                     "clarification_questions": []
                 }''')
-                    response = await llm.ainvoke([sys_msg, HumanMessage(content=query)])
+                    response = await invoke_routing_fallback(llm, [sys_msg, HumanMessage(content=query)], fallback_timeout)
                     
                     content = response.content.strip()
                     if content.startswith("```json"): content = content[7:-3]
@@ -3389,11 +3398,11 @@ async def fast_document_answer_node(state: OrchestratorState) -> OrchestratorSta
             "확정 근거를 찾지 못했습니다. 근거 없는 조항, 날짜, feature 정의는 생성하지 않습니다."
         )
     else:
-        return {
-            "status": AgentStatus.FAILED,
-            "error_message": "No exact standard document match found.",
-            "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.FAILED, actor="FastDocumentAnswer"),
-        }
+        # Defensive contract for callers that bypass the dispatch gate. An
+        # absent exact match is a scoped lookup outcome, not a runtime crash or
+        # evidence that the entire document corpus has no relevant source.
+        from services.orchestrator.catalogue_document import exact_document_unmatched
+        return exact_document_unmatched(state)
     documents = locals().get("documents", [doc])
     citations = locals().get("citations", [citation])
     doc_blocked = target_term == "no_authoritative_evidence"
@@ -5983,6 +5992,14 @@ def check_intent_parsed(state: OrchestratorState) -> str:
     # tide/weather keywords.
     if _looks_like_definition_question(original_query):
         return "fast_definition_answer"
+    from services.orchestrator.request_semantics import requires_execution
+    if not requires_execution(original_query) and re.search(r'정의|어떤\s*객체|속성|허용\s*기하|\b(?:definition|what is|attributes?)\b', original_query, re.I):
+        # Exact lookup is only an optimization. A missing exact binding must
+        # continue through the existing Standard RAG agent, not fail or become
+        # a spatial lookup merely because a layer name appears in the query.
+        if _exact_s101_feature_match(query) or _exact_s100_s101_relation_match(query):
+            return "fast_document_answer"
+        return "create_plan"
     if _looks_like_navigation_risk_analysis(query):
         return "fast_document_answer"
     if _should_fast_external_requirement(query):

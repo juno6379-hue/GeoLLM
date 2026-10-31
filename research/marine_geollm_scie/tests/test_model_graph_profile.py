@@ -63,3 +63,14 @@ def test_research_timeout_condition_is_explicit_and_not_production_default():
 def test_research_timeout_rejects_unbounded_or_ambiguous_settings(value):
     from research.marine_geollm_scie.runners.model_graph_conditions import graph_condition
     with pytest.raises(ValueError):graph_condition({'semantic_prior_timeout_seconds':value})
+
+
+def test_explicit_router_deadline_is_bound_to_research_environment():
+    from research.marine_geollm_scie.runners.model_graph_conditions import graph_condition_environment, validate_condition_environment, ROUTING_TIMEOUT_ENV
+    profile = {'semantic_prior_timeout_seconds':180, 'routing_fallback_timeout_seconds':15}
+    env = graph_condition_environment(profile)
+    assert env[ROUTING_TIMEOUT_ENV]=='15'
+    validate_condition_environment(profile,env)
+    with pytest.raises(RuntimeError):validate_condition_environment(profile,{**env,ROUTING_TIMEOUT_ENV:'60'})
+    for invalid in (0,61,True,float('nan')):
+        with pytest.raises(ValueError):graph_condition_environment({**profile,'routing_fallback_timeout_seconds':invalid})

@@ -1,5 +1,10 @@
 version: '2.0'
 tools:
+  catalogue.document_lookup:
+    operation: public_catalogue_document_lookup
+    source: data/s101_feature_catalogue_v2_parsed.json
+    read_only: true
+    provenance_required: true
   catalogue.attribute_lookup:
     kind: public_catalogue_lookup
     operation: public_catalogue_attribute_lookup

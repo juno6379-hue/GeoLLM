@@ -331,11 +331,14 @@ class QueryNormalizer:
         # 3. Synonym/Canonical term replacement
         sorted_syns = sorted(self.synonyms.keys(), key=len, reverse=True)
         for syn in sorted_syns:
-            if syn in q:
+            pattern = re.escape(syn)
+            if re.fullmatch(r"[A-Za-z0-9_ -]+", syn):
+                pattern = r"(?<![A-Za-z0-9_])" + pattern + r"(?![A-Za-z0-9_])"
+            if re.search(pattern, q):
                 canonical = self.synonyms[syn]
                 term_meta = self.synonym_meta.get(syn, {})
                 if term_meta.get("replace_in_query", True):
-                    q = q.replace(syn, canonical)
+                    q = re.sub(pattern, lambda _: canonical, q)
                     matched_rules.append(f"Dictionary 기반 canonical term 변환: '{syn}' -> '{canonical}'")
                 else:
                     matched_rules.append(f"Dictionary 기반 canonical term 인식: '{syn}' -> '{canonical}'")

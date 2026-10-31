@@ -1,0 +1,21 @@
+{
+  "status": "AWAITING_INDEPENDENT_REVIEW",
+  "reviewers_assigned_user_confirmed": true,
+  "independent_reviews_completed": 0,
+  "rows": 18,
+  "source_contract_sha256": "262597b5b94d01d34f16c12deef0fe60c62c7d6b51cbc0abcd4eb06fc9f61562",
+  "model_outputs_in_review_forms": false,
+  "human_approval": false,
+  "files": {
+    "questions_and_sources.jsonl": "10caebfca7cf46fbda4305f4b13c783d2b7f9e841fb13f09a15a67faafc2fc08",
+    "AI_reference_candidates_separate.jsonl": "2c9fd0e136bf0349174a400261a1e0ca1e8cb6cc92d245511300a8c283be71e4",
+    "reviewer_A_blank.jsonl": "332775fc6ccd842a34451f9af0a140877039d34d76edb165bc4a905e463cd814",
+    "검수자A_18문항_독립검수_빈양식_KR.md": "7eded9a6fa654894b55f8e321802f01db002d9608d3e58b8077d2769cf4e015e",
+    "reviewer_B_blank.jsonl": "4ce833100befc05350ae08122d69c156a394db3411a1444cbbd9ee3333e99c45",
+    "검수자B_18문항_독립검수_빈양식_KR.md": "e211be747bc18d000c197fc1df4be72c8ffbb69dc8fcf4bbd5c907608da425c0",
+    "adjudication_blank.jsonl": "82392e6ebfe980c925b64159cfafbc71cbb8ffe4da83b93d3b7136a6bf43f13b",
+    "합의검토_18문항_독립검수_빈양식_KR.md": "f99bc07347740c1131ec76e4e89525bff37a3db0683caec52771bd1f79036779",
+    "검수안내_KR.md": "03b825707f02275cb2a1eee8f5727f7b20e7ba7b1fa5589e758e6eb07ea172b1"
+  },
+  "artifact_formatting": "Trailing blank lines removed from human Markdown forms; content and review status unchanged."
+}

@@ -39,6 +39,19 @@ def _ollama_endpoint() -> str:
     )
 
 
+def semantic_prior_model() -> tuple[str, str]:
+    """Use explicit prior settings, then the configured ambiguity/shadow model.
+
+    LLM_MODEL belongs to the general parser and must not silently change the
+    semantic-prior experiment. Explicit research worker settings retain priority.
+    """
+    for key in ('GEOLLM_OLLAMA_MODEL', 'OLLAMA_MODEL', 'GEOLLM_WEB_SHADOW_MODEL'):
+        value = os.getenv(key, '').strip()
+        if value:
+            return value, key
+    return 'llama3.1', 'legacy_default'
+
+
 def _deterministic_place_type_candidates(query: str) -> list[dict[str, Any]]:
     text = query or ""
     compact = re.sub(r"\s+", "", text.lower())
@@ -100,9 +113,10 @@ def _ollama_prior(query: str, deterministic_candidates: list[dict[str, Any]]) ->
             "place_type_candidates": [{"type": "string", "confidence": "number"}],
         },
     }
+    model, model_source = semantic_prior_model()
     body = json.dumps(
         {
-            "model": os.getenv("GEOLLM_OLLAMA_MODEL", os.getenv("OLLAMA_MODEL", "llama3.1")),
+            "model": model,
             "prompt": json.dumps(prompt, ensure_ascii=False),
             "stream": False,
             "format": "json",
@@ -119,13 +133,16 @@ def _ollama_prior(query: str, deterministic_candidates: list[dict[str, Any]]) ->
         if isinstance(parsed, dict):
             parsed["source"] = "ollama_semantic_prior"
             parsed["authority"] = "candidate_only"
+            parsed['model'] = model
+            parsed['model_selection_source'] = model_source
             return parsed
     except Exception as exc:
-        logger.warning("Ollama semantic prior failed", error=str(exc))
+        logger.warning("Ollama semantic prior failed", error=str(exc), model=model, model_selection_source=model_source)
     return None
 
 
 def build_semantic_prior(query: str, normalized_query: str | None = None, *, allow_ollama: bool = True) -> dict[str, Any]:
+    model, model_source = semantic_prior_model()
     combined = " ".join(part for part in [query, normalized_query] if part)
     deterministic = _deterministic_place_type_candidates(combined)
     place_like = bool(deterministic) or bool(PLACE_ACTION_RE.search(combined or ""))
@@ -143,6 +160,9 @@ def build_semantic_prior(query: str, normalized_query: str | None = None, *, all
             "enabled": os.getenv("GEOLLM_SEMANTIC_PRIOR_OLLAMA", "true").lower() in {"1", "true", "yes", "on"},
             "used": False,
             "role": "ambiguity_resolver_only",
+            "model": model,
+            "model_selection_source": model_source,
+            "timeout_seconds": os.getenv('GEOLLM_SEMANTIC_PRIOR_TIMEOUT_SEC', '2.5'),
         },
     }
     prior["ollama"]["enabled"] = prior["ollama"]["enabled"] and allow_ollama

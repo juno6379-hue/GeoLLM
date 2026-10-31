@@ -1,5 +1,26 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-10-31 K5 v2 실제 재개 — 현재 실행 기준
+
+- 최신 실행은 **research/marine_geollm_scie/runs/20261031_postfix_k5_v2/status.json**이다. 실제 supervisor8920/child34420 및 연구worker/proxy RUNNING을 확인했다. 첫stage graph_repeat_0, 이후baseline450→graph1..4→report. 아래v1 RUNNING/중단기록은이력이며현재실행과구분한다.
+- v1은모델호출전 query_normalizer.py hash불일치로정상차단됐다. 별도파생생성기6tests passed 후 실제연구DB6관계를읽기전용재추출하여부모CSV와해시전부일치확인. outputs/scie_model_snapshot_20261031_execution_v1 LOADED_VERIFIED, 부모manifest불변·데이터재기준화없음·코드old/newhash lineage보존. 기존verify_files를그대로통과했다.
+- 양쪽profiles_v2는새manifest경로/hash를동일참조하고246파일을동결했다. 실행중소스편집금지. v2stderr/stdout은outputs/scie_postfix_k5_v2_20261031.*.log, 전역lock과실제PID함께확인. automation geollm-k5도v2로갱신했다. 아직K5관측/보고서완료아님.
+- 다음은첫graph완료gate→baseline450진행→나머지graph72→공통기계채점/반복변동성→독립검수결과별도반영. 실패원본은보존하고코드변경시다시새run을사용한다. 운영UI/feedback변경은이번커밋에서제외한다.
+
+## 2026-10-31 공통 채점·구현 보완 완료 및 K5 반복 실행 시작
+
+- **최신 상태 정정: K5 v1은 모델 호출 전 STOPPED_REQUIRES_REVIEW.** 기존 snapshot에 기록된 query_normalizer.py hash가 이번 수정과 달라 gate가 정상 차단했다. 원본 snapshot/run은 보존하며 동일 연구DB 데이터를 재추출·hash대조한 새 실행 snapshot과 새 profile/run을 준비 중이다. 완료 gate를 우회하거나 기존 manifest를 덮지 않는다. 아래 RUNNING은 최초시작 관측이며 현재 상태가 아니다.
+
+- 최신 상세: research/marine_geollm_scie/protocol/postfix_execution_20261031_KR.md. P실제final_dict를공통계약에매핑했다. 사전재채점 runs/20261031_common_mapping_before_v3/report: P3통과/9실패/6미측정포함, B1 1/9/8, 나머지B군각0/10/8. 기계계약검사이며정답률아님; Q4세통과는동일공간군집.
+- 구현: source-backed FC정의/속성·비정확문서RAG연결, AOI/지도범위필수계약, 복합대상/지도/설명산출물완결검사, AnchorageArea부분치환방지, 유효QEC enum. 문서발췌나0문서만으로설명COMPLETED 금지. 미지원교차실행·미완성등대설명은숨기지않는다.
+- 실제영어지도복합parse251.6초(생성만의측정아님)/최종약268초문서-only완료를확인했다. 일반fallback은gemma2/SDK명시제한없음.15초/재시도0/외부await deadline과범위사전검증을추가했다. 운영prior기본llama3.1미설치404는기존Qwen shadow설정참조로보완; 연구명시Qwen고정은유지.
+- 최종API runs/20261031_contract_routing_api_v4/verified_contracts.json 12/12: 실제FC·승인/미실행·정책·QEC스키마·부분완료확인. 지도복합4.062초추가입력, 전체1.250~22.344초; 전체SLO아님. v1준비전통신실패/v2지연및잘못된완료/v3설명누락모두보존.159회귀후최종관련100passed(중복합산금지). 기존사고필터오류코드2실패는HEAD에서도재현해별도P0로기록했다.
+- **현재K5 RUNNING**: research/marine_geollm_scie/runs/20261031_postfix_k5_v1/status.json 및실제PID/로그를우선확인. P첫18→baseline450→P나머지72→report,총540관측. 245소스/계약/profile/snapshot동결,semanticprior180초/parser15초고정. 실행중동결파일변경/중복worker금지. 모델오류행은보존하고완료gate우회금지. 실패수정시새run사용. 아직반복결과완료아님.
+- 프로세스첫관측supervisor11496/child37976, 이후변경가능. outputs/scie_repeat_active.lock과실제프로세스함께확인. stdout/stderr outputs/scie_postfix_k5_20261031.*.log. 즉시중단요청시supervisor/하위PID/연구worker·proxy모두중지하고원본보존. STOP_AFTER_STAGE는즉시중단아님.
+- 독립GOLD검수자는사용자가선정했다고확인했지만결과미제공/완료0. 최신A/B/합의한글빈양식 research/marine_geollm_scie/review/20261031_independent_gold_v3. 초기양식은AI정답ID·객체별locator를제외하고원천판/경로/hash만제공한다. 합의결과는새참조버전으로재채점; 기존18은검수후에도holdout아님.
+- 후속점검 automation geollm-k5 ACTIVE(30분). 상태변경없으면조용히종료,의미있는완료·실패·조치필요만알리고보고서완성후종료한다. 이전geollm삭제상태와혼동하지않는다. 운영UI/feedback사용자변경보존,이번요청원격push없음.
+- 다음: 실제K5상태/gate확인→실패원인별도재현·수정또는540관측보고서→사례내/동등표현군집변동집계→독립검수결과수령후별도재채점. 잔여P0는등대다중매핑·설명완결, AOI교차도구/복합대상개별실행, 기존사고필터오류코드정합성. 독립holdout/ablation/recovery/전체SLO는미완료, Qwenshadow승격/QLoRA보류.
+
 ## 2026-10-31 사용자 재개 — Qwen timeout·정책 오류 수정 및 새 연구 검증 완료
 
 - 아래 이전 인계의 “180초 미실행/정책 미검증”은 당시 관측이며 이 항목으로 갱신한다. 상세원인·검증·한계: research/marine_geollm_scie/protocol/timeout_policy_resolution_20261031_KR.md.

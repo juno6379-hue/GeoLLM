@@ -96,7 +96,25 @@ def _validate_lookup(current, adapter):
     current.data_bindings, current.tool_bindings = [], []
     if not _has_document_query(current):
         blockers.append("NEEDS_USER_INPUT: lookup query is required")
-    if operation == "public_catalogue_attribute_lookup":
+    if operation == "public_catalogue_document_lookup":
+        from services.orchestrator.catalogue_document import resolve_catalogue_document
+        entry = resolve_catalogue_document(current.original_query or "")
+        source_ref = "data/s101_feature_catalogue_v2_parsed.json"
+        tool_id = "catalogue.document_lookup"
+        try:
+            digest = hashlib.sha256((Path(__file__).resolve().parents[2] / source_ref).read_bytes()).hexdigest()
+        except OSError:
+            digest = None
+        if not entry or entry.get('source_sha256') != digest or not entry.get('features') or not entry.get('evidence', {}).get('locators'):
+            blockers.append("BLOCKED_DATA: public catalogue document evidence unavailable")
+        elif (adapter.tool_registry.get('tools', {}).get(tool_id, {}).get('operation') != operation
+              or adapter.tool_registry.get('tools', {}).get(tool_id, {}).get('source') != source_ref
+              or adapter.tool_registry.get('tools', {}).get(tool_id, {}).get('read_only') is not True):
+            blockers.append("BLOCKED_CONFIG: catalogue document tool unavailable")
+        else:
+            current.data_bindings = [DataBinding(dataset_id='s101_feature_catalogue_v2', relation=source_ref, geometry_column='', snapshot_version=digest, read_only=True)]
+            current.tool_bindings = [ToolBinding(tool_id=tool_id, operation=operation, schema_version=entry['evidence']['edition'])]
+    elif operation == "public_catalogue_attribute_lookup":
         from services.orchestrator.public_catalogue_attribute import resolve_public_catalogue_attribute
         source_ref = "data/s101_feature_catalogue_v2_parsed.json"
         tool_id = "catalogue.attribute_lookup"
@@ -394,7 +412,7 @@ def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=No
     current.readiness = PlanStatus.DRAFT
     current.route_plan.update(execution_ready=False, status="DRAFT", route_plan_status="DRAFT")
     current.provenance.pop("execution_validation", None)
-    if current.route_plan.get("analysis_type") in {*_LOOKUP_SOURCES, "public_catalogue_attribute_lookup", "definition_lookup", "terminology_relation_lookup", "local_document_lookup", "resolver_registry", "metadata_discovery", "evidence_validation"}:
+    if current.route_plan.get("analysis_type") in {*_LOOKUP_SOURCES, "public_catalogue_document_lookup", "public_catalogue_attribute_lookup", "definition_lookup", "terminology_relation_lookup", "local_document_lookup", "resolver_registry", "metadata_discovery", "evidence_validation"}:
         return _validate_lookup(current, binding_adapter or schema_binding_adapter)
     blockers: List[str] = list(current.blockers or [])
     warnings: List[str] = list(current.warnings or [])
