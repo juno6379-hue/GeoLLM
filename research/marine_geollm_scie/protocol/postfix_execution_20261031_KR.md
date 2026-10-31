@@ -65,3 +65,7 @@ K5는 P18문항×5회와 B0–B4의18문항×5방법×5회, 총540행이다. 사
 `derive_execution_snapshot`의6tests통과후 실제DB6관계를읽기전용으로새CSV에재추출했다. 모든전체CSVhash가부모와일치, 부모manifest불변, 코드query_normalizer변경전후hash만명시해새실행snapshot을만들었다. outputs/scie_model_snapshot_20261031_execution_v1 LOADED_VERIFIED 및기존verify_files통과. 관계별REPEATABLE READ이며단일교차관계transaction으로주장하지않는다. 데이터동일성은각관계전체CSV일치로검증했다.
 
 새 profiles_v2의baseline/P가같은새snapshot을참조한다. `runs/20261031_postfix_k5_v2`에서supervisor8920/child34420 및연구worker/proxy실제실행을확인했다.246파일동결,첫graph18실행중. 현재status/PID는항상최신파일과실제프로세스로대조한다. 후속automation geollm-k5는v2를30분마다확인한다. 아직540관측·반복보고서완료가아니다.
+
+## 첫 P 반복 완료·baseline K5 진입
+
+graph_repeat_0 18/18, EXECUTION_OBSERVED, source_unchanged_after=true, 초기화85/85오류없음. 생성10/10 HTTP200/JSON객체 및 문항embedding20/20성공. 상태COMPLETED10/PARTIAL4/NEEDS_CLARIFICATION4. 같은평가기로기계검사7통과/5실패/6미측정포함이며첫회잠정결과다. interim_graph_repeat0_audit.json에원본/평가기/계약hash와문항별검사요약을저장했다. 현재baselines_k5 RUNNING이고전체K5완료가아니다. 관련소스·검수자료커밋 a8d73e4,원격push없음.

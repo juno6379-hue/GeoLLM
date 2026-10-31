@@ -2,6 +2,8 @@
 
 ## 2026-10-31 K5 v2 실제 재개 — 현재 실행 기준
 
+- **후속확인: graph_repeat_0 18/18완료, 현재 baselines_k5 RUNNING.** 초기화85/85·Qwen생성10/10 HTTP200/JSON객체, 소스불변gate통과. 첫P기계채점7통과/5실패/6미측정포함(의미정확도아님), 상태COMPLETED10/PARTIAL4/NEEDS_CLARIFICATION4. interim_graph_repeat0_audit.json 보존. baseline450과P나머지4회·최종보고서는진행대기/실행중이며완료아님. 구현·검수자료로컬커밋 a8d73e4,원격push없음.
+
 - 최신 실행은 **research/marine_geollm_scie/runs/20261031_postfix_k5_v2/status.json**이다. 실제 supervisor8920/child34420 및 연구worker/proxy RUNNING을 확인했다. 첫stage graph_repeat_0, 이후baseline450→graph1..4→report. 아래v1 RUNNING/중단기록은이력이며현재실행과구분한다.
 - v1은모델호출전 query_normalizer.py hash불일치로정상차단됐다. 별도파생생성기6tests passed 후 실제연구DB6관계를읽기전용재추출하여부모CSV와해시전부일치확인. outputs/scie_model_snapshot_20261031_execution_v1 LOADED_VERIFIED, 부모manifest불변·데이터재기준화없음·코드old/newhash lineage보존. 기존verify_files를그대로통과했다.
 - 양쪽profiles_v2는새manifest경로/hash를동일참조하고246파일을동결했다. 실행중소스편집금지. v2stderr/stdout은outputs/scie_postfix_k5_v2_20261031.*.log, 전역lock과실제PID함께확인. automation geollm-k5도v2로갱신했다. 아직K5관측/보고서완료아님.
