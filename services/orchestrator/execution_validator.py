@@ -25,6 +25,7 @@ def _decision_input(qec):
             "dispatch_agent": qec.context.get("dispatch_agent"),
             "contract_scope": qec.context.get("contract_scope"),
             "security_context_ref": qec.security_context_ref,
+            "coverage_validation": qec.provenance.get("coverage_validation"),
             "data_bindings": [b.model_dump(mode="json") for b in qec.data_bindings],
             "tool_bindings": [b.model_dump(mode="json") for b in qec.tool_bindings]}
 
@@ -612,4 +613,15 @@ def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=No
     else:
         blockers.append(f"BLOCKED_CONFIG: unsupported operation: {analysis_type}")
 
+    from services.orchestrator.spatial_coverage import SPATIAL_OPERATIONS, assess_coverage
+    if analysis_type in SPATIAL_OPERATIONS:
+        receipt = assess_coverage(current, getattr(binding_adapter or schema_binding_adapter, 'layer_registry', {}))
+        current.provenance['coverage_validation'] = receipt
+        if receipt['status'] in {'OUT_OF_COVERAGE', 'PARTIAL'}:
+            blockers.append('BLOCKED_DATA: DATA_OUT_OF_SCOPE')
+        elif receipt['status'] == 'UNKNOWN':
+            if receipt['required']:
+                blockers.append('BLOCKED_DATA: DATA_COVERAGE_UNVERIFIED')
+            else:
+                warnings.append('DATA_COVERAGE_UNVERIFIED: returned rows describe source observations only')
     return _finish(current, blockers, warnings)

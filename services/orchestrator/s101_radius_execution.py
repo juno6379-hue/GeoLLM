@@ -5,6 +5,8 @@ import json
 import math
 import os
 import re
+import time
+from contextlib import contextmanager
 from collections import Counter
 from pathlib import Path
 
@@ -33,6 +35,30 @@ class RadiusProblem(Exception):
         self.status = status
         self.code = code
         self.candidates = candidates or []
+
+
+@contextmanager
+def _execution_stage(qec, stage):
+    """Record statement phase without exposing SQL, DSN or database errors."""
+    row = {'stage': stage, 'status': 'STARTED'}
+    qec.provenance.setdefault('execution_stages', []).append(row)
+    started = time.perf_counter()
+    try:
+        yield
+        row['status'] = 'COMPLETED'
+    except Exception as exc:
+        row.update(status='FAILED', error_type=type(exc).__name__, sqlstate=getattr(exc, 'pgcode', None))
+        raise
+    finally:
+        row['elapsed_ms'] = round((time.perf_counter() - started) * 1000, 3)
+
+
+def _execute_stage(cursor, qec, stage, statement, params=None):
+    with _execution_stage(qec, stage):
+        if params is None:
+            cursor.execute(statement)
+        else:
+            cursor.execute(statement, params)
 
 
 def _registry(filename):
@@ -425,8 +451,16 @@ def _fetch_result(qec, layer, template, params):
     with psycopg2.connect(url, connect_timeout=3) as connection:
         connection.set_session(readonly=True, isolation_level="REPEATABLE READ")
         adapter = SchemaBindingAdapter(connection=connection)
-        validated = validate_execution_context(qec, binding_adapter=adapter)
+        with _execution_stage(qec, "execution_validation"):
+            validated = validate_execution_context(qec, binding_adapter=adapter)
+        validated.provenance["execution_stages"] = qec.provenance["execution_stages"]
         if validated.readiness != PlanStatus.EXECUTION_READY:
+            apply_execution_decision(qec, validated)
+            coverage = validated.provenance.get('coverage_validation') or {}
+            if coverage.get('status') in {'OUT_OF_COVERAGE', 'PARTIAL'}:
+                raise RadiusProblem('BLOCKED_DATA', 'DATA_OUT_OF_SCOPE', '현재 연결된 데이터 범위로는 요청 영역의 결과를 확정할 수 없습니다.')
+            if coverage.get('required') and coverage.get('status') == 'UNKNOWN':
+                raise RadiusProblem('BLOCKED_DATA', 'DATA_COVERAGE_UNVERIFIED', '완전한 결과에 필요한 데이터 범위가 검증되지 않았습니다.')
             raise RadiusProblem(validated.readiness.value, "EXECUTION_GATE", "실행 검증을 통과하지 못했습니다. 데이터 연결과 입력 조건을 확인해 주세요.")
         qec.data_bindings, qec.tool_bindings = validated.data_bindings, validated.tool_bindings
         qec.provenance.update(validated.provenance)
@@ -447,7 +481,7 @@ def _fetch_result(qec, layer, template, params):
                 name=sql.Identifier(layer["name_column"]), code=sql.Identifier(layer["code_column"]),
                 relation=sql.Identifier(*layer["physical_table"].split(".")),
             )
-            cursor.execute(code_query, (params["target_features"], params["feature_codes"]))
+            _execute_stage(cursor, qec, "feature_code_verification", code_query, (params["target_features"], params["feature_codes"]))
             expected = {
                 (feature, int(code))
                 for feature, codes in params.get("feature_code_map", {}).items()
@@ -456,9 +490,9 @@ def _fetch_result(qec, layer, template, params):
             observed = {(str(name), int(code)) for name, code in cursor.fetchall()}
             if observed - expected:
                 raise RadiusProblem("BLOCKED_CONFIG", "FEATURE_CODE_CONFLICT", "데이터셋의 객체 코드가 실행 정책과 일치하지 않습니다.")
-            cursor.execute(_statement(layer, template), params)
+            _execute_stage(cursor, qec, "spatial_select", _statement(layer, template), params)
             total, counts, rows, search_geometry = cursor.fetchone()
-            cursor.execute("SELECT txid_current_snapshot()::text, transaction_timestamp()::text")
+            _execute_stage(cursor, qec, "snapshot_receipt", "SELECT txid_current_snapshot()::text, transaction_timestamp()::text")
             snapshot, captured_at = cursor.fetchone()
     qec.snapshot_versions.update(data_snapshot=snapshot, captured_at=captured_at)
     return int(total), counts, rows, search_geometry
@@ -509,8 +543,16 @@ def _fetch_bounds_result(qec, layer, params):
         )]
         inspected = adapter._inspect_relation(layer["physical_table"])
         qec.provenance.update({"schema_binding": {"inspected_relations": {layer["physical_table"]: inspected}}})
-        validated = validate_execution_context(qec, binding_adapter=adapter)
+        with _execution_stage(qec, "execution_validation"):
+            validated = validate_execution_context(qec, binding_adapter=adapter)
+        validated.provenance["execution_stages"] = qec.provenance["execution_stages"]
         if validated.readiness != PlanStatus.EXECUTION_READY:
+            apply_execution_decision(qec, validated)
+            coverage = validated.provenance.get('coverage_validation') or {}
+            if coverage.get('status') in {'OUT_OF_COVERAGE', 'PARTIAL'}:
+                raise RadiusProblem('BLOCKED_DATA', 'DATA_OUT_OF_SCOPE', '현재 연결된 데이터 범위로는 요청 영역의 결과를 확정할 수 없습니다.')
+            if coverage.get('required') and coverage.get('status') == 'UNKNOWN':
+                raise RadiusProblem('BLOCKED_DATA', 'DATA_COVERAGE_UNVERIFIED', '완전한 결과에 필요한 데이터 범위가 검증되지 않았습니다.')
             raise RadiusProblem(validated.readiness.value, "EXECUTION_GATE", "지도 범위 실행 검증을 통과하지 못했습니다.")
         apply_execution_decision(qec, validated)
         with connection.cursor() as cursor:
@@ -521,7 +563,7 @@ def _fetch_bounds_result(qec, layer, params):
                 code=sql.Identifier(layer["code_column"]),
                 relation=sql.Identifier(*relation),
             )
-            cursor.execute(code_query, (params["target_features"], params["feature_codes"]))
+            _execute_stage(cursor, qec, "feature_code_verification", code_query, (params["target_features"], params["feature_codes"]))
             expected = {
                 (feature, int(code))
                 for feature, codes in params.get("feature_code_map", {}).items()
@@ -588,9 +630,9 @@ def _fetch_bounds_result(qec, layer, params):
                 geometry_column=sql.Identifier(layer["geometry_column"]),
                 attributes_column=sql.Identifier(layer["attributes_column"]),
             )
-            cursor.execute(statement, params)
+            _execute_stage(cursor, qec, "spatial_select", statement, params)
             total, counts, rows, search_geometry = cursor.fetchone()
-            cursor.execute("SELECT txid_current_snapshot()::text, transaction_timestamp()::text")
+            _execute_stage(cursor, qec, "snapshot_receipt", "SELECT txid_current_snapshot()::text, transaction_timestamp()::text")
             snapshot, captured_at = cursor.fetchone()
     qec.snapshot_versions.update(data_snapshot=snapshot, captured_at=captured_at)
     return int(total), dict(counts or {}), list(rows or []), search_geometry
