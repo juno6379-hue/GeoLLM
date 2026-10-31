@@ -653,6 +653,56 @@ def _feature_rows_to_geojson(qec, layer, rows, result_id, execution_id):
     return properties, {"type": "FeatureCollection", "features": features}, evidence
 
 
+def _qualify_unverified_empty(result, observed_total):
+    """A successful SELECT proves snapshot rows, not geographic coverage.
+
+    These executors currently have no authoritative coverage verifier. Do not
+    trust caller-provided coverage flags or fabricate a verified-empty branch.
+    Keep execution evidence while withholding an absence/completeness claim.
+    """
+    if observed_total != 0:
+        return result
+    text = ("연결된 공간 데이터에서 조건에 맞는 행은 조회되지 않았습니다. "
+            "해당 자료가 요청 영역과 대상 유형을 충분히 포함하는지 검증되지 않아 "
+            "실제 객체가 0개라고 확정할 수 없습니다.")
+    result.update(status="PARTIAL", summary=text, answer_text=text,
+                  error_code="DATA_COVERAGE_UNVERIFIED")
+    structured = result["structured_result"]
+    structured.update(status="NO_EVIDENCE", coverage_status="UNKNOWN",
+                      absence_confirmed=False, query_execution_succeeded=True)
+    # Apply the same interpretation to summary, map metadata and evidence.
+    seen = set()
+    def qualify(value):
+        if isinstance(value, (dict, list)):
+            if id(value) in seen:
+                return
+            seen.add(id(value))
+        if isinstance(value, dict):
+            if "total_count" in value or "total_hazard_count" in value:
+                for key in ("count", "total_count", "total_hazard_count",
+                            "total_counts_by_type", "feature_type_breakdown"):
+                    if key in value:
+                        value["observed_" + key] = value[key]
+                        value[key] = None
+                value.update(coverage_status="UNKNOWN", absence_confirmed=False)
+            for child in list(value.values()):
+                qualify(child)
+        elif isinstance(value, list):
+            for child in value:
+                qualify(child)
+    for key in ("structured_result", "spatial_result_summary", "map_layers", "evidence_bundle"):
+        qualify(result.get(key))
+    for evidence in result.get("evidence_bundle", {}).get("spatial_layer_evidence", []):
+        evidence["summary"] = text
+    for surface in (structured, structured.get("result_surface", {})):
+        surface.setdefault("user_evidence_summary", {})["coverage_basis"] = text
+    for claim in result.get("claims", []):
+        claim["text"] = text
+    for task in result.get("task_results", []):
+        task.update(status="NO_EVIDENCE", coverage_status="UNKNOWN")
+    return result
+
+
 def build_bounds_result(qec, layer, params, total, counts, rows, search_geometry):
     request_id = qec.request_id
     snapshot_hash = hashlib.sha256(json.dumps(qec.snapshot_versions, sort_keys=True).encode()).hexdigest()[:12]
@@ -750,7 +800,7 @@ def build_bounds_result(qec, layer, params, total, counts, rows, search_geometry
         "web_rag_usage": usage,
         "user_evidence_summary": user_evidence_summary,
     }
-    return {
+    result = {
         "task_id": request_id,
         "request_id": request_id,
         "contract_version": qec.contract_version,
@@ -796,6 +846,7 @@ def build_bounds_result(qec, layer, params, total, counts, rows, search_geometry
             "quality_metrics": quality_metrics,
         },
     }
+    return _qualify_unverified_empty(result, total)
 
 
 def build_hazard_definition_result(state):
@@ -1009,7 +1060,7 @@ def build_result(qec, layer, params, total, counts, rows, search_geometry):
     map_layers = [{"layer_id": result_id, "title": "검색된 객체", "role": "matched_features", "source_type": "geojson", "geometry_type": "GEOMETRY", "inline_geojson": collection, "feature_count": len(rows), "metadata": {**summary_values, "role": "matched_features"}}]
     if search_geometry:
         map_layers.append({"layer_id": f"{result_id}:range", "title": "검색 범위", "role": "search_area", "source_type": "geojson", "geometry_type": "POLYGON", "inline_geojson": {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": search_geometry, "properties": {"role": "search_area", "distance_m": qec.slots.distance_m}}]}, "feature_count": 1, "metadata": {"role": "search_area", "result_id": result_id}})
-    return {
+    result = {
         "task_id": request_id, "request_id": request_id, "contract_version": qec.contract_version,
         "agent_name": "Spatial Analysis Agent", "status": "COMPLETED", "summary": text, "answer_text": text,
         "structured_result": {**summary_values, "status": "SUCCESS" if total else "SUCCESS_EMPTY", "analysis_type": OPERATION,
@@ -1029,6 +1080,7 @@ def build_result(qec, layer, params, total, counts, rows, search_geometry):
         "task_results": [{"task_id": request_id, "result_id": result_id, "status": "SUCCESS" if total else "SUCCESS_EMPTY"}],
         "orchestrator_v2": {"route_plan": qec.route_plan, "query_execution_context": qec.model_dump(mode="json"), "embedding_independent": True, "fast_path": "validated_s101_hazard_radius"},
     }
+    return _qualify_unverified_empty(result, total)
 
 
 def execute_radius_request(state):
@@ -1040,6 +1092,8 @@ def execute_radius_request(state):
             return build_bounds_result(qec, layer, params, *_fetch_bounds_result(qec, layer, params))
         qec, layer, template, params = prepare_radius_request(state)
         result = build_result(qec, layer, params, *_fetch_result(qec, layer, template, params))
+        if result.get("status") != "COMPLETED":
+            return result
         distance_policy = qec.provenance.get("distance_policy") or {}
         default_note = " 부근 기본 반경 3km를 먼저 적용했습니다." if distance_policy.get("default_applied") else ""
         text = (

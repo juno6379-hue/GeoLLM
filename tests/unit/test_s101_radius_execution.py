@@ -293,10 +293,10 @@ def test_one_result_drives_every_surface_and_distinguishes_total(state, total):
     context = QueryExecutionContext.model_validate(result["orchestrator_v2"]["query_execution_context"])
     ids = structured["feature_ids"]
 
-    assert structured["total_count"] == total
+    assert structured["total_count"] == (total if total else None)
     assert structured["returned_count"] == min(total, 30)
     assert structured["nearest_returned_count"] == structured["returned_count"]
-    assert structured["result_surface"]["total_hazard_count"] == total
+    assert structured["result_surface"]["total_hazard_count"] == (total if total else None)
     assert structured["result_surface"]["nearest_returned_count"] == structured["returned_count"]
     assert structured["result_surface"]["source_layer"]["physical_table"] == layer["physical_table"]
     assert structured["result_surface"]["reference_geometry"] == context.slots.reference_geometry
@@ -304,13 +304,18 @@ def test_one_result_drives_every_surface_and_distinguishes_total(state, total):
     assert structured["result_surface"]["evidence_bundle"]["spatial_feature_evidence"] == len(ids)
     assert structured["result_surface"]["web_rag_usage"]["web_used"] is False
     assert structured["result_surface"]["web_rag_usage"]["rag_used"] is False
-    assert structured["status"] == ("SUCCESS" if total else "SUCCESS_EMPTY")
+    assert structured["status"] == ("SUCCESS" if total else "NO_EVIDENCE")
     assert ids == result["spatial_result_summary"]["feature_ids"]
     assert ids == [row["feature_instance_id"] for row in structured["features"]]
     assert ids == [feature["id"] for feature in result["map_layers"][0]["inline_geojson"]["features"]]
     assert ids == [item.data["feature_instance_id"] for item in bundle.spatial_feature_evidence]
     assert sum(structured["returned_counts_by_type"].values()) == len(ids)
-    assert sum(structured["total_counts_by_type"].values()) == total
+    if total:
+        assert sum(structured["total_counts_by_type"].values()) == total
+    else:
+        assert structured["total_counts_by_type"] is None
+        assert structured["observed_total_count"] == 0
+        assert structured["coverage_status"] == "UNKNOWN"
     assert context.slots.distance_m == 3000
     evidence_ids = {item.evidence_id for item in [*bundle.spatial_feature_evidence, *bundle.spatial_layer_evidence]}
     assert set(result["claims"][0]["evidence_ids"]) == evidence_ids
@@ -359,7 +364,7 @@ def test_last_and_empty_pages_have_exact_lengths(state, total, offset, limit, re
 
     result = radius.build_result(*_fixture_result(state, total))
 
-    assert result["structured_result"]["total_count"] == total
+    assert result["structured_result"]["total_count"] == (total if total else None)
     assert result["structured_result"]["returned_count"] == returned
     assert result["structured_result"]["offset"] == offset
     assert len(result["structured_result"]["features"]) == returned
