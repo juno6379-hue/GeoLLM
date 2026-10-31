@@ -4641,13 +4641,50 @@ async def fast_spatial_or_traffic_block_node(state: OrchestratorState) -> Orches
         "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.BLOCKED, actor="FastSpatialTrafficBlock"),
     }
 
+def _spatial_fast_path_contract_problem(query: str, *, supports_nearest: bool = False, selected_targets=()):
+    """Reject obligations these single-operation fast paths cannot fulfill.
+
+    This is a capability rejection, never a permission to execute or a repair
+    of the user's operator, reference geometry, source, or target set.
+    """
+    from services.orchestrator.request_obligations import requested_feature_groups
+
+    groups = requested_feature_groups(query)
+    missing_groups = [name for name, candidates in groups.items() if not candidates.intersection(selected_targets)]
+    if (len(groups) > 1 and missing_groups) or re.search(r"비교|\bcompar(?:e|ing|ison)\b", query, re.I):
+        code = "UNSUPPORTED_COMPOSITE_TASK"
+        summary = "요청한 여러 대상의 검색·비교를 모두 수행하는 실행 경로가 아직 지원되지 않습니다. 일부 대상만 조회하지 않았습니다."
+    elif not supports_nearest and re.search(r"\b(?:nearest|closest)\b|최근접|가장\s*가까", query, re.I):
+        code = "UNSUPPORTED_OPERATOR"
+        summary = "최근접 객체 검색 요청으로 이해했습니다. 현재 선택된 실행 경로는 반경 검색만 지원하므로 실행하지 않았습니다. 최근접 요청을 반경 검색으로 바꾸거나 검색 반경을 요구하지 않습니다."
+    else:
+        return None
+    return {
+        "status": "BLOCKED", "error_code": code, "summary": summary,
+        "requested_feature_groups": list(groups),
+        "unsupported_feature_groups": missing_groups,
+        "search_execution": {"status": "NOT_RUN", "reason": code,
+                             "execution_attempted": False, "execution_started": False,
+                             "tool_called": False, "sql_executed": False},
+    }
+
+
 async def fast_s101_hazard_radius_execute_node(state: OrchestratorState) -> OrchestratorState:
     """Run confirmed radius requests through the shared execution gate."""
     import asyncio
-    from services.orchestrator.s101_radius_execution import execute_radius_request
+    from services.orchestrator.s101_radius_execution import execute_radius_request, select_targets, RadiusProblem
 
     if _looks_like_policy_block_query(state.get("query", "")):
         return await fast_spatial_or_traffic_block_node(state)
+    concept = (_load_yaml_registry("derived_concept_registry_v2.yaml").get("derived_concepts") or {}).get("navigation_hazard_object", {})
+    profile = (concept.get("execution_profiles") or {}).get("s101_hazard_radius") or {}
+    try:
+        selected_targets, _ = select_targets(state.get("query", ""), _spatial_context_dict(state), profile)
+    except RadiusProblem:
+        selected_targets = []  # The normal executor retains its own validation error.
+    problem = _spatial_fast_path_contract_problem(state.get("query", ""), selected_targets=selected_targets)
+    if problem:
+        return _place_lookup_update(state, problem, "spatial_contract_block")
     final = await asyncio.to_thread(execute_radius_request, state)
     _attach_candidate_trace(state, final)
     context = final["orchestrator_v2"]["query_execution_context"]
@@ -4704,6 +4741,10 @@ async def fast_s101_nearest_feature_execute_node(state: OrchestratorState) -> Or
     from services.orchestrator.place_router import resolve_payload
 
     query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
+    problem = _spatial_fast_path_contract_problem(state.get("query", ""), supports_nearest=True,
+                                                selected_targets=_nearest_target_features_from_query(query))
+    if problem:
+        return _place_lookup_update(state, problem, "spatial_contract_block")
     if state.get("user_id") == "blocked_user":
         return _place_lookup_update(state, {"status": "BLOCKED", "error_code": "ACCESS_DENIED", "summary": "이 요청에 대한 접근 권한이 없습니다."}, "nearest_feature")
     location = await asyncio.to_thread(resolve_payload, query, _spatial_context_dict(state))
@@ -4891,6 +4932,10 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
     query = " ".join(str(item or "") for item in [state.get("query", ""), state.get("normalized_query", "")])
     primary_query = str(state.get("normalized_query") or state.get("query") or "")
     targets = _requested_spatial_layer_targets(query)
+    problem = _spatial_fast_path_contract_problem(state.get("query", ""),
+                                                selected_targets=[t["layer_id"] for t in targets])
+    if problem:
+        return _place_lookup_update(state, problem, "spatial_contract_block")
     if not targets:
         return await fast_spatial_or_traffic_block_node(state)
     anchor_query = _requested_layer_anchor_query(str(state.get("query") or primary_query), targets)
