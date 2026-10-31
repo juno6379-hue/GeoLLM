@@ -1,8 +1,10 @@
 import copy
+import json
 import jsonschema
 import pytest
 from research.marine_geollm_scie.runners.eight_fault_recovery import (
     clean_plan,cohort,semantic_signature,detect,hybrid_invalid,returned_ids,joint_recovery,REVIEW_SCHEMA)
+from research.marine_geollm_scie.runners.eight_fault_recovery import parse_review_response
 
 
 def test_cohort_is_fixed_and_missing_geometry_not_supplied_to_reviewer():
@@ -80,3 +82,17 @@ def test_review_schema_requires_explicit_initial_verdict_and_full_plan():
     jsonschema.validate({'invalid':False,'reason':'control','plan':clean_plan()},REVIEW_SCHEMA)
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate({'reason':'missing verdict','plan':clean_plan()},REVIEW_SCHEMA)
+
+
+@pytest.mark.parametrize('response',[None,{},[],True,'null','[]','invalid'])
+def test_malformed_review_response_is_retained_as_failed_parse(response):
+    review,errors=parse_review_response(response)
+    assert review is None and errors
+
+
+@pytest.mark.parametrize('nonfinite',['NaN','Infinity','1e999'])
+def test_nonfinite_review_plan_rejected_before_artifact_serialization(nonfinite):
+    plan=clean_plan();plan['radius_m']='NUMERIC_SENTINEL'
+    text=json.dumps({'invalid':True,'reason':'test','plan':plan}).replace('"NUMERIC_SENTINEL"',nonfinite)
+    review,errors=parse_review_response(text)
+    assert review is None and errors==['ValueError']

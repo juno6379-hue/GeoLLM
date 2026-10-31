@@ -64,6 +64,38 @@ def test_report_does_not_claim_unrun_fault_or_recovery_results():
     assert result['rq5_false_ready_false_block']['status']=='NOT_MEASURED'
 
 
+@pytest.mark.parametrize('answer',[
+    {'spatial_tasks':['Wreck']}, {'spatial_tasks':{'Wreck':['wrong']}},
+    {'source_coverage':['wrong']}, {'document_answer':['wrong']},
+    {'document_answer':{'features':[{'code':['Wreck']}]}},
+    {'comparison':{'feature_definition_evidence':['wrong']}},
+])
+def test_malformed_emitted_containers_are_failures_not_report_crashes(answer):
+    item=row();item['emitted_answer']=answer
+    result=score_row(item,contract())
+    assert result['scoring_status']=='MALFORMED_EMITTED_STRUCTURE'
+    assert result['all_applicable_checks_pass'] is False
+    assert result['spatial_correctness'] is None
+    assert result['observation']['answer']==answer or result['observation']['answer'].items()>=answer.items()
+
+
+def test_malformed_trace_is_unknown_not_nonexecution():
+    item=row();item['execution_observation']=['wrong']
+    result=score_row(item,contract())
+    assert result['execution_succeeded'] is None
+    assert result['observation']['trace']['observation_complete'] is False
+    assert result['observation']['trace']['raw_observation']==['wrong']
+
+
+def test_unexpected_projection_error_retains_raw_error_and_unknown_answer():
+    item=row();item.update(status='ANSWER_PROJECTION_ERROR',emitted_answer=None,
+        answer_projection_error={'error_type':'TypeError','answer_repaired':False})
+    result=score_row(item,contract())
+    assert result['scoring_status']=='OUTPUT_UNAVAILABLE'
+    assert result['all_applicable_checks_pass'] is None
+    assert result['answer_projection_error']['answer_repaired'] is False
+
+
 def test_raw_verification_rejects_changed_normalized_observation(tmp_path):
     raw=row();p=tmp_path/'raw.json';p.write_text(json.dumps(raw),encoding='utf-8')
     receipt={**raw,'raw_artifact_path':'raw.json','raw_artifact_sha256':hashlib.sha256(p.read_bytes()).hexdigest()}

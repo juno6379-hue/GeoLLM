@@ -17,10 +17,16 @@ def score_row(row, contract):
             'safe_abstention_correct': None, 'silent_spatial_failure': None,
             'execution_correctness_gap_applicable': False, 'all_applicable_checks_pass': None,
             'checks': {}, 'semantic_human_accuracy': None, 'observation': observation,
-            'costs': row.get('costs') or {}}
+            'answer_projection_error':row.get('answer_projection_error'),
+            'costs': row['costs'] if isinstance(row.get('costs'),dict) else {}}
     if not observation['output_available']:
         base['scoring_status'] = 'OUTPUT_UNAVAILABLE'
         base['error_types'] = [row.get('error_type') or row.get('status') or 'OUTPUT_UNAVAILABLE']
+        return base
+    if observation.get('schema_errors'):
+        base.update(scoring_status='MALFORMED_EMITTED_STRUCTURE',
+            checks={'emitted_structure_valid':False},all_applicable_checks_pass=False,
+            error_types=['MALFORMED_EMITTED_STRUCTURE'])
         return base
     answer = observation['answer']
     if contract['evaluation_stratum'] == 'SOURCE_BOUND_DOCUMENT_OR_EXISTING_Q4':
@@ -45,6 +51,8 @@ def score_row(row, contract):
         errors.append('UNMEASURED_COMPONENT')
     if row.get('error_type'):
         errors.append(row['error_type'])
+    if isinstance(answer.get('error_code'),str):
+        errors.append(answer['error_code'])
     base['error_types'] = errors or ['NO_MACHINE_FAILURE_OBSERVED']
     return base
 

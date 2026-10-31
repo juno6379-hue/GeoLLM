@@ -80,6 +80,8 @@ class V2Executor(Executor):
     def reference(self,args):
         explicit=args.get('reference_geometry')
         ref=args.get('geometry_ref')
+        if ref is not None and not isinstance(ref,str):
+            raise ToolBlocked('INVALID_REFERENCE_GEOMETRY_REF_TYPE')
         if explicit is not None and ref is not None:
             entry=self.reference_geometries.get(ref)
             if not entry or entry.get('geometry_wkt')!=explicit:
@@ -107,6 +109,8 @@ class V2Executor(Executor):
             raise ToolBlocked('MISSING_OR_UNSUPPORTED_CRS')
         source=args.get('source')
         relation=args.get('relation')
+        if not isinstance(source,str) or not isinstance(relation,str):
+            raise ToolBlocked('SOURCE_OR_OPERATOR_TYPE_INVALID')
         if source not in SOURCES or relation not in OPERATIONS:
             raise ToolBlocked('SOURCE_OR_OPERATOR_NOT_ALLOWLISTED')
         radius=args.get('radius_m',args.get('distance_m'))
@@ -117,7 +121,9 @@ class V2Executor(Executor):
             raise ToolBlocked('NEAREST_RADIUS_NOT_SUPPORTED_BY_FIXED_CONTRACT')
         features=args.get('feature_types',args.get('target_features'))
         allowed={f['code'] for f in self.catalogue['features']}
-        if source=='s101' and (not isinstance(features,list) or not features or any(x not in allowed for x in features)):
+        if features is not None and (not isinstance(features,list) or any(not isinstance(x,str) for x in features)):
+            raise ToolBlocked('FEATURE_TYPES_INVALID')
+        if source=='s101' and (not features or any(x not in allowed for x in features)):
             raise ToolBlocked('FEATURE_CODE_NOT_VERIFIED')
         return {'source':source,'relation':relation,'radius_m':radius,
                 'feature_types':features or [],'reference_geometry':self.reference(args)}
@@ -188,7 +194,7 @@ class ResearchBindingAdapter:
         from shared.schemas.agent import DataBinding,ToolBinding
         out=BindingResult()
         source=(slots.get('filters') or {}).get('source')
-        if source not in SOURCES:
+        if not isinstance(source,str) or source not in SOURCES:
             out.blockers.append('BLOCKED_CONFIG: explicit research source required')
             return out
         relation=SOURCES[source][0]

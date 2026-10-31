@@ -1,10 +1,12 @@
 """Bounded adapter tests; fixture DB is not an actual spatial oracle."""
 import json
 import hashlib
+import copy
+from pathlib import Path
 import pytest
 from research.marine_geollm_scie.baselines.v2_runtime import V2Executor,ObservedDatabase,spatial_statement,ToolBlocked
 from research.marine_geollm_scie.baselines.v2_answer_projection import render
-from research.marine_geollm_scie.runners.eight_method_runner import public_context,make_prompt,p1_costs
+from research.marine_geollm_scie.runners.eight_method_runner import public_context,make_prompt,p1_costs,project_branch_answer,parse_candidate
 
 
 class DB:
@@ -121,3 +123,77 @@ def test_large_geometry_parameter_uses_stdin_not_windows_argv(monkeypatch):
     assert '-i' in received['command'] and '-c' not in received['command']
     assert len(received['input'])>300000
     assert sum(map(len,received['command']))<1000
+
+
+def test_original_v1_q1_02_bad_source_preserved_without_projection_crash():
+    fixture=json.loads((Path(__file__).parent/'fixtures/v1_q1_02_invalid_source.json').read_text(encoding='utf-8'))
+    before=copy.deepcopy(fixture)
+    answer=render(fixture['candidate_plan'],fixture['execution'],coverage={'s101':{'source_sha256':'fixture'}})
+    assert answer['status']=='PARTIAL' and answer['error_code']=='ANSWER_PROJECTION_INPUT_INVALID'
+    assert answer['projection_errors']==[{'call_index':2,'reason':'INVALID_SPATIAL_ARGUMENT_TYPES','fields':['source']}]
+    assert answer['spatial_tasks']=={} and 'source_coverage' not in answer
+    assert fixture==before
+
+
+@pytest.mark.parametrize('bad_source',[['s101'],{'source':'s101'},True,7,None])
+def test_bad_source_types_are_not_coerced_or_selected(executor,bad_source):
+    plan={'action':'search','tool_calls':[{'tool_id':'spatial.query','arguments':args(source=bad_source)}]}
+    before=copy.deepcopy(plan)
+    execution=executor.execute(plan)
+    assert execution['receipts'][0]['status']=='TOOL_POLICY_BLOCKED'
+    assert execution['receipts'][0]['reason']=='SOURCE_OR_OPERATOR_TYPE_INVALID'
+    assert not executor.db.requests
+    answer=render(plan,execution,coverage=executor.coverage)
+    assert answer['projection_errors'] and answer['spatial_tasks']=={}
+    assert plan==before
+
+
+@pytest.mark.parametrize('bad_targets',[['Wreck',{}],{'Wreck':True},'Wreck',42])
+def test_bad_target_types_are_not_projected_to_object_keys(executor,bad_targets):
+    plan={'action':'search','tool_calls':[{'tool_id':'spatial.query','arguments':args(feature_types=bad_targets)}]}
+    execution=executor.execute(plan)
+    assert execution['receipts'][0]['reason']=='FEATURE_TYPES_INVALID'
+    result=render(plan,execution,coverage=executor.coverage)
+    assert result['spatial_tasks']=={} and result['projection_errors']
+    assert not executor.db.requests
+
+
+@pytest.mark.parametrize('field,value',[('relation',[]),('relation',{}),('geometry_ref',[]),('geometry_ref',{})])
+def test_unhashable_operator_and_geometry_ref_rejected_before_db(executor,field,value):
+    with pytest.raises(ToolBlocked):
+        executor.call('spatial.query',args(**{field:value}))
+    assert not executor.db.requests
+
+
+def test_unexpected_render_error_preserves_execution_and_does_not_abort_next_branch():
+    branch={'status':'EXECUTOR_RETURNED','candidate_plan':{'answer':'unverified'},
+            'execution':{'receipts':[]},'execution_observation':{'execution_attempted':False}}
+    original_execution=copy.deepcopy(branch['execution'])
+    def fail(*args,**kwargs):raise TypeError('fixture malformed renderer data')
+    project_branch_answer(branch,{},renderer=fail)
+    assert branch['status']=='ANSWER_PROJECTION_ERROR'
+    assert branch['emitted_answer'] is None
+    assert branch['answer_projection_error']['answer_repaired'] is False
+    assert branch['execution']==original_execution
+    following={'status':'VALIDATOR_BLOCKED','candidate_plan':{'action':'clarify','answer':'Provide geometry'},'execution':{}}
+    project_branch_answer(following,{})
+    assert following['emitted_answer']['status']=='NEEDS_USER_INPUT'
+
+
+@pytest.mark.parametrize('value',['NaN','Infinity','-Infinity','1e999'])
+def test_nonfinite_nested_model_value_rejected_before_plan_freeze(value):
+    raw='{"tool_calls":[{"tool_id":"spatial.query","arguments":{"radius_m":'+value+'}}]}'
+    plan,valid,errors=parse_candidate(raw)
+    assert plan is None and valid is False
+    assert errors==['INVALID_OR_NONFINITE_JSON']
+
+
+def test_new_shared_output_schema_accepts_advertised_covers_without_changing_old_schema():
+    from research.marine_geollm_scie.baselines.plan_comparison import parse_plan,PLAN_SCHEMA
+    fixture=json.loads((Path(__file__).parent/'fixtures/v1_q1_02_invalid_source.json').read_text(encoding='utf-8'))
+    plan=fixture['candidate_plan'];plan['spatial_relation']='covers'
+    raw=json.dumps(plan)
+    assert parse_candidate(raw)[1] is True
+    assert parse_candidate(raw)[0]['spatial_relation']=='covers'
+    assert parse_plan(raw)[1] is False
+    assert 'covers' not in PLAN_SCHEMA['properties']['spatial_relation']['enum']

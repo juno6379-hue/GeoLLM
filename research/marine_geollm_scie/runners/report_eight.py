@@ -26,7 +26,8 @@ def verify_raw(run, row):
                 'execution_observation', 'costs', 'execution_identity', 'benchmark_sha256',
                 'initial_plan_sha256', 'review_artifact_sha256','lossless_compilation_verified',
                 'compilation_status','compilation_failure_reason','execution_callback_invoked',
-                'status','error_type','domain_tools_enabled'):
+                'status','error_type','domain_tools_enabled','answer_projection_error',
+                'execution_status_before_projection','expected_error_type'):
         if row.get(key) != raw.get(key):
             raise ValueError('Observation differs from raw artifact: '+key)
     return path

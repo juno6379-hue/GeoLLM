@@ -24,6 +24,17 @@ REVIEW_SCHEMA = {'type':'object','required':['invalid','reason','plan'], 'proper
     'invalid':{'type':'boolean'}, 'reason':{'type':'string'}, 'plan':PLAN_SCHEMA},'additionalProperties':False}
 
 
+def parse_review_response(response):
+    """Keep malformed/non-finite model output as failure, never repair it."""
+    try:
+        review=json.loads(response)
+        json.dumps(review,allow_nan=False)  # Also rejects exponent overflow such as 1e999.
+        jsonschema.validate(review,REVIEW_SCHEMA)
+    except (ValueError,TypeError,jsonschema.ValidationError) as exc:
+        return None,[type(exc).__name__]
+    return review,[]
+
+
 def clean_plan():
     args={'source':'s101','feature_types':['Wreck'],'reference_geometry':CONTEXT['geometry'],
           'crs':'EPSG:4326','radius_m':1000,'relation':'dwithin','analysis_type':'feature_search_by_radius'}
@@ -196,12 +207,7 @@ def run(output, profile_path, benchmark, *, execute=False):
             +'\nQUERY:'+case['query']+'\nINPUT:'+json.dumps(public_context(profile,packet))
             +'\nPLAN:'+json.dumps(case['plan']))
         call=call_model(prompt,model=profile['model'],seed=profile.get('seed',42),max_tokens=768,timeout=180)
-        review=None;errors=[]
-        try:
-            review=json.loads(call.get('raw_response') or '')
-            jsonschema.validate(review,REVIEW_SCHEMA)
-        except (ValueError,jsonschema.ValidationError) as exc:
-            review=None;errors=[type(exc).__name__]
+        review,errors=parse_review_response(call.get('raw_response'))
         save_new(directory/'review.json',{'call':call,'review':review,'errors':errors})
         review_invalid=review.get('invalid') if review else None
         for method,invalid in [('B4',review_invalid),('P0',detection['invalid']),

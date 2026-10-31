@@ -1,0 +1,123 @@
+{
+  "origin": "20261101_gold_v2_eight_k1_v1/PILOT_Q1_02/paired/B3.json",
+  "origin_sha256": "370c779a821f41e3161f3b518524cbc5addf9a15f293abafeb83bbad44b867e7",
+  "candidate_plan": {
+    "action": "search",
+    "intent": "S-101에서 정박지는 어떤 객체야?",
+    "target_features": [
+      "ship"
+    ],
+    "attributes": [],
+    "spatial_relation": "dwithin",
+    "location_text": "S-101",
+    "radius_m": 1000,
+    "crs": "EPSG:4326",
+    "tool_calls": [
+      {
+        "tool_id": "catalogue.search",
+        "arguments": {
+          "term": "exact FC feature code",
+          "source": "s101_feature_catalogue_v2",
+          "analysis_type": "public_catalogue_document_lookup"
+        }
+      },
+      {
+        "tool_id": "documents.search",
+        "arguments": {
+          "term": "literal substring"
+        }
+      },
+      {
+        "tool_id": "spatial.query",
+        "arguments": {
+          "source": [
+            "s101",
+            "marine_places",
+            "navigation_aids"
+          ],
+          "feature_types": [
+            "exact FC code"
+          ],
+          "crs": "EPSG:4326",
+          "reference_geometry": "explicit input WKT OR geometry_ref: explicit input registry key",
+          "relation": "dwithin",
+          "radius_m": 1000,
+          "analysis_type": "feature_search_by_radius for dwithin"
+        }
+      }
+    ],
+    "evidence_refs": [],
+    "missing_inputs": [],
+    "answer": "S-101에서 정박지는 S-101 항구지역 내의 선박이나 선박용품 등이 될 수 있습니다."
+  },
+  "execution": {
+    "status": "TOOLS_PARTIAL",
+    "tool_calls_attempted": 3,
+    "tool_calls_executed": 2,
+    "receipts": [
+      {
+        "tool_id": "catalogue.search",
+        "status": "TOOL_RETURNED",
+        "result": {
+          "rows": [],
+          "document_answer": {
+            "features": [],
+            "attribute_bindings": [],
+            "evidence": {
+              "edition": "2.0.0",
+              "source_sha256": "2743d0689d8a2130f9b809554591d794f01cd9953f222f065ac891b590bd3cfc",
+              "source_path": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml",
+              "locators": [],
+              "claim_source_links": []
+            }
+          },
+          "source_sha256": "0d26c66d0e1afd8a6ae33629e9bc1bb929c6a3735ccd1d60f637d149a54cad37",
+          "postcondition": "SOURCE_SEARCH_EMPTY"
+        },
+        "latency_ms": 0.519299996085465
+      },
+      {
+        "tool_id": "documents.search",
+        "status": "TOOL_RETURNED",
+        "result": {
+          "rows": [],
+          "retrieval": "LEXICAL_SUBSTRING_NOT_VECTOR",
+          "postcondition": "SOURCE_SEARCH_EMPTY"
+        },
+        "latency_ms": 1619.1295000026003
+      },
+      {
+        "tool_id": "spatial.query",
+        "status": "TOOL_ENVIRONMENT_ERROR",
+        "error_type": "TypeError",
+        "latency_ms": 0.018699996871873736
+      }
+    ],
+    "execution_success": null,
+    "semantic_correct": null,
+    "spatial_correct": null,
+    "evidence_correct": null,
+    "task_postconditions": "NOT_SCORED_PENDING_APPROVED_CONTRACT",
+    "latency_ms": 1619.6791999973357,
+    "execution_observation": {
+      "observation_complete": true,
+      "execution_attempted": true,
+      "tool_called": true,
+      "execution_started": false,
+      "sql_executed": false,
+      "execution_succeeded": null,
+      "scope": "SPATIAL_EXECUTION_ONLY; metadata and document SQL separately recorded",
+      "db_events": [
+        {
+          "scope": "document",
+          "sql_submission_attempted": true,
+          "sql_executed": true,
+          "succeeded": true,
+          "process_returncode": 0,
+          "row_count": 0,
+          "latency_ms": 1619.112700005644
+        }
+      ]
+    }
+  }
+}
