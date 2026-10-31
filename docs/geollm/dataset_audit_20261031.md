@@ -57,3 +57,7 @@ router.py 일반 SSE는 graph 실행 종료 후 final_dict에 coastal_evidence�
 ## K5 종료 후 운영 점검 시작
 
 K5가20:44:50KST 종료된 뒤 모델서버500 별도재현2건을 마쳤다. 운영6질의 SSE/semantic/Qwen 인용은 outputs/dataset_live_followup_20261031_v1에서 순차진행중이며 완료아님. 공간SQL별도readonly재현에서 양식장 pgcode57014/statement_timeout3초 확인, 수로5행1.85초 성공. 원본 공간오류를 전부 동일원인으로 단정하지 않는다.
+
+## 후속 수정과 검증 완료
+
+별도수정에이전트의 운영답변연결 보완과 실제6질의 재검증을 완료했다. [수정보고서](dataset_answer_fix_20261031.md) 참조. 긍정5개는 원문발췌3개씩 본문반영/PARTIAL, 음성0건/BLOCKED이며 기존원본보존. 별도공간검색오류와 전체원천/의미연결미완료는남아있다.

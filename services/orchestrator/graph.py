@@ -2488,7 +2488,9 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         return {**blocked, "query_contract_blocked": True}
     from services.orchestrator.korean_query_analysis import analyze_query, contract_problem, guard_result
     korean_analysis = await asyncio.to_thread(analyze_query, original_query)
-    problem = contract_problem(original_query, korean_analysis, state.get("spatial_context"))
+    from services.orchestrator.dataset_answer import informational_request
+    # Pure document requests do not acquire spatial exclusion/location obligations.
+    problem = None if informational_request(original_query) else contract_problem(original_query, korean_analysis, state.get("spatial_context"))
     if problem:
         return guard_result(state, korean_analysis, problem)
     
@@ -2532,6 +2534,13 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         return {**document_response, 'public_catalogue_handled': True, 'candidate_trace': candidate_trace,
                 'status': AgentStatus.COMPLETED,
                 'state_history': log_transition(AgentStatus.RECEIVED, AgentStatus.COMPLETED, actor='PublicCatalogueDocument')}
+    from services.orchestrator.dataset_answer import build_dataset_answer
+    dataset_response = await asyncio.to_thread(build_dataset_answer, state)
+    if dataset_response is not None:
+        _attach_candidate_trace(state, dataset_response['final_dict'])
+        return {**dataset_response, 'candidate_trace': candidate_trace,
+                'status': AgentStatus(dataset_response['status']),
+                'state_history': log_transition(AgentStatus.RECEIVED, AgentStatus(dataset_response['status']), actor='DatasetSourcePassages')}
     from services.orchestrator.request_obligations import required_outputs
     if set(required_outputs(original_query)) & {'selected_feature_evidence', 'portrayal_symbol_binding'}:
         from services.orchestrator.selected_feature_evidence import execute
@@ -5970,7 +5979,7 @@ async def audit_log_node(state: OrchestratorState) -> OrchestratorState:
 # ----------------- Conditional Edges -----------------
 
 def check_intent_parsed(state: OrchestratorState) -> str:
-    if state.get("query_contract_blocked") or state.get('source_mapping_handled') or state.get('selected_feature_handled') or state.get('public_catalogue_handled'):
+    if state.get("query_contract_blocked") or state.get('source_mapping_handled') or state.get('selected_feature_handled') or state.get('public_catalogue_handled') or state.get('dataset_information_handled'):
         return "query_contract_stop"
     # A recognized public layer must not route a mixed private-data request
     # around policy validation into location resolution or spatial execution.

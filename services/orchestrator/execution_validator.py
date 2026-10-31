@@ -80,8 +80,9 @@ def _finish(current, blockers, warnings):
 
 
 _LOOKUP_SOURCES = {
-    "dataset_source_lookup": ("knowledge.document_chunks", {"chunk_id", "source_id", "source_sha256", "metadata", "content", "embedding", "document_type", "title", "page_no", "section"}, "rag.dataset_source_retrieve"),
-    "coastal_evidence_lookup": ("knowledge.document_chunks", {"chunk_id", "source_id", "source_sha256", "metadata", "content", "embedding", "document_type", "title", "page_no", "section"}, "rag.coastal_evidence_retrieve"),
+    "dataset_document_lookup": ("knowledge.document_chunks", {"chunk_id", "source_id", "source_sha256", "source_file", "metadata", "content", "embedding", "document_type", "title", "page_no", "section"}, "rag.dataset_document_retrieve"),
+    "dataset_source_lookup": ("knowledge.document_chunks", {"chunk_id", "source_id", "source_sha256", "source_file", "metadata", "content", "embedding", "document_type", "title", "page_no", "section"}, "rag.dataset_source_retrieve"),
+    "coastal_evidence_lookup": ("knowledge.document_chunks", {"chunk_id", "source_id", "source_sha256", "source_file", "metadata", "content", "embedding", "document_type", "title", "page_no", "section"}, "rag.coastal_evidence_retrieve"),
     "accident_event_lookup": ("serving.accident_events", {"event_id", "geom", "authority", "cause", "accident_type"}, "accident.event_lookup"),
     "dataset_evidence_lookup": ("knowledge.document_chunks", {"metadata", "content", "embedding"}, "rag.dataset_profile_retrieve"),
     "traffic_coverage": ("serving.dynamic_traffic_layer", {"layer_source", "observed_month"}, "diagnostics.traffic_coverage"),

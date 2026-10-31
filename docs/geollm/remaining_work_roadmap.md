@@ -1,5 +1,12 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-10-31 운영 Dataset 본문 연결 수정·6질의 재검증 완료
+
+- 사용자명시 별도수정에이전트로 정보질문→문서조회→검증원문을 최종summary/answer_text에 연결했다. [수정/전후결과/한계](dataset_answer_fix_20261031.md). 기존본체답변후 근거첨부만하던 문제와 '관한'검색어로 무관문서반환을 보완. Qwen/좌표권한승격없음, 문서SELECT는ExecutionValidator만승인.
+- 관련단위96passed/14.00초. 실제same6 SSE after_v3 **근거반영검사6/6**: 긍정5개 각원문3개+출처/hash/원문일치/PARTIAL, 음성문서0/Qwen인용0/BLOCKED. 준비전 after_v2 연결실패6은보존. source_unchanged_after=true. 통제3건은이동/지도복합NEEDS_CLARIFICATION,비공개BLOCKED_POLICY로 문서경로강탈없음(지도성공아님).
+- 운영배포완료, 원본 outputs/dataset_live_followup_20261031_{v1,after_v2,after_v3}, controls outputs/dataset_answer_controls_20261031_v1. 소스변경후K5원본540관측/평가는불변이며 재비교시새동결run필요. 독립GOLD미수령유지.
+- 잔여: 별도공간근거API 양식장/수로OperationalError, 동의어/복합표현recall, 입구국소문장선택·종합설명·자료최신성, 이동최종본문/복합지도정보결합,55원본형식/OCR/수치조류/canonical의미연결. 이들은완료로보지않는다. 다음우선은 공간조회timeout격리개선→복합산출물→원천완전성검수. 이번6질의수정/검증완료로 geollm-k5 후속점검종료.
+
 ## 2026-10-31 K5 540관측 완료·운영 종단 점검 시작
 
 - K5 v2 20:44:50KST COMPLETED_OBSERVATIONS/DONE, baseline450/P90 전체 기대집합·원시hash·소스246·모델digest 및 P5회 warmup gate 재검증. 연구worker/proxy/부모종료 확인. [한글결과](../../research/marine_geollm_scie/protocol/k5_results_20261031_KR.md), run/report/comparison_KR.md. 독립GOLD미수령·scientific_completion=false 유지.

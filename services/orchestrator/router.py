@@ -53,7 +53,8 @@ def _valid_debug_derived_concept(value):
 
 
 def _is_instant_place_navigation(query: str) -> bool:
-    return is_instant_place_navigation_allowed(query)
+    from services.orchestrator.dataset_answer import informational_request
+    return not informational_request(query) and is_instant_place_navigation_allowed(query)
 
 
 def _point_coordinates(wkt: str | None) -> list[float] | None:
@@ -773,6 +774,7 @@ def _radius_restart_state(current_state: dict, req) -> dict:
         "final_dict", "agent_request", "agent_result", "task_plan", "query_execution_context",
         "context_result", "extracted_slots", "norm_result", "normalized_query", "normalization_debug",
         "graph_context", "graph_rag_context", "candidate_trace", "data_discovery_result", "clarification_questions", "error_message",
+        "dataset_information_handled", "public_catalogue_handled", "source_mapping_handled", "selected_feature_handled", "query_contract_blocked",
     ):
         restarted[field] = None
     restarted.update(approval_granted=None, retry_count=0)
@@ -1010,7 +1012,7 @@ async def stream_task(req: TaskCreateRequest):
             
             # --- Debug Trace 구성 ---
             state_vals = dict(state_snapshot.values)
-            if isinstance(state_vals.get('final_dict'), dict):
+            if isinstance(state_vals.get('final_dict'), dict) and 'coastal_evidence' not in state_vals['final_dict']:
                 state_vals['final_dict'] = {**state_vals['final_dict'],
                     'coastal_evidence': await _coastal_evidence_for_query(req.query)}
             debug_trace = build_debug_trace(state_vals)

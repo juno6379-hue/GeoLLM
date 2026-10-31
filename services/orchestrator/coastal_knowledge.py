@@ -20,10 +20,11 @@ def query_terms(query):
     words = re.findall(r'[가-힣A-Za-z0-9]+', query)
     excluded = {'입구','출구','근처','주변','부근','인근','정보','관련','항로지','항로서지',
                 '소형선항만','안내정보','안내','내용','설명','항해','자료','알려줘','찾아줘','보여줘','이동','해줘','주세요',
-                '항만','항구','비교','설명해줘','항해정보','검색','검색해줘'}
+                '항만','항구','비교','설명해줘','항해정보','검색','검색해줘',
+                '관한','대한','대해','대해서','관해서','관하여','알려주세요','설명해주세요'}
     terms = []
     for word in words:
-        stripped = re.sub(r'(으로|에서|까지|관련|입구|출구|주변|근처|로|을|를|의|은|는)$', '', word)
+        stripped = re.sub(r'(으로|에서|까지|관련|입구|출구|주변|근처|로|을|를|의|은|는|에)$', '', word)
         if len(stripped) >= 2 and not word.endswith(('항로','수로','도로')):
             word = stripped
         if len(word) >= 2 and word not in excluded:
@@ -36,9 +37,9 @@ def engine():
     return create_engine(os.environ['S101_DB_URL'], pool_pre_ping=True)
 
 
-def retrieve(query, limit=5, semantic=False, scope='coastal'):
-    operation = 'dataset_source_lookup' if scope == 'dataset' else 'coastal_evidence_lookup'
-    qec = validate_lookup_request({'task_id':str(uuid.uuid4()),'query':query}, operation)
+def retrieve(query, limit=5, semantic=False, scope='coastal', include_spatial=True, request_state=None):
+    operation = ('dataset_document_lookup' if not include_spatial else 'dataset_source_lookup') if scope == 'dataset' else 'coastal_evidence_lookup'
+    qec = validate_lookup_request(request_state or {'task_id':str(uuid.uuid4()),'query':query}, operation)
     receipt = qec.provenance.get('execution_validation')
     if not is_execution_authorized(qec):
         return {'status':'BLOCKED','blockers':qec.blockers,'documents':[], 'execution_validation':receipt}
@@ -46,7 +47,7 @@ def retrieve(query, limit=5, semantic=False, scope='coastal'):
     if not terms:
         return {'status':'NEEDS_QUERY','documents':[], 'execution_validation':receipt}
     params = {f't{i}':'%' + term.replace('%','').replace('_','') + '%' for i,term in enumerate(terms)}
-    matches = ' OR '.join(f'(content ILIKE :t{i} OR title ILIKE :t{i})' for i in range(len(terms)))
+    matches = ' AND '.join(f'(content ILIKE :t{i} OR title ILIKE :t{i})' for i in range(len(terms)))
     score = ' + '.join(f'(CASE WHEN content ILIKE :t{i} THEN 1 ELSE 0 END)' for i in range(len(terms)))
     for i, term in enumerate(terms):
         params[f'name{i}'] = term
@@ -55,6 +56,8 @@ def retrieve(query, limit=5, semantic=False, scope='coastal'):
     if relation:
         params['relative'] = '%' + terms[0] + relation + '%'
         score += " + (CASE WHEN regexp_replace(content, '\\s+', '', 'g') LIKE :relative THEN 8 ELSE 0 END)"
+    guide_request = bool(re.search(r'항로서지|소형선항만|항만\s*안내|입구|출구', query))
+    guide_order = "CASE WHEN document_type IN ('coastal_pilot','small_harbour_guide') THEN 0 ELSE 1 END," if guide_request else ''
     vector_sql, vector_order = 'NULL', ''
     method = 'source_scoped_lexical'
     if semantic:
@@ -66,21 +69,21 @@ def retrieve(query, limit=5, semantic=False, scope='coastal'):
     with engine().begin() as conn:
         conn.execute(text("SET LOCAL statement_timeout = '30000'"))
         rows = conn.execute(text(f'''SELECT chunk_id, source_id, source_sha256, title, page_no,
-          section, content, metadata, ({score}) AS lexical_matches, {vector_sql} AS similarity FROM knowledge.document_chunks
+          section, content, metadata, source_file, document_type, ({score}) AS lexical_matches, {vector_sql} AS similarity FROM knowledge.document_chunks
           WHERE {"document_type NOT LIKE '%profile'" if scope == 'dataset' else "document_type IN ('coastal_pilot','small_harbour_guide')"} AND ({matches})
           {'AND embedding IS NOT NULL' if semantic else ''}
           ORDER BY CASE WHEN document_type='dataset_profile' OR document_type LIKE '%_profile' THEN 1 ELSE 0 END,
-          lexical_matches DESC, {vector_order} CASE WHEN metadata->>'language'='ko' THEN 0 ELSE 1 END,
+          {guide_order} lexical_matches DESC, {vector_order} CASE WHEN metadata->>'language'='ko' THEN 0 ELSE 1 END,
           CASE WHEN section='VOYAGE_INF' THEN 0 ELSE 1 END, chunk_id LIMIT :limit'''),
           {**params,'limit':limit * 4}).mappings().all()
         harbour_where = ' OR '.join(f'name=:name{i}' for i in range(len(terms)))
         harbours = conn.execute(text(f'''SELECT source_id,name,properties,provenance,
            ST_AsGeoJSON(geom)::json AS geometry FROM serving.small_harbour_guide
-           WHERE {harbour_where} ORDER BY source_id LIMIT 5'''),params).mappings().all()
+           WHERE {harbour_where} ORDER BY source_id LIMIT 5'''),params).mappings().all() if include_spatial else []
         coverage = conn.execute(text("SELECT count(*) AS total,count(embedding) AS embedded FROM knowledge.document_chunks WHERE " +
             ("document_type NOT LIKE '%profile'" if scope == 'dataset' else "document_type IN ('coastal_pilot','small_harbour_guide')"))).mappings().one()
     spatial_records, spatial_error = [], None
-    if scope == 'dataset':
+    if scope == 'dataset' and include_spatial:
         from sqlalchemy.exc import SQLAlchemyError
         record_match = ' AND '.join(f'((source_member<>\'CSV\' AND properties::text ILIKE :t{i}) OR source_file ILIKE :t{i})' for i in range(len(terms)))
         try:
@@ -114,10 +117,11 @@ def retrieve(query, limit=5, semantic=False, scope='coastal'):
                       'provenance':{'source_sha256':d['source_sha256'],'section':d['section'],'page_no':d['page_no']},
                       'authority':'retrieval_only'} for d in docs)
     return {'status':'PARTIAL' if spatial_error else 'COMPLETED','query':query,'search_terms':terms,'documents':docs,'knowledge_links':links,
-            'document_lookup_status':'COMPLETED','spatial_lookup_status':'UNAVAILABLE' if spatial_error else 'COMPLETED',
+            'document_lookup_status':'COMPLETED','spatial_lookup_status':('UNAVAILABLE' if spatial_error else 'COMPLETED') if include_spatial else 'NOT_REQUESTED',
             'spatial_lookup_error':spatial_error,
             'harbour_records':[dict(r) for r in harbours],'spatial_records':spatial_records,'embedding_coverage':dict(coverage),
             'retrieval_method':method,'execution_validation':receipt,
+            **({'query_execution_context':qec.model_dump(mode='json')} if request_state is not None else {}),
             'scope':'document_explanation_only','coordinate_authority':False,
             'limitations':['항만 대표점은 입구 좌표가 아닙니다.',
                           'CSV 원천 기록은 자료명으로 검색합니다. 임의 속성/시계열 집계의 실행 adapter는 별도 검증 대상입니다.',
