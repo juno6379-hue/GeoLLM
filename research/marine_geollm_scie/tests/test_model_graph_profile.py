@@ -38,3 +38,28 @@ def test_partial_or_duplicate_observations_are_not_finished_run():
     validate_observations(rows,cases)  # A captured failure is not falsely semantic success.
     with pytest.raises(ValueError):validate_observations(rows[:-1],cases)
     with pytest.raises(ValueError):validate_observations(rows[:-1]+[rows[0]],cases)
+
+
+def test_research_timeout_condition_is_explicit_and_not_production_default():
+    from research.marine_geollm_scie.runners.model_graph_conditions import (
+        graph_condition,graph_condition_environment,validate_condition_environment,TIMEOUT_ENV)
+    default=graph_condition({})
+    assert default['semantic_prior_timeout_seconds']==2.5
+    assert default['research_timeout_override'] is False
+    profile={'semantic_prior_timeout_seconds':180}
+    condition=graph_condition(profile)
+    assert condition['method'] != default['method']
+    assert condition['research_timeout_override'] is True
+    assert condition['generation_quality_verified'] is False
+    environment=graph_condition_environment(profile)
+    assert environment=={TIMEOUT_ENV:'180'}
+    validate_condition_environment(profile,environment)
+    validate_condition_environment({}, {})
+    for incorrect in ({},{TIMEOUT_ENV:'2.5'},{TIMEOUT_ENV:'179'}):
+        with pytest.raises(RuntimeError):validate_condition_environment(profile,incorrect)
+
+
+@pytest.mark.parametrize('value',[0,2,181,True,'180',None,float('nan'),float('inf')])
+def test_research_timeout_rejects_unbounded_or_ambiguous_settings(value):
+    from research.marine_geollm_scie.runners.model_graph_conditions import graph_condition
+    with pytest.raises(ValueError):graph_condition({'semantic_prior_timeout_seconds':value})

@@ -43,6 +43,39 @@ def clean(value):
     if isinstance(value,list): return [clean(v) for v in value]
     return value
 
+
+def safe_error_detail(exc):
+    """Record transport classes/codes without URLs, credentials or echoed input."""
+    reason=getattr(exc,'reason',None)
+    result={'error_type':type(exc).__name__}
+    if reason is not None:result['reason_type']=type(reason).__name__
+    for key,value in (('errno',getattr(reason,'errno',getattr(exc,'errno',None))),
+                      ('http_status',getattr(exc,'code',None))):
+        if isinstance(value,int):result[key]=value
+    return result
+
+
+def verified_tags(upstream,digests,attempts):
+    """Retry one failed read-only identity request; never bypass digest validation."""
+    for number in (1,2):
+        start=time.perf_counter()
+        record={'attempt':number,'phase':'model_identity_check','timeout_seconds':10}
+        try:
+            with urllib.request.urlopen(upstream+'/api/tags',timeout=10) as response:
+                tags=json.load(response)
+            validate_digests(tags,digests)
+            record['status']='VERIFIED'
+            return
+        except Exception as exc:
+            record.update(status='FAILED',**safe_error_detail(exc))
+            retry=number==1 and isinstance(exc,(urllib.error.URLError,TimeoutError,OSError)) and not isinstance(exc,urllib.error.HTTPError)
+            record['retry_same_request']=retry
+            if not retry:raise
+        finally:
+            record['latency_ms']=(time.perf_counter()-start)*1000
+            attempts.append(record)
+        time.sleep(.5)
+
 def serve(profile_path, output, upstream='http://host.docker.internal:11434', port=11434):
     profile=json.loads(Path(profile_path).read_text(encoding='utf-8'))
     digests=profile['model_digests']; output=Path(output); lock=threading.Lock()
@@ -65,8 +98,8 @@ def serve(profile_path, output, upstream='http://host.docker.internal:11434', po
                 validate_request(method,self.path,payload,digests)
                 row.update(model=payload.get('model'),request=clean(payload),prompt_sha256=hashlib.sha256(body).hexdigest())
                 # Check immutable model identity before every generation/embedding.
-                with urllib.request.urlopen(upstream+'/api/tags',timeout=10) as response: tags=json.load(response)
-                validate_digests(tags,digests)
+                row['identity_checks']=[]
+                verified_tags(upstream,digests,row['identity_checks'])
                 row['model_digests']=digests
                 address=urlsplit(upstream)
                 connection=http.client.HTTPConnection(address.hostname,address.port,timeout=360)
@@ -112,7 +145,7 @@ def serve(profile_path, output, upstream='http://host.docker.internal:11434', po
                         row['response_chunks']=parsed
                 row['status']='RETURNED' if row['upstream_http_status'] < 400 else 'UPSTREAM_HTTP_ERROR'
             except Exception as exc:
-                row.update(status='PROXY_ERROR',error_type=type(exc).__name__)
+                row.update(status='PROXY_ERROR',**safe_error_detail(exc))
                 try:self.send_error(502,'Research model proxy request failed')
                 except OSError:pass
             finally:

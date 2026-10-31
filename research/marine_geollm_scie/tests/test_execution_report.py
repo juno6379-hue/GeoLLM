@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 import pytest
-from research.marine_geollm_scie.runners.execution_report import normalized_baseline, check_contract, score, common_output_observations
+from research.marine_geollm_scie.runners.execution_report import normalized_baseline, check_contract, score, common_output_observations, comparison_condition, sha
 from research.marine_geollm_scie.runners.compare_execution import completed_keys
 
 
@@ -57,3 +57,33 @@ def test_common_answer_observation_excludes_retrieval_snippet():
     assert result['feature_code_literal_in_emitted_answer']['Wreck'] is True
     assert result['returned_citation_count']==1
     assert result['semantic_accuracy'] is None
+
+
+def test_model_graph_manifest_preferred_and_actual_snapshot_verified(tmp_path):
+    snapshot=tmp_path/'snapshot.json';snapshot.write_text('{"snapshot":1}')
+    graph=tmp_path/'graph';graph.mkdir()
+    (graph/'adapter_manifest.json').write_text(json.dumps({'snapshot_manifest_sha256':'old'}))
+    current={'snapshot_manifest_sha256':sha(snapshot), 'method':'restricted_timeout180',
+        'model_profile':{'snapshot_manifest':{'path':str(snapshot),'sha256':sha(snapshot)},
+        'semantic_prior_timeout_seconds':180,'experiment_note':'policy and timeout changed'}}
+    path=graph/'model_graph_manifest.json';path.write_text(json.dumps(current))
+    result=comparison_condition(graph,'P_PRODUCTION_GRAPH')
+    assert result['manifest_path']==str(path)
+    assert result['manifest_sha256']==sha(path)
+    assert result['snapshot_artifact_verified'] is True
+    assert result['semantic_prior_timeout_seconds']==180
+    assert result['experiment_note']=='policy and timeout changed'
+    snapshot.write_text('{"snapshot":2}')
+    assert comparison_condition(graph,'P_PRODUCTION_GRAPH')['snapshot_artifact_verified'] is False
+
+
+def test_legacy_graph_manifest_fallback_and_unverified_baseline_profile(tmp_path):
+    graph=tmp_path/'graph';graph.mkdir()
+    path=graph/'adapter_manifest.json';path.write_text(json.dumps({'snapshot_manifest':{'sha256':'legacy'}}))
+    assert comparison_condition(graph,'P_PRODUCTION_GRAPH')['snapshot_manifest_sha256']=='legacy'
+    baseline=tmp_path/'baselines';baseline.mkdir()
+    (baseline/'manifest.json').write_text(json.dumps({'profile_sha256':'wrong','snapshot_manifest_sha256':'recorded'}))
+    (tmp_path/'baseline_profile.json').write_text(json.dumps({'snapshot_manifest':{'path':'untrusted'}}))
+    result=comparison_condition(baseline,'BASELINE_EXECUTION_ADAPTER')
+    assert result['baseline_profile_file_verified'] is False
+    assert result['snapshot_manifest_path'] is None

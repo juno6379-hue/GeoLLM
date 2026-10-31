@@ -1,5 +1,11 @@
 version: '2.0'
 tools:
+  catalogue.attribute_lookup:
+    kind: public_catalogue_lookup
+    operation: public_catalogue_attribute_lookup
+    source: data/s101_feature_catalogue_v2_parsed.json
+    provenance_required: true
+    read_only: true
   postgis.selected_feature_lookup:
     kind: spatial_query
     operation: selected_feature_lookup

@@ -15,6 +15,34 @@ def load(path):
 def sha(path): return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def comparison_condition(folder, cohort):
+    folder = Path(folder)
+    filenames = ('model_graph_manifest.json', 'adapter_manifest.json') if cohort == 'P_PRODUCTION_GRAPH' else ('manifest.json',)
+    path = next((folder/name for name in filenames if (folder/name).is_file()), folder/filenames[0])
+    data = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
+    profile = data.get('model_profile') or {}
+    profile_path = folder.parent/'baseline_profile.json'
+    profile_verified = False
+    if cohort == 'BASELINE_EXECUTION_ADAPTER' and profile_path.is_file() and sha(profile_path) == data.get('profile_sha256'):
+        profile = json.loads(profile_path.read_text(encoding='utf-8')); profile_verified = True
+    snapshot = data.get('snapshot_manifest') or profile.get('snapshot_manifest') or {}
+    expected = data.get('snapshot_manifest_sha256') or snapshot.get('sha256')
+    snapshot_path = Path(snapshot['path']) if snapshot.get('path') else None
+    if snapshot_path is not None and not snapshot_path.is_absolute():
+        snapshot_path = Path(__file__).resolve().parents[3]/snapshot_path
+    observed = sha(snapshot_path) if snapshot_path is not None and snapshot_path.is_file() else None
+    return {'cohort': cohort, 'manifest_path': str(path), 'manifest_sha256': sha(path) if path.exists() else None,
+        'method': data.get('method'), 'scope': data.get('scope'),
+        'snapshot_manifest_sha256': expected, 'snapshot_manifest_path': str(snapshot_path) if snapshot_path else None,
+        'snapshot_observed_sha256': observed, 'snapshot_artifact_verified': bool(expected and observed == expected),
+        'profile_sha256': data.get('profile_sha256'), 'baseline_profile_file_verified': profile_verified,
+        'model_metadata': data.get('model_metadata'), 'budget': data.get('budget'), 'model_profile': profile,
+        'semantic_prior_timeout_seconds': profile.get('semantic_prior_timeout_seconds', data.get('semantic_prior_timeout_seconds')),
+        'experiment_note': profile.get('experiment_note', data.get('experiment_note')),
+        'source_hashes_digest': hashlib.sha256(json.dumps(data.get('source_hashes', {}),sort_keys=True).encode()).hexdigest() if data.get('source_hashes') else None,
+        'limitations': data.get('limitations', data.get('differences_from_model_baselines'))}
+
+
 def normalized_baseline(row):
     receipts = (row.get('tool_execution') or {}).get('receipts', [])
     output = {'document_answer': {'features': [], 'attribute_bindings': []}, 'per_tool_status': [],
@@ -180,21 +208,17 @@ def run(baselines, graph, contracts, output):
         'contract_sha256': sha(contracts), 'sources': provenance, 'independent_human_gold': False, 'holdout': False,
         'old_planning_pilot_included': False, 'all_requested_cases_observed': len({r['case_id'] for r in scores}) == 18,
         'summary': summary}
-    conditions = []
-    for folder, filename, cohort in [(baselines, 'manifest.json', 'BASELINE_EXECUTION_ADAPTER'), (graph, 'adapter_manifest.json', 'P_PRODUCTION_GRAPH')]:
-        path = folder/filename
-        data = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
-        conditions.append({'cohort': cohort, 'manifest_path': str(path), 'manifest_sha256': sha(path) if path.exists() else None,
-            'snapshot_manifest_sha256': data.get('snapshot_manifest_sha256', (data.get('snapshot_manifest') or {}).get('sha256')),
-            'model_metadata': data.get('model_metadata'), 'budget': data.get('budget'),
-            'model_profile': data.get('model_profile'), 'limitations': data.get('limitations', data.get('differences_from_model_baselines'))})
+    conditions = [comparison_condition(baselines, 'BASELINE_EXECUTION_ADAPTER'), comparison_condition(graph, 'P_PRODUCTION_GRAPH')]
     manifest['comparison_conditions'] = conditions
     manifest['same_snapshot_reference_verified'] = bool(conditions[0]['snapshot_manifest_sha256']) and conditions[0]['snapshot_manifest_sha256'] == conditions[1]['snapshot_manifest_sha256']
+    manifest['same_snapshot_artifact_verified'] = manifest['same_snapshot_reference_verified'] and any(c['snapshot_artifact_verified'] for c in conditions) and all(c['snapshot_observed_sha256'] in (None,c['snapshot_manifest_sha256']) for c in conditions)
+    manifest['policy_timeout_cost_conditions_equal'] = False
     manifest['equal_compute_budget'] = False
     manifest['common_full_task_accuracy_comparison_ready'] = False
     (output/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
     lines = ['# 실제 실행 비교의 구성요소 검사', '', '사용자 지시 아래 에이전트가 확정한 v5 계약이며 독립 인간 GOLD 또는 전체 의미 정확도가 아닙니다.',
         '기존 planning90은 포함하지 않았습니다. P와 baseline의 호출예산·문서검색·답변생성 방식이 다르며 동일 모델을 동일 계산조건으로 표현하지 않습니다.',
+        '기존 baseline 실행90행과 새 graph를 재비교할 때 정책·timeout·코드·비용 조건이 달라질 수 있습니다. 조건 manifest와 실제 snapshot 파일 해시를 별도로 기록하며, 같은 snapshot을 timeout 단독 효과나 동일 실행조건의 증거로 해석하지 않습니다.',
         'P 서술형 응답에 평가 구조 매핑이 없으면 미측정이며 오답/0점이 아닙니다. 한쪽만 구조화된 필드의 검사통과 수를 공통 승률로 비교하지 않습니다.', '',
         '| 실행군 | 방법 | 행 | 사례 | 검사전체통과 | 검사실패 | 미측정 포함 |', '| --- | --- | --- | --- | --- | --- | --- |']
     lines += [f'| {s["cohort"]} | {s["method"]} | {s["rows"]} | {s["unique_cases"]} | {s["complete_check_rows"]} | {s["incomplete_check_rows"]} | {s["unmeasured_rows"]} |' for s in summary]

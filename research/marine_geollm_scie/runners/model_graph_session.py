@@ -10,10 +10,12 @@ import time
 from urllib.parse import urlsplit
 import uuid
 from research.marine_geollm_scie.baselines.production_adapter import observable,extract_artifacts
+from research.marine_geollm_scie.runners.model_graph_conditions import graph_condition,validate_condition_environment
 
 METHOD='P_current_production_model_enabled_restricted'
 
 def require_profile(profile, snapshot):
+    validate_condition_environment(profile,os.environ)
     if os.getenv('SCIE_MODEL_GRAPH')!='1' or not Path('/.dockerenv').exists():raise RuntimeError('Isolated model worker required')
     if os.getenv('DISABLE_LLM_API')!='0':raise RuntimeError('Explicit model-enabled profile required')
     for key in ['S101_DB_URL','POSTGIS_URL']:
@@ -34,6 +36,7 @@ def current_case(out, payload):
 def main(benchmark,output,profile_path,snapshot_path):
     out=Path(output); profile=json.loads(Path(profile_path).read_text());snapshot=json.loads(Path(snapshot_path).read_text())
     require_profile(profile,snapshot)
+    condition=graph_condition(profile)
     rows=[json.loads(x) for x in Path(benchmark).read_text(encoding='utf-8').splitlines() if x.strip()]
     if len(rows)!=18 or len({r['case_id'] for r in rows})!=18:raise ValueError('Immutable 18-case benchmark required')
     start=time.perf_counter()
@@ -50,6 +53,8 @@ def main(benchmark,output,profile_path,snapshot_path):
             cache.vectorstore=None
             state={'task_id':identifier,'query':case['query'],'organization_id':'scie_isolated','user_id':'scie_research','status':AgentStatus.RECEIVED,'spatial_context':case.get('spatial_context') or {},'state_history':[]}
             row={'method':METHOD,'case_id':case['case_id'],'query':case['query'],'source_case':case,'repeat':0,'initial_state':observable(state),'semantic_correct':None,'spatial_correct':None,'execution_success':None,'comparison_condition':'actual production graph with its own prompts and budgets; not planning-baseline equivalent'}
+            row['method']=condition['method']
+            row['graph_condition']=condition
             signal.alarm(600)
             try:
                 final=observable(asyncio.run(orchestrator_graph.ainvoke(state,config={'configurable':{'thread_id':identifier},'recursion_limit':30})))

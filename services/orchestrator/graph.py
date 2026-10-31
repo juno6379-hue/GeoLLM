@@ -1669,35 +1669,21 @@ def _should_fast_execute_accident_event_lookup(state: OrchestratorState) -> bool
 
 def _looks_like_policy_block_query(query: str) -> bool:
     text = query or ""
-    lowered = text.lower()
-    public_restriction_terms = [
-        "entry_restricted_area",
-        "speed_restriction_area",
-        "\uc9c4\uc785\uc81c\ud55c",
-        "\uc18d\ub3c4\uc81c\ud55c",
-        "\uc9c4\uc785 \uc81c\ud55c",
-        "\uc18d\ub3c4 \uc81c\ud55c",
-    ]
-    if any(term in lowered or term in text for term in public_restriction_terms):
-        return False
-    if any(term in lowered or term in text for term in [
-        "entry_restricted_area",
-        "speed_restriction_area",
-        "진입제한",
-        "속도제한",
-        "진입 제한",
-        "속도 제한",
-    ]):
-        return False
-    return any(term in lowered or term in text for term in [
-        "\uad8c\ud55c \uc5c6\ub294",
-        "\ube44\uacf5\uac1c",
-        "\uad70\uc0ac",
-        "\uc81c\ud55c\uad6c\uc5ed",
-        "restricted",
-        "classified",
-        "military",
-    ])
+    # Explicit confidentiality/access restrictions take precedence over public
+    # chart terminology, including mixed requests for codes and private data.
+    if re.search(
+        r"비공개|권한\s*없는|비인가|군사|접근\s*제한\s*(?:자료|데이터)|"
+        r"\b(?:classified|military|private|confidential)\b|"
+        r"\brestricted\s+(?:data|documents?|files?|records?)\b",
+        text, re.IGNORECASE,
+    ):
+        return True
+
+    # RestrictedArea describes a public navigation constraint, not the access
+    # classification of its records. Source permissions and execution bindings
+    # remain mandatory in the downstream validator for every spatial request.
+    return False
+
 
 def _looks_like_ambiguous_hazard_query(query: str) -> bool:
     text = query or ""
@@ -2497,6 +2483,9 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
     import asyncio
     logger.info("LangGraph: Parsing intent", task_id=state["task_id"])
     original_query = state["query"]
+    if _looks_like_policy_block_query(original_query):
+        blocked = await fast_spatial_or_traffic_block_node(state)
+        return {**blocked, "query_contract_blocked": True}
     from services.orchestrator.korean_query_analysis import analyze_query, contract_problem, guard_result
     korean_analysis = await asyncio.to_thread(analyze_query, original_query)
     problem = contract_problem(original_query, korean_analysis, state.get("spatial_context"))
@@ -2528,6 +2517,14 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
     semantic_bindings = await asyncio.to_thread(bind_semantic_slots, original_query, korean_analysis,
                                                 candidate_trace.get("capability_candidates", []))
     candidate_trace["semantic_slot_binding"] = semantic_bindings
+    from services.orchestrator.public_catalogue_attribute import build_public_catalogue_attribute_response
+    catalogue_response = await asyncio.to_thread(build_public_catalogue_attribute_response, state)
+    if catalogue_response is not None:
+        _attach_candidate_trace(state, catalogue_response['final_dict'])
+        return {**catalogue_response, 'public_catalogue_handled': True,
+                'candidate_trace': candidate_trace, 'status': AgentStatus.COMPLETED,
+                'state_history': log_transition(AgentStatus.RECEIVED, AgentStatus.COMPLETED,
+                                               actor='PublicCatalogueAttribute')}
     from services.orchestrator.request_obligations import required_outputs
     if set(required_outputs(original_query)) & {'selected_feature_evidence', 'portrayal_symbol_binding'}:
         from services.orchestrator.selected_feature_evidence import execute
@@ -2609,7 +2606,7 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         or _looks_like_eddy_hazard_query(combined_fast_query)
         or _looks_like_island_query(combined_fast_query)
     )
-    cached_intent = None if (fast_diagnostic or fast_definition or fast_navigation_risk or fast_external_tide or fast_external_weather or fast_standard_rag or fast_dataset_evidence or fast_legal_or_no_evidence_rag or fast_time_series or fast_spatial_or_traffic or fast_known_place) else cache.check_cache(query)
+    cached_intent = None if (fast_diagnostic or fast_definition or fast_navigation_risk or fast_external_tide or fast_external_weather or fast_standard_rag or fast_dataset_evidence or fast_legal_or_no_evidence_rag or fast_time_series or fast_spatial_or_traffic or fast_known_place) else await asyncio.to_thread(cache.check_cache, query)
     if fast_diagnostic:
         intent_type, target_objects, output_format = "DATA_DISCOVERY", [fast_diagnostic], "SUMMARY"
         intent_understanding = "실제 DB 또는 작업 추적으로 시스템 상태를 진단합니다."
@@ -2724,7 +2721,7 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
         secondary_agents = rule_result.get("secondary_agents", [])
         
         # 2. 의미 임베딩 검색 (Semantic Search)
-        route_match = router.route_query(query)
+        route_match = await asyncio.to_thread(router.route_query, query)
         intent_type = route_match
         
         if not primary_agent and intent_type != "clarification_required":
@@ -2750,7 +2747,7 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
                 if intent_type == "SPATIAL_SEARCH" or primary_agent == "Spatial Analysis Agent":
                     intent_type = "SPATIAL_SEARCH"
                     # 슬롯 추출 시도 (예: spatial_proximity_search 룰 적용)
-                    extracted = slot_extractor.extract(query, "spatial_proximity_search")
+                    extracted = await asyncio.to_thread(slot_extractor.extract, query, "spatial_proximity_search")
                     
                     # 모호성 및 누락 slot 검증
                     clarification_questions = []
@@ -2920,7 +2917,7 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
                         base_location = spatial_conditions[0].split()[0]
                         
                     # 캐시 저장
-                    cache.add_to_cache(query, parsed)
+                    await asyncio.to_thread(cache.add_to_cache, query, parsed)
                     
             except Exception as e:
                 logger.error("LLM parsing failed", error=str(e))
@@ -2969,7 +2966,7 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
     elif 'extracted' in locals() and extracted:
         extracted_payload = extracted
     elif intent_type in ("SPATIAL_SEARCH", "spatial_proximity_search", "marine_hazard_feature_search"):
-        extracted_payload = slot_extractor.extract(query, "spatial_proximity_search")
+        extracted_payload = await asyncio.to_thread(slot_extractor.extract, query, "spatial_proximity_search")
     extracted_payload = _enrich_extracted_slots(extracted_payload, norm_result)
     # Parser/model numbers must match source quantities or explicit request context.
     from services.orchestrator.slot_evidence import ground_distance_payload
@@ -3078,8 +3075,10 @@ async def graph_rag_node(state: OrchestratorState) -> OrchestratorState:
     bindings = (state.get('candidate_trace') or {}).get('semantic_slot_binding') or {}
     seed_context['validated_seed_ids'] = bindings.get('kg_seed_ids', [])
     seed_context['target_features'] = list(dict.fromkeys(seed_context['target_features'] + bindings.get('target_features', [])))
+    import asyncio
+    retrieved_context = await asyncio.to_thread(graph_rag_retriever.retrieve, query, seed_context)
     context = _sanitize_graph_context_for_execution(
-        graph_rag_retriever.retrieve(query, seed_context),
+        retrieved_context,
         query,
         seed_context,
     )
@@ -4580,17 +4579,21 @@ async def fast_spatial_or_traffic_block_node(state: OrchestratorState) -> Orches
         "요청한 공간/교통 분석은 임의 결과나 검증되지 않은 데이터를 만들 수 없습니다. "
         f"현재 실행에 필요한 데이터/geometry 바인딩이 준비되지 않아 BLOCKED_DATA로 종료합니다. ({blocker_text})"
     )
+    policy_blocked = qec.get("readiness") == "BLOCKED_POLICY"
+    error_code = "BLOCKED_POLICY" if policy_blocked else "BLOCKED_DATA"
+    if policy_blocked:
+        answer = "요청에 비공개 또는 접근이 제한된 자료가 포함되어 실행하지 않았습니다. 공개 표준의 코드 설명은 별도로 조회할 수 있습니다."
     final_dict = {
         "task_id": state["task_id"],
         "trace_id": f"tr-{state['task_id']}",
         "agent_name": agent_name,
         "agent_version": "2.2.0-spatial-traffic-fast-block",
         "status": "BLOCKED",
-        "error_code": "BLOCKED_DATA",
+        "error_code": error_code,
         "summary": answer,
         "answer_text": answer,
         "structured_result": {
-            "status": "BLOCKED_DATA",
+            "status": error_code,
             "analysis_type": analysis_type,
             "blockers": qec["blockers"],
             "count": None,
@@ -5958,8 +5961,12 @@ async def audit_log_node(state: OrchestratorState) -> OrchestratorState:
 # ----------------- Conditional Edges -----------------
 
 def check_intent_parsed(state: OrchestratorState) -> str:
-    if state.get("query_contract_blocked") or state.get('source_mapping_handled') or state.get('selected_feature_handled'):
+    if state.get("query_contract_blocked") or state.get('source_mapping_handled') or state.get('selected_feature_handled') or state.get('public_catalogue_handled'):
         return "query_contract_stop"
+    # A recognized public layer must not route a mixed private-data request
+    # around policy validation into location resolution or spatial execution.
+    if _looks_like_policy_block_query(str(state.get("query") or "")):
+        return "fast_spatial_or_traffic_block"
     from services.orchestrator.request_obligations import required_outputs
     if 'data_processing_provenance' in required_outputs(state.get('query', '')):
         return 'fast_dataset_evidence_answer'

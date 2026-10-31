@@ -7,6 +7,7 @@ import subprocess
 import time
 from research.marine_geollm_scie.runners.binding_snapshot import verify_files
 from research.marine_geollm_scie.runners.launch_production import isolation_metadata
+from research.marine_geollm_scie.runners.model_graph_conditions import graph_condition,graph_condition_environment
 
 ROOT=Path(__file__).resolve().parents[3]
 DB='scie_model_v3'
@@ -15,6 +16,23 @@ NETWORK='marine-scie-graph-isolated'
 
 def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
+
+def graph_source_files(root):
+    return (list((root/'services').rglob('*.py'))+list((root/'shared').rglob('*.py'))
+            +list((root/'research/marine_geollm_scie/runners').glob('*.py'))
+            +[root/'data/tool_registry.yaml'])
+
+
+def warmup_summary(calls):
+    warmup=[r for r in calls if r.get('case',{}).get('case_id')=='IMPORT_WARMUP']
+    failed=[r for r in warmup if r.get('status')!='RETURNED' or r.get('upstream_http_status')!=200]
+    embeddings=[r for r in warmup if r.get('path') in {'/api/embed','/api/embeddings','/v1/embeddings'}]
+    return {'status':'DEGRADED_WARMUP' if failed or not embeddings else 'WARMUP_OBSERVED_WITHOUT_PROXY_ERRORS',
+            'observed_calls':len(warmup),'embedding_calls':len(embeddings),
+            'failed_call_ids':[r.get('call_id') for r in failed],
+            'identity_check_retries':sum(len(r.get('identity_checks',[]))>1 for r in warmup),
+            'semantic_quality_verified':False}
+
 def validate_observations(rows,cases):
     if len(rows)!=18 or len(cases)!=18 or {r['case_id'] for r in rows}!=cases:
         raise ValueError('Expected 18 distinct case observations')
@@ -22,6 +40,7 @@ def validate_observations(rows,cases):
         raise ValueError('Invalid observation status')
 
 def validate_profile(profile,snapshot):
+    graph_condition(profile)
     if snapshot.get('db_identity')!={'container':'marine-scie-pilot-db','database':DB} or snapshot.get('status')!='LOADED_VERIFIED':raise ValueError('Loaded model research DB required')
     if profile.get('embedding_ready') is not True:raise ValueError('Embedding completion required before graph run')
     digests=profile.get('model_digests',{})
@@ -47,9 +66,17 @@ def main(output,snapshot_path,profile_path):
     isolation=isolation_metadata(mask,network)
     image=subprocess.check_output(['docker','image','inspect','docker-backend','--format','{{.Id}}'],text=True).strip()
     benchmark=ROOT/'research/marine_geollm_scie/benchmark/query_cases_v1.jsonl'
-    source_files=list((ROOT/'services').rglob('*.py'))+list((ROOT/'shared').rglob('*.py'))
+    source_files=graph_source_files(ROOT)
     source_hashes={p.relative_to(ROOT).as_posix():sha(p) for p in source_files}
     manifest={'method':'P_current_production_model_enabled_restricted','scope':'Actual production graph entry, 18 original cases K1; capability pgvector enabled; external/coverage restrictions remain; not unrestricted Full P or equal planning budget', 'capability_retrieval':{'pgvector_enabled':True,'relation':'knowledge.capability_embeddings','snapshot_metadata':next(r for r in snapshot['relations'] if r['relation']=='knowledge.capability_embeddings'),'fallback':'production fallback only if actual retrieval fails; recorded in graph trace'},'snapshot_manifest_sha256':sha(snapshot_path),'profile_sha256':sha(profile_path),'model_profile':profile,'image_id':image,'benchmark_sha256':sha(benchmark),'source_hashes':source_hashes,'isolation':isolation,'cache_policy':'semantic answer cache reset per case; same production singleton other caches','network_policy':'worker only internal network; proxy dual network and endpoint/model allowlist; no ports published','conditions':{'LLM_MODEL':'qwen2.5:1.5b','EMBEDDING_MODEL':'bge-m3','model_budget':'production per-call settings preserved; proxy records actual requests','PGOPTIONS':'default_transaction_read_only=on','OLLAMA_BASE_URL':'http://marine-scie-model-proxy:11434'}}
+    condition=graph_condition(profile)
+    manifest['method']=condition['method']
+    manifest['graph_condition']=condition
+    manifest['conditions'].update(graph_condition_environment(profile))
+    manifest['identity_check_policy']={'timeout_seconds':10,'max_attempts':2,'retry_scope':'transport error on read-only tags only; digest mismatch never retried','backoff_seconds':.5}
+    manifest['registry_sha256']={'data/tool_registry.yaml':sha(ROOT/'data/tool_registry.yaml')}
+    if condition['research_timeout_override']:
+        manifest['conditions']['model_budget']='production settings except explicit research semantic-prior timeout override; not equal-compute baseline'
     (out/'model_graph_manifest.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
     common=['--mount',f'type=bind,source={ROOT},target=/work,readonly','--mount',f'type=bind,source={out},target=/out','--mount',f'type=bind,source={mask},target=/work/.env,readonly','--mount',f'type=bind,source={profile_path},target=/model_profile.json,readonly','--workdir','/work','--env','PYTHONPATH=/work','--env','PYTHONDONTWRITEBYTECODE=1','--env','PYTHON_DOTENV_DISABLED=1']
     proxy_started=False
@@ -69,6 +96,7 @@ def main(output,snapshot_path,profile_path):
         # The graph has only this internal network. The proxy is not an HTTP forward proxy.
         db='postgresql://postgres:scie_local_pilot@marine-scie-pilot-db:5432/'+DB
         env={'SCIE_MODEL_GRAPH':'1','DISABLE_LLM_API':'0','S101_DB_URL':db,'POSTGIS_URL':db,'PGOPTIONS':'-c default_transaction_read_only=on -c statement_timeout=10000','OLLAMA_BASE_URL':'http://'+PROXY+':11434','OPENAI_BASE_URL':'http://'+PROXY+':11434/v1','OPENAI_API_KEY':'research-local-ollama','LLM_MODEL':'qwen2.5:1.5b','GEOLLM_OLLAMA_MODEL':'qwen2.5:1.5b','OLLAMA_MODEL':'qwen2.5:1.5b','GEOLLM_WEB_SHADOW_MODEL':'qwen2.5:1.5b','EMBEDDING_MODEL':'bge-m3','GEOLLM_CAPABILITY_PGVECTOR':'true','HF_HUB_OFFLINE':'1','TRANSFORMERS_OFFLINE':'1','OMP_NUM_THREADS':'1','OPENBLAS_NUM_THREADS':'1','MKL_NUM_THREADS':'1','APP_DATA_DIR':'/tmp'}
+        env.update(graph_condition_environment(profile))
         cmd=['docker','run','--rm','--name','marine-scie-model-worker','--network',NETWORK,'--label','marine.scie.research=true',*common,'--mount',f'type=bind,source={snapshot_path},target=/snapshot.json,readonly','--tmpfs','/work/logs:rw','--tmpfs','/work/data/feedback:rw']
         for key,value in env.items():cmd+=['--env',key+'='+value]
         cmd += [image,'python','-m','research.marine_geollm_scie.runners.model_graph_session','--benchmark','/work/research/marine_geollm_scie/benchmark/query_cases_v1.jsonl','--output','/out','--profile','/model_profile.json','--snapshot','/snapshot.json']
@@ -93,9 +121,14 @@ def main(output,snapshot_path,profile_path):
         except ValueError:
             manifest['worker_status']='INCOMPLETE_OBSERVATION'
             raise
-        manifest['worker_status']='EXECUTION_OBSERVED'
         manifest['observed_rows']=len(rows)
         manifest['graph_status_counts']={status:sum(r.get('graph_status')==status for r in rows) for status in {r.get('graph_status') for r in rows}}
+        calls=[json.loads(line) for line in (out/'model_calls.jsonl').read_text(encoding='utf-8').splitlines() if line.strip()]
+        manifest['warmup_verification']=warmup_summary(calls)
+        if manifest['warmup_verification']['status']=='DEGRADED_WARMUP':
+            manifest['worker_status']='DEGRADED_WARMUP'
+            raise RuntimeError('Research warmup failed; all raw observations preserved but healthy initialization not verified')
+        manifest['worker_status']='EXECUTION_OBSERVED'
     finally:
         if proxy_started:subprocess.run(['docker','stop',PROXY],capture_output=True)
         verify_files(snapshot,snapshot_path.parent)

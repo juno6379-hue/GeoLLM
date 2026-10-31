@@ -1,5 +1,72 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-10-31 사용자 재개 — Qwen timeout·정책 오류 수정 및 새 연구 검증 완료
+
+- 아래 이전 인계의 “180초 미실행/정책 미검증”은 당시 관측이며 이 항목으로 갱신한다. 상세원인·검증·한계: research/marine_geollm_scie/protocol/timeout_policy_resolution_20261031_KR.md.
+- Qwen 원인: CPU에서 stream=false 전체JSON생성에6~20초가필요하지만 semantic_prior 제한2.5초로 원본11회모두취소. 연구profile만180초로고정; 운영기본유지. 원본prompt timeout-only smoke2/2성공. 새graph는정책/FC/async수정도포함하여 단독ablation아님.
+- 최종 runs/20261031_graph_timeout180_v2: graph18/18, 생성11/11 HTTP200/JSON객체(6.026~20.016초), warmup85/85성공, embedding22/22성공, 소스/profile/snapshot/registry동결검증. 상태 COMPLETED11/BLOCKED3/NEEDS_CLARIFICATION3/PARTIAL1은정답률아님. v1의warmup통신실패는보존하고 DEGRADED_WARMUP으로분리했다.
+- 공개RestrictedArea코드오차단과 private_entry우회수정: parse최초정책검사, 명시비공개판별, 공개FC실제binding·출처hash·ExecutionValidator승인후29코드반환. 일반제한구역레이어명만으로차단하지않음. 실제API통합5/5 및 공개공간회귀4/4검증, 비공개선행실행없음.
+- 동기cache/router/slot/retrieval을thread로분리. 최종관련76+기존계약33+proxy/embedding9=118tests passed. health연구병행10/10 HTTP200(6.78~203.73ms), 초기3초timeout1회도보존. 전체SLO검증은미완료.
+- 새report는 같은snapshot의기존baseline90과새graph18을대조하며 모델/timeout/소스조건을명시한다: runs/20261031_graph_timeout180_v2/report/comparison_KR.md. P18평가매핑은미측정, 논문정답률/모델우열선언금지. 기존run불변.
+- 다음실행순서/P0: 정의·속성fastpath오진입→AOI/복합대상완결계약→P공통평가매핑→새frozen run. 각원본보존/별도수정/실제API정상·부정검증. P1동시부하SLO/운영timeout예산, 독립GOLD·holdout/K5/recovery/ablation은별도. shadow후보실험은의미정확도검증전실행권한확대없음/QLoRA보류.
+- 임베딩23,215/23,215(1024차원) 완료와snapshot검증은기존기록유지. 자동점검geollm은삭제상태이며 이번재실험은명시요청에따른수동실행. 운영UI/feedback등무관한변경은보존한다. 이번요청에는원격push가없다.
+
+## 2026-10-31 K1 비교 산출물 완료·중대한 해석 제한
+
+- 정책helper 수정15tests passed. 실제 after API5건: 공개ko OBSERVATION_TIMEOUT/RECEIVED, 공개en TRANSPORT_ERROR/TimeoutError, private_mixed/classified_en BLOCKED, private_entry NEEDS_CLARIFICATION 지속. 정책 정상화/최종답변 완료를 선언하지 않는다. 잔여우회경로·서비스지연은 별도 P0, 원본은 runs/20261031_restriction_policy_{before,after}/api_rows.jsonl. 신규추론180초조건은 아직 실행하지 않았다.
+- supervisor v3 EXECUTION_COMPARISON_FINISHED/DONE,04:39:54KST. snapshot/graph18/baseline90/report 모두 exit0. 원본 research/marine_geollm_scie/runs/20261030_full_execution_v5 불변 보존. baseline90은 schema completed84/invalid_response6이며 실행·의미 정확도가 아니다.
+- 보고서 report/comparison_KR.md 및 component_scores/common_output_observations/summary.csv 생성. baseline 구성요소 전체검사통과 B1만1행, 나머지0; P18행은 구조 매핑 미측정이라 0점으로 비교하면 안 된다. 전체 모델우열/논문정답률 주장 불가.
+- 별도 graph감사: semantic_prior 기본2.5초 timeout 때문에 Qwen generate11회 모두 client_disconnected/timeout. 문항 embedding22회 성공과 구분. 이번 P는 정상Qwen 활용 효과의 근거가 아니다. 원본실패 포함 운영조건 결과로 보존하고 timeout 변경은 별도 연구조건/새run으로 해야 한다.
+- 발견결함: 정의/속성의 공간fastpath 오진입, 제한구역 코드 설명 policy오차단, AOI없는 intersects를 문서COMPLETED, 복합 등대+Wreck 중 Wreck만 완료, AnchorageArea 부분치환. Q4세표현 11건은 정상관측. 연구snapshot 누락원천/coverage 부족은 구현오류와 구분한다.
+- 비교실행 종료 후 별도 embedding_fix 에이전트에 연구timeout 조건·감사문서, validator 에이전트에 정책오차단 최소수정/정상부정검증을 맡겼다. 수정후재실험은 원본을 덮지 않는다. 나머지 결함 및 K5/독립holdout/recovery/ablation은 후속이며 본논문전체완료 아님.
+- 한글 완료요약: research/marine_geollm_scie/protocol/execution_results_20261031_KR.md. 연구timeout 조건 준비18tests passed(신규추론 미실행), graph오류감사 및 별도run명령 문서화. 비교보고서 완료에 따라 매시간 automation geollm은 삭제했다. 추가실험은 자동 시작하지 않는다. 정책수정 실제API 관측은 별도 에이전트가 마무리하며 결과는 issues/restriction_policy_fix_20261031.md 확인.
+
+## 2026-10-31 임베딩 완료·논문 K1 실제 실행 진입
+
+- 03:32 KST 임베딩 worker 최종 검증 COMPLETED: 전체 document_chunks23,215/벡터23,215/NULL0/min=max1024/model_digest_unchanged=true. 대상 dataset_source_text6,362 청크의 미완료 해소. 기존8469벡터 생성 metadata 미확정은 별도 한계이며 소급 검증된 것이 아니다.
+- supervisor v3가 새 scie_model_v3 snapshot을 생성하여 LOADED_VERIFIED. 문서23,215/벡터23,215, capability21/벡터21, 지명1146/항로표지314/섬1140/S10125300의6관계 확인. snapshot 경로 outputs/scie_model_snapshot_20261030_v3.
+- graph18 원시 관측 완료(exit0,03:38KST), 상태 COMPLETED10/BLOCKED4/NEEDS_CLARIFICATION3/PARTIAL1. 이는 정답률이 아니다. runs/20261030_full_execution_v5/graph/production_rows.jsonl을 보존한다.
+- 04:05 이후 확인시 BASELINES_90 실행중(로그43/90 관측), supervisor 오류없음. 결과 미완성. embedding_fix 별도 에이전트에 graph18 원인분류 읽기전용 감사를 맡겼다. 실행중 source freeze를 유지하고 수정은 비교완료 후 별도run으로 분리한다.
+- 다음: baseline90 및 보고서완료 확인→실제 도구/모델/상태별 원인 검토→별도 수정/재현. 기존 K5/독립holdout/공간coverage/recovery/ablation 한계 유지. 자동점검 geollm 활성.
+
+## 2026-10-30 세 번째 실행 — 사용자 명시 재개
+
+- 사용자 재개 요청으로 두 번째 PAUSED_BY_USER를 해제했다. 원천DB 재조회 dataset6,362/임베딩2,612/잔여3,750, 고정Qwen/bge digest 일치, 관련6tests passed. Ollama 중지 상태에서 serve 기동, 연구DB 재기동. 기존 저장벡터 보존.
+- 같은 임베딩 출력 폴더로 worker 재개, 새 supervisor 출력 outputs/scie_full_pipeline_20261030_v3를 사용한다. v1 실패/v2 중단을 덮지 않는다. snapshot DB scie_model_v3 및 snapshot/run 경로 미존재를 확인했다. 후속은 완료gate→snapshot→graph18→baseline90→report.
+- 매시간 automation geollm을 ACTIVE로 복구했다. 실제 최신 progress/worker/supervisor v3 로그를 확인한다. 실패시 원인과 원본을 보존하고 별도 수정/검증하며, 사용자 중단시 worker/supervisor/automation 모두 다시 중지한다. 논문 전체 완료·독립holdout/K5/recovery/ablation 완료를 뜻하지 않는다.
+
+## 2026-10-30 두 번째 사용자 중단 — 다음 접속 인계
+
+- **PAUSED_BY_USER. 사용자가 다시 재개를 요청하기 전 임베딩·논문 실험을 실행하지 않는다.** 임베딩 worker 및 full_pipeline 프로세스 부재를 확인했고 매시간 후속 automation geollm도 PAUSED로 변경했다. 다른 웹/DB 서비스는 유지했다.
+- 중지 후 실제 DB 재조회: dataset_source_text 총6,362 / 임베딩2,612 / 잔여3,750. 이미 commit된 청크는 보존했으며 미commit 배치는 완료에 포함하지 않는다. progress/manifest 및 supervisor v2 상태를 PAUSED_BY_USER로 갱신했다.
+- HTTP400 원본과 동일입력 HTTP200 재현, 제한재시도·상태기록 수정 및6tests passed는 아래 기록을 따른다. 정확한 최초400 원인은 미상이다. supervisor v1 실패/v2 중단 산출물을 보존한다. snapshot/graph18/baseline90은 아직 시작하지 않았다.
+- 재개 순서: 최신 인계/실제 프로세스/DB잔여/모델digest 확인 → 같은 임베딩 출력 경로로 NULL만 재개 → 새 supervisor v3 출력 경로 사용 → 완료/차원/digest gate → 새 snapshot→graph18→baseline90→보고서. 기존 supervisor.lock 삭제나 기존 실패 덮어쓰기 금지. 자동점검은 사용자 재개 요청 후에만 ACTIVE로 돌린다.
+- 임베딩 명령: `.venv/Scripts/python.exe -u -m scripts.complete_dataset_embeddings --output outputs/dataset_embedding_completion_20261030_v1 --batch-size 8 --threads 12`
+- 후속 명령: `.venv/Scripts/python.exe -u -m research.marine_geollm_scie.runners.full_pipeline --execute --output outputs/scie_full_pipeline_20261030_v3 --embedding-dir outputs/dataset_embedding_completion_20261030_v1 --snapshot-dir outputs/scie_model_snapshot_20261030_v3 --run-dir research/marine_geollm_scie/runs/20261030_full_execution_v5` (경로/DB 미존재 재확인 후 사용).
+- 소스 수정 및 이번 인계는 미커밋이며 기존 사용자 UI/feedback 변경과 분리한다. 현재 요청에는 GitHub 푸시가 포함되지 않는다.
+
+## 2026-10-30 HTTP400 조사·제한 재시도 보완 후 재개
+
+- 동일 실패8입력/모델/truncate=false 재현은 HTTP200, 8벡터/6,379토큰 성공. 원본400 상세응답 유실로 확정 원인은 미상이다. 입력길이 오류로 단정하지 않는다.
+- 별도 수정 에이전트가 동일입력 최대1회 재시도(5초/digest재검증), errors.jsonl 상태/분류/입력 및 응답hash 기록, 재개RUNNING·실패FAILED 상태 갱신을 추가했다. 관련 테스트6 passed. 원문/모델/배치조건 및 기존 벡터는 보존했다.
+- embedding worker를 같은 outputs/dataset_embedding_completion_20261030_v1에 재개했다. 새 supervisor는 outputs/scie_full_pipeline_20261030_v2/status.json을 사용한다. v1 실패는 보존한다. 아직 snapshot/graph/baseline 미실행이며 완료 gate 통과 후 순차 실행한다. 현재 코드 freeze 이후 관련 소스를 변경하면 새 실행 조건이 필요하다.
+- 매시간 후속 점검 automation geollm 활성. 최신 v2 supervisor와 실제 worker/DB를 우선 확인한다. 다음: 재개 첫 commit→잔여0/차원/digest→새 snapshot→graph18/baseline90→오류 분석/보고서. 임베딩 일시 재시도는 논문 runtime recovery 측정과 별개다.
+
+## 2026-10-30 임베딩 HTTP400 중단 및 후속 감시
+
+- 사용자 재개 후1,296건 commit, dataset2,212/6,362, 잔여4,150에서 Ollama /api/embed HTTP400으로 worker가 종료했다. worker.log 실패 원본 보존. supervisor는 STOPPED_REQUIRES_REVIEW로 정상 차단했고 snapshot/graph/baseline은 시작하지 않았다.
+- progress RUNNING 및 manifest PAUSED_BY_USER는 과거 표시이므로 실제 worker 생존과 혼동하지 않는다. 별도 embedding_fix 에이전트가 실패 입력/응답 원인 및 상태기록 수정을 담당한다. 원문 truncation·모델 변경·완료 gate 우회 금지. 수정 후 단위검증과 실제 실패 batch 재현을 통과한 뒤 NULL 잔여만 재개하고, 코드 freeze가 달라지면 새 supervisor 출력 폴더를 사용한다.
+- 사용자 요청에 따라 매시간 이 채팅의 후속 점검(automation id: geollm)을 활성화했다. 최신 인계·실제 상태를 확인하고 의미 있는 완료/실패/사용자 조치 때 알리며, 비교 보고서 완성 후 종료한다. 중복 worker/supervisor를 띄우지 않는다.
+
+## 2026-10-30 사용자 요청 작업 재개
+
+- 사용자의 명시적 재개 요청으로 이전 PAUSED_BY_USER 지시를 해제했다. Docker 중지 및 오래된 Windows 소켓 접근 오류를 확인하여 run/docker-secrets-engine 소켓 폴더를 백업 이름으로 보존하고 기동했다. DB 볼륨은 변경하지 않았다. 연구 DB도 재기동했다.
+- 원천 DB 재조회: 전체23,215/임베딩17,769/잔여5,446. 고정 Qwen/bge-m3 digest 일치 및 관련 테스트148 passed(32.39s). 기동 직후 DB starting up 실패는 준비 완료 후 재조회했다.
+- 기존 출력 폴더의 NULL 임베딩 worker를 숨김 백그라운드로 재개했다. supervisor도 시작했으며 outputs/scie_full_pipeline_20261030_v1/status.json의 WAITING_FOR_EMBEDDINGS에서 실제 완료 검증을 기다린다. 단계 순서는 임베딩 → 새로운 scie_model_v3 snapshot → graph18 → baseline90 K1 → 보고서다. 코드/계약 변경·단계 실패 시 자동 중지하며 성공으로 우회하지 않는다.
+- 재개 후 두 배치16건의 DB commit을 worker에서 확인했다. dataset 임베딩932/6,362, 잔여5,430(관측 시점). 백그라운드 실행 중이므로 이후 값은 진행 파일로 확인한다.
+- 진행 상태는 outputs/dataset_embedding_completion_20261030_v1/progress.json 및 supervisor status.json을 함께 확인한다. 첫 배치 commit 전 과거 PAUSED progress는 worker 실행 여부와 구분한다. 완료 수치는 실제 배치/DB 확인 전 증가시키지 않는다. 전체 실행 비교와 논문 완료는 아직 아니다.
+- 다음 점검: 신규 배치 DB commit/잔여0 → snapshot 해시/차원 → 실제 모델/도구 관측 → 오류 분류 및 별도 수정. 기존 운영 UI 변경과 연구 산출물은 분리 유지한다. K5/독립holdout/recovery/ablation·공간coverage 한계와 shadow/QLoRA 보류는 유지한다.
+
 ## 2026-10-30 사용자 요청 중단·GitHub 푸시 인계
 
 - **PAUSED_BY_USER. 명시적인 재개 요청 전 실행을 다시 시작하지 않는다.** [중단 위치·실측·재개 명령](../../research/marine_geollm_scie/protocol/pause_20261030_KR.md)을 먼저 읽는다. 이후 사용자 요청으로 이번 준비 코드·테스트·문서를 커밋/푸시한다. 중단·커밋은 실험 완료가 아니다.
