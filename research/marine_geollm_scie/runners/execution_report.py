@@ -131,6 +131,13 @@ def normalized_production(row):
     if final.get('status') in {'NEEDS_CLARIFICATION', 'NEEDS_USER_INPUT'}:
         output['execution_status'] = 'NEEDS_USER_INPUT'
         output['clarification_request'] = final.get('clarification_questions') or []
+    observation = row.get('execution_observation') or {}
+    if observation.get('version') == 'research_execution_observer_v1':
+        output['execution_observation'] = observation
+        for key in ('execution_attempted', 'execution_started', 'tool_called', 'sql_executed'):
+            value = observation.get(key)
+            output[key] = value if value is True or observation.get('observation_complete') is True else None
+        output['blocker'] = {'AOI_REQUIRED': 'MISSING_REFERENCE_GEOMETRY'}.get(final.get('error_code'), final.get('error_code'))
     if output['search_executed'] is True:
         features = structured.get('features')
         if not isinstance(features, list):
@@ -170,6 +177,9 @@ def check_contract(output, check):
     if kind == 'exact_value':
         if check['field'] == 'search_executed' and value is None: return None
         return value == expected
+    if kind == 'observed_execution_value':
+        if value is None: return None
+        return value is expected
     if kind == 'edition_hash_locator_match':
         if not isinstance(value, dict): return False
         return (value.get('edition') == expected['edition'] and value.get('source_sha256') == expected['source_sha256']

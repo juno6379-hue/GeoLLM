@@ -1,0 +1,22 @@
+{
+  "case_id": "PILOT_Q3_03",
+  "version": "q303_behavior_v1",
+  "approval_basis": "User instruction 2026-10-31; not independent expert review",
+  "query": "Find wrecks intersecting the selected area.",
+  "spatial_context": {},
+  "semantic_gold": {"feature": "Wreck", "operator": "intersects"},
+  "qec_gold": {"selected_geometry": "REQUIRED"},
+  "expected_behavior": "NEEDS_USER_INPUT",
+  "blocker": "MISSING_REFERENCE_GEOMETRY",
+  "runtime_aliases": {"NEEDS_CLARIFICATION": "NEEDS_USER_INPUT", "AOI_REQUIRED": "MISSING_REFERENCE_GEOMETRY"},
+  "execution_gold": {"execution_attempted": false, "execution_started": false, "tool_called": false, "sql_executed": false},
+  "machine_checks": [
+    {"id": "request_missing_aoi", "kind": "exact_value", "field": "execution_status", "expected": "NEEDS_USER_INPUT"},
+    {"id": "missing_geometry_blocker", "kind": "exact_value", "field": "blocker", "expected": "MISSING_REFERENCE_GEOMETRY"},
+    {"id": "execution_attempted_false", "kind": "observed_execution_value", "field": "execution_attempted", "expected": false},
+    {"id": "execution_started_false", "kind": "observed_execution_value", "field": "execution_started", "expected": false},
+    {"id": "tool_called_false", "kind": "observed_execution_value", "field": "tool_called", "expected": false},
+    {"id": "sql_executed_false", "kind": "observed_execution_value", "field": "sql_executed", "expected": false}
+  ],
+  "policy": "Missing or interrupted observation is null, never false. Semantic fields are not inferred from GOLD. Frozen K5 raw rows and scores remain unchanged."
+}

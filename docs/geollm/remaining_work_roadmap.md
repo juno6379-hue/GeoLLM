@@ -1,5 +1,12 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-10-31 Q3-03 사용자 승인 비실행 GOLD·연구 harness 관측
+
+- [계약·검증·범위](../../research/marine_geollm_scie/protocol/q303_execution_gold_20261031_KR.md). 별도 q303_behavior_v1: Wreck/intersects, selected_geometry REQUIRED, NEEDS_USER_INPUT/MISSING_REFERENCE_GEOMETRY, 네 실행 필드 false. 기존 frozen_v5/K5 원본·점수 불변(6 raw hash 재확인).
+- 연구 model_graph_session에 요청별 Agent/도구/SQLAlchemy 실행 관측 추가. 중단/누락은 null, 실제 시도·실패 SQL은 true. 전용 worker 한정이며 직접 DBAPI/외부 GIS/자식 프로세스 계측은 미지원이다. 운영 코드·UI 변경 없음.
+- 실제 네트워크 차단·무모델 그래프 진단: NEEDS_CLARIFICATION/AOI_REQUIRED, 영역 요청, 관측 완료·네 필드 false, 행동7/7. 관련31tests passed. outputs/q303_execution_audit_20261031_v1; import embedding 연결 거부는 조건상 제한으로 원본 보존. 전체 semantic GOLD 채점·모델 활성 K5 재실행 완료 아님.
+- 다음: 새 동결 계약/profile/run으로 모델 활성 검증, B0–B4에도 동일 관측 정의/범위 적용 후 비교. 기존 행은 소급 false 금지. Q3-01 전체 등대 최근접/Q3-02 부산항 항계 포함은 별도 원천·중복·경계 정책 확정과 GOLD 계산 필요. 독립 검수 미수령, Qwen shadow/QLoRA 보류 유지.
+
 ## 2026-10-31 운영 Dataset 본문 연결 수정·6질의 재검증 완료
 
 - 사용자명시 별도수정에이전트로 정보질문→문서조회→검증원문을 최종summary/answer_text에 연결했다. [수정/전후결과/한계](dataset_answer_fix_20261031.md). 기존본체답변후 근거첨부만하던 문제와 '관한'검색어로 무관문서반환을 보완. Qwen/좌표권한승격없음, 문서SELECT는ExecutionValidator만승인.

@@ -11,6 +11,7 @@ from urllib.parse import urlsplit
 import uuid
 from research.marine_geollm_scie.baselines.production_adapter import observable,extract_artifacts
 from research.marine_geollm_scie.runners.model_graph_conditions import graph_condition,validate_condition_environment
+from research.marine_geollm_scie.runners.execution_observer import ExecutionObserver
 
 METHOD='P_current_production_model_enabled_restricted'
 
@@ -56,11 +57,14 @@ def main(benchmark,output,profile_path,snapshot_path):
             row['method']=condition['method']
             row['graph_condition']=condition
             signal.alarm(600)
+            observer = ExecutionObserver(identifier)
             try:
-                final=observable(asyncio.run(orchestrator_graph.ainvoke(state,config={'configurable':{'thread_id':identifier},'recursion_limit':30})))
+                with observer:
+                    final=observable(asyncio.run(orchestrator_graph.ainvoke(state,config={'configurable':{'thread_id':identifier},'recursion_limit':30})))
                 row.update(status='GRAPH_RETURNED',graph_status=final.get('status'),final_state=final,**extract_artifacts(final))
             except Exception as exc:row.update(status='GRAPH_ERROR',error_type=type(exc).__name__)
             finally:signal.alarm(0)
+            row['execution_observation'] = observer.result()
             row['latency_ms']=(time.perf_counter()-start)*1000
             stream.write(json.dumps(row,ensure_ascii=False)+'\n');stream.flush()
             print(case['case_id'],row['status'],row.get('graph_status'),flush=True)
