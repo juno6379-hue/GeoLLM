@@ -75,3 +75,8 @@ graph_repeat_0 18/18, EXECUTION_OBSERVED, source_unchanged_after=true, 초기화
 2026-10-31 20:27 KST 확인: baseline449/450, completed419/invalid_response28/error2. HTTP500 원본은 row157 PILOT_Q5_02 B1 repeat1(70.993초), row433 PILOT_Q5_03 B1 repeat4(107.607초). 서버stdout16:53:30/20:16:19 KST와 대조했으며 후속 HTTP200 처리 확인. 별도 에이전트의 stderr 검색으로 상세원인을 찾지 못해 timeout/메모리부족으로 단정하지 않는다. 원본 유지, K5종료 후 동일prompt/options 별도재현. http500_audit_v2.json 보존.
 
 20:07~20:19 KST 전후 운영Dataset 읽기전용 파일hash/DB/lexical감사가 병행됐다. 추가모델호출/소스변경은 없었지만 CPU/IO부하의 지연 영향은 배제할 수 없다. 특히 두 번째500과 시각이 겹치며 인과관계는 미확정이다. 최종 지연 비교의 교란요인으로 명시한다. 독립GOLD 미수령 유지.
+
+## 2026-10-31 K5 baseline450 완료·P 두 번째 반복 진입
+
+- 20:27:54 KST baseline450 원시관측 완료/exit0/완료gate 및 hash 검증 통과. completed420/invalid_response28/HTTP500 error2이며 의미정확도가 아니다. 새 stage graph_repeat_1, supervisor8920/child19884 생존 확인. P 나머지72 및 최종보고서는 아직 미완료.
+- HTTP500 두 건 원인 미상 및 운영Dataset 읽기전용 감사 병행부하의 지연 교란 가능성을 postfix_execution_20261031_KR.md에 기록했다. 원본 유지/종료후 별도재현. 동결 소스·모델 검증 통과. 운영 SSE/semantic 추가호출은 K5 종료 후 진행한다.

@@ -1,5 +1,10 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-10-31 K5 baseline450 완료·P 두 번째 반복 진입
+
+- 20:27:54 KST baseline450 원시관측 완료/exit0/완료gate 및 hash 검증 통과. completed420/invalid_response28/HTTP500 error2이며 의미정확도가 아니다. 새 stage graph_repeat_1, supervisor8920/child19884 생존 확인. P 나머지72 및 최종보고서는 아직 미완료.
+- HTTP500 두 건 원인 미상 및 운영Dataset 읽기전용 감사 병행부하의 지연 교란 가능성을 postfix_execution_20261031_KR.md에 기록했다. 원본 유지/종료후 별도재현. 동결 소스·모델 검증 통과. 운영 SSE/semantic 추가호출은 K5 종료 후 진행한다.
+
 ## 2026-10-31 운영 Dataset 재감사·종단 답변 검증 대기
 
 - 사용자 요청으로 [운영 Dataset 감사](dataset_audit_20261031.md)를 수행했다. 원본244개/고유hash229, 기존manifest와 전체hash 변경0. 운영DB 문서23,215/벡터23,215지만 profile311 포함이며 전체 원본 처리 완료가 아니다.
