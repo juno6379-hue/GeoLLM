@@ -1,6 +1,12 @@
 # GeoLLM 현재 상태와 다음 작업
 
 
+## 2026-11-02 사용자 요청 GitHub 푸시 인계
+
+- 사용자 명시 요청으로 origin/main에 누적된 운영·연구 코드와 검증/결과 문서 커밋을 푸시한다. fetch 후 원격에만 있는 커밋0·로컬미푸시30 확인. v5 결과 커밋7805015와 이번 인계를 포함하며 강제 푸시는 사용하지 않는다.
+- 최신 결과는 research/marine_geollm_scie/protocol/eight_results_v5_20261101_KR.md. 144+27관측 검증 완료와 미완료인 LLM 의미판단·coverage 실행전차단·독립GOLD·반복을 구분한다. 다음 작업은 바로 아래 v5 인계를 따른다.
+- 기존 미커밋 UI/feedback/test·인계 문서의 별도 변경과 untracked 파일은 보존한다. runs/outputs 원본은 Git미추적으로 이번푸시에포함하지 않는다. 원격반영은 push 반환과 remote HEAD 일치로 검증한다.
+
 ## 2026-11-01 v5 최종 관측·교차검증 완료
 
 - v5 22:58:01 KST COMPLETED_OBSERVATIONS/DONE, 약75분29초. 144+fault27, 모든단계exit0, 부모41660/비교42368 종료. [최신 한글 결과](../../research/marine_geollm_scie/protocol/eight_results_v5_20261101_KR.md), [통합 보고서](../../research/marine_geollm_scie/runs/20261101_gold_v2_eight_k1_v5/report_with_faults/comparison_KR.md).
