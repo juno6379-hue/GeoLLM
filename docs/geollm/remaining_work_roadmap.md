@@ -1,6 +1,16 @@
 # GeoLLM 현재 상태와 다음 작업
 
 
+## 2026-11-01 요청 제약·검토 형식·공통 ESR 수정 후 새 동결 v3 실행 중
+
+- 최신 실행 `research/marine_geollm_scie/runs/20261101_gold_v2_eight_k1_v3/status.json`, 부모39724, graph 자식2496. 09:30:40 KST 시작, freeze/profiles exit0 후 P1 graph 실행 중. 실제 PID/status 우선 확인. 최종 결과 완료 아님.
+- 운영 7a9b17f: 원요청 CRS/Feature교체/대상확장/반경 변경 차단, QEC slot 자동교정 없음. 통제 원본9+동등표현2 replay로 누락4건 native 차단·plan/slot 불변 확인. 운영156tests, 부모통합176 및 최신집중60passed(중복합산 금지). 독립 감사로 영어 depth/height를 반경으로 오인한 추가 문제 해결·33passed. 실제API 정상18건, CRS/대상 오류 정확한 사유 보존, 거리충돌 parser 차단. [운영 검증](request_constraints_20261101.md), 문서699d212.
+- 연구 a5566ef: schema constrained review와 엄격검증/재시도0, B4/H 공유검토 유지. 개발3/3형식통과지만 정상오차단·누락geometry미검출 남음. spatial_execution_semantics_v3로 완료된 미실행false/미측정null, 8방법 동일공간case분모, SQL성공과SpatialCorrectness 분리. 완료gate에서 평가버전·case집합·분모 검증. [신규 조건](../../research/marine_geollm_scie/protocol/eight_execution_v3_20261101_KR.md).
+- 새 snapshot `outputs/scie_gold_v2_eight_snapshot_20261101_v3`: 실제연구DB6관계 부모hash 동일 재검증,278소스/계약 동결. 기존v2·immutableGOLD505파일 보존hash 동일(`outputs/eight_v3_prechange_preservation_20261101.json`). 운영UI/feedback/기존dirty테스트는 무관변경으로 보존.
+- 모델·소스·GOLD·입력·예산 변경/중복worker/추가Ollama·운영API 금지. API 개발 shadow5건 종료 뒤 시작했으며 control selection/score mismatch FAILED는 잔여오류다. coverage/nearest/canonicalpolygon/복합union/revision 등 미완료를 전체완성으로 주장하지 않는다.
+- 다음: P1 18→8방법144→동일fault27→report_with_faults/comparison_KR.md 완료gate·rawhash·공유계획·손실없는컴파일·공통ESR를 실제검증한다. 실패시원본보존·별도수정/테스트, 코드바뀌면새전체run. 독립인간GOLD미수령/K1이므로 의미정확도·반복변동성 완료 아님.
+- heartbeat `geollm-gold-v2-eight-v3` 30분 후속점검 활성. 변화없으면 조용히종료, 의미있는완료/실패/조치만 알림. 최종보고서검증→RESULTS_INDEX_KR/인계/관련커밋 후 점검중지. push요청없음.
+
 ## 2026-11-01 GOLD v2 8방법 K1 관측 완료·논문 결론 미완료
 
 - v2 `runs/20261101_gold_v2_eight_k1_v2`는 03:39:02 KST COMPLETED_OBSERVATIONS/DONE, 전체단계exit0. 8방법각18=144고유관측+별도fault27 완료. 실제부모33808/비교22936 종료 확인. [한글 결과·실패 원인](../../research/marine_geollm_scie/protocol/eight_results_20261101_KR.md), [통합 보고서](../../research/marine_geollm_scie/runs/20261101_gold_v2_eight_k1_v2/report_with_faults/comparison_KR.md).

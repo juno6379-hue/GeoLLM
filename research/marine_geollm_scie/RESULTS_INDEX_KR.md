@@ -4,6 +4,7 @@
 
 | 구분 | 폴더/파일 | 현재 해석 |
 |---|---|---|
+| 최신 재실행 v3 | [runs/20261101_gold_v2_eight_k1_v3](runs/20261101_gold_v2_eight_k1_v3) | 검토 형식·원요청 제약·실행 성공 평가 수정 후 전체 재실행 중. 실제 status.json 우선 |
 | 최신 8방법 v2 실행 | [runs/20261101_gold_v2_eight_k1_v2](runs/20261101_gold_v2_eight_k1_v2) | 관측144+fault27 완료. 독립 GOLD/RQ 전체 결론은 미완료 |
 | 보존된 v1 실패 | [runs/20261101_gold_v2_eight_k1_v1](runs/20261101_gold_v2_eight_k1_v1) | P1 18건 후 comparison10행에서 harness TypeError 중단. 완성 비교 아님 |
 | 기존 K5 비교 보고서 | [runs/20261031_postfix_k5_v2/report/comparison_KR.md](runs/20261031_postfix_k5_v2/report/comparison_KR.md) | 기존 6방법, 540관측 완료. 새 8방법 GOLD v2 결과가 아님 |
