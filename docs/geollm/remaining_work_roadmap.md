@@ -1,6 +1,14 @@
 # GeoLLM 현재 상태와 다음 작업
 
 
+## 2026-11-01 v4 검토 호출 전 결함 수정·v5 새 동결 재실행
+
+- v4는21:28:57 KST 144관측후report gate STOPPED_REQUIRES_REVIEW. B4/H17문항에서SHARED_REVIEW_MISMATCH, fault27미실행. typedtoolprompt교체후이전문구split이남아 모델호출전IndexError, reviewraw0건. 모델검토판단실패로해석금지. v4 418파일hash불변 outputs/v4_stopped_audit_20261101/preserved_hashes.json.
+- 수정5402fb5: TOOL_INSTRUCTIONS직접전달, callback예외도공유실패receipt보존. gate완화·원본사후보정없음. 별도수정에이전트29tests, 주검증45+최신6tests통과(중복합산금지). actual runner18case126행모의외부adapter성공/실패 모두B4/H공유hash·실패시미실행확인.
+- 새실행 `research/marine_geollm_scie/runs/20261101_gold_v2_eight_k1_v5/status.json`, 부모41660, 21:42:32 KST 시작. snapshot outputs/scie_gold_v2_eight_snapshot_20261101_v5. [v5 원인·조건](../../research/marine_geollm_scie/protocol/eight_execution_v5_20261101_KR.md). 공식1.5b/예산/GOLD/평가계약유지, 새소스동결·P1포함전체144+fault27재실행. 현재상태는PID/status/단계로그를따른다.
+- 실행중소스/모델/입력/GOLD/예산변경·추가API/Ollama·중복worker금지. 기존v3/v4원본보존. 다음은freeze6관계→graph→comparison→보고/fault/완료gate/rawhash/공통ESR검증. 오류면원본보존후수정·테스트·새전체run. LLM의미오류/coverage/canonical/nearest/복합완결성·독립GOLD·반복미완료.
+- 기존heartbeat ID geollm-gold-v2-eight-v4를v5경로/이름으로갱신(삭제아님). 의미있는완료/실패/조치만알림, 최종보고서·인계후삭제. UI/feedback/기존dirtytest보존. 새push요청없어push미수행.
+
 ## 2026-11-01 우선순위 보완·새 v4 실행 중 — 최신 인계
 
 - 사용자 계속진행 승인으로 운영eb8856a/연구5accd72/조건ea51ca0 분리 커밋. 하위에이전트3명이 구현중usage limit으로중단해 주검증자가남은코드검토·통합102tests 및실제개발/API검증을수행했다. 이후독립교차검증은미완료로구분한다. [수정·한계](priority_repairs_20261101.md).
