@@ -444,6 +444,22 @@ def _statement(layer, template):
     return sql.SQL(template["sql"]["execute"]).format(**names)
 
 
+def _request_constraint_problem(validated):
+    """Expose the native rejection without replacing it with EXECUTION_GATE."""
+    messages = {
+        'REQUEST_CRS_MISMATCH': '요청한 좌표계와 실행계획의 좌표계가 달라 공간 검색을 실행하지 않았습니다.',
+        'REQUEST_TARGET_MISMATCH': '요청하지 않은 대상이 실행계획에 포함되어 공간 검색을 실행하지 않았습니다.',
+        'REQUEST_DISTANCE_MISMATCH': '요청한 거리와 실행계획의 거리가 달라 공간 검색을 실행하지 않았습니다.',
+        'REQUEST_QUERY_MISMATCH': '원요청과 실행계획의 요청 기록이 달라 공간 검색을 실행하지 않았습니다.',
+        'REQUEST_CRS_CONFLICT': '원요청의 좌표계 정보가 서로 다릅니다. 사용할 좌표계를 확인해 주세요.',
+    }
+    for blocker in validated.blockers:
+        code = blocker.partition(':')[2].strip()
+        if code in messages:
+            return RadiusProblem(validated.readiness.value, code, messages[code])
+    return None
+
+
 def _fetch_result(qec, layer, template, params):
     url = os.getenv("S101_DB_URL") or os.getenv("POSTGIS_URL")
     if not url:
@@ -456,6 +472,9 @@ def _fetch_result(qec, layer, template, params):
         validated.provenance["execution_stages"] = qec.provenance["execution_stages"]
         if validated.readiness != PlanStatus.EXECUTION_READY:
             apply_execution_decision(qec, validated)
+            constraint_problem = _request_constraint_problem(validated)
+            if constraint_problem:
+                raise constraint_problem
             coverage = validated.provenance.get('coverage_validation') or {}
             if coverage.get('status') in {'OUT_OF_COVERAGE', 'PARTIAL'}:
                 raise RadiusProblem('BLOCKED_DATA', 'DATA_OUT_OF_SCOPE', '현재 연결된 데이터 범위로는 요청 영역의 결과를 확정할 수 없습니다.')
@@ -548,6 +567,9 @@ def _fetch_bounds_result(qec, layer, params):
         validated.provenance["execution_stages"] = qec.provenance["execution_stages"]
         if validated.readiness != PlanStatus.EXECUTION_READY:
             apply_execution_decision(qec, validated)
+            constraint_problem = _request_constraint_problem(validated)
+            if constraint_problem:
+                raise constraint_problem
             coverage = validated.provenance.get('coverage_validation') or {}
             if coverage.get('status') in {'OUT_OF_COVERAGE', 'PARTIAL'}:
                 raise RadiusProblem('BLOCKED_DATA', 'DATA_OUT_OF_SCOPE', '현재 연결된 데이터 범위로는 요청 영역의 결과를 확정할 수 없습니다.')
@@ -1163,7 +1185,10 @@ def execute_radius_request(state):
         qec = QueryExecutionContext(request_id=str(state["task_id"]), revision=state.get("execution_revision") or 1, original_query=state.get("query"), route_plan={"analysis_type": OPERATION, "primary_agent": "Spatial Analysis Agent"})
     if problem.status != "FAILED":
         qec.readiness = PlanStatus(problem.status)
-    qec.blockers = [f"{problem.status}: {problem.code}"]
+    # A validated denial can have multiple reasons. Preserve its native receipt
+    # and blockers instead of replacing the evidence with a generic wrapper.
+    if not (qec.provenance.get('execution_validation') and qec.blockers):
+        qec.blockers = [f"{problem.status}: {problem.code}"]
     if problem.status != "FAILED":
         qec.route_plan.update(status=qec.readiness.value, route_plan_status=qec.readiness.value, execution_ready=False)
     try:
@@ -1190,6 +1215,7 @@ def execute_radius_request(state):
         "clarification_questions": [str(problem)] if status == "NEEDS_CLARIFICATION" else [],
         "clarification_options": problem.candidates,
         "structured_result": {"analysis_type": OPERATION, "status": status, "count": None, "returned_count": 0,
+                              "blockers": list(qec.blockers),
                               "nearest_returned_count": 0, "feature_type_breakdown": {},
                               "total_counts_by_type": {}, "returned_counts_by_type": {},
                               "original_query": state.get("query"), "location_text": spatial.get("base_location"),

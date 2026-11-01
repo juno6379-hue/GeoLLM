@@ -26,6 +26,7 @@ def _decision_input(qec):
             "contract_scope": qec.context.get("contract_scope"),
             "security_context_ref": qec.security_context_ref,
             "coverage_validation": qec.provenance.get("coverage_validation"),
+            "request_constraint_validation": qec.provenance.get("request_constraint_validation"),
             "data_bindings": [b.model_dump(mode="json") for b in qec.data_bindings],
             "tool_bindings": [b.model_dump(mode="json") for b in qec.tool_bindings]}
 
@@ -403,7 +404,7 @@ def _rag_profile_available(qec: QueryExecutionContext) -> bool:
     )
 
 
-def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=None) -> QueryExecutionContext:
+def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=None, request_constraints=None) -> QueryExecutionContext:
     """공유 실행계약을 검증하는 결정론적 실행 gate."""
     if qec.route_plan.get("analysis_type") == "uport_query_plan":
         # Keep domain validation behind the same public gate as GeoLLM tools.
@@ -615,6 +616,11 @@ def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=No
 
     from services.orchestrator.spatial_coverage import SPATIAL_OPERATIONS, assess_coverage
     if analysis_type in SPATIAL_OPERATIONS:
+        from services.orchestrator.request_constraints import check_request_constraints
+        request_blockers, request_warnings, request_receipt = check_request_constraints(current, request_constraints)
+        blockers.extend(request_blockers)
+        warnings.extend(request_warnings)
+        current.provenance['request_constraint_validation'] = request_receipt
         receipt = assess_coverage(current, getattr(binding_adapter or schema_binding_adapter, 'layer_registry', {}))
         current.provenance['coverage_validation'] = receipt
         if receipt['status'] in {'OUT_OF_COVERAGE', 'PARTIAL'}:
