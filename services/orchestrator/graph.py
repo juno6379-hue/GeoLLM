@@ -1821,7 +1821,7 @@ def _looks_like_known_place_search(query: str, state: OrchestratorState | None =
 def _place_lookup_update(state, payload, analysis_type="place_lookup"):
     from shapely import wkt
 
-    validated = validate_place_resolution(state["query"], payload, task_id=state["task_id"])
+    validated = validate_place_resolution(state["query"], payload, task_id=state["task_id"], revision=state.get("execution_revision") or 1)
     resolved = is_execution_authorized(validated)
     if payload["status"] == "RESOLVED" and not resolved:
         return execution_gate_failure(state, validated)
@@ -2417,6 +2417,7 @@ def _build_query_execution_context(
         request_id=state.get("task_id"),
         task_id=state.get("task_id"),
         conversation_id=state.get("task_id"),
+        revision=state.get("execution_revision") or 1,
         plan_hash=plan_hash,
         original_query=state.get("query"),
         slots=ExecutionSlots.from_payload(slots),
@@ -3980,6 +3981,7 @@ async def fast_accident_spatial_history_lookup_node(state: OrchestratorState) ->
     qec_model = QueryExecutionContext(
         request_id=task_id,
         task_id=task_id,
+        revision=state.get("execution_revision") or 1,
         original_query=original_query or query,
         normalized_query=state.get("normalized_query"),
         route_plan=route_plan,
@@ -4804,7 +4806,7 @@ async def fast_s101_nearest_feature_execute_node(state: OrchestratorState) -> Or
         "execution_ready": False,
         "route_plan_status": "PLAN_READY",
     }
-    qec_model = QueryExecutionContext(request_id=state["task_id"], original_query=state.get("query"),
+    qec_model = QueryExecutionContext(request_id=state["task_id"], revision=state.get("execution_revision") or 1, original_query=state.get("query"),
         route_plan=route_plan, slots=ExecutionSlots.from_payload(route_plan["slots"]))
     qec_model.slots.filters["k"] = int(config["result_limit"])
     qec_model = await asyncio.to_thread(validate_execution_context, qec_model)
@@ -5030,7 +5032,7 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
         "execution_ready": False,
         "route_plan_status": "PLAN_READY",
     }
-    qec_model = QueryExecutionContext(request_id=state["task_id"], original_query=state.get("query"),
+    qec_model = QueryExecutionContext(request_id=state["task_id"], revision=state.get("execution_revision") or 1, original_query=state.get("query"),
         route_plan=route_plan, slots=ExecutionSlots.from_payload(route_plan["slots"]))
     qec_model.provenance['radius_policy'] = interpretation['distance_source']
     qec_model = await asyncio.to_thread(validate_execution_context, qec_model)

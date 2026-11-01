@@ -19,8 +19,11 @@ from services.orchestrator.intent_shadow import fingerprint, json_request, ranki
 from services.orchestrator.slot_evidence import extract_quantities
 
 router = APIRouter(tags=["intent-comparison"])
+SHADOW_CONTRACT_VERSION = "bounded_scores_with_explicit_abstention_v3"
 PROMPT = """한국어 지도/해양 질의의 의도를 평가한다. 제공한 동일 후보를 모두 한 번씩 평가한다.
-원문과 문맥에 맞는 후보에 높은 점수를 주고 최고 점수 후보를 선택한다. 맞는 후보가 없으면 selected=null.
+원문과 문맥에 맞는 후보에 높은 점수를 준다. 맞는 후보가 없으면 abstain=true, 있으면 abstain=false.
+selected 필드는 생성하지 않는다. 서버가 점수의 유일한 최댓값으로 표시용 후보를 정하며 동점이면 선택을 유보한다.
+점수는 0부터 1까지 0.1 간격의 허용값 중 하나다. 확률이나 보정된 정확도가 아닌 표시용 순위 점수다.
 quote와 location/radius/time 슬롯은 원문에서 그대로 인용하거나 null로 둔다. 좌표, 반경, 시간은 만들지 않는다.
 이동은 지도 위치 이동이다. 분석/예측/필터/복합 작업을 단순 이동으로 대체하지 않는다.
 capabilities에는 제공된 capability id만 쓴다. reason에는 해석과 미충족 작업을 간결하게 설명한다.
@@ -73,10 +76,13 @@ def grounded_schema(query, candidates):
     schema = Judgement.model_json_schema()
     ids = [row["candidate_id"] for row in candidates]
     schema["properties"]["scores"] = {"type": "object", "properties": {
-        key: {"type": "number", "minimum": 0, "maximum": 1} for key in ids},
+        key: {"type": "number", "enum": [n / 10 for n in range(11)]} for key in ids},
         "required": ids, "additionalProperties": False}
     schema.pop("$defs", None)
-    schema["properties"]["selected"] = {"type": ["string", "null"], "enum": [None, *ids]}
+    schema["properties"].pop("selected")
+    schema["required"].remove("selected")
+    schema["properties"]["abstain"] = {"type": "boolean"}
+    schema["required"].append("abstain")
     schema["properties"]["quote"]["enum"] = [query]
     spans = set(re.findall(r"[가-힣A-Za-z0-9_.-]+", query))
     for token in list(spans):
@@ -95,6 +101,36 @@ def grounded_schema(query, candidates):
     if not caps:
         schema["properties"]["capabilities"]["maxItems"] = 0
     return schema
+
+
+def validate_ranked_response(raw, candidates, query):
+    """The scores are the only ranking authority; never amend a model verdict.
+
+    Legacy selected+scores responses retain their strict validator above. New
+    raw responses have no selected field; derivation is explicit and shadow-only.
+    """
+    import jsonschema
+    def unique_members(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("duplicate response member")
+            result[key] = value
+        return result
+    data = json.loads(raw, object_pairs_hook=unique_members)
+    jsonschema.validate(data, grounded_schema(query, candidates))
+    scores = data["scores"]
+    # Reject non-standard JSON numeric constants before deriving a ranking.
+    json.dumps(data, allow_nan=False)
+    maximum = max(scores.values())
+    leaders = sorted(key for key, value in scores.items() if value == maximum)
+    abstain = data.pop("abstain")
+    selected = leaders[0] if not abstain and len(leaders) == 1 else None
+    value = validate(json.dumps({**data, "selected": selected}), candidates, query)
+    return value, {"contract_version": SHADOW_CONTRACT_VERSION,
+                   "origin": "unique_score_argmax", "model_abstained": abstain,
+                   "top_candidates": leaders, "tie_abstention": not abstain and len(leaders) > 1,
+                   "used_for_execution": False, "semantic_accuracy_verified": False}
 
 
 def compare(query, context, progress=None):
@@ -119,6 +155,7 @@ def compare(query, context, progress=None):
                                          for name in ("live_intent_comparison.py", "query_candidate_broker.py", "semantic_prior.py", "intent_shadow.py")},
               "request": request, "request_hash": fingerprint(request), "called": False,
               "accepted": False, "calibration": "UNFITTED", "human_gold": None,
+              "output_contract_version": SHADOW_CONTRACT_VERSION,
               "acceptance_scope": "structure_and_grounding_only", "semantic_review_required": True}
     start = time.monotonic()
     try:
@@ -133,10 +170,8 @@ def compare(query, context, progress=None):
         record["raw_response"] = response
         if not response.get("done") or response.get("done_reason") == "length":
             raise ValueError("incomplete model response")
-        import jsonschema
-        jsonschema.validate(json.loads(response.get("response", "")), schema)
-        value = validate(response.get("response", ""), candidates, query)
-        record.update(accepted=True, judgement=value.model_dump())
+        value, derivation = validate_ranked_response(response.get("response", ""), candidates, query)
+        record.update(accepted=True, judgement=value.model_dump(), selection_derivation=derivation)
         shadow = {"accepted": True, "judgement": {"assessments": [v.model_dump() for v in value.scores],
                   "selected_candidate": value.selected, "out_of_candidates": value.selected is None,
                   "requires_clarification": value.needs_clarification}}

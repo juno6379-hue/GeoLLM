@@ -444,7 +444,7 @@ def execute_traffic_request(state: dict) -> dict:
     from shared.schemas.agent import QueryExecutionContext, ExecutionSlots
     from services.orchestrator.execution_validator import validate_execution_context, is_execution_authorized, project_execution_decision
     from services.orchestrator.schema_binding_adapter import SchemaBindingAdapter
-    qec_model = QueryExecutionContext(request_id=state["task_id"], original_query=state.get("query"),
+    qec_model = QueryExecutionContext(request_id=state["task_id"], revision=state.get("execution_revision") or 1, original_query=state.get("query"),
         route_plan=route_plan, slots=ExecutionSlots.from_payload(route_plan["slots"]))
 
     with psycopg2.connect(_db_url(), connect_timeout=5) as conn:

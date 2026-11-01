@@ -37,7 +37,7 @@ def execute(state):
     if hasattr(spatial,'model_dump'): spatial=spatial.model_dump()
     plan={'intent':'SPATIAL_ANALYSIS','analysis_type':'source_attribute_search',
           'tools':['postgis.dwithin'],'slots':{'source_mappings':mappings},'execution_ready':False}
-    qec=QueryExecutionContext(request_id=state['task_id'], task_id=state['task_id'],
+    qec=QueryExecutionContext(request_id=state['task_id'], task_id=state['task_id'], revision=state.get('execution_revision') or 1,
                               original_query=query, route_plan=plan).model_dump(mode='json')
     qec['execution_status']='NOT_RUN'
     final={'task_id':state['task_id'],'structured_result':{'analysis_type':'source_attribute_search'},
@@ -75,7 +75,7 @@ def execute(state):
         plan.clear()
         plan.update(RoutePlanner().generate_plan(query,slots.model_dump(),None,'source_attribute_search',
                                                 'source_attribute_search','SPATIAL_ANALYSIS'))
-        typed=QueryExecutionContext(request_id=state['task_id'],task_id=state['task_id'],original_query=query,
+        typed=QueryExecutionContext(request_id=state['task_id'],task_id=state['task_id'],revision=state.get('execution_revision') or 1,original_query=query,
             slots=slots,route_plan=plan,context={'location_resolution':resolution},
             semantic_resolution={'source_mappings':mappings},
             snapshot_versions={'mapping_registry_sha256':mapping['registry_sha256'],'fc_sha256':mapping['fc_sha256']})

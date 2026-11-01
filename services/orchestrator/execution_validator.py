@@ -192,7 +192,7 @@ def _validate_lookup(current, adapter):
 
 
 def validate_lookup_request(state, operation, *, slots=None, binding_adapter=None):
-    qec = QueryExecutionContext(request_id=str(state.get("task_id") or "local"), original_query=state.get("query") or "",
+    qec = QueryExecutionContext(request_id=str(state.get("task_id") or "local"), revision=state.get("execution_revision") or 1, original_query=state.get("query") or "",
         slots=ExecutionSlots.from_payload(slots or {}), route_plan={"analysis_type": operation},
         spatial={"spatial_context": state.get("spatial_context") or {}})
     return validate_execution_context(qec, binding_adapter=binding_adapter)
@@ -206,7 +206,8 @@ def validate_agent_execution(request, agent_name):
     scope = policy.get("scope")
     if scope == "inspection":
         current = QueryExecutionContext(request_id=request.task_id, task_id=request.task_id,
-            original_query=request.original_query, route_plan={"analysis_type": policy.get("operation")},
+            original_query=request.original_query, revision=getattr(request.query_execution_context, "revision", 1),
+            route_plan={"analysis_type": policy.get("operation")},
             context={"parent_request_id": getattr(request.query_execution_context, "request_id", None)})
     else:
         current = request.query_execution_context.model_copy(deep=True) if request.query_execution_context else QueryExecutionContext(
@@ -310,10 +311,10 @@ def validate_uport_execution_context(qec, agent, db, selection):
     return _finish(current, blockers, current.warnings)
 
 
-def validate_place_resolution(query, payload, *, task_id=None):
+def validate_place_resolution(query, payload, *, task_id=None, revision=1):
     """Resolved server evidence permits display only; never promotes analysis authority."""
     resolution = payload.get("location_resolution") or {}
-    qec = QueryExecutionContext(request_id=task_id, original_query=query,
+    qec = QueryExecutionContext(request_id=task_id, revision=revision, original_query=query,
         route_plan={"analysis_type": "place_lookup"},
         slots=ExecutionSlots(reference_geometry=payload.get("geometry"), crs=payload.get("crs"),
                              location_text=payload.get("location_text"), analysis_type="place_lookup"),

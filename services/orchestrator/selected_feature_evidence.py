@@ -64,7 +64,7 @@ def execute(state):
                                    feature_instance_ref={'id': int(identifier), 'source_ref': source})
             plan = RoutePlanner().generate_plan(state['query'], slots.model_dump(), None,
                                                'selected_map_feature', 'selected_feature_lookup', 'SPATIAL_ANALYSIS')
-            typed_context = QueryExecutionContext(request_id=state['task_id'], task_id=state['task_id'],
+            typed_context = QueryExecutionContext(request_id=state['task_id'], task_id=state['task_id'], revision=state.get('execution_revision') or 1,
                 original_query=state['query'], slots=slots, route_plan=plan,
                 context={'resolution_source': 'request.spatial_context.selected_feature', 'selected_feature_id': int(identifier)},
                 semantic_resolution={'required_outputs': required_outputs(state['query'])})

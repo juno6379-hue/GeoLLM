@@ -125,6 +125,8 @@ def test_actual_transport_contract_keeps_rule_model_mix_separate(monkeypatch, fa
         if failure:
             raise TimeoutError("model timed out")
         answer = judgement()
+        answer.pop("selected")
+        answer["abstain"] = False
         answer["scores"] = {row["candidate_id"]: row["score"] for row in answer["scores"]}
         return {"done": True, "response": json.dumps(answer)}
 

@@ -143,7 +143,7 @@ def guard_result(state: dict, analysis: dict, problem: dict) -> dict:
             'execution_ready': False, 'tools': [], 'clarification_required': status == 'NEEDS_CLARIFICATION'}
     from shared.schemas.agent import QueryExecutionContext, PlanStatus
     readiness = PlanStatus.NEEDS_USER_INPUT if status == 'NEEDS_CLARIFICATION' else PlanStatus.BLOCKED_CONFIG
-    context = QueryExecutionContext(request_id=state['task_id'], original_query=state.get('query'),
+    context = QueryExecutionContext(request_id=state['task_id'], revision=state.get('execution_revision') or 1, original_query=state.get('query'),
                                     route_plan=plan, readiness=readiness,
                                     blockers=[problem['code']], provenance={'execution_status': 'NOT_RUN'}).model_dump(mode='json')
     context['execution_status'] = 'NOT_RUN'
