@@ -38,11 +38,11 @@ def prompt_for(query, packet, method, spatial_context=None):
             +'\nEvidence reference IDs: '+json.dumps([s.get('locator',s.get('path','')) for s in packet['sources']],ensure_ascii=False)
             +('\nGeneric tool descriptions (planning only): '+json.dumps(TOOLS) if method=='B3' else ''))
 
-def call_model(prompt, *, model, seed, max_tokens, timeout=180):
+def call_model(prompt, *, model, seed, max_tokens, timeout=180, response_schema=None):
     options={'temperature':0.2,'seed':seed,'num_predict':max_tokens,'num_ctx':8192}
-    payload={'model':model,'prompt':prompt,'format':'json','stream':False,'options':options,'keep_alive':'5m'}
+    payload={'model':model,'prompt':prompt,'format':response_schema if response_schema is not None else 'json','stream':False,'options':options,'keep_alive':'5m'}
     start=time.perf_counter()
-    result={'prompt':prompt,'options':options,'input_tokens':None,'output_tokens':None,'raw_response':None}
+    result={'prompt':prompt,'options':options,'format':payload['format'],'input_tokens':None,'output_tokens':None,'raw_response':None}
     try:
         req=urllib.request.Request('http://127.0.0.1:11434/api/generate',data=json.dumps(payload).encode(),headers={'Content-Type':'application/json'})
         with urllib.request.urlopen(req,timeout=timeout) as response:

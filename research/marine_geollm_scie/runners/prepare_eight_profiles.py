@@ -45,7 +45,7 @@ def prepare(snapshot_path, output, benchmark):
         'reference_geometries':refs,'coverage':coverage,
         'input_policy':'Same source registry supplied to every method; no per-case geometry substitution or answer injection.',
         'experiment_note':'Fresh GOLD v2 eight-method K1 after reliability changes; not old K5 reuse or equal-compute comparison.'}
-    contract_path=ROOT/'research/marine_geollm_scie/protocol/eight_execution_contract_v3.json'
+    contract_path=ROOT/'research/marine_geollm_scie/protocol/eight_execution_contract_v4.json'
     contract=json.loads(contract_path.read_text(encoding='utf-8'))
     if not any(x['path']==contract_path.relative_to(ROOT).as_posix() and x['sha256']==digest(contract_path)
                for x in snapshot['files']):

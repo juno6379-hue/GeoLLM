@@ -17,7 +17,8 @@ def test_existing_snapshot_never_overwritten(tmp_path):
 
 
 def test_review_and_measurement_contracts_are_frozen(tmp_path):
-    expected = {'structured_review_v1.json', 'eight_execution_contract_v3.json',
+    expected = {'structured_review_v1.json', 'structured_review_v2.json',
+                'eight_execution_contract_v3.json', 'eight_execution_contract_v4.json',
                 'execution_success_v3_20261101_KR.md'}
     folder = tmp_path/'research/marine_geollm_scie/protocol'
     folder.mkdir(parents=True)
