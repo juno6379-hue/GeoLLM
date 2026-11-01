@@ -1,6 +1,15 @@
 # GeoLLM 현재 상태와 다음 작업
 
 
+## 2026-11-01 v5 최종 관측·교차검증 완료
+
+- v5 22:58:01 KST COMPLETED_OBSERVATIONS/DONE, 약75분29초. 144+fault27, 모든단계exit0, 부모41660/비교42368 종료. [최신 한글 결과](../../research/marine_geollm_scie/protocol/eight_results_v5_20261101_KR.md), [통합 보고서](../../research/marine_geollm_scie/runs/20261101_gold_v2_eight_k1_v5/report_with_faults/comparison_KR.md).
+- 주검증144raw/27fault/281동결소스/v4보존418파일/공통ESR분모·완료gate/modeldigest사후통과. outputs/gold_v2_eight_v5_final_verification_20261101.json. 별도읽기전용감사18군초기계획/B4H검토hash/P0lossless17+초기무효1/검토17+9stop·schema일치. v4 IndexError 재발없음.
+- 그러나LLM검토오류8/8정상판정은남음. P0/H8/8차단(native7+compiler1), 정상1허용. B4/H복구각3/6공동성공은빈Oracle일치제한. 기계계약P1 8/18, B3/B4/P0/H각2/14측정, B0/B1 0/15, B2 0/14.
+- P1 ESR/SCR적격3/5·성공중silent0/3은Q4표현변형군. 전체실제SQL성공은4건: Q5_03독도도SQL1회실행해PARTIAL/NO_EVIDENCE(returned0,countnull). 실세계0확정은안했지만범위부족실행전차단실패. ESR분모제외여서안전중단성과와반드시별도보고.
+- 다음우선: 운영coverage원천선언·실행전차단→canonical/nearest/복합완결성→LLM계획/검토의미오류·비어있지않은복구개발→독립인간GOLD/반복. 전체시스템/인간정확도/RQ완료false. 코드변경시새동결전체run, v3/v4/v5원본보존. 운영UI/feedback/dirtytest보존.
+- 이번실험보고·인계완료로heartbeat ID geollm-gold-v2-eight-v4(v5점검) 삭제한다. 관련문서로컬커밋, 새push요청없어push미수행. runs원본은Git미추적.
+
 ## 2026-11-01 v4 검토 호출 전 결함 수정·v5 새 동결 재실행
 
 - v4는21:28:57 KST 144관측후report gate STOPPED_REQUIRES_REVIEW. B4/H17문항에서SHARED_REVIEW_MISMATCH, fault27미실행. typedtoolprompt교체후이전문구split이남아 모델호출전IndexError, reviewraw0건. 모델검토판단실패로해석금지. v4 418파일hash불변 outputs/v4_stopped_audit_20261101/preserved_hashes.json.

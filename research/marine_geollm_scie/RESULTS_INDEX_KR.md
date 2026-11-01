@@ -4,7 +4,7 @@
 
 | 구분 | 폴더/파일 | 현재 해석 |
 |---|---|---|
-| 진행 중 v5 | [실행 상태](runs/20261101_gold_v2_eight_k1_v5/status.json), [수정 원인·조건](protocol/eight_execution_v5_20261101_KR.md) | 검토 호출 전 harness 결함 수정 후 새 전체 실행. 최종 결과 아님 |
+| 최신 완료 v5 | [결과·한계](protocol/eight_results_v5_20261101_KR.md), [통합 보고서](runs/20261101_gold_v2_eight_k1_v5/report_with_faults/comparison_KR.md) | 144+27관측·무결성 검증 완료. LLM 의미 오류/범위 차단·독립GOLD 미완료 |
 | 중단 원본 v4 | [실행 상태](runs/20261101_gold_v2_eight_k1_v4/status.json) | 144수집 후 공유 검토 gate 실패. 17문항 검토 미호출·fault미실행, 완성된 비교로 인용 금지 |
 | 최신 재실행 v3 | [결과 해설](protocol/eight_results_v3_20261101_KR.md), [통합 보고서](runs/20261101_gold_v2_eight_k1_v3/report_with_faults/comparison_KR.md) | 144+27관측 완료·무결성 검증. 공통 실행 성공 v3 적용. 독립 GOLD/전체 논문 결론 미완료 |
 | 최신 8방법 v2 실행 | [runs/20261101_gold_v2_eight_k1_v2](runs/20261101_gold_v2_eight_k1_v2) | 관측144+fault27 완료. 독립 GOLD/RQ 전체 결론은 미완료 |
