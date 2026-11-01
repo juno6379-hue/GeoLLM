@@ -1,6 +1,16 @@
 # GeoLLM 현재 상태와 다음 작업
 
 
+## 2026-11-01 우선순위 보완·새 v4 실행 중 — 최신 인계
+
+- 사용자 계속진행 승인으로 운영eb8856a/연구5accd72/조건ea51ca0 분리 커밋. 하위에이전트3명이 구현중usage limit으로중단해 주검증자가남은코드검토·통합102tests 및실제개발/API검증을수행했다. 이후독립교차검증은미완료로구분한다. [수정·한계](priority_repairs_20261101.md).
+- 운영 revision누락전달수정: 실제NEEDS_CLARIFICATION→동일task재개COMPLETED 최종QEC revision2 확인. 정상공간검색18건. shadow selected/score중복생성제거후 점수2범위위반 발견·실패보존, 후속0~1의0.1enum 표시계약 적용후실제API shadow COMPLETED. 원본 outputs/priority_runtime_20261101_v1/v2. 후속41tests 통과. 실행authority/보정확률승격없음.
+- 연구 typedB3구문제약·review initial_checks 추가. 그러나1.5b개발review4건은오류3도모두정상판정, typedB3개발2건도잘못된도구/답변의미 남음. 의미오류해결주장금지. nonempty독립Oracle3feature와수작업엔진실행일치확인(모델생성성공아님). 첫개발harness인자누락원문미보존실패는별도기록, v2는원문선저장. 신규freeze계약4tests통과.
+- 별도7B개발후보 outputs/review_model_candidate_7b_20261101_v1: 정상180초timeout, 대상불일치1건invalid=true/targetfail이나 reference추가fail. 정상정확도/지연안정성미확인, 공식1.5b조건으로교체안함. 후보개발을논문점수에합산금지.
+- 새run `research/marine_geollm_scie/runs/20261101_gold_v2_eight_k1_v4/status.json`, 시작부모41416, 20:39:05 KST. snapshot outputs/scie_gold_v2_eight_snapshot_20261101_v4. [v4조건](../../research/marine_geollm_scie/protocol/eight_execution_v4_20261101_KR.md). 상태는실제PID/status/단계로그우선. 8방법144+fault27 전체재실행, 이전v3raw144hash불변확인. 모델·소스·GOLD·입력·예산변경/추가API·Ollama/중복worker금지.
+- 다음:6관계·모델digest·새계약freeze검증→P1→8방법→fault→최종보고서/rawhash/공통ESR검증. 실패시원본보존/재현/수정테스트, 코드변경시새전체run. 운영coverage/canonical/nearest/복합완결성·인간GOLD·반복은미완료이며실험완료와구분.
+- heartbeat geollm-gold-v2-eight-v4 30분점검활성, 의미있는완료/실패/조치만알림. 보고서·인계완료후삭제. UI/feedback/기존dirtytest 보존. GitHub는로컬커밋만이며새push명시요청없어미수행. raw runs는Git미추적.
+
 ## 2026-11-01 새 동결 v3 관측·최종 검증 완료
 
 - v3 `runs/20261101_gold_v2_eight_k1_v3` 10:42:10 KST COMPLETED_OBSERVATIONS/DONE, 약71분30초. 8방법144+fault27, 모든단계exit0. 부모39724/비교12320 종료. [최신 결과·제한](../../research/marine_geollm_scie/protocol/eight_results_v3_20261101_KR.md), [통합 보고서](../../research/marine_geollm_scie/runs/20261101_gold_v2_eight_k1_v3/report_with_faults/comparison_KR.md).

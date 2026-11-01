@@ -4,6 +4,7 @@
 
 | 구분 | 폴더/파일 | 현재 해석 |
 |---|---|---|
+| 진행 중 v4 | [실행 상태](runs/20261101_gold_v2_eight_k1_v4/status.json), [동결 조건](protocol/eight_execution_v4_20261101_KR.md) | 운영 revision/shadow·연구 typed plan/review 수정 후 새 전체 실행. 최종 결과 아님 |
 | 최신 재실행 v3 | [결과 해설](protocol/eight_results_v3_20261101_KR.md), [통합 보고서](runs/20261101_gold_v2_eight_k1_v3/report_with_faults/comparison_KR.md) | 144+27관측 완료·무결성 검증. 공통 실행 성공 v3 적용. 독립 GOLD/전체 논문 결론 미완료 |
 | 최신 8방법 v2 실행 | [runs/20261101_gold_v2_eight_k1_v2](runs/20261101_gold_v2_eight_k1_v2) | 관측144+fault27 완료. 독립 GOLD/RQ 전체 결론은 미완료 |
 | 보존된 v1 실패 | [runs/20261101_gold_v2_eight_k1_v1](runs/20261101_gold_v2_eight_k1_v1) | P1 18건 후 comparison10행에서 harness TypeError 중단. 완성 비교 아님 |
