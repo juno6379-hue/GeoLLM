@@ -1,6 +1,14 @@
 # GeoLLM 현재 상태와 다음 작업
 
 
+## 2026-11-01 새 동결 v3 관측·최종 검증 완료
+
+- v3 `runs/20261101_gold_v2_eight_k1_v3` 10:42:10 KST COMPLETED_OBSERVATIONS/DONE, 약71분30초. 8방법144+fault27, 모든단계exit0. 부모39724/비교12320 종료. [최신 결과·제한](../../research/marine_geollm_scie/protocol/eight_results_v3_20261101_KR.md), [통합 보고서](../../research/marine_geollm_scie/runs/20261101_gold_v2_eight_k1_v3/report_with_faults/comparison_KR.md).
+- 주검증144rawhash/278동결파일/이전v2·GOLD505파일/27fault계약·Oracle/완료gate 및8방법동일5공간case분모 통과. outputs/gold_v2_eight_v3_final_verification_20261101.json. 독립에이전트18공유plan·B4/H공유review·P0lossless17+초기실패1 보존 확인. 모델digest사후/graphwarmup검사 통과.
+- review 주비교17/17+fault9/9 schema/stop 통과. 그러나 fault LLM verdict는오류8/8정상판정(FalseReady8/8). P0는기존누락4포함8차단(native7+compiler1), 정상1승인. H도8차단. B4/H 복구6시도중공동성공3이며 독립Oracle빈집합일치라는제한. 형식수정과검출정확도개선을혼동하지않는다.
+- 공통v3 ESR P1 3/5, 공간정답3/5, 성공중silentfailure0/3; 다른7방법ESR0/5. P1성공3건동일표현변형군. 기계계약P1 8/18, B3 2/14측정, 나머지0이며미측정보존. 인간정확도/production승인/RQ전체완료false.
+- 다음우선: LLM verdict와수정안불일치/초기계획실패 분석→운영coverage/canonical/nearest/복합완결성·revision/shadow 보완→독립GOLD수령·반복실험. 원본결과덮기금지, 코드변경시새동결전체run. 운영UI/feedback/기존dirty테스트보존. 보고서·인계완료로 heartbeat geollm-gold-v2-eight-v3 종료. push요청없음.
+
 ## 2026-11-01 요청 제약·검토 형식·공통 ESR 수정 후 새 동결 v3 실행 중
 
 - 최신 실행 `research/marine_geollm_scie/runs/20261101_gold_v2_eight_k1_v3/status.json`, 부모39724, graph 자식2496. 09:30:40 KST 시작, freeze/profiles exit0 후 P1 graph 실행 중. 실제 PID/status 우선 확인. 최종 결과 완료 아님.
