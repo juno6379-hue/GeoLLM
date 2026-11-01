@@ -67,6 +67,28 @@ def make_prompt(case,packet,profile,*,tools):
     return text+'\n'+TOOL_INSTRUCTIONS
 
 
+def review_candidate(candidate, *, case, packet, profile, model, seed, artifact, calls):
+    """Share the public tool contract directly, preserving even callback failures.
+
+    A failure receipt is evidence of a failed review, never an approval or a
+    replacement model prediction. B4/H reference this same immutable artifact.
+    """
+    try:
+        context=dict(public_context(profile,case),evidence=packet['evidence_text'],
+                     tool_contract=TOOL_INSTRUCTIONS)
+        reviewed,review,problems=call_review(case['query'],context,candidate,
+                                          model=model,seed=seed)
+    except Exception as exc:
+        save_new(artifact,{'call':None,'review':None,'errors':['REVIEW_CALLBACK_EXCEPTION'],
+                           'error_type':type(exc).__name__,'error':str(exc)})
+        raise
+    calls.append(reviewed)
+    save_new(artifact,{'call':reviewed,'review':review,'errors':problems})
+    if review is None:
+        raise ValueError('INVALID_REVIEW_RESPONSE')
+    return {'plan':review['plan'],'call':reviewed}
+
+
 
 def costs(calls,execution,elapsed):
     def total(key):
@@ -264,14 +286,8 @@ def run(output,profile_path,benchmark,*,execute=False,inputs=None,p1_rows=None):
             frozen=freeze_initial(initial,case_id=case['case_id'],repeat=0,plan=plan,generation=call)
             review_calls=[]
             def reviewer(candidate):
-                review_context=dict(public_context(profile,case),evidence=packet['evidence_text'],
-                    tool_contract=prompt.split('Available read-only tools, each explicit call executes once:',1)[1])
-                reviewed,review,problems=call_review(case['query'],review_context,candidate,
-                    model=model,seed=seed)
-                review_calls.append(reviewed)
-                save_new(directory/'review_call_raw.json',{'call':reviewed,'review':review,'errors':problems})
-                if review is None:raise ValueError('INVALID_REVIEW_RESPONSE')
-                return {'plan':review['plan'],'call':reviewed}
+                return review_candidate(candidate,case=case,packet=packet,profile=profile,
+                    model=model,seed=seed,artifact=directory/'review_call_raw.json',calls=review_calls)
             branch_rows=run_branches(initial,directory/'paired',reviewer=reviewer,validator=validator,
                                     executor=executor.execute,query=case['query'])
             review_path=directory/'review_call_raw.json'
