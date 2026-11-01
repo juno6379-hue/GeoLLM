@@ -1,0 +1,144 @@
+{
+  "version": "structured_review_v1",
+  "schema_sha256": "82a1a3801838d8c1419e3774190ca79f7a9ba2245f76452067b5f93a6f59bbfc",
+  "schema": {
+    "type": "object",
+    "required": [
+      "invalid",
+      "reason",
+      "plan"
+    ],
+    "properties": {
+      "invalid": {
+        "type": "boolean"
+      },
+      "reason": {
+        "type": "string"
+      },
+      "plan": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "intent",
+          "target_features",
+          "attributes",
+          "spatial_relation",
+          "location_text",
+          "radius_m",
+          "crs",
+          "tool_calls",
+          "evidence_refs",
+          "missing_inputs",
+          "answer"
+        ],
+        "properties": {
+          "action": {
+            "enum": [
+              "explain",
+              "search",
+              "clarify",
+              "unsupported"
+            ]
+          },
+          "intent": {
+            "type": "string"
+          },
+          "target_features": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "attributes": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "spatial_relation": {
+            "enum": [
+              "none",
+              "dwithin",
+              "within",
+              "intersects",
+              "nearest",
+              "adjacent",
+              "covers"
+            ]
+          },
+          "location_text": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "radius_m": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "crs": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tool_calls": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "tool_id",
+                "arguments"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "tool_id": {
+                  "type": "string"
+                },
+                "arguments": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "missing_inputs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "answer": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "additionalProperties": false
+  },
+  "budget": {
+    "model_calls_per_review": 1,
+    "max_output_tokens": 768,
+    "timeout_seconds": 180,
+    "temperature": 0.2,
+    "num_ctx": 8192,
+    "retries": 0
+  },
+  "transport": "POST /api/generate format=JSON_SCHEMA",
+  "completion_gate": "status=completed AND done=true AND done_reason=stop AND strict schema valid",
+  "branch_sharing": "one call and one reviewed plan shared by B4 and H",
+  "verdict": "explicit model invalid on INITIAL plan; never derived from repaired plan",
+  "repair_policy": "no synthetic envelope, no retry, no missing reference/source invention",
+  "official_sources": [
+    "https://docs.ollama.com/api/generate",
+    "https://docs.ollama.com/capabilities/structured-outputs"
+  ]
+}

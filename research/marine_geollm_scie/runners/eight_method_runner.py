@@ -15,13 +15,14 @@ from ..baselines.v2_runtime import ObservedDatabase,V2Executor,validator_for
 from ..baselines.v2_answer_projection import render
 from .matched_branches import freeze_initial,run_branches,save_new,plan_hash
 from .freeze_v2_benchmark import verify
+from .structured_review import call_review
 
 ROOT=Path(__file__).resolve().parents[3]
 METHODS=('B0','B1','B2','B3','B4','P0','H','P1')
 V2_PLAN_SCHEMA=copy.deepcopy(PLAN_SCHEMA)
 V2_PLAN_SCHEMA['properties']['spatial_relation']['enum'].append('covers')
 NO_SPATIAL={'observation_complete':True,'execution_attempted':False,'execution_started':False,
-            'tool_called':False,'sql_executed':False,'execution_succeeded':None,
+            'tool_called':False,'sql_executed':False,'execution_succeeded':False,
             'scope':'SPATIAL_EXECUTION_ONLY'}
 
 
@@ -224,7 +225,6 @@ def run(output,profile_path,benchmark,*,execute=False,inputs=None,p1_rows=None):
     executor=V2Executor(ObservedDatabase(),catalogue=ROOT/profile['catalogue']['path'],
         catalogue_sha256=profile['catalogue']['sha256'],anchors=profile.get('anchors',[]),
         coverage=profile.get('coverage',{}),reference_geometries=profile.get('reference_geometries',{}))
-    validator=validator_for(executor)
     model=profile['model'];seed=profile.get('seed',42)
     rows=[];manifest['status']='RUNNING';state()
     def emit(row,raw_path):
@@ -240,6 +240,7 @@ def run(output,profile_path,benchmark,*,execute=False,inputs=None,p1_rows=None):
         print(f"{len(rows)}/144 {row['case_id']} {row['method']} {row.get('status')}",flush=True)
     for case in cases:
         ensure_identity(profile,benchmark);model_digest(profile)
+        validator=validator_for(executor,query=case['query'],spatial_context=case.get('spatial_context'))
         directory=output/case['case_id'];directory.mkdir()
         for method in ('B0','B1','B2','B3'):
             start=time.perf_counter()
@@ -274,14 +275,14 @@ def run(output,profile_path,benchmark,*,execute=False,inputs=None,p1_rows=None):
             frozen=freeze_initial(initial,case_id=case['case_id'],repeat=0,plan=plan,generation=call)
             review_calls=[]
             def reviewer(candidate):
-                reviewed=call_model(prompt+'\nReview the following frozen initial plan against the same request and source inputs. '
-                    'Return the full corrected plan JSON, preserving meaning and missing values:\n'+json.dumps(candidate,ensure_ascii=False),
-                    model=model,seed=seed,max_tokens=768,timeout=180)
+                review_context=dict(public_context(profile,case),evidence=packet['evidence_text'],
+                    tool_contract=prompt.split('Available read-only tools, each explicit call executes once:',1)[1])
+                reviewed,review,problems=call_review(case['query'],review_context,candidate,
+                    model=model,seed=seed)
                 review_calls.append(reviewed)
-                revised,ok,problems=parse_candidate(reviewed.get('raw_response'))
-                save_new(directory/'review_call_raw.json',{'call':reviewed,'errors':problems})
-                if not ok:raise ValueError('INVALID_REVIEW_RESPONSE')
-                return {'plan':revised,'call':reviewed}
+                save_new(directory/'review_call_raw.json',{'call':reviewed,'review':review,'errors':problems})
+                if review is None:raise ValueError('INVALID_REVIEW_RESPONSE')
+                return {'plan':review['plan'],'call':reviewed}
             branch_rows=run_branches(initial,directory/'paired',reviewer=reviewer,validator=validator,
                                     executor=executor.execute,query=case['query'])
             review_path=directory/'review_call_raw.json'

@@ -45,6 +45,13 @@ def prepare(snapshot_path, output, benchmark):
         'reference_geometries':refs,'coverage':coverage,
         'input_policy':'Same source registry supplied to every method; no per-case geometry substitution or answer injection.',
         'experiment_note':'Fresh GOLD v2 eight-method K1 after reliability changes; not old K5 reuse or equal-compute comparison.'}
+    contract_path=ROOT/'research/marine_geollm_scie/protocol/eight_execution_contract_v3.json'
+    contract=json.loads(contract_path.read_text(encoding='utf-8'))
+    if not any(x['path']==contract_path.relative_to(ROOT).as_posix() and x['sha256']==digest(contract_path)
+               for x in snapshot['files']):
+        raise ValueError('Execution contract must be included in the new source freeze')
+    common['execution_contract']={'path':contract_path.relative_to(ROOT).as_posix(),
+                                  'sha256':digest(contract_path),'version':contract['version']}
     for profile in (baseline,model):profile.update(common)
     model['snapshot_manifest_sha256']=digest(snapshot_path)
     output.mkdir(parents=True,exist_ok=False)
@@ -73,6 +80,7 @@ def prepare(snapshot_path, output, benchmark):
         'source_snapshot_sha256':digest(snapshot_path),
         'benchmark_inputs_sha256':digest(output/'common_inputs.jsonl'),
         'method_definitions_sha256':digest(benchmark/'comparison_protocol.json')}
+    baseline['execution_identity']['execution_contract_sha256']=digest(contract_path)
     (output/'baseline_profile.json').write_text(json.dumps(baseline,ensure_ascii=False,indent=2),encoding='utf-8')
     (output/'manifest.json').write_text(json.dumps({'contains_gold_answers':False,
         'reference_is_input_not_spatial_gold':True,'files':{p.name:digest(p) for p in output.iterdir()},

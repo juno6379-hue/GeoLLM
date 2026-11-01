@@ -23,6 +23,11 @@ def execution_files(root=ROOT):
         files.update((root / folder).rglob('*.py'))
     for suffix in ('*.yaml', '*.yml'):
         files.update((root/'data').glob(suffix))
+    for name in ('structured_review_v1.json', 'eight_execution_contract_v3.json',
+                 'execution_success_v3_20261101_KR.md'):
+        path = root/'research/marine_geollm_scie/protocol'/name
+        if path.is_file():
+            files.add(path)
     return sorted(files)
 
 

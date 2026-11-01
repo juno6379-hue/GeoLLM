@@ -4,6 +4,7 @@ Installs only in a dedicated sequential process. Metadata/document SQL is
 recorded separately; SQL text/parameters are never retained. External GIS and
 subprocess execution are not certified by this observer.
 """
+from research.marine_geollm_scie.evaluation.execution_semantics import canonical_trace
 import hashlib
 import re
 import sys
@@ -172,12 +173,12 @@ class SpatialExecutionObserver:
         completed=[e for e in self.events if e['kind']=='sql_completed' and e.get('sql_kind')=='SPATIAL_SQL']
         failed=[e for e in self.events if e['kind']=='sql_failed' and e.get('sql_kind')=='SPATIAL_SQL']
         tool=any(e['kind']=='spatial_tool_called' for e in self.events)
-        complete=self.complete and not self.instrumentation_issues
+        complete=self.complete and not self.instrumentation_issues and len(submitted)==len(completed)+len(failed)
         def observed(value):return value if value or complete else None
         # Successful DBAPI submission is not a correct spatial answer. A known
         # SQL failure is false; no spatial SQL is non-execution (success false).
         succeeded=(False if failed else bool(submitted) and len(completed)==len(submitted)) if complete else None
-        return {'version':'research_spatial_execution_observer_v2','task_id':self.task_id,
+        return canonical_trace({'version':'research_spatial_execution_observer_v2','task_id':self.task_id,
             'observation_complete':complete,'scope':'LOCAL_INSTRUMENTED_SPATIAL_TOOLS_SQLALCHEMY_AND_PSYCOPG2',
             'execution_attempted':observed(tool or bool(submitted)),
             'execution_started':observed(bool(submitted)), 'tool_called':observed(tool),
@@ -188,4 +189,4 @@ class SpatialExecutionObserver:
             'limitations':['External GIS, pre-imported direct connect aliases and uninstrumented drivers are outside scope; dedicated isolated worker required.',
                           'execution_attempted includes spatial tool invocation; execution_started/sql_executed denote spatial SQL submission, including failed SQL.',
                           'execution_succeeded denotes submitted spatial SQL completion, not object/evidence correctness.'],
-            'events':self.events}
+            'events':self.events})

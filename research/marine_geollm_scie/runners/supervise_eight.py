@@ -14,6 +14,19 @@ import sys
 ROOT=Path(__file__).resolve().parents[3]
 
 
+def verify_execution_measurement(summary):
+    """An observation count cannot certify cross-method measurement parity."""
+    if summary.get('execution_semantics_version') != 'spatial_execution_semantics_v3':
+        raise RuntimeError('Common execution-success definition not verified')
+    methods = summary.get('overall_by_method', {})
+    if set(methods) != {'B0','B1','B2','B3','B4','P0','H','P1'}:
+        raise RuntimeError('Eight methods required for execution measurement')
+    memberships = {tuple(sorted(item.get('spatial_eligible_case_ids', []))) for item in methods.values()}
+    denominators = {item.get('execution_success_all_eligible', {}).get('denominator') for item in methods.values()}
+    if len(memberships) != 1 or not next(iter(memberships)) or len(denominators) != 1 or None in denominators:
+        raise RuntimeError('Execution-success membership or denominators differ by method')
+
+
 def run(output, snapshot_output, *, include_faults=False):
     output=Path(output).resolve();snapshot_output=Path(snapshot_output).resolve()
     output.mkdir(parents=True,exist_ok=False)
@@ -54,6 +67,7 @@ def run(output, snapshot_output, *, include_faults=False):
         summary=json.loads((output/'report/summary.json').read_text(encoding='utf-8'))
         if not summary['completion_gate']['observation_comparison_complete']:
             raise RuntimeError('Observation/report completion gate failed; preserve all rows')
+        verify_execution_measurement(summary)
         if include_faults:
             stage('faults','research.marine_geollm_scie.runners.eight_fault_recovery',
                   '--profile',profiles/'baseline_profile.json','--benchmark',benchmark,'--output',output/'faults','--execute')

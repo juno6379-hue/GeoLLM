@@ -2,6 +2,8 @@
 from copy import deepcopy
 from research.marine_geollm_scie.runners.execution_report import normalized_production
 
+from .execution_semantics import canonical_trace
+
 TRACE_FIELDS = ('execution_attempted', 'execution_started', 'tool_called', 'sql_executed', 'execution_succeeded')
 
 
@@ -10,12 +12,7 @@ def normalized_trace(row):
     if not isinstance(raw, dict):
         return {'observation_complete':False, **{key:None for key in TRACE_FIELDS},
                 'mapping_errors':['execution_observation must be an object'], 'raw_observation':deepcopy(raw)}
-    complete = raw.get('observation_complete') is True
-    trace = {'observation_complete': complete, 'scope': raw.get('scope'),
-             'limitations': deepcopy(raw.get('limitations', []))}
-    for key in TRACE_FIELDS:
-        value = raw.get(key)
-        trace[key] = value if isinstance(value, bool) and (complete or value is True) else None
+    trace = canonical_trace(raw)
     # The legacy observer covers all SQLAlchemy calls, not spatial SQL alone.
     # Retain its observations as legacy evidence, but do not silently certify
     # complete GIS coverage when direct DBAPI/external GIS were unobserved.

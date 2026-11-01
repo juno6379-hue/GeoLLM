@@ -7,6 +7,7 @@ import subprocess
 import time
 from shapely import wkt
 from shapely.geometry import mapping
+from research.marine_geollm_scie.evaluation.execution_semantics import canonical_trace
 from .execution_dsl import Executor, ResearchDatabase, SOURCES, ToolBlocked
 
 OPERATIONS = {'dwithin':'feature_search_by_radius', 'nearest':'nearest_feature',
@@ -175,11 +176,11 @@ class V2Executor(Executor):
         spatial=[x for x in events if x['scope']=='spatial']
         calls=[x for x in result.get('receipts',[]) if x['tool_id']=='spatial.query']
         sql_observed=True if any(x.get('sql_executed') is True or x.get('succeeded') is True for x in spatial) else None if spatial else False
-        result['execution_observation']={'observation_complete':True,
+        result['execution_observation']=canonical_trace({'observation_complete':not spatial or all(type(x.get('succeeded')) is bool for x in spatial),
             'execution_attempted':bool(calls) or bool(spatial),'tool_called':bool(calls),
             'execution_started':sql_observed,'sql_executed':sql_observed,
-            'execution_succeeded':True if spatial and all(x.get('succeeded') is True for x in spatial) else None,
-            'scope':'SPATIAL_EXECUTION_ONLY; metadata and document SQL separately recorded','db_events':events}
+            'execution_succeeded':all(x.get('succeeded') is True for x in spatial) if spatial and all(type(x.get('succeeded')) is bool for x in spatial) else False if not spatial else None,
+            'scope':'SPATIAL_EXECUTION_ONLY; metadata and document SQL separately recorded','db_events':events})
         return result
 
 
@@ -222,8 +223,12 @@ class ResearchBindingAdapter:
         return out
 
 
-def validator_for(executor):
+def validator_for(executor, *, query=None, spatial_context=None):
     from services.orchestrator.execution_validator import validate_execution_context
+    from services.orchestrator.request_constraints import capture_request_constraints
+    # Capture public request input before any candidate/reviewer can change it.
+    # This verifies a candidate, never supplies missing fields to its QEC.
+    constraints = capture_request_constraints(query, spatial_context) if query is not None else None
     def validate(qec):
         # Explicit symbol dereference is binding verification, never selection.
         if qec.slots.geometry_ref and not qec.slots.reference_geometry:
@@ -234,6 +239,6 @@ def validator_for(executor):
                     'source_sha256':ref.get('source_sha256'),'selection_performed':False}
         if qec.route_plan.get('analysis_type')=='public_catalogue_document_lookup':
             from services.orchestrator.schema_binding_adapter import SchemaBindingAdapter
-            return validate_execution_context(qec,binding_adapter=SchemaBindingAdapter())
-        return validate_execution_context(qec,binding_adapter=ResearchBindingAdapter(executor))
+            return validate_execution_context(qec,binding_adapter=SchemaBindingAdapter(),request_constraints=constraints)
+        return validate_execution_context(qec,binding_adapter=ResearchBindingAdapter(executor),request_constraints=constraints)
     return validate

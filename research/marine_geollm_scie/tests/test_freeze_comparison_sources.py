@@ -16,6 +16,16 @@ def test_existing_snapshot_never_overwritten(tmp_path):
         module.freeze(tmp_path/'absent.json',tmp_path)
 
 
+def test_review_and_measurement_contracts_are_frozen(tmp_path):
+    expected = {'structured_review_v1.json', 'eight_execution_contract_v3.json',
+                'execution_success_v3_20261101_KR.md'}
+    folder = tmp_path/'research/marine_geollm_scie/protocol'
+    folder.mkdir(parents=True)
+    for name in expected | {'unrelated_notes.md'}:
+        (folder/name).write_text('{}')
+    assert {p.name for p in module.execution_files(tmp_path)} == expected
+
+
 def test_nonresearch_parent_rejected_before_export(tmp_path):
     parent=tmp_path/'parent.json';parent.write_text(json.dumps({'status':'LOADED_VERIFIED','db_identity':{'database':'production'}}))
     with pytest.raises(ValueError,match='verified research'):

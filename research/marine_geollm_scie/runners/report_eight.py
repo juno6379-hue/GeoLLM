@@ -76,16 +76,19 @@ def run_report(run_dir, benchmark, output, *, faults=None):
     lines = ['# GOLD v2 8방법 공통 평가', '',
              '기계 계약·실제 공간 관측의 평가이며 독립 인간 의미 정확도가 아닙니다.', '',
              f"관측 {len(rows)}/{summary['expected_observations']}; 관측 완료 gate: {gate['observation_comparison_complete']}.", '',
-             '| 방법 | 행 | 기계 계약 통과/측정/전체 | 공간 실행 성공 | 공간 정확성 | Silent Spatial Failure |',
-             '|---|---:|---|---|---|---|']
+             '| 방법 | 행 | 기계 계약 통과/측정/전체 | 공간 실행 성공(전체 적격) | 공간 실행 성공(시도 조건부) | 공간 정확성 | Silent Spatial Failure |',
+             '|---|---:|---|---|---|---|---|']
     def display(v):
         return '미측정' if v is None else f'{v:.4f}'
     for method, group in summary['overall_by_method'].items():
         p=group['machine_contract_pass']
-        values=[display(group[k]['value']) for k in ('execution_success','spatial_correctness','silent_spatial_failure_given_success')]
+        values=[display(group[k]['value'])+f" (측정 {group[k]['measured']}/{group[k]['denominator']})" for k in ('execution_success_all_eligible','execution_success_given_attempt','spatial_correctness','silent_spatial_failure_given_success')]
         passed=sum(r['all_applicable_checks_pass'] is True for r in scores if r['method']==method)
         lines.append(f"| {method} | {group['observations']} | {passed}/{p['measured']}/{p['denominator']} | {' | '.join(values)} |")
-    lines += ['', '전체 평균과 별도로 summary.json의 by_method_query_condition 및 error_types를 확인하세요.',
+    lines += ['', '실행 성공은 공통 v3 정의입니다. 관측 완료·실제 미실행은 false, 관측 중단·누락·모순은 null입니다. SQL 성공과 공간 정답을 분리합니다.',
+              '전체 적격 ESR은 GOLD로 선택한 동일 공간 문항을 분모로 하며 출력 누락도 제외하지 않습니다. 조건부 ESR은 실제 공간 시도 문항만 사용합니다.',
+              '영역 요청·coverage 중단이 정답인 문항은 공간 ESR 분모에서 제외하며 별도 행동 계약으로 평가합니다. 동일 equivalence_group의 표현 변형은 독립 공간 문제로 세지 않습니다.',
+              '전체 평균과 별도로 summary.json의 by_method_query_condition 및 error_types를 확인하세요.',
               '누락은 0점 또는 비실행으로 채우지 않습니다. 공간 기준이 없는 coverage 문항은 Safe Abstention으로 분리합니다.',
               ('RQ2·RQ4 및 False Ready/False Block은 summary.json의 controlled_fault_recovery에서 별도 통제된 오류 cohort로 확인합니다. 독립 전문가 의미 정확도가 아닙니다.' if faults is not None else
                'RQ2 fault 검출, RQ4 복구·의미 보존, False Ready/False Block은 실제 별도 대조 관측이 없어 미측정입니다.'),
@@ -98,7 +101,8 @@ def run_report(run_dir, benchmark, output, *, faults=None):
                 'report_files':{p.name:sha(p) for p in output.iterdir() if p.is_file()},
                 'source_hashes': {str(p.relative_to(Path(__file__).resolve().parents[3])): sha(p) for p in (
                     Path(__file__), Path(__file__).resolve().parents[1]/'evaluation/v2_results.py',
-                    Path(__file__).resolve().parents[1]/'evaluation/v2_observations.py')},
+                    Path(__file__).resolve().parents[1]/'evaluation/v2_observations.py',
+                    Path(__file__).resolve().parents[1]/'evaluation/execution_semantics.py')},
                 'scientific_completion':False}
     (output/'manifest.json').write_text(json.dumps(provenance, indent=2), encoding='utf-8')
     return summary

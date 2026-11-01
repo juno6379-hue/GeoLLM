@@ -7,18 +7,26 @@ from research.marine_geollm_scie.evaluation.v2_observations import normalize
 from research.marine_geollm_scie.runners.execution_report import check_contract
 
 
+def spatial_eligible(contract):
+    return contract['evaluation_stratum'] == 'IN_SNAPSHOT_SPATIAL' or any(
+        c.get('kind') == 'source_bound_set_equality' for c in contract.get('machine_checks', []))
+
+
 def score_row(row, contract):
     observation = normalize(row)
     trace = observation['trace']
     base = {'case_id': row['case_id'], 'method': row['method'], 'repeat': row['repeat'],
             'query_condition': contract.get('category'), 'equivalence_group': contract.get('equivalence_group', row['case_id']),
             'stratum': contract['evaluation_stratum'], 'run_status': row.get('status'),
+            'execution_attempted': trace.get('execution_attempted'),
             'execution_succeeded': trace.get('execution_succeeded'), 'spatial_correctness': None,
             'safe_abstention_correct': None, 'silent_spatial_failure': None,
-            'execution_correctness_gap_applicable': False, 'all_applicable_checks_pass': None,
+            'execution_correctness_gap_applicable': spatial_eligible(contract), 'all_applicable_checks_pass': None,
             'checks': {}, 'semantic_human_accuracy': None, 'observation': observation,
             'answer_projection_error':row.get('answer_projection_error'),
             'costs': row['costs'] if isinstance(row.get('costs'),dict) else {}}
+    if trace.get('telemetry_errors'):
+        base['telemetry_errors'] = trace['telemetry_errors']
     if not observation['output_available']:
         base['scoring_status'] = 'OUTPUT_UNAVAILABLE'
         base['error_types'] = [row.get('error_type') or row.get('status') or 'OUTPUT_UNAVAILABLE']
@@ -43,10 +51,12 @@ def score_row(row, contract):
                 value = trace.get(key)
                 base['checks'][key+'_false'] = False if value is True else True if value is False and trace.get('observation_complete') else None
             base['all_applicable_checks_pass'] = all_known(base['checks'])
+    base['execution_correctness_gap_applicable'] = spatial_eligible(contract)
     base['scoring_status'] = 'MACHINE_CONTRACT_ONLY'
     if base['execution_correctness_gap_applicable'] and base['execution_succeeded'] is True and isinstance(base['spatial_correctness'], bool):
         base['silent_spatial_failure'] = not base['spatial_correctness']
-    errors = [name for name, value in base['checks'].items() if value is False]
+    errors = ['CONTRADICTORY_OR_INVALID_TELEMETRY'] if trace.get('telemetry_errors') else []
+    errors += [name for name, value in base['checks'].items() if value is False]
     if any(value is None for value in base['checks'].values()):
         errors.append('UNMEASURED_COMPONENT')
     if row.get('error_type'):
@@ -61,6 +71,11 @@ def group_summary(rows):
     spatial = [r for r in rows if r['execution_correctness_gap_applicable']]
     executed = [r for r in spatial if r['execution_succeeded'] is True]
     execution = rate([r['execution_succeeded'] for r in spatial])
+    attempted = [r for r in spatial if r.get('execution_attempted') is True]
+    conditional = rate([r['execution_succeeded'] for r in attempted])
+    conditional['unknown_attempt_membership'] = sum(r.get('execution_attempted') is None for r in spatial)
+    if conditional['unknown_attempt_membership']:
+        conditional['value'] = None
     correctness = rate([r['spatial_correctness'] for r in spatial])
     joint = rate([False if r['execution_succeeded'] is False else r['spatial_correctness']
                   if r['execution_succeeded'] is True else None for r in spatial])
@@ -71,7 +86,10 @@ def group_summary(rows):
               'equivalence_groups': len({r['equivalence_group'] for r in rows}),
               'machine_contract_pass': rate([r['all_applicable_checks_pass'] for r in rows]),
               'safe_abstention': rate([r['safe_abstention_correct'] for r in rows if r['stratum'] == 'OUT_OF_COVERAGE_SAFE_ABSTENTION']),
-              'execution_success': execution, 'spatial_correctness': correctness,
+              'execution_success': execution, 'execution_success_all_eligible': execution,
+              'execution_success_given_attempt': conditional,
+              'spatial_eligible_case_ids': sorted({r['case_id'] for r in spatial}),
+              'spatial_eligible_equivalence_groups': sorted({r['equivalence_group'] for r in spatial}), 'spatial_correctness': correctness,
               'joint_execution_spatial_success': joint, 'silent_spatial_failure_given_success': silent,
               'execution_correctness_gap': execution['value']-joint['value'] if execution['value'] is not None and joint['value'] is not None else None,
               'error_types': dict(Counter(e for r in rows for e in r['error_types'])),
@@ -93,7 +111,10 @@ def summarize(rows):
         for error in row['error_types']:
             errors[(row['method'], error)].append(row)
     methods = sorted({r['method'] for r in rows})
-    return {'scope': 'FROZEN_DEVELOPMENT_BENCHMARK_MACHINE_CONTRACTS_NOT_HUMAN_SEMANTIC_ACCURACY',
+    return {'execution_semantics_version': 'spatial_execution_semantics_v3',
+            'execution_denominator_policy': 'GOLD-selected spatial cases including unavailable/malformed outputs; same selection for every method. Conditional ESR uses actual spatial attempts, unknown membership invalidates rate.',
+            'equivalence_group_warning': 'Paraphrases in the same equivalence_group are dependent, not independent successful spatial problems.',
+            'scope': 'FROZEN_DEVELOPMENT_BENCHMARK_MACHINE_CONTRACTS_NOT_HUMAN_SEMANTIC_ACCURACY',
             'overall_by_method': {m: group_summary([r for r in rows if r['method'] == m]) for m in methods},
             'by_method_query_condition': {m+'|'+str(c): group_summary(v) for (m,c),v in groups.items()},
             'by_method_stratum': {m+'|'+str(c): group_summary(v) for (m,c),v in strata.items()},
