@@ -223,32 +223,14 @@ def file_profile(path: Path, policy: str) -> str:
 
 
 def docx_sections(path: Path) -> list[tuple[str, str, int | None]]:
-    with zipfile.ZipFile(path) as archive:
-        raw = archive.read("word/document.xml")
-    root = ElementTree.fromstring(raw)
-    values: list[str] = []
-    for paragraph in root.iter():
-        if paragraph.tag.endswith("}p"):
-            text = "".join(node.text or "" for node in paragraph.iter() if node.tag.endswith("}t"))
-            if text.strip():
-                values.append(text.strip())
-    return [("document", "\n".join(values), None)] if values else []
+    from scripts.docx_source_text import docx_source_text
+    text=docx_source_text(path.read_bytes())
+    return [("document", text, None)] if text else []
 
 
 def xlsx_text(raw: bytes) -> str:
-    values: list[str] = []
-    with zipfile.ZipFile(BytesIO(raw)) as workbook:
-        for member in workbook.namelist():
-            if "sheet" not in member and "sharedStrings" not in member:
-                continue
-            if not member.endswith(".xml"):
-                continue
-            try:
-                root = ElementTree.fromstring(workbook.read(member))
-            except ElementTree.ParseError:
-                continue
-            values.extend(node.text.strip() for node in root.iter() if node.text and node.text.strip())
-    return "\n".join(values)
+    from scripts.xlsx_source_text import xlsx_source_text
+    return xlsx_source_text(raw)
 
 
 def csv_profile(path: Path) -> tuple[str, str]:

@@ -133,3 +133,81 @@ test('human scoring missing labels remains unmeasured even if GOLD was approved'
   assert.match(html,/미측정/);
   assert.doesNotMatch(html,/100%/);
 });
+
+
+test('benchmark composition distinguishes approved GOLD, assisted answers and reserved holdout', () => {
+ const ui=browser();
+ ui.evaluate('DATA={overview:{selected_run_id:"v6",case_count:18,method_count:8,observed_rows:144,expected_observations:144,fault_rows:27,repeats:1,independent_expert_review_complete:true,review_approval:{approval_date:"2026-11-02"},completion_gate:{observation_comparison_complete:true}},semantic_review:{assisted_review_complete:true,reviewer_A_completed:144,reviewer_B_completed:144,consensus_completed:144},holdout:{main_cases:18,rq2_fault_cases:12,rq4_recovery_cases:8,evaluation_executed:false},benchmark:{cases:[]}}');
+ const html=ui.evaluate('benchmarkComposition()');
+ assert.match(html,/GOLD 검수 완료/); assert.match(html,/AI 보조 채점 완료/);
+ assert.match(html,/평가 미실행/); assert.match(html,/최종 시스템 동결/);
+ assert.match(html,/144 \/ 144/); assert.match(html,/27관측/);
+ assert.match(html,/운영 Dataset 후속 검증은 별도/);
+});
+
+
+test('zero eligibility is not confused with missing observations',()=>{
+ const ui=browser();
+ assert.match(ui.evaluate('rate({value:null,denominator:0,measured:0,missing:0})'),/해당 평가 대상 없음/);
+ assert.match(ui.evaluate('rate({value:null,denominator:3,measured:0,missing:3})'),/미측정/);
+ assert.match(ui.evaluate('rate({value:0,denominator:3,measured:3,missing:0})'),/0%/);
+});
+
+
+test('RQ1 uses the Semantic Grounding table without substituting mechanical accuracy',()=>{
+ const ui=browser();
+ ui.evaluate('DATA={overview:{selected_run_id:"v6"}}');
+ const html=ui.evaluate('rq1GroundingTable({selected_run_id:"v6",rows:[{condition:"OFFICIAL_TERM",n:6,cluster_count:6,b1_semantic_f1:null,b2_semantic_f1:null,ci95:null,strict_match:null,missing_reasons:["측정 계약 없음"]}]})');
+ assert.match(html,/Table 9/);assert.match(html,/B1 Text-RAG Semantic F1/);assert.match(html,/B2 Ontology\/KG Semantic F1/);
+ assert.match(html,/95% CI/);assert.match(html,/Strict Match/);assert.match(html,/측정 계약 없음/);
+ assert.doesNotMatch(html,/0%/);assert.match(html,/미측정/);
+});
+
+test('paper metrics separate measured zero, unavailable observations and zero eligibility',()=>{
+ const ui=browser();
+ const zero=ui.evaluate('paperMetric({value:0,numerator:0,denominator:8,status:"MEASURED",unit:"ratio"})');
+ assert.match(zero,/0%/);assert.match(zero,/분모 8/);
+ const absent=ui.evaluate('paperMetric({value:null,numerator:null,denominator:8,status:"UNMEASURED",reason:"계측 누락",unit:"ratio"})');
+ assert.match(absent,/미측정/);assert.match(absent,/계측 누락/);assert.doesNotMatch(absent,/0%/);
+ const ineligible=ui.evaluate('paperMetric({value:null,denominator:0,status:"UNDEFINED",reason:"성공 사례 없음",unit:"ratio"})');
+ assert.match(ineligible,/해당 평가 대상 없음/);assert.match(ineligible,/성공 사례 없음/);
+ assert.doesNotMatch(ineligible,/0%/);
+ const invalid=ui.evaluate('paperMetric({value:0,denominator:0,status:"MEASURED",unit:"ratio"})');
+ assert.match(invalid,/산출 불가/);assert.doesNotMatch(invalid,/0%/);
+});
+
+test('Table 11 retains all eight methods including B4 and H without making up CI',()=>{
+ const ui=browser();
+ ui.evaluate('DATA={paper_tables:{run_id:"v6",tables:{table11:{title:"Table 11",columns:[{key:"method",label:"방법"},{key:"esr",label:"ESR"},{key:"cge",label:"CGE"}],rows:["B0","B1","B2","B3","B4","P0","H","P1"].map(method=>({method,esr:{value:null,status:"UNMEASURED",reason:"공통 계약 미측정"},cge:{value:null,status:"UNDEFINED",denominator:0}})),notes:["CGE는 실행 성공과 공간 정답의 격차입니다."]}}}}');
+ const html=ui.evaluate('paperTable("table11")');
+ for(const method of ['B0','B1','B2','B3','B4','P0','H','P1'])assert.match(html,new RegExp(`<td>${method}(?:<|$)`));
+ assert.match(html,/추가 비교 방법/);assert.match(html,/CGE/);
+ assert.match(html,/공통 계약 미측정/);assert.doesNotMatch(html,/0%/);assert.doesNotMatch(html,/95% CI/);
+});
+
+test('paper table source and metric reasons cannot inject markup',()=>{
+ const ui=browser();
+ ui.evaluate('DATA={paper_tables:{tables:{table10:{title:"Table 10",columns:[{key:"recall",label:"Recall"}],rows:[{recall:{value:null,status:"UNMEASURED",reason:"<img onerror=x>"}}],source_refs:[{path:"<script>x</script>",sha256:"<b>hash</b>"}]}}}}');
+ const html=ui.evaluate('paperTable("table10")');
+ assert.doesNotMatch(html,/<img|<script>|<b>hash/);
+ assert.match(html,/&lt;img/);assert.match(html,/&lt;script/);
+});
+
+test('RQ2 through RQ5 lead with paper tables and keep prior diagnostics collapsed',()=>{
+ const ui=browser();
+ ui.evaluate('DATA={overview:{selected_run_id:"v6"},rq:{},sources:[],paper_tables:{tables:{}}}');
+ for(const [rqNumber,tableNumber] of [[2,10],[3,11],[4,12],[5,14]]){
+  const html=ui.evaluate(`rq(${rqNumber})`);
+  assert.match(html,new RegExp(`Table ${tableNumber}`));
+  assert.match(html,/<details class="panel"><summary>보조 진단/);
+  assert.doesNotMatch(html,/<details class="panel" open/);
+ }
+});
+
+test('Table 13 ablation remains a separate section with no invented full-system substitution',()=>{
+ const ui=browser();ui.evaluate('DATA={paper_tables:{tables:{}},overview:{selected_run_id:"v6"}}');
+ const html=ui.evaluate('ablationPanel()');
+ assert.match(html,/id="ablation"/);assert.match(html,/Table 13/);
+ assert.match(html,/전체 시스템 결과를 제거 실험의 대용으로 사용하지/);
+ assert.doesNotMatch(html,/0%/);
+});

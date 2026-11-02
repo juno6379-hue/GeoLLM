@@ -5,17 +5,20 @@ from pathlib import Path
 
 PREFIX = Path('outputs/dataset_location_audit_20261102')
 STAGES = ('source', 'spatial', 'answer')
+FOLLOWUP_PREFIX = Path('outputs/dataset_unverified_followup_20261102')
 STATUSES = {'RUNNING', 'PARTIALLY_VERIFIED', 'COMPLETED', 'BLOCKED', 'FAILED', 'NOT_STARTED'}
 
 
 def load_progress(root):
     rows = []
-    for stage in STAGES:
-        relative = PREFIX / stage / 'status.json'
+    jobs = [(stage, PREFIX, stage) for stage in STAGES]
+    jobs += [('followup_' + stage, FOLLOWUP_PREFIX, stage) for stage in ('pdf', 'locator', 'entity')]
+    for stage, prefix, folder in jobs:
+        relative = prefix / folder / 'status.json'
         path = (root / relative).resolve()
         row = dict(stage=stage, status='NOT_STARTED', counts={}, limitations=[], evidence=[],
                    source_path=relative.as_posix(), source_sha256=None)
-        if path.is_relative_to((root / PREFIX).resolve()) and path.is_file():
+        if path.is_relative_to((root / prefix).resolve()) and path.is_file():
             try:
                 raw = path.read_bytes()
                 value = json.loads(raw.decode('utf-8-sig'))
@@ -34,7 +37,7 @@ def load_progress(root):
                     if not isinstance(item, dict):
                         continue
                     name = str(item.get('path') or '').replace('\\', '/')
-                    if name.startswith(PREFIX.as_posix() + '/') and '..' not in Path(name).parts:
+                    if name.startswith(prefix.as_posix() + '/') and '..' not in Path(name).parts:
                         row['evidence'].append(dict(path=name, sha256=item.get('sha256')))
             except (OSError, ValueError, TypeError):
                 row.update(status='UNAVAILABLE_LOCAL_ARTIFACT', limitations=['진행 파일을 읽는 중이거나 형식이 유효하지 않습니다. 이전 검사 성공을 추정하지 않습니다.'])

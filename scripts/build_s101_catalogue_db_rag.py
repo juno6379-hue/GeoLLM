@@ -74,19 +74,8 @@ def decode_best(raw: bytes) -> str:
 
 
 def xlsx_text(raw: bytes) -> str:
-    values: list[str] = []
-    with zipfile.ZipFile(BytesIO(raw)) as workbook:
-        for member in workbook.namelist():
-            if not member.endswith(".xml"):
-                continue
-            if "sheet" not in member and "sharedStrings" not in member:
-                continue
-            try:
-                root = ElementTree.fromstring(workbook.read(member))
-            except ElementTree.ParseError:
-                continue
-            values.extend(node.text.strip() for node in root.iter() if node.text and node.text.strip())
-    return "\n".join(values)
+    from scripts.xlsx_source_text import xlsx_source_text
+    return xlsx_source_text(raw)
 
 
 def pdf_pages_from_bytes(raw: bytes) -> list[tuple[int, str]]:

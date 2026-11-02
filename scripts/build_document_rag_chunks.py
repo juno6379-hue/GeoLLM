@@ -212,34 +212,13 @@ def pdf_pages(path: Path) -> list[tuple[int, str]]:
 
 
 def docx_text(path: Path) -> str:
-    with zipfile.ZipFile(path) as archive:
-        raw = archive.read("word/document.xml")
-    root = ElementTree.fromstring(raw)
-    paragraphs = []
-    for paragraph in root.iter():
-        if paragraph.tag.endswith("}p"):
-            text = "".join(
-                node.text or "" for node in paragraph.iter() if node.tag.endswith("}t")
-            )
-            if text.strip():
-                paragraphs.append(text.strip())
-    return "\n".join(paragraphs)
+    from scripts.docx_source_text import docx_source_text
+    return docx_source_text(path.read_bytes())
 
 
 def xlsx_text(raw: bytes) -> str:
-    values = []
-    with zipfile.ZipFile(BytesIO(raw)) as workbook:
-        for member in workbook.namelist():
-            if not member.endswith(".xml"):
-                continue
-            if "sheet" not in member and "sharedStrings" not in member:
-                continue
-            try:
-                root = ElementTree.fromstring(workbook.read(member))
-            except ElementTree.ParseError:
-                continue
-            values.extend(node.text.strip() for node in root.iter() if node.text and node.text.strip())
-    return "\n".join(values)
+    from scripts.xlsx_source_text import xlsx_source_text
+    return xlsx_source_text(raw)
 
 
 def zip_documents(path: Path) -> list[tuple[str, str]]:

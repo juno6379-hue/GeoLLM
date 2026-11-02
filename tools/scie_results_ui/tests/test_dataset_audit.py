@@ -24,3 +24,17 @@ def test_partial_status_write_does_not_become_success(tmp_path):
     path.write_text('{')
     result = load_progress(tmp_path)
     assert result['stages'][2]['status'] == 'UNAVAILABLE_LOCAL_ARTIFACT'
+
+
+def test_followup_progress_is_separate_and_never_replaces_baseline(tmp_path):
+    from tools.scie_results_ui.dataset_audit import FOLLOWUP_PREFIX
+    path = tmp_path / FOLLOWUP_PREFIX / 'pdf/status.json'
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps({'status':'RUNNING','counts':{'target_chunks':2654},'evidence':[{'path':str(FOLLOWUP_PREFIX / 'pdf/result.json')},{'path':'research/holdout/answers.json'}]}))
+    result = load_progress(tmp_path)
+    assert result['stages'][0]['stage'] == 'source'
+    row = next(x for x in result['stages'] if x['stage']=='followup_pdf')
+    assert row['counts']['target_chunks'] == 2654
+    assert len(row['evidence']) == 1
+    assert result['holdout_used'] is False
+    assert result['dataset_semantic_audit_complete'] is False

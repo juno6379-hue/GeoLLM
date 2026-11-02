@@ -1,5 +1,16 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-11-02 Dataset 후속 대조·RQ 병렬 개발 GitHub 체크포인트
+
+- 상세: [병렬 개발·재개 순서](parallel_rq_checkpoint_20261102.md). 기존 v6 144+27 원본과 홀드아웃을 개발·새 계측과 분리했다. RQ1/RQ3, RQ2/RQ4, RQ5/ablation 역할별 에이전트 작업을 취합했다.
+- UI Table 9–14를 원본 값/분모와 연결했다. F1/paired CI/실제 ablation은 미측정이며 새 전체 모델 실험은 아직 실행하지 않았다. 새 evaluator 합성 검사는 실제 성능 측정이 아니다.
+- 원문 추가 확인142, XLSX 저장 XML 오류99 격리 대상. FC302 원본필드 보완·고정 bge-m3 1024 재임베딩 운영 적용·기존 row/vector 보존 확인. 전체 literal/좌표대상/현실정확성 완료가 아니다.
+- PDF2215 prepare 완료 후 재임베딩 진행. worker 시작 PID19824/46648, artifact C:/Users/최준오/.codex/geollm-audit/20261102/pdf/embedded.json 및 .checkpoints. PID 재사용 가능하므로 재개시 명령행과 실제 checkpoint를 대조한다. 완료/DB 적용으로 간주하지 않으며 중복 worker 금지.
+- FC delta receipt 첫 publish는 snapshot provenance 누락으로 거부됨. 생성기 보완·publisher 통합검사8통과, merged_after_fc_v5 재생성. current 게시·backend 새코드 반영·대표/부정API 검증은 후속 필요. active stored 수치는 receipt와 실제 DB를 재대조한다.
+- 운영 통합90tests 통과(2경고), UI Node20 통과. 신규 RQ5 합성19통과. 독립 부분검사와 중복합산하지 않는다. 최종 UI/추가모듈 검증결과는 체크포인트 문서/커밋기록 참조.
+- 다음: 진행worker완료검증→revision CAS적용·receipt게시·실제API→남은 XLSX/DOCX/좌표대상 보완→계측계약·새전체동결 8방법/RQ비교. holdout 최종동결후만 사용. QLoRA/shadow calibration 조건 변경없음.
+- 사용자 현재개발 GitHub push 요청에 따른 관련소스/테스트/문서 체크포인트. 무관 feedback/UI/사용자문서/기존 dirty 인계와 원본 runtime 산출물은 커밋에서 분리한다.
+
 ## 2026-11-02 운영 Dataset 전수 대조·CSV 복구·답변 연결 완료
 
 - [통합 결과와 남은 범위](dataset_location_final_20261102.md). source/spatial/coverage/repair/UI 역할 분담과 부모 통합 검증. 원본244파일 SHA 불변. 문서 현재저장23221/활성23215/보존6; 활성 원문확인19396·미검증3819·확정불일치0. 의미/최신성/현실 좌표 정확도 완료로 주장하지 않는다.

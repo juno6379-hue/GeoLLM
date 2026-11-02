@@ -143,3 +143,17 @@ async def test_graph_routes_source_answer_before_place_clarification(monkeypatch
     assert graph.check_intent_parsed(result)=='query_contract_stop'
     assert result['final_dict']['structured_result']['source_passages']
     assert result['final_dict']['summary']==result['final_dict']['answer_text']
+
+
+@pytest.mark.parametrize('status,phrase', [('VERIFIED_DERIVED_FIELDS','감사 시점 원천 필드와 대조'),('INCOMPLETE_DERIVED_FIELDS','일부 원천 필드')])
+def test_derived_source_disclosure_reaches_answer_without_literal_promotion(monkeypatch,status,phrase):
+    import hashlib
+    query='다대포항 소형선항만 안내정보를 알려줘'
+    source=evidence(query)
+    row={'chunk_id':'c','content_sha256':hashlib.sha256(source['documents'][0]['content'].encode()).hexdigest(),'source_sha256':'a'*64,'status':'UNVERIFIED','derived_field_verification':{'status':status,'evidence_sha256':'b'*64}}
+    monkeypatch.setattr(answer,'retrieve',lambda *a,**k:source)
+    monkeypatch.setattr(answer,'load_receipts',lambda:({'c':row},{}))
+    final=answer.build_dataset_answer({'query':query,'task_id':'t'})['final_dict']
+    assert phrase in final['answer_text']
+    assert '확인 0건, 미검증 1건' in final['answer_text']
+    assert final['structured_result']['coordinate_authority'] is False

@@ -12,6 +12,8 @@ from urllib.parse import quote
 import yaml
 from .operational import load_summary
 from .dataset_audit import load_progress
+from .rq1_grounding import build_rq1_grounding
+from .paper_tables import build_paper_tables
 
 RESEARCH = Path('research/marine_geollm_scie')
 GOLD = 'benchmark/gold_v2_immutable_20261101_v1'
@@ -356,11 +358,12 @@ class ResultsAdapter:
         operational = load_summary(self)
         result = dict(dataset_audit=load_progress(self.root), operational=operational, holdout=holdout, semantic_review=semantic_review, rescore=rescore, overview=overview, benchmark=dict(manifest=manifest, freeze_checks=freeze_checks, cases=cases,
                       categories=dict(Counter(c.get('category') for c in cases)), protocol=protocol), methods=methods,
-                      rq={'1':dict(status='NOT_FINAL', by_method_query_condition=summary.get('by_method_query_condition', {})),
+                      rq={'1':dict(status='NOT_FINAL', grounding=build_rq1_grounding(self.root, queries, selected), by_method_query_condition=summary.get('by_method_query_condition', {})),
                           '2':dict(status=fault.get('status', 'NOT_MEASURED'), overall_by_method=fault.get('overall_by_method', {}), by_method_error_type=fault.get('by_method_error_type', {}), detector_breakdown=detector_breakdown, model_digests=selected_info.get('model_digest')),
                           '3':dict(status='PILOT_ONLY' if overall else 'NOT_MEASURED', overall_by_method=overall, equivalence_group_warning=summary.get('equivalence_group_warning')),
                           '4':dict(status=fault.get('status', 'NOT_MEASURED'), overall_by_method=fault.get('overall_by_method', {})),
                           '5':dict(status='OBSERVED_COST_ONLY' if overall else 'NOT_MEASURED', overall_by_method=overall)},
                       reliability=reliability, runs=runs, limitations=limits, sources=list(self.sources.values()),
                       generated_at=self.generated, status=overview['status'])
+        result['paper_tables'] = build_paper_tables(self.root, selected)
         return result

@@ -64,6 +64,22 @@ def verify_document(document, receipts=None):
     result['source_locator'] = row.get('source_locator')
     result['audit_reason'] = row.get('reason')
     result['audit_retrieval_status'] = row.get('retrieval_status')
+    derived = row.get('derived_field_verification')
+    if isinstance(derived, dict) and derived.get('status') in (
+            'VERIFIED_DERIVED_FIELDS', 'INCOMPLETE_DERIVED_FIELDS'):
+        evidence_hash = derived.get('evidence_sha256')
+        if (isinstance(evidence_hash, str) and len(evidence_hash) == 64
+                and all(c in '0123456789abcdef' for c in evidence_hash)):
+            result['derived_field_verification'] = {
+                'status': derived['status'], 'reason': derived.get('reason'),
+                'evidence_sha256': evidence_hash, 'scope': derived.get('scope', 'SOURCE_FIELDS_AT_AUDIT_TIME'),
+                'semantic_authority': False, 'coordinate_authority': False,
+                'current_database_rechecked': False,
+            }
+            for key in ('historical_full_source_hash_verified', 'historical_partial_hash_matches',
+                        'derived_geometry_count_basis', 'coordinate_range_validity_not_established'):
+                if key in derived:
+                    result['derived_field_verification'][key] = derived[key]
     result['object_links'] = []
     spatial_hash = audit.get('spatial_links_sha256')
     if isinstance(spatial_hash, str) and len(spatial_hash) == 64 and all(c in '0123456789abcdef' for c in spatial_hash):

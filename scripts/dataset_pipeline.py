@@ -106,7 +106,8 @@ def sections(path):
                 tree = ET.fromstring(z.read(name))
                 for i, node in enumerate(tree.iter()):
                     if node.tag.rsplit('}',1)[-1] in {'p','P'}:
-                        value = ''.join(n.text or '' for n in node.iter() if n.tag.rsplit('}',1)[-1] in {'t','CHAR'})
+                        from scripts.docx_source_text import paragraph_text
+                        value = paragraph_text(node) if suffix=='.docx' else ''.join(n.text or '' for n in node.iter() if n.tag.rsplit('}',1)[-1] in {'t','CHAR'})
                         yield f'{name}:paragraph:{i}', value, None
     else:
         raise ValueError('No verified text adapter: '+suffix)

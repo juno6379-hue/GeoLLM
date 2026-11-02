@@ -101,6 +101,15 @@ def build_dataset_answer(state):
         status, error = 'PARTIAL', None
         parts = ['저장된 Dataset 자료에서 요청 주제와 연결되는 원문을 찾았습니다. 다음은 출처가 확인된 발췌입니다.']
         parts.append(f'제시한 발췌의 감사 시점 원문 대조: 확인 {verified_count}건, 미검증 {len(passages)-verified_count}건. 현재 조회한 본문과 출처가 감사 기록과 같은 경우만 확인으로 표시합니다. 문서의 의미 정확성이나 실제 위치·좌표의 권위를 보증하지 않습니다.')
+        derived = [p['source_text_verification'].get('derived_field_verification', {}) for p in passages]
+        if any(derived):
+            parts[0] = '저장된 Dataset 자료의 본문과 원천 기반 파생 설명을 찾았습니다. 아래 발췌는 각 자료의 작성 방식과 검증 범위를 구분해 제공합니다.'
+        derived_matched = sum(d.get('status') == 'VERIFIED_DERIVED_FIELDS' for d in derived)
+        incomplete = sum(d.get('status') == 'INCOMPLETE_DERIVED_FIELDS' for d in derived)
+        if derived_matched:
+            parts.append(f'파생 설명 {derived_matched}건은 감사 시점 원천 필드와 대조했습니다. 원문 그대로의 인용이나 현재 DB 재조회 완료를 뜻하지 않습니다.')
+        if incomplete:
+            parts.append(f'파생 설명 {incomplete}건에는 일부 원천 필드(속성 코드 또는 객체–속성 관계 등)가 빠져 있습니다. 해당 부분을 완전한 속성 설명으로 사용하지 않습니다.')
         if mismatch_count:
             parts.append(f'감사 원문과 불일치한 청크 {mismatch_count}건은 답변 발췌에서 제외했습니다.')
         if any(p['source_text_verification'].get('coordinate_literal_issues') for p in passages):

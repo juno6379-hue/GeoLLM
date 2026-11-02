@@ -156,3 +156,17 @@ def test_publication_rejects_unbound_object_links(tmp_path):
     (source / 'receipt_manifest.json').write_text(json.dumps(manifest))
     with pytest.raises(ValueError, match='spatial audit hash'):
         publish(source, tmp_path / 'published', 'unbound')
+
+
+@pytest.mark.parametrize('status', ['VERIFIED_DERIVED_FIELDS', 'INCOMPLETE_DERIVED_FIELDS'])
+def test_derived_field_check_is_not_literal_or_coordinate_authority(status):
+    row = dict(chunk_id='d',content_sha256=hashlib.sha256(b'body').hexdigest(),source_sha256='a'*64,status='UNVERIFIED',derived_field_verification={'status':status,'reason':'source fields','evidence_sha256':'b'*64})
+    doc = dict(chunk_id='d',content='body',source_sha256='a'*64)
+    result = verify_document(doc, ({'d':row}, {}))
+    assert result['status'] == 'UNVERIFIED'
+    assert result['derived_field_verification']['status'] == status
+    assert result['derived_field_verification']['current_database_rechecked'] is False
+    assert result['coordinate_authority'] is False
+    assert 'derived_field_verification' not in verify_document({**doc,'content':'changed'}, ({'d':row},{}))
+    row['derived_field_verification']['evidence_sha256']='invalid'
+    assert 'derived_field_verification' not in verify_document(doc, ({'d':row},{}))
