@@ -1,11 +1,23 @@
 from research.marine_geollm_scie.fault_injection.radius_preprocessing_audit import compare_case
+import pytest
 
 
-def test_invalid_feature_is_rejected_upstream_but_generic_gate_accepts_string():
+@pytest.fixture(autouse=True)
+def isolate_preprocessing_from_coverage(monkeypatch):
+    # Inspect the older feature/CRS preprocessing boundary with the unrelated
+    # scope prerequisite established only in this unit test. No runtime bypass.
+    monkeypatch.setattr('services.orchestrator.spatial_coverage.assess_coverage',
+        lambda *args, **kwargs: {'authority': 'UNIT_TEST_ONLY_SYNTHETIC_COVERAGE',
+            'version': 'fixture', 'status': 'ADEQUATE', 'required': True,
+            'absence_certified': False, 'sources': []})
+
+
+def test_invalid_feature_is_rejected_upstream_and_by_original_request_constraint():
     row = compare_case("invalid_feature")
     assert row["select_targets"]["code"] == "UNSUPPORTED_TARGET"
     assert row["prepare_radius_request"]["status"] == "REJECTED"
-    assert row["direct_generic_validator"]["authorized"] is True
+    assert row["direct_generic_validator"]["authorized"] is False
+    assert 'BLOCKED_CONFIG: REQUEST_TARGET_MISMATCH' in row['direct_generic_validator']['full_qec']['blockers']
 
 
 def test_crs_rejection_is_preprocessing_not_generic_gate():

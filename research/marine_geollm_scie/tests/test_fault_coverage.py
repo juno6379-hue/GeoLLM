@@ -1,4 +1,16 @@
 from research.marine_geollm_scie.fault_injection.coverage_pilot import SPECS, diagnose
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def synthetic_coverage_for_legacy_gate_unit_tests(monkeypatch):
+    # These tests isolate receipt freshness and schema/tool fault handling.
+    # The no-network pilot has no approved source coverage. Do not change its
+    # runtime policy, the real 27-fault run, or add any research approval overlay.
+    monkeypatch.setattr('services.orchestrator.spatial_coverage.assess_coverage',
+        lambda *args, **kwargs: {'authority': 'UNIT_TEST_ONLY_SYNTHETIC_COVERAGE',
+            'version': 'fixture', 'status': 'ADEQUATE', 'required': True,
+            'absence_certified': False, 'sources': []})
 
 
 def case(name): return diagnose(*next(spec for spec in SPECS if spec[0] == name))

@@ -1,6 +1,17 @@
 from research.marine_geollm_scie.baselines.self_reviewer import parse_review, review_prompt
 from research.marine_geollm_scie.fault_injection.pilot import cases
 from services.orchestrator.execution_validator import validate_execution_context, is_execution_authorized
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def synthetic_coverage_for_legacy_gate_unit_tests(monkeypatch):
+    # Only these no-network schema/receipt tests assume established coverage.
+    # No research runner or operational registry obtains this synthetic grant.
+    monkeypatch.setattr('services.orchestrator.spatial_coverage.assess_coverage',
+        lambda *args, **kwargs: {'authority': 'UNIT_TEST_ONLY_SYNTHETIC_COVERAGE',
+            'version': 'fixture', 'status': 'ADEQUATE', 'required': True,
+            'absence_certified': False, 'sources': []})
 
 
 def test_real_validator_diagnostic_controls():

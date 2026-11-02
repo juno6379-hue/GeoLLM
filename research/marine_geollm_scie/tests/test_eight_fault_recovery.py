@@ -79,9 +79,14 @@ def test_joint_recovery_retains_unknown():
 
 
 def test_review_schema_requires_explicit_initial_verdict_and_full_plan():
-    jsonschema.validate({'invalid':False,'reason':'control','plan':clean_plan()},REVIEW_SCHEMA)
+    valid = {'initial_checks': {name: 'pass' for name in
+        ('target', 'distance', 'crs', 'reference', 'source', 'tool_contract')},
+        'invalid':False,'reason':'control','plan':clean_plan()}
+    jsonschema.validate(valid,REVIEW_SCHEMA)
     with pytest.raises(jsonschema.ValidationError):
-        jsonschema.validate({'reason':'missing verdict','plan':clean_plan()},REVIEW_SCHEMA)
+        jsonschema.validate({k: v for k, v in valid.items() if k != 'invalid'},REVIEW_SCHEMA)
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate({k: v for k, v in valid.items() if k != 'initial_checks'},REVIEW_SCHEMA)
 
 
 @pytest.mark.parametrize('response',[None,{},[],True,'null','[]','invalid'])
