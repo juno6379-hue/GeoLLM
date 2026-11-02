@@ -119,7 +119,7 @@ def assess_source_corpus(qec, layer_registry, verifier):
     """
     layers = (layer_registry or {}).get('layers') or {}
     default_inventory = bool(qec.data_bindings) and all(
-        ((layers.get(binding.dataset_id) or {}).get('corpus_contract') or {}).get('kind') in ('s101_exact_inventory_v1', 's101_target_inventory_v2')
+        ((layers.get(binding.dataset_id) or {}).get('corpus_contract') or {}).get('kind') in ('s101_exact_inventory_v1', 's101_target_inventory_v2', 'csv_exact_inventory_v1')
         and ((layers.get(binding.dataset_id) or {}).get('corpus_contract') or {}).get('default_inventory_listing') is True
         for binding in qec.data_bindings)
     if not callable(verifier) or not requests_source_corpus(qec, registered_default=default_inventory):
@@ -137,11 +137,15 @@ def assess_source_corpus(qec, layer_registry, verifier):
         layer = (layer_registry.get('layers') or {}).get(binding.dataset_id) or {}
         contract = layer.get('corpus_contract') or {}
         # Only an audited verifier and its exact source layer may be used.
+        research_gazetteer = (binding.dataset_id == 'marine_places'
+                              and contract.get('dataset_id') == 'marine_places'
+                              and (qec.slots.filters or {}).get('source') == 'marine_places'
+                              and not qec.slots.target_layers)
         gazetteer = (contract.get('kind') == 'csv_exact_inventory_v1'
-                     and binding.dataset_id == 'marine_gazetteer'
+                     and (binding.dataset_id == 'marine_gazetteer' or research_gazetteer)
                      and binding.relation == 'serving.marine_gazetteer_current'
                      and not qec.slots.target_features
-                     and set(qec.slots.target_layers) == {'marine_gazetteer'})
+                     and (set(qec.slots.target_layers) == {'marine_gazetteer'} or research_gazetteer))
         s101 = (contract.get('kind') in ('s101_exact_inventory_v1', 's101_target_inventory_v2')
                 and binding.relation == 'projection.s101_feature_current'
                 and bool(qec.slots.target_features)
@@ -168,11 +172,14 @@ def assess_source_corpus(qec, layer_registry, verifier):
                 or type(observed.get('row_count')) is not int
                 or observed['row_count'] <= 0):
             return None
+        if research_gazetteer and (observed.get('snapshot_version') != contract.get('snapshot_version')
+                                   or binding.snapshot_version != contract.get('snapshot_version')):
+            return None
         if s101:
             scope = observed.get('source_scope') or {}
             try:
                 geometry = wkt.loads(scope['geometry_wkt'])
-                if (scope.get('kind') != 'SOURCE_DECLARED_DATA_COVERAGE'
+                if (scope.get('kind') not in {'SOURCE_DECLARED_DATA_COVERAGE', 'RESEARCH_SNAPSHOT_DOMAIN'}
                         or scope.get('crs') != 'EPSG:4326'
                         or not scope.get('source_locator')
                         or scope.get('source_sha256') != contract.get('source_sha256')
@@ -192,10 +199,13 @@ def assess_source_corpus(qec, layer_registry, verifier):
     domain = ('OUTSIDE' if 'OUTSIDE' in domain_relations else 'PARTIAL' if 'PARTIAL' in domain_relations
               else 'CONTAINS_QUERY' if domain_relations else 'NOT_DECLARED')
     status = 'OUT_OF_COVERAGE' if domain == 'OUTSIDE' else 'PARTIAL' if domain == 'PARTIAL' else 'CORPUS_VERIFIED'
+    research_domain = any((source.get('source_scope') or {}).get('kind') == 'RESEARCH_SNAPSHOT_DOMAIN'
+                          for source in sources)
     return {'authority': 'ServerSourceCoverage', 'version': '3',
             'status': status, 'geographic_coverage': 'UNKNOWN',
             'source_corpus_status': 'VERIFIED',
-            'geographic_coverage_status': 'SOURCE_DECLARED_DOMAIN_' + domain if domain != 'NOT_DECLARED' else 'SOURCE_DOMAIN_NOT_DECLARED',
+            'geographic_coverage_status': (('RESEARCH_SNAPSHOT_DOMAIN_' if research_domain else 'SOURCE_DECLARED_DOMAIN_')
+                                          + domain) if domain != 'NOT_DECLARED' else 'SOURCE_DOMAIN_NOT_DECLARED',
             'real_world_completeness': 'UNKNOWN',
             'query_scope': 'SOURCE_CORPUS', 'required': True,
             'absence_certified': False, 'sources': sources}

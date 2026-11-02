@@ -413,7 +413,15 @@ def _has_reference_geometry(qec: QueryExecutionContext) -> bool:
 
 def _has_target_binding(qec: QueryExecutionContext) -> bool:
     slots = qec.slots
-    return bool(slots.target_features or slots.target_layers or slots.nftc_codes or slots.resolved_target_set)
+    if slots.target_features or slots.target_layers or slots.nftc_codes or slots.resolved_target_set:
+        return True
+    # A typed finite gazetteer source names its whole inventory explicitly.
+    # Verify that literal binding without inventing feature/layer slots. The
+    # separate corpus gate still requires live identity and snapshot evidence.
+    return ((slots.filters or {}).get('source') == 'marine_places'
+            and len(qec.data_bindings) == 1
+            and qec.data_bindings[0].dataset_id == 'marine_places'
+            and qec.data_bindings[0].relation == 'serving.marine_gazetteer_current')
 
 
 def _requested_integer(filters: Dict[str, Any], *keys: str, default: int) -> int:

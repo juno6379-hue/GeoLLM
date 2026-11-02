@@ -202,3 +202,42 @@ def test_unregistered_source_does_not_invoke_database_verifier(monkeypatch):
     result = SchemaBindingAdapter().verify_corpus_identity(binding, {'kind': 'csv_exact_inventory_v1'})
     assert result['status'] == 'UNVERIFIED'
     connect.assert_not_called()
+
+
+def research_request():
+    """Literal typed source, no inferred feature/layer or operational alias."""
+    qec = request('독도 반경 5km 해양지명을 찾아줘')
+    qec.slots.target_layers = []
+    qec.slots.filters = {'source': 'marine_places'}
+    qec.data_bindings[0].dataset_id = 'marine_places'
+    qec.data_bindings[0].snapshot_version = 'sha256:' + 'b'*64
+    registry, observed = setup()
+    layer = registry['layers'].pop('marine_gazetteer')
+    registry['layers']['marine_places'] = layer
+    layer['corpus_contract'].update(dataset_id='marine_places',
+        default_inventory_listing=True, snapshot_version='sha256:' + 'b'*64)
+    observed['dataset_id'] = 'marine_places'
+    return qec, registry, observed
+
+
+def test_explicit_research_inventory_preserves_slots_and_source_id():
+    qec, registry, observed = research_request()
+    before = qec.slots.model_dump()
+    checked = validate_execution_context(qec, binding_adapter=adapter(qec, registry, observed))
+    assert is_execution_authorized(checked)
+    assert checked.slots.model_dump() == before
+    assert checked.data_bindings[0].dataset_id == 'marine_places'
+    assert checked.provenance['execution_scope_validation']['real_world_completeness'] == 'UNKNOWN'
+
+
+@pytest.mark.parametrize('mutation', ['receipt_hash', 'binding_hash', 'no_server_contract', 'wrong_relation', 'implicit_source', 'world'])
+def test_research_inventory_rejects_unverified_or_broadened_scope(mutation):
+    qec, registry, observed = research_request()
+    if mutation == 'receipt_hash': observed['snapshot_version'] = 'sha256:' + 'c'*64
+    if mutation == 'binding_hash': qec.data_bindings[0].snapshot_version = 'sha256:' + 'c'*64
+    if mutation == 'no_server_contract': registry['layers']['marine_places']['corpus_contract'] = {}
+    if mutation == 'wrong_relation': qec.data_bindings[0].relation = 'serving.navigation_aid_current'
+    if mutation == 'implicit_source': qec.slots.filters = {}
+    if mutation == 'world': qec.original_query = '독도 반경 5km 실제 존재하는 모든 지명을 빠짐없이 찾아줘'
+    checked = validate_execution_context(qec, binding_adapter=adapter(qec, registry, observed))
+    assert not is_execution_authorized(checked)
