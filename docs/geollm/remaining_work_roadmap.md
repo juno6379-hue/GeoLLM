@@ -1,5 +1,14 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-11-02 원천 조회·공간 범위·실세계 완전성 분리 — 운영 실API 확인
+
+- [상세 근거](source_bound_execution_20261102.md). 복수 에이전트 구현/독립감사. 원천 identity/지리적 domain/실세계 completeness를 별도 기록하고 ExecutionValidator만 SOURCE_BOUND_EXECUTABLE을 결정한다. 실세계 completeness UNKNOWN, absence=false 유지.
+- 운영 원천: 2022 지명 CSV1146행 검증, 부산 S101 원본 cell DataCoverage topology/CRS 및 Wreck4339행 target inventory identity 검증. 전국 coverage나 각 객체 원문 geometry 전수 검증은 아니다.
+- 최종 실제 API outputs/coverage_review_live_20261102_s101_v4: 7건 완료/코드hash불변. Q4 일반·명시CSV전체 각각11건; 부산 정상0·4건. 범위밖/실세계전체성은BLOCKED, 영역누락은NEEDS_CLARIFICATION, 실행4flags=false/countnull. v3 finite-all 오차단 원본보존 후 수정·재검증. 후보ready와 최종실행허가분리.
+- 최종 운영194tests/전체연구457tests 통과(부분검사중복합산금지). v6/GOLD/snapshot513파일 보존. 실제 개발 Qwen4건: 초기오류Recall0/3, 모순수정guard거부2/4. 의미검출개선주장금지.
+- Docker/운영DB/API 복구. PDF948/2215 checkpoint·1267남음/lock보존, FC후속receipt게시 등 별도작업 미완료. 새 전체논문비교/홀드아웃 실행없음.
+- 다음P0: 연구ResearchBindingAdapter의 실제snapshot identity/scope를 별도검증 연결(운영APPROVED로복사금지, DB검증/실행동일snapshot보장)→정상CONTROL/부정사례→Dataset revision 정리→새자산까지freeze→다음접속8방법전체실행. LLM 초기의미오류는 남음. 운영/연구커밋분리, 새push요청없어push하지않음.
+
 ## 2026-11-02 정상 요청·LLM 검토 보완 — 다음 접속 v7 준비, 런타임 미완료
 
 - 사용자 최신 지시: 운영/연구 분리·복수 에이전트 수정/독립검증, 새 동결 8방법 전체 비교는 **다음 접속**에서 진행. 이번에는 모델 비교를 실행하지 않았다. [상세 인계](normal_request_review_repair_20261102.md), [다음 접속 실행 절차](../../research/marine_geollm_scie/protocol/eight_execution_v7_next_session_KR.md).

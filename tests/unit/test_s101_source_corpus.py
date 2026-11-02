@@ -75,7 +75,16 @@ def test_no_permission_without_scope_and_identity(tmp_path,change):
     elif change=='scope_crs':observed['source_scope']['crs']='EPSG:3857'
     elif change=='scope_world':observed['source_scope']['geometry_wkt']='POLYGON((-200 -90,200 -90,200 90,-200 90,-200 -90))'
     else:observed.pop('source_scope')
-    assert assess_source_corpus(qec,registry,Mock(return_value=observed)) is None
+    receipt = assess_source_corpus(qec,registry,Mock(return_value=observed))
+    if change in ('outside', 'partial'):
+        assert receipt['status'] == ('OUT_OF_COVERAGE' if change == 'outside' else 'PARTIAL')
+        assert receipt['source_corpus_status'] == 'VERIFIED'
+        assert receipt['geographic_coverage_status'] == ('SOURCE_DECLARED_DOMAIN_OUTSIDE' if change == 'outside' else 'SOURCE_DECLARED_DOMAIN_PARTIAL')
+        assert receipt['real_world_completeness'] == 'UNKNOWN'
+        assert receipt['absence_certified'] is False
+        assert receipt['sources'][0]['status'] == 'VERIFIED'
+    else:
+        assert receipt is None
 
 
 @pytest.mark.parametrize('change',['changed_bytes','path_escape','live_attribute','live_membership',

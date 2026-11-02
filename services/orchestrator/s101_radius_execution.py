@@ -54,11 +54,27 @@ def _execution_stage(qec, stage):
 
 
 def _execute_stage(cursor, qec, stage, statement, params=None):
-    with _execution_stage(qec, stage):
-        if params is None:
-            cursor.execute(statement)
-        else:
-            cursor.execute(statement, params)
+    observation = None
+    if stage == 'spatial_select':
+        observation = {'scope': 'SPATIAL_EXECUTION_ONLY', 'observation_complete': False,
+                       'execution_attempted': True, 'tool_called': True,
+                       'sql_submission_attempted': True, 'execution_started': None,
+                       'sql_executed': None, 'execution_succeeded': False}
+        qec.provenance['spatial_execution'] = observation
+    try:
+        with _execution_stage(qec, stage):
+            if params is None:
+                cursor.execute(statement)
+            else:
+                cursor.execute(statement, params)
+        if observation is not None:
+            observation.update(observation_complete=True, execution_started=True,
+                               sql_executed=True, execution_succeeded=True)
+    except Exception as exc:
+        if observation is not None:
+            # A client/transport failure does not establish server execution.
+            observation['error_type'] = type(exc).__name__
+        raise
 
 
 def _registry(filename):
@@ -1264,7 +1280,9 @@ def execute_radius_request(state):
         distance_hint = None
     surface = {
         "total_hazard_count": None,
-        "nearest_returned_count": 0,
+        "nearest_returned_count": None,
+        "displayed_count": 0,
+        "count_scope": "NOT_EXECUTED_OR_FAILED",
         "feature_type_breakdown": {},
         "returned_feature_type_breakdown": {},
         "source_layer": None,
@@ -1281,9 +1299,10 @@ def execute_radius_request(state):
         "error_code": problem.code, "summary": str(problem), "answer_text": str(problem),
         "clarification_questions": [str(problem)] if status == "NEEDS_CLARIFICATION" else [],
         "clarification_options": problem.candidates,
-        "structured_result": {"analysis_type": OPERATION, "status": status, "count": None, "returned_count": 0,
+        "structured_result": {"analysis_type": OPERATION, "status": status, "count": None, "returned_count": None,
+                              "count_scope": "NOT_EXECUTED_OR_FAILED", "displayed_count": 0,
                               "blockers": list(qec.blockers),
-                              "nearest_returned_count": 0, "feature_type_breakdown": {},
+                              "nearest_returned_count": None, "feature_type_breakdown": {},
                               "total_counts_by_type": {}, "returned_counts_by_type": {},
                               "original_query": state.get("query"), "location_text": spatial.get("base_location"),
                               "spatial_context": {key: value for key, value in spatial.items() if key in {

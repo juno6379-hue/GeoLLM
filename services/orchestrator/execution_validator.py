@@ -65,7 +65,7 @@ def apply_execution_decision(target, validated):
     return target
 
 
-def _finish(current, blockers, warnings):
+def _finish(current, blockers, warnings, *, scope_receipt=None):
     current.blockers = list(dict.fromkeys(blockers))
     current.warnings = list(dict.fromkeys(warnings))
     if current.blockers:
@@ -77,6 +77,26 @@ def _finish(current, blockers, warnings):
     current.provenance["execution_validation"] = {"authority": "ExecutionValidator", "version": "2",
         "readiness": current.readiness.value, "input_hash": _input_hash(current), "revision": current.revision,
         "operation": current.route_plan.get("analysis_type")}
+    if scope_receipt is not None:
+        source_bound = (scope_receipt.get('status') == 'CORPUS_VERIFIED'
+                        and scope_receipt.get('query_scope') == 'SOURCE_CORPUS')
+        executable = source_bound and current.readiness == PlanStatus.EXECUTION_READY
+        current.provenance['execution_scope_validation'] = {
+            'authority': 'ExecutionValidator',
+            'status': 'SOURCE_BOUND_EXECUTABLE' if executable else 'NOT_SOURCE_BOUND_EXECUTABLE',
+            'source_bound_executable': executable,
+            'source_corpus_status': scope_receipt.get('source_corpus_status', 'VERIFIED' if source_bound else 'UNKNOWN'),
+            'geographic_coverage_status': scope_receipt.get('geographic_coverage_status', scope_receipt.get('geographic_coverage', scope_receipt.get('status', 'UNKNOWN'))),
+            'real_world_completeness': 'UNKNOWN',
+            'absence_certified': False,
+            'query_scope': scope_receipt.get('query_scope'),
+            'readiness': current.readiness.value,
+            'input_hash': current.provenance['execution_validation']['input_hash'],
+            'revision': current.revision,
+        }
+    else:
+        # Do not carry a caller-supplied or earlier spatial authority to a new decision.
+        current.provenance.pop('execution_scope_validation', None)
     project_execution_decision(current, current.route_plan)
     return current
 
@@ -623,6 +643,7 @@ def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=No
         blockers.append(f"BLOCKED_CONFIG: unsupported operation: {analysis_type}")
 
     from services.orchestrator.spatial_coverage import SPATIAL_OPERATIONS, assess_coverage, assess_source_corpus
+    scope_receipt = None
     if analysis_type in SPATIAL_OPERATIONS:
         from services.orchestrator.request_constraints import check_request_constraints
         request_blockers, request_warnings, request_receipt = check_request_constraints(current, request_constraints)
@@ -638,6 +659,7 @@ def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=No
                 receipt = corpus
                 warnings.append('SOURCE_CORPUS_ONLY: results describe the verified source inventory; geographic completeness and real-world absence are not certified')
         current.provenance['coverage_validation'] = receipt
+        scope_receipt = receipt
         if receipt['status'] in {'OUT_OF_COVERAGE', 'PARTIAL'}:
             blockers.append('BLOCKED_DATA: DATA_OUT_OF_SCOPE')
         elif (receipt['status'] == 'UNKNOWN' and _has_reference_geometry(current) and current.data_bindings
@@ -646,4 +668,4 @@ def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=No
                 blockers.append('BLOCKED_DATA: DATA_COVERAGE_UNVERIFIED')
             else:
                 warnings.append('DATA_COVERAGE_UNVERIFIED: returned rows describe source observations only')
-    return _finish(current, blockers, warnings)
+    return _finish(current, blockers, warnings, scope_receipt=scope_receipt)

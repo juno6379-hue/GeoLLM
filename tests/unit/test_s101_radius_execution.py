@@ -219,7 +219,8 @@ def test_unapproved_targets_never_fall_back_to_default_hazards(state, monkeypatc
     connect.assert_not_called()
     assert result["status"] == "NEEDS_CLARIFICATION"
     assert result["error_code"] == "UNSUPPORTED_TARGET"
-    assert result["structured_result"]["returned_count"] == 0
+    assert result["structured_result"]["returned_count"] is None
+    assert result["structured_result"]["displayed_count"] == 0
     assert not result["map_layers"]
 
 

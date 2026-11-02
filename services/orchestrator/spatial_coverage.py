@@ -22,11 +22,63 @@ SPATIAL_OPERATIONS = {
 }
 
 
+def _explicit_finite_inventory_scope(query):
+    """Recognize explicit membership in a finite inventory, not vague 'data'.
+
+    This only resolves the request scope. Registry/source/geometry verification
+    remains mandatory before any source-bound execution can be authorized.
+    """
+    return bool(re.search(
+        r'(?:\b20\d{2}\s*CSV|원천\s*목록|등록된\s*(?:데이터셋|데이터|목록))\s*'
+        r'(?:에\s*(?:수록|등록|포함)된|(?:내|안)의)|'
+        r'\b(?:in|from|within)\s+(?:the\s+)?(?:registered|pinned|frozen)\s+'
+        r'(?:dataset|source\s+inventory|corpus)\b|'
+        r'\b(?:in|from|within)\s+(?:the\s+)?20\d{2}\s+CSV\b', query, re.I))
+
+
+def _finite_exhaustiveness(query):
+    """Every exhaustive clause must bind its own finite source.
+
+    A source phrase in an explanatory clause cannot authorize a different
+    unbounded search. Ambiguous coordinated requests remain blocked.
+    """
+    exhaustive = r'전체|모든|전부|빠짐없이|누락\s*없이|without\s+omission|\b(?:all|every|complete)\b'
+    clauses = re.split(r'[;\n!?。]|(?<!\d)\.(?!\d)|그리고|또한|하지만|하고|찾고|보여주고|알려주고|'
+                       r'\b(?:and|also|but)\b', query, flags=re.I)
+    demanding = [clause for clause in clauses if re.search(exhaustive, clause, re.I)]
+    def bound(clause):
+        if not _explicit_finite_inventory_scope(clause):
+            return False
+        # The finite source may qualify a spatially restricted exhaustive set.
+        # Only a location/radius modifier may intervene, never another task or
+        # object used as evidence for an unrelated exhaustive request.
+        if re.search(r'전체|모든|전부|빠짐없이|누락\s*없이', clause):
+            matches = re.finditer(
+                r'(?:\b20\d{2}\s*CSV|원천\s*목록|등록된\s*(?:데이터셋|데이터|목록))\s*'
+                r'(?:에\s*(?:수록|등록|포함)된|(?:내|안)의)\s*(.*?)\s*(?:전체|모든|전부)', clause, re.I)
+            for match in matches:
+                modifier = match.group(1).strip()
+                if re.search(r'참고|설명|조회|알려|보여|찾|기반', modifier):
+                    continue
+                if re.fullmatch(
+                    r'(?:[가-힣A-Za-z0-9_-]{1,30}\s*(?:주변|부근|근처)\s*)?'
+                    r'(?:(?:반경\s*)?\d+(?:\.\d+)?\s*(?:km|m|킬로미터|미터)\s*'
+                    r'(?:(?:이내|내)(?:의)?)?\s*)?', modifier, re.I):
+                    return True
+            return False
+        # English allows a finite target noun phrase followed by source scope.
+        return bool(re.search(
+            r'\b(?:all|every|complete)\s+(?:[A-Za-z0-9_-]+\s+){1,8}'
+            r'(?:in|from|within)\s+(?:the\s+)?(?:(?:registered|pinned|frozen)\s+'
+            r'(?:dataset|source\s+inventory|corpus)|20\d{2}\s+CSV)\b', clause, re.I))
+    return bool(demanding) and all(bound(clause) for clause in demanding)
+
+
 def requests_source_corpus(qec, *, registered_default=False):
     """Determine whether a bounded inventory listing can answer this task.
 
-    Only the server-registered gazetteer supports a default inventory listing.
-    Explicit completeness/nearest requirements cannot be narrowed by model slots.
+    An exhaustive finite inventory listing is not real-world completeness.
+    Explicit world-completeness/nearest requirements cannot be narrowed by slots.
     """
     operation = qec.route_plan.get('analysis_type') or qec.slots.analysis_type or qec.slots.operation
     if operation in {'nearest_feature', 'nearest_feature_search'}:
@@ -34,9 +86,15 @@ def requests_source_corpus(qec, *, registered_default=False):
     if qec.slots.filters.get('require_complete_coverage') is True:
         return False
     query = qec.original_query or ''
-    if re.search(r'실세계|실제\s*(?:존재|전체)|전체|모든|전부|빠짐없이|누락\s*없이|가장\s*가까|최근접|'
-                 r'real[- ]world|without\s+omission|\b(?:all|every|nearest|closest|complete)\b', query, re.I):
+    if re.search(r'실세계|실제\s*(?:존재|전체|해역|바다)|전\s*해역|전세계|가장\s*가까|최근접|'
+                 r'real[- ]world|\b(?:nearest|closest)\b', query, re.I):
         return False
+    finite_inventory = _explicit_finite_inventory_scope(query)
+    if (re.search(r'전체|모든|전부|빠짐없이|누락\s*없이|without\s+omission|'
+                  r'\b(?:all|every|complete)\b', query, re.I) and not _finite_exhaustiveness(query)):
+        return False
+    if finite_inventory:
+        return True
     if (operation in {'feature_dwithin', 'feature_search_by_radius'}
             and set(qec.slots.target_layers) == {'marine_gazetteer'}
             and not qec.slots.target_features):
@@ -61,7 +119,7 @@ def assess_source_corpus(qec, layer_registry, verifier):
     """
     layers = (layer_registry or {}).get('layers') or {}
     default_inventory = bool(qec.data_bindings) and all(
-        ((layers.get(binding.dataset_id) or {}).get('corpus_contract') or {}).get('kind') == 's101_exact_inventory_v1'
+        ((layers.get(binding.dataset_id) or {}).get('corpus_contract') or {}).get('kind') in ('s101_exact_inventory_v1', 's101_target_inventory_v2')
         and ((layers.get(binding.dataset_id) or {}).get('corpus_contract') or {}).get('default_inventory_listing') is True
         for binding in qec.data_bindings)
     if not callable(verifier) or not requests_source_corpus(qec, registered_default=default_inventory):
@@ -74,6 +132,7 @@ def assess_source_corpus(qec, layer_registry, verifier):
     except (ValueError, TypeError, ShapelyError):
         return None
     sources = []
+    domain_relations = []
     for binding in qec.data_bindings:
         layer = (layer_registry.get('layers') or {}).get(binding.dataset_id) or {}
         contract = layer.get('corpus_contract') or {}
@@ -83,7 +142,7 @@ def assess_source_corpus(qec, layer_registry, verifier):
                      and binding.relation == 'serving.marine_gazetteer_current'
                      and not qec.slots.target_features
                      and set(qec.slots.target_layers) == {'marine_gazetteer'})
-        s101 = (contract.get('kind') == 's101_exact_inventory_v1'
+        s101 = (contract.get('kind') in ('s101_exact_inventory_v1', 's101_target_inventory_v2')
                 and binding.relation == 'projection.s101_feature_current'
                 and bool(qec.slots.target_features)
                 and set(qec.slots.target_features) <= set(contract.get('target_features') or [])
@@ -122,15 +181,22 @@ def assess_source_corpus(qec, layer_registry, verifier):
                         or not all(math.isfinite(value) for value in geometry.bounds)
                         or not (-180 <= geometry.bounds[0] <= geometry.bounds[2] <= 180
                                 and -90 <= geometry.bounds[1] <= geometry.bounds[3] <= 90)
-                        or not geometry.covers(requested)
                         or not set(qec.slots.target_features) <= set(observed.get('target_features') or [])
                         or observed.get('snapshot_version') != contract.get('snapshot_version')):
                     return None
+                domain_relations.append('CONTAINS_QUERY' if geometry.covers(requested) else
+                                        'PARTIAL' if geometry.intersects(requested) else 'OUTSIDE')
             except (KeyError, ValueError, TypeError, ShapelyError):
                 return None
         sources.append(dict(observed))
+    domain = ('OUTSIDE' if 'OUTSIDE' in domain_relations else 'PARTIAL' if 'PARTIAL' in domain_relations
+              else 'CONTAINS_QUERY' if domain_relations else 'NOT_DECLARED')
+    status = 'OUT_OF_COVERAGE' if domain == 'OUTSIDE' else 'PARTIAL' if domain == 'PARTIAL' else 'CORPUS_VERIFIED'
     return {'authority': 'ServerSourceCoverage', 'version': '3',
-            'status': 'CORPUS_VERIFIED', 'geographic_coverage': 'UNKNOWN',
+            'status': status, 'geographic_coverage': 'UNKNOWN',
+            'source_corpus_status': 'VERIFIED',
+            'geographic_coverage_status': 'SOURCE_DECLARED_DOMAIN_' + domain if domain != 'NOT_DECLARED' else 'SOURCE_DOMAIN_NOT_DECLARED',
+            'real_world_completeness': 'UNKNOWN',
             'query_scope': 'SOURCE_CORPUS', 'required': True,
             'absence_certified': False, 'sources': sources}
 

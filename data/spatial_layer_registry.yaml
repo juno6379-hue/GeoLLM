@@ -1,6 +1,14 @@
 version: '2.0'
 layers:
   GBENC_S101_feature:
+    corpus_contract:
+      kind: s101_target_inventory_v2
+      source_asset: data/source_inventory/s101_busan_20261102/wreck_inventory.json
+      source_sha256: 18acd6ab8cf314cc397837aa3e982bf681b9a5cb8ce39cfb4532b67fee2f09bb
+      snapshot_version: sha256:867fa1676b632b3684415ff03a78fddb2862915d650acc8552f9f98767cb5a36
+      target_features: [Wreck]
+      default_inventory_listing: true
+      allowed_operations: [feature_search_by_radius, feature_dwithin]
     zone: serving
     layer_type: s101_feature
     execution_status: executable

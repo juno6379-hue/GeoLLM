@@ -49,9 +49,38 @@ def test_source_inventory_has_separate_scope_and_signed_decision(query):
     assert receipt['geographic_coverage'] == 'UNKNOWN'
     assert receipt['query_scope'] == 'SOURCE_CORPUS'
     assert receipt['absence_certified'] is False
+    scope = result.provenance['execution_scope_validation']
+    assert scope['authority'] == 'ExecutionValidator'
+    assert scope['status'] == 'SOURCE_BOUND_EXECUTABLE'
+    assert scope['source_bound_executable'] is True
+    assert scope['source_corpus_status'] == 'VERIFIED'
+    assert scope['real_world_completeness'] == 'UNKNOWN'
+    assert scope['absence_certified'] is False
     bound.verify_corpus_identity.assert_called_once()
     receipt['absence_certified'] = True
     assert not is_execution_authorized(result)
+
+
+def test_verified_source_does_not_override_an_invalid_distance():
+    qec = request()
+    qec.slots.distance_m = -5000
+    qec.provenance['execution_scope_validation'] = {'source_bound_executable': True}
+    registry, observed = setup()
+    result = validate_execution_context(qec, binding_adapter=adapter(qec, registry, observed))
+    assert not is_execution_authorized(result)
+    assert result.provenance.get('execution_scope_validation', {}).get('source_bound_executable') is not True
+
+
+def test_source_failure_cannot_reuse_a_previous_source_bound_decision():
+    qec = request(); registry, observed = setup()
+    bound = adapter(qec, registry, observed)
+    ready = validate_execution_context(qec, binding_adapter=bound)
+    assert ready.provenance['execution_scope_validation']['source_bound_executable'] is True
+    bound.verify_corpus_identity.return_value = {'status': 'UNVERIFIED'}
+    blocked = validate_execution_context(ready, binding_adapter=bound)
+    assert not is_execution_authorized(blocked)
+    assert blocked.provenance['execution_scope_validation']['source_bound_executable'] is False
+    assert blocked.provenance['execution_scope_validation']['real_world_completeness'] == 'UNKNOWN'
 
 
 @pytest.mark.parametrize('query', [

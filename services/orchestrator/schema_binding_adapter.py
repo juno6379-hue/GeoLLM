@@ -490,7 +490,7 @@ class SchemaBindingAdapter:
                      and binding.relation == 'serving.marine_gazetteer_current'
                      and contract.get('kind') == 'csv_exact_inventory_v1')
         s101 = (binding.relation == 'projection.s101_feature_current'
-                and contract.get('kind') == 's101_exact_inventory_v1')
+                and contract.get('kind') in ('s101_exact_inventory_v1', 's101_target_inventory_v2'))
         if not (gazetteer or s101):
             return {'status': 'UNVERIFIED'}
         try:

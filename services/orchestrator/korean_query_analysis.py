@@ -151,6 +151,16 @@ def guard_result(state: dict, analysis: dict, problem: dict) -> dict:
              'answer_text': problem['message'], 'summary': problem['message'],
              'structured_result': {'count': None, 'korean_query_analysis': analysis},
              'orchestrator_v2': {'route_plan': plan, 'query_execution_context': context, 'korean_query_analysis': analysis}}
+    if problem['code'] == 'AOI_REQUIRED':
+        # This guard returns before spatial dispatch; no result count was observed.
+        execution = {'status': 'BLOCKED_BEFORE_DISPATCH', 'scope': 'SPATIAL_EXECUTION_ONLY',
+                     'execution_attempted': False, 'execution_started': False,
+                     'tool_called': False, 'sql_executed': False}
+        context['provenance']['spatial_preflight'] = execution
+        final['structured_result'].update(
+            **{key: execution[key] for key in ('execution_attempted', 'execution_started', 'tool_called', 'sql_executed')},
+            spatial_execution=execution, count=None, total_count=None, returned_count=None,
+            displayed_count=0, count_scope='NOT_EXECUTED')
     if status == 'NEEDS_CLARIFICATION':
         final['clarification_questions'] = [problem['message']]
     return {'final_dict': final, 'task_plan': plan, 'query_execution_context': context, 'status': status,

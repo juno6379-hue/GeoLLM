@@ -86,19 +86,35 @@ def _attach_candidate_trace(state: OrchestratorState, final_dict: dict) -> dict:
     trace = state.get("candidate_trace")
     if not isinstance(trace, dict) or not isinstance(final_dict, dict):
         return final_dict
+    contract = trace.get("execution_contract")
+    if isinstance(contract, dict):
+        # Candidate readiness is planning evidence, not final execution authority.
+        contract = dict(contract)
+        qec = (final_dict.get("orchestrator_v2") or {}).get("query_execution_context")
+        authorized = False
+        if isinstance(qec, dict):
+            try:
+                authorized = is_execution_authorized(QueryExecutionContext.model_validate(qec))
+            except (ValueError, TypeError):
+                authorized = False
+        contract.update(planning_status=contract.get('planning_status', contract.get('status')),
+                        status=final_dict.get('status') or (qec.get('readiness') if isinstance(qec, dict) else 'NOT_VALIDATED'),
+                        status_scope='FINAL_RESULT', execution_authorized=authorized,
+                        execution_authority='ExecutionValidator',
+                        execution_readiness=qec.get('readiness') if isinstance(qec, dict) else 'NOT_VALIDATED')
     final_dict.setdefault("structured_result", {})
     if isinstance(final_dict["structured_result"], dict):
         final_dict["structured_result"]["candidate_trace_summary"] = _candidate_trace_summary(trace)
-        if isinstance(trace.get("execution_contract"), dict):
-            final_dict["structured_result"]["execution_contract"] = trace["execution_contract"]
+        if isinstance(contract, dict):
+            final_dict["structured_result"]["execution_contract"] = contract
     final_dict.setdefault("orchestrator_v2", {})
     if isinstance(final_dict["orchestrator_v2"], dict):
         final_dict["orchestrator_v2"]["candidate_trace"] = trace
-        if isinstance(trace.get("execution_contract"), dict):
-            final_dict["orchestrator_v2"]["execution_contract"] = trace["execution_contract"]
+        if isinstance(contract, dict):
+            final_dict["orchestrator_v2"]["execution_contract"] = contract
             qec = final_dict["orchestrator_v2"].get("query_execution_context")
             if isinstance(qec, dict):
-                qec.setdefault("execution_contract", trace["execution_contract"])
+                qec["execution_contract"] = contract
     return final_dict
 
 
