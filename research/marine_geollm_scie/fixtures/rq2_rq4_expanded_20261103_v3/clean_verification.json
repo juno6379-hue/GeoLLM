@@ -1,0 +1,2526 @@
+[
+  {
+    "base_scenario_id": "WRECK_A",
+    "native_detection": {
+      "invalid": false,
+      "compiler_rejected": false,
+      "native_validator_called": true,
+      "qecs": [
+        {
+          "contract_version": "geollm.execution.v1",
+          "request_id": null,
+          "conversation_id": null,
+          "task_id": null,
+          "revision": 1,
+          "plan_hash": "45c3f2da0848a5c38d351d12fca52c4358ba05ddcdac9e01dc5bdac632268220",
+          "original_query": "주어진 기준점에서 반경 250m 이내 Wreck를 찾아줘. 입력 좌표의 CRS는 EPSG:4326이다.",
+          "slots": {
+            "surface_term": null,
+            "location": null,
+            "location_text": null,
+            "reference_geometry": "POINT(129.0507505 34.9240517)",
+            "geometry_ref": null,
+            "resolution_status": null,
+            "crs": "EPSG:4326",
+            "distance_m": 250.0,
+            "spatial_relation": "dwithin",
+            "time_range": {},
+            "target_term": null,
+            "concept_id": null,
+            "derived_concept": null,
+            "context": null,
+            "analysis_type": "feature_search_by_radius",
+            "operation": null,
+            "target_features": [
+              "Wreck"
+            ],
+            "target_area_features": [],
+            "resolved_target_set": [],
+            "alternative_target_sets": [],
+            "feature_instance_ref": {},
+            "feature_instance_id": null,
+            "target_layers": [],
+            "target_dynamic_layers": [],
+            "nftc_codes": [],
+            "inclusions": [],
+            "exclusions": [],
+            "query_template": null,
+            "tool": "spatial.query",
+            "output_type": [],
+            "filters": {
+              "source": "s101"
+            },
+            "unresolved_slots": []
+          },
+          "normalized_query": null,
+          "security_context_ref": null,
+          "semantic_resolution": {},
+          "feature_bindings": [],
+          "data_bindings": [
+            {
+              "dataset_id": "s101",
+              "relation": "projection.s101_feature_current",
+              "geometry_column": "geometry",
+              "distance_column": null,
+              "srid": 4326,
+              "snapshot_version": "sha256:1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+              "layer_type": null,
+              "source_asset": null,
+              "execution_status": null,
+              "read_only": true
+            }
+          ],
+          "tool_bindings": [
+            {
+              "tool_id": "spatial.query",
+              "operation": "feature_search_by_radius",
+              "query_template_id": null,
+              "schema_version": null
+            }
+          ],
+          "kg": {},
+          "context": {},
+          "route_plan": {
+            "analysis_type": "feature_search_by_radius",
+            "original_tool": "spatial.query",
+            "execution_ready": true,
+            "status": "EXECUTION_READY",
+            "route_plan_status": "EXECUTION_READY",
+            "execution_validation": {
+              "authority": "ExecutionValidator",
+              "version": "2",
+              "readiness": "EXECUTION_READY",
+              "input_hash": "2ea634e475a06f89455ff11fea292154f2d53bcb7c89e7e3e8ab5362adc07814",
+              "revision": 1,
+              "operation": "feature_search_by_radius"
+            }
+          },
+          "data_discovery": {},
+          "spatial": {},
+          "rag": {},
+          "readiness": "EXECUTION_READY",
+          "blockers": [],
+          "warnings": [
+            "SOURCE_CORPUS_ONLY: results describe the verified source inventory; geographic completeness and real-world absence are not certified"
+          ],
+          "snapshot_versions": {},
+          "provenance": {
+            "lossless_compilation": {
+              "compiler_version": "lossless_qec_v1",
+              "compiled_from_plan_hash": "45c3f2da0848a5c38d351d12fca52c4358ba05ddcdac9e01dc5bdac632268220",
+              "original_plan": {
+                "action": "search",
+                "intent": "spatial_search",
+                "target_features": [
+                  "Wreck"
+                ],
+                "attributes": [],
+                "spatial_relation": "dwithin",
+                "location_text": null,
+                "radius_m": 250,
+                "crs": "EPSG:4326",
+                "tool_calls": [
+                  {
+                    "tool_id": "spatial.query",
+                    "arguments": {
+                      "source": "s101",
+                      "feature_types": [
+                        "Wreck"
+                      ],
+                      "reference_geometry": "POINT(129.0507505 34.9240517)",
+                      "crs": "EPSG:4326",
+                      "radius_m": 250,
+                      "relation": "dwithin",
+                      "analysis_type": "feature_search_by_radius"
+                    }
+                  }
+                ],
+                "evidence_refs": [],
+                "missing_inputs": [],
+                "answer": ""
+              },
+              "task_index": 0,
+              "field_sources": {
+                "crs": "plan.tool_calls[0].arguments.crs",
+                "reference_geometry": "plan.tool_calls[0].arguments.reference_geometry",
+                "analysis_type": "plan.tool_calls[0].arguments.analysis_type",
+                "spatial_relation": "plan.tool_calls[0].arguments.relation",
+                "target_features": "plan.tool_calls[0].arguments.feature_types",
+                "tool": "plan.tool_calls[0].tool_id",
+                "distance_m": [
+                  "plan.tool_calls[0].arguments.radius_m"
+                ]
+              },
+              "missing_fields": {},
+              "allowed_transformations": [
+                "explicit m/km conversion",
+                "feature scalar to singleton list",
+                "literal field renaming"
+              ],
+              "semantic_inference_performed": false,
+              "dataset_reselection_performed": false,
+              "errors": []
+            },
+            "schema_binding": {
+              "inspected_relations": {
+                "projection.s101_feature_current": {
+                  "columns": [
+                    "feature_instance_id",
+                    "dataset_id",
+                    "dataset_version_id",
+                    "feature_record_id",
+                    "feature_type_code",
+                    "foid_agen",
+                    "foid_fidn",
+                    "foid_fids",
+                    "lifecycle_status",
+                    "attributes",
+                    "geometry",
+                    "rebuilt_at",
+                    "raw_feature_type_code",
+                    "feature_type_name",
+                    "min_scale",
+                    "max_scale",
+                    "product_specification",
+                    "dataset_name"
+                  ],
+                  "present": true,
+                  "selectable": true
+                }
+              }
+            },
+            "request_constraint_validation": {
+              "version": "explicit_request_constraints_v1",
+              "source": "caller_captured_original_request",
+              "request_sha256": "6d4f358da61f034ab63cd68c96e6555e69172481dc2f429d0860624c86bd8de2",
+              "feature_registry_sha256": "5246a9e61b877a0cce1786f92e00c29eadc057b8ad40f1968c952225d6987ad5",
+              "checks": {
+                "crs": {
+                  "expected": "EPSG:4326",
+                  "actual": "EPSG:4326",
+                  "source": "query"
+                },
+                "distance_m": {
+                  "expected": 250.0,
+                  "actual": 250.0,
+                  "source": "query"
+                },
+                "target_features": {
+                  "allowed": [
+                    "Wreck"
+                  ],
+                  "actual": [
+                    "Wreck"
+                  ],
+                  "unexpected": [],
+                  "comparison": "subtask_subset"
+                }
+              },
+              "status": "CHECKED",
+              "limitations": [
+                "literal_unambiguous_constraints_only",
+                "subtask_union_completeness_not_measured",
+                "caller_owns_request_boundary"
+              ],
+              "semantic_repair_performed": false
+            },
+            "coverage_validation": {
+              "authority": "ServerSourceCoverage",
+              "version": "3",
+              "status": "CORPUS_VERIFIED",
+              "geographic_coverage": "UNKNOWN",
+              "source_corpus_status": "VERIFIED",
+              "geographic_coverage_status": "RESEARCH_SNAPSHOT_DOMAIN_CONTAINS_QUERY",
+              "real_world_completeness": "UNKNOWN",
+              "query_scope": "SOURCE_CORPUS",
+              "required": true,
+              "absence_certified": false,
+              "sources": [
+                {
+                  "status": "VERIFIED",
+                  "dataset_id": "s101",
+                  "relation": "projection.s101_feature_current",
+                  "snapshot_version": "sha256:1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+                  "source_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+                  "source_asset": "D:\\An_GeoLLM\\outputs\\scie_gold_v2_eight_snapshot_20261102_v6\\projection__s101_feature_current.csv",
+                  "row_count": 25300,
+                  "authority_scope": "RESEARCH_FROZEN_SOURCE_ONLY",
+                  "real_world_completeness": "UNKNOWN",
+                  "absence_certified": false,
+                  "target_features": [
+                    "QualityOfNonBathymetricData",
+                    "DataCoverage",
+                    "NavigationalSystemOfMarks",
+                    "LocalDirectionOfBuoyage",
+                    "QualityOfBathymetricData",
+                    "SoundingDatum",
+                    "VerticalDatumOfData",
+                    "QualityOfSurvey",
+                    "UpdateInformation",
+                    "MagneticVariation",
+                    "LocalMagneticAnomaly",
+                    "Coastline",
+                    "LandArea",
+                    "IslandGroup",
+                    "LandElevation",
+                    "River",
+                    "Rapids",
+                    "Waterfall",
+                    "Lake",
+                    "LandRegion",
+                    "Vegetation",
+                    "IceArea",
+                    "SlopingGround",
+                    "SlopeTopline",
+                    "Tideway",
+                    "BuiltUpArea",
+                    "Building",
+                    "AirportAirfield",
+                    "Runway",
+                    "Helipad",
+                    "Bridge",
+                    "SpanFixed",
+                    "SpanOpening",
+                    "Conveyor",
+                    "CableOverhead",
+                    "PipelineOverhead",
+                    "PylonBridgeSupport",
+                    "FenceWall",
+                    "Railway",
+                    "Road",
+                    "Tunnel",
+                    "Landmark",
+                    "SiloTank",
+                    "WindTurbine",
+                    "FortifiedStructure",
+                    "ProductionStorageArea",
+                    "Checkpoint",
+                    "Hulk",
+                    "Pile",
+                    "Dyke",
+                    "ShorelineConstruction",
+                    "StructureOverNavigableWater",
+                    "Causeway",
+                    "Canal",
+                    "DistanceMark",
+                    "Gate",
+                    "Dam",
+                    "Crane",
+                    "Berth",
+                    "Dolphin",
+                    "Bollard",
+                    "DryDock",
+                    "FloatingDock",
+                    "Pontoon",
+                    "DockArea",
+                    "Gridiron",
+                    "LockBasin",
+                    "MooringTrot",
+                    "SeaAreaNamedWaterArea",
+                    "TidalStreamFloodEbb",
+                    "CurrentNonGravitational",
+                    "WaterTurbulence",
+                    "TidalStreamPanelData",
+                    "Sounding",
+                    "DredgedArea",
+                    "SweptArea",
+                    "DepthContour",
+                    "DepthArea",
+                    "DepthNoBottomFound",
+                    "UnsurveyedArea",
+                    "SeabedArea",
+                    "WeedKelp",
+                    "Seagrass",
+                    "Sandwave",
+                    "Spring",
+                    "UnderwaterAwashRock",
+                    "Wreck",
+                    "Obstruction",
+                    "FoulGround",
+                    "DiscolouredWater",
+                    "FishingFacility",
+                    "MarineFarmCulture",
+                    "OffshorePlatform",
+                    "CableSubmarine",
+                    "CableArea",
+                    "PipelineSubmarineOnLand",
+                    "SubmarinePipelineArea",
+                    "OffshoreProductionArea",
+                    "NavigationLine",
+                    "RecommendedTrack",
+                    "RangeSystem",
+                    "Fairway",
+                    "FairwaySystem",
+                    "RecommendedRouteCentreline",
+                    "TwoWayRoutePart",
+                    "TwoWayRoute",
+                    "RecommendedTrafficLanePart",
+                    "DeepWaterRouteCentreline",
+                    "DeepWaterRoutePart",
+                    "DeepWaterRoute",
+                    "InshoreTrafficZone",
+                    "PrecautionaryArea",
+                    "TrafficSeparationSchemeLanePart",
+                    "SeparationZoneOrLine",
+                    "TrafficSeparationSchemeBoundary",
+                    "TrafficSeparationSchemeCrossing",
+                    "TrafficSeparationSchemeRoundabout",
+                    "TrafficSeparationScheme",
+                    "ArchipelagicSeaLaneArea",
+                    "ArchipelagicSeaLaneAxis",
+                    "ArchipelagicSeaLane",
+                    "RadioCallingInPoint",
+                    "FerryRoute",
+                    "RadarLine",
+                    "RadarRange",
+                    "RadarStation",
+                    "AnchorageArea",
+                    "MooringArea",
+                    "AnchorBerth",
+                    "SeaplaneLandingArea",
+                    "DumpingGround",
+                    "MilitaryPracticeArea",
+                    "AdministrationArea",
+                    "CargoTranshipmentArea",
+                    "CautionArea",
+                    "InformationArea",
+                    "ContiguousZone",
+                    "ContinentalShelfArea",
+                    "CustomZone",
+                    "ExclusiveEconomicZone",
+                    "FisheryZone",
+                    "FishingGround",
+                    "FreePortArea",
+                    "HarbourAreaAdministrative",
+                    "LogPond",
+                    "OilBarrier",
+                    "StraightTerritorialSeaBaseline",
+                    "TerritorialSeaArea",
+                    "SubmarineTransitLane",
+                    "PilotageDistrict",
+                    "CollisionRegulationsLimit",
+                    "MarinePollutionRegulationsArea",
+                    "RestrictedArea",
+                    "LightAllAround",
+                    "LightSectored",
+                    "LightFogDetector",
+                    "LightAirObstruction",
+                    "LateralBuoy",
+                    "CardinalBuoy",
+                    "IsolatedDangerBuoy",
+                    "SafeWaterBuoy",
+                    "SpecialPurposeGeneralBuoy",
+                    "EmergencyWreckMarkingBuoy",
+                    "InstallationBuoy",
+                    "MooringBuoy",
+                    "LateralBeacon",
+                    "CardinalBeacon",
+                    "IsolatedDangerBeacon",
+                    "SafeWaterBeacon",
+                    "SpecialPurposeGeneralBeacon",
+                    "Daymark",
+                    "LightFloat",
+                    "LightVessel",
+                    "Retroreflector",
+                    "RadarReflector",
+                    "FogSignal",
+                    "PhysicalAISAidToNavigation",
+                    "VirtualAISAidToNavigation",
+                    "RadioStation",
+                    "RadarTransponderBeacon",
+                    "PilotBoardingPlace",
+                    "VesselTrafficServiceArea",
+                    "CoastGuardStation",
+                    "SignalStationWarning",
+                    "SignalStationTraffic",
+                    "RescueStation",
+                    "HarbourFacility",
+                    "SmallCraftFacility",
+                    "TextPlacement",
+                    "Chart1Feature"
+                  ],
+                  "source_scope": {
+                    "kind": "RESEARCH_SNAPSHOT_DOMAIN",
+                    "crs": "EPSG:4326",
+                    "source_locator": "D:\\An_GeoLLM\\outputs\\scie_gold_v2_eight_snapshot_20261102_v6\\projection__s101_feature_current.csv#manifest.coverage.BOUNDED_SUBSET",
+                    "source_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+                    "geometry_wkt": "POLYGON ((129.3 34.9, 129.3 35.3, 128.9 35.3, 128.9 34.9, 129.3 34.9))"
+                  }
+                }
+              ]
+            },
+            "execution_validation": {
+              "authority": "ExecutionValidator",
+              "version": "2",
+              "readiness": "EXECUTION_READY",
+              "input_hash": "2ea634e475a06f89455ff11fea292154f2d53bcb7c89e7e3e8ab5362adc07814",
+              "revision": 1,
+              "operation": "feature_search_by_radius"
+            },
+            "execution_scope_validation": {
+              "authority": "ExecutionValidator",
+              "status": "SOURCE_BOUND_EXECUTABLE",
+              "source_bound_executable": true,
+              "source_corpus_status": "VERIFIED",
+              "geographic_coverage_status": "RESEARCH_SNAPSHOT_DOMAIN_CONTAINS_QUERY",
+              "real_world_completeness": "UNKNOWN",
+              "absence_certified": false,
+              "query_scope": "SOURCE_CORPUS",
+              "readiness": "EXECUTION_READY",
+              "input_hash": "2ea634e475a06f89455ff11fea292154f2d53bcb7c89e7e3e8ab5362adc07814",
+              "revision": 1
+            }
+          }
+        }
+      ],
+      "compilation_traces": [
+        {
+          "compiler_version": "lossless_qec_v1",
+          "compiled_from_plan_hash": "45c3f2da0848a5c38d351d12fca52c4358ba05ddcdac9e01dc5bdac632268220",
+          "original_plan": {
+            "action": "search",
+            "intent": "spatial_search",
+            "target_features": [
+              "Wreck"
+            ],
+            "attributes": [],
+            "spatial_relation": "dwithin",
+            "location_text": null,
+            "radius_m": 250,
+            "crs": "EPSG:4326",
+            "tool_calls": [
+              {
+                "tool_id": "spatial.query",
+                "arguments": {
+                  "source": "s101",
+                  "feature_types": [
+                    "Wreck"
+                  ],
+                  "reference_geometry": "POINT(129.0507505 34.9240517)",
+                  "crs": "EPSG:4326",
+                  "radius_m": 250,
+                  "relation": "dwithin",
+                  "analysis_type": "feature_search_by_radius"
+                }
+              }
+            ],
+            "evidence_refs": [],
+            "missing_inputs": [],
+            "answer": ""
+          },
+          "task_index": 0,
+          "field_sources": {
+            "crs": "plan.tool_calls[0].arguments.crs",
+            "reference_geometry": "plan.tool_calls[0].arguments.reference_geometry",
+            "analysis_type": "plan.tool_calls[0].arguments.analysis_type",
+            "spatial_relation": "plan.tool_calls[0].arguments.relation",
+            "target_features": "plan.tool_calls[0].arguments.feature_types",
+            "tool": "plan.tool_calls[0].tool_id",
+            "distance_m": [
+              "plan.tool_calls[0].arguments.radius_m"
+            ]
+          },
+          "missing_fields": {},
+          "allowed_transformations": [
+            "explicit m/km conversion",
+            "feature scalar to singleton list",
+            "literal field renaming"
+          ],
+          "semantic_inference_performed": false,
+          "dataset_reselection_performed": false,
+          "errors": []
+        }
+      ],
+      "latency_ms": 5448.868599996786
+    },
+    "execution": {
+      "status": "TOOLS_RETURNED",
+      "tool_calls_attempted": 1,
+      "tool_calls_executed": 1,
+      "receipts": [
+        {
+          "tool_id": "spatial.query",
+          "status": "TOOL_RETURNED",
+          "result": {
+            "rows": [
+              {
+                "label": "Wreck",
+                "geometry": {
+                  "type": "Point",
+                  "coordinates": [
+                    129.0507505,
+                    34.9240517
+                  ]
+                },
+                "source_id": "524189",
+                "attributes": {
+                  "scaleMinimum": "9999999",
+                  "valueOfSounding": "49",
+                  "surroundingDepth": "30",
+                  "waterLevelEffect": "3",
+                  "qualityOfVerticalMeasurement": "6"
+                },
+                "dataset_id": 9,
+                "distance_m": 0,
+                "dataset_version_id": 9
+              },
+              {
+                "label": "Wreck",
+                "geometry": {
+                  "type": "Point",
+                  "coordinates": [
+                    129.0507505,
+                    34.9240517
+                  ]
+                },
+                "source_id": "560079",
+                "attributes": {
+                  "valueOfSounding": "49",
+                  "surroundingDepth": "50",
+                  "waterLevelEffect": "3",
+                  "expositionOfSounding": "2",
+                  "qualityOfVerticalMeasurement": "6"
+                },
+                "dataset_id": 30,
+                "distance_m": 0,
+                "dataset_version_id": 30
+              },
+              {
+                "label": "Wreck",
+                "geometry": {
+                  "type": "Point",
+                  "coordinates": [
+                    129.0507505,
+                    34.9240517
+                  ]
+                },
+                "source_id": "602612",
+                "attributes": {
+                  "valueOfSounding": "49",
+                  "surroundingDepth": "50",
+                  "waterLevelEffect": "3",
+                  "expositionOfSounding": "2",
+                  "qualityOfVerticalMeasurement": "6"
+                },
+                "dataset_id": 90,
+                "distance_m": 0,
+                "dataset_version_id": 90
+              },
+              {
+                "label": "Wreck",
+                "geometry": {
+                  "type": "Point",
+                  "coordinates": [
+                    129.0507505,
+                    34.9240517
+                  ]
+                },
+                "source_id": "712978",
+                "attributes": {
+                  "valueOfSounding": "49",
+                  "surroundingDepth": "50",
+                  "waterLevelEffect": "3",
+                  "expositionOfSounding": "2",
+                  "qualityOfVerticalMeasurement": "6"
+                },
+                "dataset_id": 172,
+                "distance_m": 0,
+                "dataset_version_id": 172
+              }
+            ],
+            "source": "s101",
+            "source_scope": {
+              "scope_verified": true,
+              "bbox_epsg4326": [
+                128.9,
+                34.9,
+                129.3,
+                35.3
+              ],
+              "source_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+              "scope_type": "DECLARED_RESEARCH_SNAPSHOT",
+              "real_world_completeness": false,
+              "explanation": "Fixed Busan subset; outside cannot establish real-world absence."
+            },
+            "relation": "dwithin",
+            "radius_m": 250,
+            "source_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+            "postcondition": "SPATIAL_ROWS_RETURNED"
+          },
+          "latency_ms": 4220.635899997433
+        }
+      ],
+      "execution_success": null,
+      "semantic_correct": null,
+      "spatial_correct": null,
+      "evidence_correct": null,
+      "task_postconditions": "NOT_SCORED_PENDING_APPROVED_CONTRACT",
+      "latency_ms": 4220.647899994219,
+      "execution_observation": {
+        "observation_complete": true,
+        "execution_attempted": true,
+        "tool_called": true,
+        "execution_started": true,
+        "sql_executed": true,
+        "execution_succeeded": true,
+        "scope": "SPATIAL_EXECUTION_ONLY; metadata and document SQL separately recorded",
+        "db_events": [
+          {
+            "scope": "coverage_metadata",
+            "sql_submission_attempted": true,
+            "sql_executed": true,
+            "succeeded": true,
+            "process_returncode": 0,
+            "row_count": 1,
+            "latency_ms": 427.3849999954109
+          },
+          {
+            "scope": "spatial",
+            "sql_submission_attempted": true,
+            "sql_executed": true,
+            "succeeded": true,
+            "process_returncode": 0,
+            "row_count": 4,
+            "latency_ms": 3550.0533999947947
+          }
+        ],
+        "execution_semantics_version": "spatial_execution_semantics_v3"
+      }
+    },
+    "passed": true,
+    "injected_fault": {
+      "action": "search",
+      "intent": "spatial_search",
+      "target_features": [
+        "Wreck"
+      ],
+      "attributes": [],
+      "spatial_relation": "dwithin",
+      "location_text": null,
+      "radius_m": 250,
+      "crs": "EPSG:4326",
+      "tool_calls": [
+        {
+          "tool_id": "spatial.query",
+          "arguments": {
+            "source": "s101",
+            "feature_types": [
+              "Wreck"
+            ],
+            "reference_geometry": "POINT(129.0507505 34.9240517)",
+            "crs": "EPSG:4326",
+            "radius_m": "0.25 km",
+            "relation": "dwithin",
+            "analysis_type": "feature_search_by_radius"
+          }
+        }
+      ],
+      "evidence_refs": [],
+      "missing_inputs": [],
+      "answer": ""
+    },
+    "injected_detection": {
+      "invalid": true,
+      "compiler_rejected": true,
+      "native_validator_called": false,
+      "qecs": [],
+      "compilation_traces": [
+        {
+          "compiler_version": "lossless_qec_v1",
+          "compiled_from_plan_hash": "6693e432c0930edaf0d1d6f81dac266c5cdf29ebc0a0f3c33f16e86b13da271d",
+          "original_plan": {
+            "action": "search",
+            "intent": "spatial_search",
+            "target_features": [
+              "Wreck"
+            ],
+            "attributes": [],
+            "spatial_relation": "dwithin",
+            "location_text": null,
+            "radius_m": 250,
+            "crs": "EPSG:4326",
+            "tool_calls": [
+              {
+                "tool_id": "spatial.query",
+                "arguments": {
+                  "source": "s101",
+                  "feature_types": [
+                    "Wreck"
+                  ],
+                  "reference_geometry": "POINT(129.0507505 34.9240517)",
+                  "crs": "EPSG:4326",
+                  "radius_m": "0.25 km",
+                  "relation": "dwithin",
+                  "analysis_type": "feature_search_by_radius"
+                }
+              }
+            ],
+            "evidence_refs": [],
+            "missing_inputs": [],
+            "answer": ""
+          },
+          "task_index": 0,
+          "field_sources": {
+            "crs": "plan.tool_calls[0].arguments.crs",
+            "reference_geometry": "plan.tool_calls[0].arguments.reference_geometry",
+            "analysis_type": "plan.tool_calls[0].arguments.analysis_type",
+            "spatial_relation": "plan.tool_calls[0].arguments.relation",
+            "target_features": "plan.tool_calls[0].arguments.feature_types",
+            "tool": "plan.tool_calls[0].tool_id"
+          },
+          "missing_fields": {},
+          "allowed_transformations": [
+            "explicit m/km conversion",
+            "feature scalar to singleton list",
+            "literal field renaming"
+          ],
+          "semantic_inference_performed": false,
+          "dataset_reselection_performed": false,
+          "errors": [
+            "DISTANCE_VALUE_TYPE_INVALID"
+          ]
+        }
+      ],
+      "latency_ms": 0.09090000094147399
+    },
+    "repair_contract_check": {
+      "mode": "EXPLICIT_CLEAN_FIXTURE_NOT_MODEL_RECOVERY",
+      "initial_fault_rejected": true,
+      "repaired_plan": {
+        "action": "search",
+        "intent": "spatial_search",
+        "target_features": [
+          "Wreck"
+        ],
+        "attributes": [],
+        "spatial_relation": "dwithin",
+        "location_text": null,
+        "radius_m": 250,
+        "crs": "EPSG:4326",
+        "tool_calls": [
+          {
+            "tool_id": "spatial.query",
+            "arguments": {
+              "source": "s101",
+              "feature_types": [
+                "Wreck"
+              ],
+              "reference_geometry": "POINT(129.0507505 34.9240517)",
+              "crs": "EPSG:4326",
+              "radius_m": 250,
+              "relation": "dwithin",
+              "analysis_type": "feature_search_by_radius"
+            }
+          }
+        ],
+        "evidence_refs": [],
+        "missing_inputs": [],
+        "answer": ""
+      },
+      "restored_object_ids": [
+        "524189",
+        "560079",
+        "602612",
+        "712978"
+      ],
+      "object_set_restored": true,
+      "semantic_signature_preserved": true,
+      "model_recovery_success_measured": false
+    }
+  },
+  {
+    "base_scenario_id": "WRECK_B",
+    "native_detection": {
+      "invalid": false,
+      "compiler_rejected": false,
+      "native_validator_called": true,
+      "qecs": [
+        {
+          "contract_version": "geollm.execution.v1",
+          "request_id": null,
+          "conversation_id": null,
+          "task_id": null,
+          "revision": 1,
+          "plan_hash": "10679e15b9953b3b3448f81c8d4a379f9e625e94aca86c1de27c48826f6759c5",
+          "original_query": "주어진 기준점에서 반경 750m 이내 Wreck를 찾아줘. 입력 좌표의 CRS는 EPSG:4326이다.",
+          "slots": {
+            "surface_term": null,
+            "location": null,
+            "location_text": null,
+            "reference_geometry": "POINT(128.9441022 35.0006394)",
+            "geometry_ref": null,
+            "resolution_status": null,
+            "crs": "EPSG:4326",
+            "distance_m": 750.0,
+            "spatial_relation": "dwithin",
+            "time_range": {},
+            "target_term": null,
+            "concept_id": null,
+            "derived_concept": null,
+            "context": null,
+            "analysis_type": "feature_search_by_radius",
+            "operation": null,
+            "target_features": [
+              "Wreck"
+            ],
+            "target_area_features": [],
+            "resolved_target_set": [],
+            "alternative_target_sets": [],
+            "feature_instance_ref": {},
+            "feature_instance_id": null,
+            "target_layers": [],
+            "target_dynamic_layers": [],
+            "nftc_codes": [],
+            "inclusions": [],
+            "exclusions": [],
+            "query_template": null,
+            "tool": "spatial.query",
+            "output_type": [],
+            "filters": {
+              "source": "s101"
+            },
+            "unresolved_slots": []
+          },
+          "normalized_query": null,
+          "security_context_ref": null,
+          "semantic_resolution": {},
+          "feature_bindings": [],
+          "data_bindings": [
+            {
+              "dataset_id": "s101",
+              "relation": "projection.s101_feature_current",
+              "geometry_column": "geometry",
+              "distance_column": null,
+              "srid": 4326,
+              "snapshot_version": "sha256:1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+              "layer_type": null,
+              "source_asset": null,
+              "execution_status": null,
+              "read_only": true
+            }
+          ],
+          "tool_bindings": [
+            {
+              "tool_id": "spatial.query",
+              "operation": "feature_search_by_radius",
+              "query_template_id": null,
+              "schema_version": null
+            }
+          ],
+          "kg": {},
+          "context": {},
+          "route_plan": {
+            "analysis_type": "feature_search_by_radius",
+            "original_tool": "spatial.query",
+            "execution_ready": true,
+            "status": "EXECUTION_READY",
+            "route_plan_status": "EXECUTION_READY",
+            "execution_validation": {
+              "authority": "ExecutionValidator",
+              "version": "2",
+              "readiness": "EXECUTION_READY",
+              "input_hash": "ca0ef014c21760d11a39ca82d6a126be7683d17ff265790b768f1bcc8f7209ce",
+              "revision": 1,
+              "operation": "feature_search_by_radius"
+            }
+          },
+          "data_discovery": {},
+          "spatial": {},
+          "rag": {},
+          "readiness": "EXECUTION_READY",
+          "blockers": [],
+          "warnings": [
+            "SOURCE_CORPUS_ONLY: results describe the verified source inventory; geographic completeness and real-world absence are not certified"
+          ],
+          "snapshot_versions": {},
+          "provenance": {
+            "lossless_compilation": {
+              "compiler_version": "lossless_qec_v1",
+              "compiled_from_plan_hash": "10679e15b9953b3b3448f81c8d4a379f9e625e94aca86c1de27c48826f6759c5",
+              "original_plan": {
+                "action": "search",
+                "intent": "spatial_search",
+                "target_features": [
+                  "Wreck"
+                ],
+                "attributes": [],
+                "spatial_relation": "dwithin",
+                "location_text": null,
+                "radius_m": 750,
+                "crs": "EPSG:4326",
+                "tool_calls": [
+                  {
+                    "tool_id": "spatial.query",
+                    "arguments": {
+                      "source": "s101",
+                      "feature_types": [
+                        "Wreck"
+                      ],
+                      "reference_geometry": "POINT(128.9441022 35.0006394)",
+                      "crs": "EPSG:4326",
+                      "radius_m": 750,
+                      "relation": "dwithin",
+                      "analysis_type": "feature_search_by_radius"
+                    }
+                  }
+                ],
+                "evidence_refs": [],
+                "missing_inputs": [],
+                "answer": ""
+              },
+              "task_index": 0,
+              "field_sources": {
+                "crs": "plan.tool_calls[0].arguments.crs",
+                "reference_geometry": "plan.tool_calls[0].arguments.reference_geometry",
+                "analysis_type": "plan.tool_calls[0].arguments.analysis_type",
+                "spatial_relation": "plan.tool_calls[0].arguments.relation",
+                "target_features": "plan.tool_calls[0].arguments.feature_types",
+                "tool": "plan.tool_calls[0].tool_id",
+                "distance_m": [
+                  "plan.tool_calls[0].arguments.radius_m"
+                ]
+              },
+              "missing_fields": {},
+              "allowed_transformations": [
+                "explicit m/km conversion",
+                "feature scalar to singleton list",
+                "literal field renaming"
+              ],
+              "semantic_inference_performed": false,
+              "dataset_reselection_performed": false,
+              "errors": []
+            },
+            "schema_binding": {
+              "inspected_relations": {
+                "projection.s101_feature_current": {
+                  "columns": [
+                    "feature_instance_id",
+                    "dataset_id",
+                    "dataset_version_id",
+                    "feature_record_id",
+                    "feature_type_code",
+                    "foid_agen",
+                    "foid_fidn",
+                    "foid_fids",
+                    "lifecycle_status",
+                    "attributes",
+                    "geometry",
+                    "rebuilt_at",
+                    "raw_feature_type_code",
+                    "feature_type_name",
+                    "min_scale",
+                    "max_scale",
+                    "product_specification",
+                    "dataset_name"
+                  ],
+                  "present": true,
+                  "selectable": true
+                }
+              }
+            },
+            "request_constraint_validation": {
+              "version": "explicit_request_constraints_v1",
+              "source": "caller_captured_original_request",
+              "request_sha256": "747568a4749e50cdddb3d2739e3a983cce657bfa11cbb09c70e87a0ecd65879b",
+              "feature_registry_sha256": "5246a9e61b877a0cce1786f92e00c29eadc057b8ad40f1968c952225d6987ad5",
+              "checks": {
+                "crs": {
+                  "expected": "EPSG:4326",
+                  "actual": "EPSG:4326",
+                  "source": "query"
+                },
+                "distance_m": {
+                  "expected": 750.0,
+                  "actual": 750.0,
+                  "source": "query"
+                },
+                "target_features": {
+                  "allowed": [
+                    "Wreck"
+                  ],
+                  "actual": [
+                    "Wreck"
+                  ],
+                  "unexpected": [],
+                  "comparison": "subtask_subset"
+                }
+              },
+              "status": "CHECKED",
+              "limitations": [
+                "literal_unambiguous_constraints_only",
+                "subtask_union_completeness_not_measured",
+                "caller_owns_request_boundary"
+              ],
+              "semantic_repair_performed": false
+            },
+            "coverage_validation": {
+              "authority": "ServerSourceCoverage",
+              "version": "3",
+              "status": "CORPUS_VERIFIED",
+              "geographic_coverage": "UNKNOWN",
+              "source_corpus_status": "VERIFIED",
+              "geographic_coverage_status": "RESEARCH_SNAPSHOT_DOMAIN_CONTAINS_QUERY",
+              "real_world_completeness": "UNKNOWN",
+              "query_scope": "SOURCE_CORPUS",
+              "required": true,
+              "absence_certified": false,
+              "sources": [
+                {
+                  "status": "VERIFIED",
+                  "dataset_id": "s101",
+                  "relation": "projection.s101_feature_current",
+                  "snapshot_version": "sha256:1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+                  "source_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+                  "source_asset": "D:\\An_GeoLLM\\outputs\\scie_gold_v2_eight_snapshot_20261102_v6\\projection__s101_feature_current.csv",
+                  "row_count": 25300,
+                  "authority_scope": "RESEARCH_FROZEN_SOURCE_ONLY",
+                  "real_world_completeness": "UNKNOWN",
+                  "absence_certified": false,
+                  "target_features": [
+                    "QualityOfNonBathymetricData",
+                    "DataCoverage",
+                    "NavigationalSystemOfMarks",
+                    "LocalDirectionOfBuoyage",
+                    "QualityOfBathymetricData",
+                    "SoundingDatum",
+                    "VerticalDatumOfData",
+                    "QualityOfSurvey",
+                    "UpdateInformation",
+                    "MagneticVariation",
+                    "LocalMagneticAnomaly",
+                    "Coastline",
+                    "LandArea",
+                    "IslandGroup",
+                    "LandElevation",
+                    "River",
+                    "Rapids",
+                    "Waterfall",
+                    "Lake",
+                    "LandRegion",
+                    "Vegetation",
+                    "IceArea",
+                    "SlopingGround",
+                    "SlopeTopline",
+                    "Tideway",
+                    "BuiltUpArea",
+                    "Building",
+                    "AirportAirfield",
+                    "Runway",
+                    "Helipad",
+                    "Bridge",
+                    "SpanFixed",
+                    "SpanOpening",
+                    "Conveyor",
+                    "CableOverhead",
+                    "PipelineOverhead",
+                    "PylonBridgeSupport",
+                    "FenceWall",
+                    "Railway",
+                    "Road",
+                    "Tunnel",
+                    "Landmark",
+                    "SiloTank",
+                    "WindTurbine",
+                    "FortifiedStructure",
+                    "ProductionStorageArea",
+                    "Checkpoint",
+                    "Hulk",
+                    "Pile",
+                    "Dyke",
+                    "ShorelineConstruction",
+                    "StructureOverNavigableWater",
+                    "Causeway",
+                    "Canal",
+                    "DistanceMark",
+                    "Gate",
+                    "Dam",
+                    "Crane",
+                    "Berth",
+                    "Dolphin",
+                    "Bollard",
+                    "DryDock",
+                    "FloatingDock",
+                    "Pontoon",
+                    "DockArea",
+                    "Gridiron",
+                    "LockBasin",
+                    "MooringTrot",
+                    "SeaAreaNamedWaterArea",
+                    "TidalStreamFloodEbb",
+                    "CurrentNonGravitational",
+                    "WaterTurbulence",
+                    "TidalStreamPanelData",
+                    "Sounding",
+                    "DredgedArea",
+                    "SweptArea",
+                    "DepthContour",
+                    "DepthArea",
+                    "DepthNoBottomFound",
+                    "UnsurveyedArea",
+                    "SeabedArea",
+                    "WeedKelp",
+                    "Seagrass",
+                    "Sandwave",
+                    "Spring",
+                    "UnderwaterAwashRock",
+                    "Wreck",
+                    "Obstruction",
+                    "FoulGround",
+                    "DiscolouredWater",
+                    "FishingFacility",
+                    "MarineFarmCulture",
+                    "OffshorePlatform",
+                    "CableSubmarine",
+                    "CableArea",
+                    "PipelineSubmarineOnLand",
+                    "SubmarinePipelineArea",
+                    "OffshoreProductionArea",
+                    "NavigationLine",
+                    "RecommendedTrack",
+                    "RangeSystem",
+                    "Fairway",
+                    "FairwaySystem",
+                    "RecommendedRouteCentreline",
+                    "TwoWayRoutePart",
+                    "TwoWayRoute",
+                    "RecommendedTrafficLanePart",
+                    "DeepWaterRouteCentreline",
+                    "DeepWaterRoutePart",
+                    "DeepWaterRoute",
+                    "InshoreTrafficZone",
+                    "PrecautionaryArea",
+                    "TrafficSeparationSchemeLanePart",
+                    "SeparationZoneOrLine",
+                    "TrafficSeparationSchemeBoundary",
+                    "TrafficSeparationSchemeCrossing",
+                    "TrafficSeparationSchemeRoundabout",
+                    "TrafficSeparationScheme",
+                    "ArchipelagicSeaLaneArea",
+                    "ArchipelagicSeaLaneAxis",
+                    "ArchipelagicSeaLane",
+                    "RadioCallingInPoint",
+                    "FerryRoute",
+                    "RadarLine",
+                    "RadarRange",
+                    "RadarStation",
+                    "AnchorageArea",
+                    "MooringArea",
+                    "AnchorBerth",
+                    "SeaplaneLandingArea",
+                    "DumpingGround",
+                    "MilitaryPracticeArea",
+                    "AdministrationArea",
+                    "CargoTranshipmentArea",
+                    "CautionArea",
+                    "InformationArea",
+                    "ContiguousZone",
+                    "ContinentalShelfArea",
+                    "CustomZone",
+                    "ExclusiveEconomicZone",
+                    "FisheryZone",
+                    "FishingGround",
+                    "FreePortArea",
+                    "HarbourAreaAdministrative",
+                    "LogPond",
+                    "OilBarrier",
+                    "StraightTerritorialSeaBaseline",
+                    "TerritorialSeaArea",
+                    "SubmarineTransitLane",
+                    "PilotageDistrict",
+                    "CollisionRegulationsLimit",
+                    "MarinePollutionRegulationsArea",
+                    "RestrictedArea",
+                    "LightAllAround",
+                    "LightSectored",
+                    "LightFogDetector",
+                    "LightAirObstruction",
+                    "LateralBuoy",
+                    "CardinalBuoy",
+                    "IsolatedDangerBuoy",
+                    "SafeWaterBuoy",
+                    "SpecialPurposeGeneralBuoy",
+                    "EmergencyWreckMarkingBuoy",
+                    "InstallationBuoy",
+                    "MooringBuoy",
+                    "LateralBeacon",
+                    "CardinalBeacon",
+                    "IsolatedDangerBeacon",
+                    "SafeWaterBeacon",
+                    "SpecialPurposeGeneralBeacon",
+                    "Daymark",
+                    "LightFloat",
+                    "LightVessel",
+                    "Retroreflector",
+                    "RadarReflector",
+                    "FogSignal",
+                    "PhysicalAISAidToNavigation",
+                    "VirtualAISAidToNavigation",
+                    "RadioStation",
+                    "RadarTransponderBeacon",
+                    "PilotBoardingPlace",
+                    "VesselTrafficServiceArea",
+                    "CoastGuardStation",
+                    "SignalStationWarning",
+                    "SignalStationTraffic",
+                    "RescueStation",
+                    "HarbourFacility",
+                    "SmallCraftFacility",
+                    "TextPlacement",
+                    "Chart1Feature"
+                  ],
+                  "source_scope": {
+                    "kind": "RESEARCH_SNAPSHOT_DOMAIN",
+                    "crs": "EPSG:4326",
+                    "source_locator": "D:\\An_GeoLLM\\outputs\\scie_gold_v2_eight_snapshot_20261102_v6\\projection__s101_feature_current.csv#manifest.coverage.BOUNDED_SUBSET",
+                    "source_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+                    "geometry_wkt": "POLYGON ((129.3 34.9, 129.3 35.3, 128.9 35.3, 128.9 34.9, 129.3 34.9))"
+                  }
+                }
+              ]
+            },
+            "execution_validation": {
+              "authority": "ExecutionValidator",
+              "version": "2",
+              "readiness": "EXECUTION_READY",
+              "input_hash": "ca0ef014c21760d11a39ca82d6a126be7683d17ff265790b768f1bcc8f7209ce",
+              "revision": 1,
+              "operation": "feature_search_by_radius"
+            },
+            "execution_scope_validation": {
+              "authority": "ExecutionValidator",
+              "status": "SOURCE_BOUND_EXECUTABLE",
+              "source_bound_executable": true,
+              "source_corpus_status": "VERIFIED",
+              "geographic_coverage_status": "RESEARCH_SNAPSHOT_DOMAIN_CONTAINS_QUERY",
+              "real_world_completeness": "UNKNOWN",
+              "absence_certified": false,
+              "query_scope": "SOURCE_CORPUS",
+              "readiness": "EXECUTION_READY",
+              "input_hash": "ca0ef014c21760d11a39ca82d6a126be7683d17ff265790b768f1bcc8f7209ce",
+              "revision": 1
+            }
+          }
+        }
+      ],
+      "compilation_traces": [
+        {
+          "compiler_version": "lossless_qec_v1",
+          "compiled_from_plan_hash": "10679e15b9953b3b3448f81c8d4a379f9e625e94aca86c1de27c48826f6759c5",
+          "original_plan": {
+            "action": "search",
+            "intent": "spatial_search",
+            "target_features": [
+              "Wreck"
+            ],
+            "attributes": [],
+            "spatial_relation": "dwithin",
+            "location_text": null,
+            "radius_m": 750,
+            "crs": "EPSG:4326",
+            "tool_calls": [
+              {
+                "tool_id": "spatial.query",
+                "arguments": {
+                  "source": "s101",
+                  "feature_types": [
+                    "Wreck"
+                  ],
+                  "reference_geometry": "POINT(128.9441022 35.0006394)",
+                  "crs": "EPSG:4326",
+                  "radius_m": 750,
+                  "relation": "dwithin",
+                  "analysis_type": "feature_search_by_radius"
+                }
+              }
+            ],
+            "evidence_refs": [],
+            "missing_inputs": [],
+            "answer": ""
+          },
+          "task_index": 0,
+          "field_sources": {
+            "crs": "plan.tool_calls[0].arguments.crs",
+            "reference_geometry": "plan.tool_calls[0].arguments.reference_geometry",
+            "analysis_type": "plan.tool_calls[0].arguments.analysis_type",
+            "spatial_relation": "plan.tool_calls[0].arguments.relation",
+            "target_features": "plan.tool_calls[0].arguments.feature_types",
+            "tool": "plan.tool_calls[0].tool_id",
+            "distance_m": [
+              "plan.tool_calls[0].arguments.radius_m"
+            ]
+          },
+          "missing_fields": {},
+          "allowed_transformations": [
+            "explicit m/km conversion",
+            "feature scalar to singleton list",
+            "literal field renaming"
+          ],
+          "semantic_inference_performed": false,
+          "dataset_reselection_performed": false,
+          "errors": []
+        }
+      ],
+      "latency_ms": 5414.27119999571
+    },
+    "execution": {
+      "status": "TOOLS_RETURNED",
+      "tool_calls_attempted": 1,
+      "tool_calls_executed": 1,
+      "receipts": [
+        {
+          "tool_id": "spatial.query",
+          "status": "TOOL_RETURNED",
+          "result": {
+            "rows": [
+              {
+                "label": "Wreck",
+                "geometry": {
+                  "type": "Point",
+                  "coordinates": [
+                    128.9441022,
+                    35.0006394
+                  ]
+                },
+                "source_id": "560060",
+                "attributes": {
+                  "valueOfSounding": "23.6",
+                  "surroundingDepth": "20",
+                  "waterLevelEffect": "3",
+                  "qualityOfVerticalMeasurement": "6"
+                },
+                "dataset_id": 30,
+                "distance_m": 0,
+                "dataset_version_id": 30
+              },
+              {
+                "label": "Wreck",
+                "geometry": {
+                  "type": "Point",
+                  "coordinates": [
+                    128.9441022,
+                    35.0006394
+                  ]
+                },
+                "source_id": "598393",
+                "attributes": {
+                  "valueOfSounding": "23.6",
+                  "surroundingDepth": "20",
+                  "waterLevelEffect": "3",
+                  "qualityOfVerticalMeasurement": "6"
+                },
+                "dataset_id": 86,
+                "distance_m": 0,
+                "dataset_version_id": 86
+              },
+              {
+                "label": "Wreck",
+                "geometry": {
+                  "type": "Point",
+                  "coordinates": [
+                    128.9441022,
+                    35.0006394
+                  ]
+                },
+                "source_id": "697097",
+                "attributes": {
+                  "valueOfSounding": "23.6",
+                  "surroundingDepth": "20",
+                  "waterLevelEffect": "3",
+                  "qualityOfVerticalMeasurement": "6"
+                },
+                "dataset_id": 161,
+                "distance_m": 0,
+                "dataset_version_id": 161
+              },
+              {
+                "label": "Wreck",
+                "geometry": {
+                  "type": "Point",
+                  "coordinates": [
+                    128.9441022,
+                    35.0006394
+                  ]
+                },
+                "source_id": "923653",
+                "attributes": {
+                  "valueOfSounding": "23.6",
+                  "surroundingDepth": "20",
+                  "waterLevelEffect": "3",
+                  "qualityOfVerticalMeasurement": "6"
+                },
+                "dataset_id": 286,
+                "distance_m": 0,
+                "dataset_version_id": 286
+              },
+              {
+                "label": "Wreck",
+                "geometry": {
+                  "type": "Polygon",
+                  "coordinates": [
+                    [
+                      [
+                        128.9433774,
+                        35.0000032
+                      ],
+                      [
+                        128.943231,
+                        35.000131
+                      ],
+                      [
+                        128.9440693,
+                        35.0007429
+                      ],
+                      [
+                        128.9442219,
+                        35.0006092
+                      ],
+                      [
+                        128.9433774,
+                        35.0000032
+                      ]
+                    ]
+                  ]
+                },
+                "source_id": "1153266",
+                "attributes": {
+                  "categoryOfWreck": "2",
+                  "surroundingDepth": "30",
+                  "waterLevelEffect": "3",
+                  "defaultClearanceDepth": "-15"
+                },
+                "dataset_id": 564,
+                "distance_m": 0,
+                "dataset_version_id": 564
+              }
+            ],
+            "source": "s101",
+            "source_scope": {
+              "scope_verified": true,
+              "bbox_epsg4326": [
+                128.9,
+                34.9,
+                129.3,
+                35.3
+              ],
+              "source_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+              "scope_type": "DECLARED_RESEARCH_SNAPSHOT",
+              "real_world_completeness": false,
+              "explanation": "Fixed Busan subset; outside cannot establish real-world absence."
+            },
+            "relation": "dwithin",
+            "radius_m": 750,
+            "source_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+            "postcondition": "SPATIAL_ROWS_RETURNED"
+          },
+          "latency_ms": 6843.4189000035985
+        }
+      ],
+      "execution_success": null,
+      "semantic_correct": null,
+      "spatial_correct": null,
+      "evidence_correct": null,
+      "task_postconditions": "NOT_SCORED_PENDING_APPROVED_CONTRACT",
+      "latency_ms": 6843.438600000809,
+      "execution_observation": {
+        "observation_complete": true,
+        "execution_attempted": true,
+        "tool_called": true,
+        "execution_started": true,
+        "sql_executed": true,
+        "execution_succeeded": true,
+        "scope": "SPATIAL_EXECUTION_ONLY; metadata and document SQL separately recorded",
+        "db_events": [
+          {
+            "scope": "coverage_metadata",
+            "sql_submission_attempted": true,
+            "sql_executed": true,
+            "succeeded": true,
+            "process_returncode": 0,
+            "row_count": 1,
+            "latency_ms": 526.3596000004327
+          },
+          {
+            "scope": "spatial",
+            "sql_submission_attempted": true,
+            "sql_executed": true,
+            "succeeded": true,
+            "process_returncode": 0,
+            "row_count": 5,
+            "latency_ms": 5961.777700002131
+          }
+        ],
+        "execution_semantics_version": "spatial_execution_semantics_v3"
+      }
+    },
+    "passed": true,
+    "injected_fault": {
+      "action": "search",
+      "intent": "spatial_search",
+      "target_features": [
+        "Wreck"
+      ],
+      "attributes": [],
+      "spatial_relation": "dwithin",
+      "location_text": null,
+      "radius_m": 750,
+      "crs": "EPSG:4326",
+      "tool_calls": [
+        {
+          "tool_id": "spatial.query",
+          "arguments": {
+            "source": "s101",
+            "feature_types": [
+              "Wreck"
+            ],
+            "reference_geometry": "POINT(128.9441022 35.0006394)",
+            "crs": "EPSG:4326",
+            "radius_m": "0.75 km",
+            "relation": "dwithin",
+            "analysis_type": "feature_search_by_radius"
+          }
+        }
+      ],
+      "evidence_refs": [],
+      "missing_inputs": [],
+      "answer": ""
+    },
+    "injected_detection": {
+      "invalid": true,
+      "compiler_rejected": true,
+      "native_validator_called": false,
+      "qecs": [],
+      "compilation_traces": [
+        {
+          "compiler_version": "lossless_qec_v1",
+          "compiled_from_plan_hash": "a3ea5ca83dd31efd3d151f9918d91409e2006811a8211e55ac31ab2060c865ca",
+          "original_plan": {
+            "action": "search",
+            "intent": "spatial_search",
+            "target_features": [
+              "Wreck"
+            ],
+            "attributes": [],
+            "spatial_relation": "dwithin",
+            "location_text": null,
+            "radius_m": 750,
+            "crs": "EPSG:4326",
+            "tool_calls": [
+              {
+                "tool_id": "spatial.query",
+                "arguments": {
+                  "source": "s101",
+                  "feature_types": [
+                    "Wreck"
+                  ],
+                  "reference_geometry": "POINT(128.9441022 35.0006394)",
+                  "crs": "EPSG:4326",
+                  "radius_m": "0.75 km",
+                  "relation": "dwithin",
+                  "analysis_type": "feature_search_by_radius"
+                }
+              }
+            ],
+            "evidence_refs": [],
+            "missing_inputs": [],
+            "answer": ""
+          },
+          "task_index": 0,
+          "field_sources": {
+            "crs": "plan.tool_calls[0].arguments.crs",
+            "reference_geometry": "plan.tool_calls[0].arguments.reference_geometry",
+            "analysis_type": "plan.tool_calls[0].arguments.analysis_type",
+            "spatial_relation": "plan.tool_calls[0].arguments.relation",
+            "target_features": "plan.tool_calls[0].arguments.feature_types",
+            "tool": "plan.tool_calls[0].tool_id"
+          },
+          "missing_fields": {},
+          "allowed_transformations": [
+            "explicit m/km conversion",
+            "feature scalar to singleton list",
+            "literal field renaming"
+          ],
+          "semantic_inference_performed": false,
+          "dataset_reselection_performed": false,
+          "errors": [
+            "DISTANCE_VALUE_TYPE_INVALID"
+          ]
+        }
+      ],
+      "latency_ms": 0.22419999731937423
+    },
+    "repair_contract_check": {
+      "mode": "EXPLICIT_CLEAN_FIXTURE_NOT_MODEL_RECOVERY",
+      "initial_fault_rejected": true,
+      "repaired_plan": {
+        "action": "search",
+        "intent": "spatial_search",
+        "target_features": [
+          "Wreck"
+        ],
+        "attributes": [],
+        "spatial_relation": "dwithin",
+        "location_text": null,
+        "radius_m": 750,
+        "crs": "EPSG:4326",
+        "tool_calls": [
+          {
+            "tool_id": "spatial.query",
+            "arguments": {
+              "source": "s101",
+              "feature_types": [
+                "Wreck"
+              ],
+              "reference_geometry": "POINT(128.9441022 35.0006394)",
+              "crs": "EPSG:4326",
+              "radius_m": 750,
+              "relation": "dwithin",
+              "analysis_type": "feature_search_by_radius"
+            }
+          }
+        ],
+        "evidence_refs": [],
+        "missing_inputs": [],
+        "answer": ""
+      },
+      "restored_object_ids": [
+        "1153266",
+        "560060",
+        "598393",
+        "697097",
+        "923653"
+      ],
+      "object_set_restored": true,
+      "semantic_signature_preserved": true,
+      "model_recovery_success_measured": false
+    }
+  },
+  {
+    "base_scenario_id": "WRECK_C",
+    "native_detection": {
+      "invalid": false,
+      "compiler_rejected": false,
+      "native_validator_called": true,
+      "qecs": [
+        {
+          "contract_version": "geollm.execution.v1",
+          "request_id": null,
+          "conversation_id": null,
+          "task_id": null,
+          "revision": 1,
+          "plan_hash": "99593358ab3cecba843d6e9ab13ca18d16a8021227e26e1edb4310ef776f32b0",
+          "original_query": "주어진 기준점에서 반경 1500m 이내 Wreck를 찾아줘. 입력 좌표의 CRS는 EPSG:4326이다.",
+          "slots": {
+            "surface_term": null,
+            "location": null,
+            "location_text": null,
+            "reference_geometry": "POINT(128.9799682 34.9546421)",
+            "geometry_ref": null,
+            "resolution_status": null,
+            "crs": "EPSG:4326",
+            "distance_m": 1500.0,
+            "spatial_relation": "dwithin",
+            "time_range": {},
+            "target_term": null,
+            "concept_id": null,
+            "derived_concept": null,
+            "context": null,
+            "analysis_type": "feature_search_by_radius",
+            "operation": null,
+            "target_features": [
+              "Wreck"
+            ],
+            "target_area_features": [],
+            "resolved_target_set": [],
+            "alternative_target_sets": [],
+            "feature_instance_ref": {},
+            "feature_instance_id": null,
+            "target_layers": [],
+            "target_dynamic_layers": [],
+            "nftc_codes": [],
+            "inclusions": [],
+            "exclusions": [],
+            "query_template": null,
+            "tool": "spatial.query",
+            "output_type": [],
+            "filters": {
+              "source": "s101"
+            },
+            "unresolved_slots": []
+          },
+          "normalized_query": null,
+          "security_context_ref": null,
+          "semantic_resolution": {},
+          "feature_bindings": [],
+          "data_bindings": [
+            {
+              "dataset_id": "s101",
+              "relation": "projection.s101_feature_current",
+              "geometry_column": "geometry",
+              "distance_column": null,
+              "srid": 4326,
+              "snapshot_version": "sha256:1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+              "layer_type": null,
+              "source_asset": null,
+              "execution_status": null,
+              "read_only": true
+            }
+          ],
+          "tool_bindings": [
+            {
+              "tool_id": "spatial.query",
+              "operation": "feature_search_by_radius",
+              "query_template_id": null,
+              "schema_version": null
+            }
+          ],
+          "kg": {},
+          "context": {},
+          "route_plan": {
+            "analysis_type": "feature_search_by_radius",
+            "original_tool": "spatial.query",
+            "execution_ready": true,
+            "status": "EXECUTION_READY",
+            "route_plan_status": "EXECUTION_READY",
+            "execution_validation": {
+              "authority": "ExecutionValidator",
+              "version": "2",
+              "readiness": "EXECUTION_READY",
+              "input_hash": "b6587861f3e658360ef3c15d1e9ab8935df691d2c1b61fbb8c0e0d113d0ab2f5",
+              "revision": 1,
+              "operation": "feature_search_by_radius"
+            }
+          },
+          "data_discovery": {},
+          "spatial": {},
+          "rag": {},
+          "readiness": "EXECUTION_READY",
+          "blockers": [],
+          "warnings": [
+            "SOURCE_CORPUS_ONLY: results describe the verified source inventory; geographic completeness and real-world absence are not certified"
+          ],
+          "snapshot_versions": {},
+          "provenance": {
+            "lossless_compilation": {
+              "compiler_version": "lossless_qec_v1",
+              "compiled_from_plan_hash": "99593358ab3cecba843d6e9ab13ca18d16a8021227e26e1edb4310ef776f32b0",
+              "original_plan": {
+                "action": "search",
+                "intent": "spatial_search",
+                "target_features": [
+                  "Wreck"
+                ],
+                "attributes": [],
+                "spatial_relation": "dwithin",
+                "location_text": null,
+                "radius_m": 1500,
+                "crs": "EPSG:4326",
+                "tool_calls": [
+                  {
+                    "tool_id": "spatial.query",
+                    "arguments": {
+                      "source": "s101",
+                      "feature_types": [
+                        "Wreck"
+                      ],
+                      "reference_geometry": "POINT(128.9799682 34.9546421)",
+                      "crs": "EPSG:4326",
+                      "radius_m": 1500,
+                      "relation": "dwithin",
+                      "analysis_type": "feature_search_by_radius"
+                    }
+                  }
+                ],
+                "evidence_refs": [],
+                "missing_inputs": [],
+                "answer": ""
+              },
+              "task_index": 0,
+              "field_sources": {
+                "crs": "plan.tool_calls[0].arguments.crs",
+                "reference_geometry": "plan.tool_calls[0].arguments.reference_geometry",
+                "analysis_type": "plan.tool_calls[0].arguments.analysis_type",
+                "spatial_relation": "plan.tool_calls[0].arguments.relation",
+                "target_features": "plan.tool_calls[0].arguments.feature_types",
+                "tool": "plan.tool_calls[0].tool_id",
+                "distance_m": [
+                  "plan.tool_calls[0].arguments.radius_m"
+                ]
+              },
+              "missing_fields": {},
+              "allowed_transformations": [
+                "explicit m/km conversion",
+                "feature scalar to singleton list",
+                "literal field renaming"
+              ],
+              "semantic_inference_performed": false,
+              "dataset_reselection_performed": false,
+              "errors": []
+            },
+            "schema_binding": {
+              "inspected_relations": {
+                "projection.s101_feature_current": {
+                  "columns": [
+                    "feature_instance_id",
+                    "dataset_id",
+                    "dataset_version_id",
+                    "feature_record_id",
+                    "feature_type_code",
+                    "foid_agen",
+                    "foid_fidn",
+                    "foid_fids",
+                    "lifecycle_status",
+                    "attributes",
+                    "geometry",
+                    "rebuilt_at",
+                    "raw_feature_type_code",
+                    "feature_type_name",
+                    "min_scale",
+                    "max_scale",
+                    "product_specification",
+                    "dataset_name"
+                  ],
+                  "present": true,
+                  "selectable": true
+                }
+              }
+            },
+            "request_constraint_validation": {
+              "version": "explicit_request_constraints_v1",
+              "source": "caller_captured_original_request",
+              "request_sha256": "a87ce7d1bb3cce92cfeb80c272e604a73f35506dac875f0337abea4e51a9d552",
+              "feature_registry_sha256": "5246a9e61b877a0cce1786f92e00c29eadc057b8ad40f1968c952225d6987ad5",
+              "checks": {
+                "crs": {
+                  "expected": "EPSG:4326",
+                  "actual": "EPSG:4326",
+                  "source": "query"
+                },
+                "distance_m": {
+                  "expected": 1500.0,
+                  "actual": 1500.0,
+                  "source": "query"
+                },
+                "target_features": {
+                  "allowed": [
+                    "Wreck"
+                  ],
+                  "actual": [
+                    "Wreck"
+                  ],
+                  "unexpected": [],
+                  "comparison": "subtask_subset"
+                }
+              },
+              "status": "CHECKED",
+              "limitations": [
+                "literal_unambiguous_constraints_only",
+                "subtask_union_completeness_not_measured",
+                "caller_owns_request_boundary"
+              ],
+              "semantic_repair_performed": false
+            },
+            "coverage_validation": {
+              "authority": "ServerSourceCoverage",
+              "version": "3",
+              "status": "CORPUS_VERIFIED",
+              "geographic_coverage": "UNKNOWN",
+              "source_corpus_status": "VERIFIED",
+              "geographic_coverage_status": "RESEARCH_SNAPSHOT_DOMAIN_CONTAINS_QUERY",
+              "real_world_completeness": "UNKNOWN",
+              "query_scope": "SOURCE_CORPUS",
+              "required": true,
+              "absence_certified": false,
+              "sources": [
+                {
+                  "status": "VERIFIED",
+                  "dataset_id": "s101",
+                  "relation": "projection.s101_feature_current",
+                  "snapshot_version": "sha256:1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+                  "source_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+                  "source_asset": "D:\\An_GeoLLM\\outputs\\scie_gold_v2_eight_snapshot_20261102_v6\\projection__s101_feature_current.csv",
+                  "row_count": 25300,
+                  "authority_scope": "RESEARCH_FROZEN_SOURCE_ONLY",
+                  "real_world_completeness": "UNKNOWN",
+                  "absence_certified": false,
+                  "target_features": [
+                    "QualityOfNonBathymetricData",
+                    "DataCoverage",
+                    "NavigationalSystemOfMarks",
+                    "LocalDirectionOfBuoyage",
+                    "QualityOfBathymetricData",
+                    "SoundingDatum",
+                    "VerticalDatumOfData",
+                    "QualityOfSurvey",
+                    "UpdateInformation",
+                    "MagneticVariation",
+                    "LocalMagneticAnomaly",
+                    "Coastline",
+                    "LandArea",
+                    "IslandGroup",
+                    "LandElevation",
+                    "River",
+                    "Rapids",
+                    "Waterfall",
+                    "Lake",
+                    "LandRegion",
+                    "Vegetation",
+                    "IceArea",
+                    "SlopingGround",
+                    "SlopeTopline",
+                    "Tideway",
+                    "BuiltUpArea",
+                    "Building",
+                    "AirportAirfield",
+                    "Runway",
+                    "Helipad",
+                    "Bridge",
+                    "SpanFixed",
+                    "SpanOpening",
+                    "Conveyor",
+                    "CableOverhead",
+                    "PipelineOverhead",
+                    "PylonBridgeSupport",
+                    "FenceWall",
+                    "Railway",
+                    "Road",
+                    "Tunnel",
+                    "Landmark",
+                    "SiloTank",
+                    "WindTurbine",
+                    "FortifiedStructure",
+                    "ProductionStorageArea",
+                    "Checkpoint",
+                    "Hulk",
+                    "Pile",
+                    "Dyke",
+                    "ShorelineConstruction",
+                    "StructureOverNavigableWater",
+                    "Causeway",
+                    "Canal",
+                    "DistanceMark",
+                    "Gate",
+                    "Dam",
+                    "Crane",
+                    "Berth",
+                    "Dolphin",
+                    "Bollard",
+                    "DryDock",
+                    "FloatingDock",
+                    "Pontoon",
+                    "DockArea",
+                    "Gridiron",
+                    "LockBasin",
+                    "MooringTrot",
+                    "SeaAreaNamedWaterArea",
+                    "TidalStreamFloodEbb",
+                    "CurrentNonGravitational",
+                    "WaterTurbulence",
+                    "TidalStreamPanelData",
+                    "Sounding",
+                    "DredgedArea",
+                    "SweptArea",
+                    "DepthContour",
+                    "DepthArea",
+                    "DepthNoBottomFound",
+                    "UnsurveyedArea",
+                    "SeabedArea",
+                    "WeedKelp",
+                    "Seagrass",
+                    "Sandwave",
+                    "Spring",
+                    "UnderwaterAwashRock",
+                    "Wreck",
+                    "Obstruction",
+                    "FoulGround",
+                    "DiscolouredWater",
+                    "FishingFacility",
+                    "MarineFarmCulture",
+                    "OffshorePlatform",
+                    "CableSubmarine",
+                    "CableArea",
+                    "PipelineSubmarineOnLand",
+                    "SubmarinePipelineArea",
+                    "OffshoreProductionArea",
+                    "NavigationLine",
+                    "RecommendedTrack",
+                    "RangeSystem",
+                    "Fairway",
+                    "FairwaySystem",
+                    "RecommendedRouteCentreline",
+                    "TwoWayRoutePart",
+                    "TwoWayRoute",
+                    "RecommendedTrafficLanePart",
+                    "DeepWaterRouteCentreline",
+                    "DeepWaterRoutePart",
+                    "DeepWaterRoute",
+                    "InshoreTrafficZone",
+                    "PrecautionaryArea",
+                    "TrafficSeparationSchemeLanePart",
+                    "SeparationZoneOrLine",
+                    "TrafficSeparationSchemeBoundary",
+                    "TrafficSeparationSchemeCrossing",
+                    "TrafficSeparationSchemeRoundabout",
+                    "TrafficSeparationScheme",
+                    "ArchipelagicSeaLaneArea",
+                    "ArchipelagicSeaLaneAxis",
+                    "ArchipelagicSeaLane",
+                    "RadioCallingInPoint",
+                    "FerryRoute",
+                    "RadarLine",
+                    "RadarRange",
+                    "RadarStation",
+                    "AnchorageArea",
+                    "MooringArea",
+                    "AnchorBerth",
+                    "SeaplaneLandingArea",
+                    "DumpingGround",
+                    "MilitaryPracticeArea",
+                    "AdministrationArea",
+                    "CargoTranshipmentArea",
+                    "CautionArea",
+                    "InformationArea",
+                    "ContiguousZone",
+                    "ContinentalShelfArea",
+                    "CustomZone",
+                    "ExclusiveEconomicZone",
+                    "FisheryZone",
+                    "FishingGround",
+                    "FreePortArea",
+                    "HarbourAreaAdministrative",
+                    "LogPond",
+                    "OilBarrier",
+                    "StraightTerritorialSeaBaseline",
+                    "TerritorialSeaArea",
+                    "SubmarineTransitLane",
+                    "PilotageDistrict",
+                    "CollisionRegulationsLimit",
+                    "MarinePollutionRegulationsArea",
+                    "RestrictedArea",
+                    "LightAllAround",
+                    "LightSectored",
+                    "LightFogDetector",
+                    "LightAirObstruction",
+                    "LateralBuoy",
+                    "CardinalBuoy",
+                    "IsolatedDangerBuoy",
+                    "SafeWaterBuoy",
+                    "SpecialPurposeGeneralBuoy",
+                    "EmergencyWreckMarkingBuoy",
+                    "InstallationBuoy",
+                    "MooringBuoy",
+                    "LateralBeacon",
+                    "CardinalBeacon",
+                    "IsolatedDangerBeacon",
+                    "SafeWaterBeacon",
+                    "SpecialPurposeGeneralBeacon",
+                    "Daymark",
+                    "LightFloat",
+                    "LightVessel",
+                    "Retroreflector",
+                    "RadarReflector",
+                    "FogSignal",
+                    "PhysicalAISAidToNavigation",
+                    "VirtualAISAidToNavigation",
+                    "RadioStation",
+                    "RadarTransponderBeacon",
+                    "PilotBoardingPlace",
+                    "VesselTrafficServiceArea",
+                    "CoastGuardStation",
+                    "SignalStationWarning",
+                    "SignalStationTraffic",
+                    "RescueStation",
+                    "HarbourFacility",
+                    "SmallCraftFacility",
+                    "TextPlacement",
+                    "Chart1Feature"
+                  ],
+                  "source_scope": {
+                    "kind": "RESEARCH_SNAPSHOT_DOMAIN",
+                    "crs": "EPSG:4326",
+                    "source_locator": "D:\\An_GeoLLM\\outputs\\scie_gold_v2_eight_snapshot_20261102_v6\\projection__s101_feature_current.csv#manifest.coverage.BOUNDED_SUBSET",
+                    "source_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+                    "geometry_wkt": "POLYGON ((129.3 34.9, 129.3 35.3, 128.9 35.3, 128.9 34.9, 129.3 34.9))"
+                  }
+                }
+              ]
+            },
+            "execution_validation": {
+              "authority": "ExecutionValidator",
+              "version": "2",
+              "readiness": "EXECUTION_READY",
+              "input_hash": "b6587861f3e658360ef3c15d1e9ab8935df691d2c1b61fbb8c0e0d113d0ab2f5",
+              "revision": 1,
+              "operation": "feature_search_by_radius"
+            },
+            "execution_scope_validation": {
+              "authority": "ExecutionValidator",
+              "status": "SOURCE_BOUND_EXECUTABLE",
+              "source_bound_executable": true,
+              "source_corpus_status": "VERIFIED",
+              "geographic_coverage_status": "RESEARCH_SNAPSHOT_DOMAIN_CONTAINS_QUERY",
+              "real_world_completeness": "UNKNOWN",
+              "absence_certified": false,
+              "query_scope": "SOURCE_CORPUS",
+              "readiness": "EXECUTION_READY",
+              "input_hash": "b6587861f3e658360ef3c15d1e9ab8935df691d2c1b61fbb8c0e0d113d0ab2f5",
+              "revision": 1
+            }
+          }
+        }
+      ],
+      "compilation_traces": [
+        {
+          "compiler_version": "lossless_qec_v1",
+          "compiled_from_plan_hash": "99593358ab3cecba843d6e9ab13ca18d16a8021227e26e1edb4310ef776f32b0",
+          "original_plan": {
+            "action": "search",
+            "intent": "spatial_search",
+            "target_features": [
+              "Wreck"
+            ],
+            "attributes": [],
+            "spatial_relation": "dwithin",
+            "location_text": null,
+            "radius_m": 1500,
+            "crs": "EPSG:4326",
+            "tool_calls": [
+              {
+                "tool_id": "spatial.query",
+                "arguments": {
+                  "source": "s101",
+                  "feature_types": [
+                    "Wreck"
+                  ],
+                  "reference_geometry": "POINT(128.9799682 34.9546421)",
+                  "crs": "EPSG:4326",
+                  "radius_m": 1500,
+                  "relation": "dwithin",
+                  "analysis_type": "feature_search_by_radius"
+                }
+              }
+            ],
+            "evidence_refs": [],
+            "missing_inputs": [],
+            "answer": ""
+          },
+          "task_index": 0,
+          "field_sources": {
+            "crs": "plan.tool_calls[0].arguments.crs",
+            "reference_geometry": "plan.tool_calls[0].arguments.reference_geometry",
+            "analysis_type": "plan.tool_calls[0].arguments.analysis_type",
+            "spatial_relation": "plan.tool_calls[0].arguments.relation",
+            "target_features": "plan.tool_calls[0].arguments.feature_types",
+            "tool": "plan.tool_calls[0].tool_id",
+            "distance_m": [
+              "plan.tool_calls[0].arguments.radius_m"
+            ]
+          },
+          "missing_fields": {},
+          "allowed_transformations": [
+            "explicit m/km conversion",
+            "feature scalar to singleton list",
+            "literal field renaming"
+          ],
+          "semantic_inference_performed": false,
+          "dataset_reselection_performed": false,
+          "errors": []
+        }
+      ],
+      "latency_ms": 8189.0348000015365
+    },
+    "execution": {
+      "status": "TOOLS_RETURNED",
+      "tool_calls_attempted": 1,
+      "tool_calls_executed": 1,
+      "receipts": [
+        {
+          "tool_id": "spatial.query",
+          "status": "TOOL_RETURNED",
+          "result": {
+            "rows": [
+              {
+                "label": "Wreck",
+                "geometry": {
+                  "type": "Point",
+                  "coordinates": [
+                    128.9799682,
+                    34.9546421
+                  ]
+                },
+                "source_id": "560063",
+                "attributes": {
+                  "scaleMinimum": "999999",
+                  "valueOfSounding": "50",
+                  "surroundingDepth": "20",
+                  "waterLevelEffect": "3",
+                  "qualityOfVerticalMeasurement": "6"
+                },
+                "dataset_id": 30,
+                "distance_m": 0,
+                "dataset_version_id": 30
+              },
+              {
+                "label": "Wreck",
+                "geometry": {
+                  "type": "Point",
+                  "coordinates": [
+                    128.9799682,
+                    34.9546421
+                  ]
+                },
+                "source_id": "602336",
+                "attributes": {
+                  "scaleMinimum": "499999",
+                  "valueOfSounding": "50",
+                  "surroundingDepth": "30",
+                  "waterLevelEffect": "3",
+                  "qualityOfVerticalMeasurement": "6"
+                },
+                "dataset_id": 89,
+                "distance_m": 0,
+                "dataset_version_id": 89
+              },
+              {
+                "label": "Wreck",
+                "geometry": {
+                  "type": "Point",
+                  "coordinates": [
+                    128.9799682,
+                    34.9546421
+                  ]
+                },
+                "source_id": "712179",
+                "attributes": {
+                  "valueOfSounding": "50",
+                  "surroundingDepth": "50",
+                  "waterLevelEffect": "3",
+                  "expositionOfSounding": "2",
+                  "qualityOfVerticalMeasurement": "6"
+                },
+                "dataset_id": 169,
+                "distance_m": 0,
+                "dataset_version_id": 169
+              },
+              {
+                "label": "Wreck",
+                "geometry": {
+                  "type": "Point",
+                  "coordinates": [
+                    128.9799682,
+                    34.9546421
+                  ]
+                },
+                "source_id": "969480",
+                "attributes": {
+                  "valueOfSounding": "50",
+                  "surroundingDepth": "0",
+                  "waterLevelEffect": "3",
+                  "expositionOfSounding": "2",
+                  "qualityOfVerticalMeasurement": "6"
+                },
+                "dataset_id": 298,
+                "distance_m": 0,
+                "dataset_version_id": 298
+              }
+            ],
+            "source": "s101",
+            "source_scope": {
+              "scope_verified": true,
+              "bbox_epsg4326": [
+                128.9,
+                34.9,
+                129.3,
+                35.3
+              ],
+              "source_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+              "scope_type": "DECLARED_RESEARCH_SNAPSHOT",
+              "real_world_completeness": false,
+              "explanation": "Fixed Busan subset; outside cannot establish real-world absence."
+            },
+            "relation": "dwithin",
+            "radius_m": 1500,
+            "source_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+            "postcondition": "SPATIAL_ROWS_RETURNED"
+          },
+          "latency_ms": 5390.169999998761
+        }
+      ],
+      "execution_success": null,
+      "semantic_correct": null,
+      "spatial_correct": null,
+      "evidence_correct": null,
+      "task_postconditions": "NOT_SCORED_PENDING_APPROVED_CONTRACT",
+      "latency_ms": 5390.182499999355,
+      "execution_observation": {
+        "observation_complete": true,
+        "execution_attempted": true,
+        "tool_called": true,
+        "execution_started": true,
+        "sql_executed": true,
+        "execution_succeeded": true,
+        "scope": "SPATIAL_EXECUTION_ONLY; metadata and document SQL separately recorded",
+        "db_events": [
+          {
+            "scope": "coverage_metadata",
+            "sql_submission_attempted": true,
+            "sql_executed": true,
+            "succeeded": true,
+            "process_returncode": 0,
+            "row_count": 1,
+            "latency_ms": 1066.1442999989958
+          },
+          {
+            "scope": "spatial",
+            "sql_submission_attempted": true,
+            "sql_executed": true,
+            "succeeded": true,
+            "process_returncode": 0,
+            "row_count": 4,
+            "latency_ms": 4148.291400000744
+          }
+        ],
+        "execution_semantics_version": "spatial_execution_semantics_v3"
+      }
+    },
+    "passed": true,
+    "injected_fault": {
+      "action": "search",
+      "intent": "spatial_search",
+      "target_features": [
+        "Wreck"
+      ],
+      "attributes": [],
+      "spatial_relation": "dwithin",
+      "location_text": null,
+      "radius_m": 1500,
+      "crs": "EPSG:4326",
+      "tool_calls": [
+        {
+          "tool_id": "spatial.query",
+          "arguments": {
+            "source": "s101",
+            "feature_types": [
+              "Wreck"
+            ],
+            "reference_geometry": "POINT(128.9799682 34.9546421)",
+            "crs": "EPSG:4326",
+            "radius_m": "1.5 km",
+            "relation": "dwithin",
+            "analysis_type": "feature_search_by_radius"
+          }
+        }
+      ],
+      "evidence_refs": [],
+      "missing_inputs": [],
+      "answer": ""
+    },
+    "injected_detection": {
+      "invalid": true,
+      "compiler_rejected": true,
+      "native_validator_called": false,
+      "qecs": [],
+      "compilation_traces": [
+        {
+          "compiler_version": "lossless_qec_v1",
+          "compiled_from_plan_hash": "f977e236a317bdd2d350e0516a7f1bb18a5a28dab79e69175ca22265a2c2644d",
+          "original_plan": {
+            "action": "search",
+            "intent": "spatial_search",
+            "target_features": [
+              "Wreck"
+            ],
+            "attributes": [],
+            "spatial_relation": "dwithin",
+            "location_text": null,
+            "radius_m": 1500,
+            "crs": "EPSG:4326",
+            "tool_calls": [
+              {
+                "tool_id": "spatial.query",
+                "arguments": {
+                  "source": "s101",
+                  "feature_types": [
+                    "Wreck"
+                  ],
+                  "reference_geometry": "POINT(128.9799682 34.9546421)",
+                  "crs": "EPSG:4326",
+                  "radius_m": "1.5 km",
+                  "relation": "dwithin",
+                  "analysis_type": "feature_search_by_radius"
+                }
+              }
+            ],
+            "evidence_refs": [],
+            "missing_inputs": [],
+            "answer": ""
+          },
+          "task_index": 0,
+          "field_sources": {
+            "crs": "plan.tool_calls[0].arguments.crs",
+            "reference_geometry": "plan.tool_calls[0].arguments.reference_geometry",
+            "analysis_type": "plan.tool_calls[0].arguments.analysis_type",
+            "spatial_relation": "plan.tool_calls[0].arguments.relation",
+            "target_features": "plan.tool_calls[0].arguments.feature_types",
+            "tool": "plan.tool_calls[0].tool_id"
+          },
+          "missing_fields": {},
+          "allowed_transformations": [
+            "explicit m/km conversion",
+            "feature scalar to singleton list",
+            "literal field renaming"
+          ],
+          "semantic_inference_performed": false,
+          "dataset_reselection_performed": false,
+          "errors": [
+            "DISTANCE_VALUE_TYPE_INVALID"
+          ]
+        }
+      ],
+      "latency_ms": 0.0931999966269359
+    },
+    "repair_contract_check": {
+      "mode": "EXPLICIT_CLEAN_FIXTURE_NOT_MODEL_RECOVERY",
+      "initial_fault_rejected": true,
+      "repaired_plan": {
+        "action": "search",
+        "intent": "spatial_search",
+        "target_features": [
+          "Wreck"
+        ],
+        "attributes": [],
+        "spatial_relation": "dwithin",
+        "location_text": null,
+        "radius_m": 1500,
+        "crs": "EPSG:4326",
+        "tool_calls": [
+          {
+            "tool_id": "spatial.query",
+            "arguments": {
+              "source": "s101",
+              "feature_types": [
+                "Wreck"
+              ],
+              "reference_geometry": "POINT(128.9799682 34.9546421)",
+              "crs": "EPSG:4326",
+              "radius_m": 1500,
+              "relation": "dwithin",
+              "analysis_type": "feature_search_by_radius"
+            }
+          }
+        ],
+        "evidence_refs": [],
+        "missing_inputs": [],
+        "answer": ""
+      },
+      "restored_object_ids": [
+        "560063",
+        "602336",
+        "712179",
+        "969480"
+      ],
+      "object_set_restored": true,
+      "semantic_signature_preserved": true,
+      "model_recovery_success_measured": false
+    }
+  }
+]

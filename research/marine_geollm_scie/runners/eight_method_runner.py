@@ -17,6 +17,7 @@ from ..baselines.v2_answer_projection import render
 from .matched_branches import freeze_initial,run_branches,save_new,plan_hash
 from .freeze_v2_benchmark import verify
 from .structured_review import call_review
+from ..evaluation.rq5_costs import model_event, event_ledger
 
 ROOT=Path(__file__).resolve().parents[3]
 METHODS=('B0','B1','B2','B3','B4','P0','H','P1')
@@ -82,6 +83,8 @@ def review_candidate(candidate, *, case, packet, profile, model, seed, artifact,
         save_new(artifact,{'call':None,'review':None,'errors':['REVIEW_CALLBACK_EXCEPTION'],
                            'error_type':type(exc).__name__,'error':str(exc)})
         raise
+    reviewed['event_id']=case['case_id']+':shared_review:0' if case.get('case_id') else None
+    reviewed['kind']='review'
     calls.append(reviewed)
     save_new(artifact,{'call':reviewed,'review':review,'errors':problems})
     if review is None:
@@ -90,14 +93,23 @@ def review_candidate(candidate, *, case, packet, profile, model, seed, artifact,
 
 
 
-def costs(calls,execution,elapsed):
+def costs(calls,execution,elapsed,*,sql_events=None,telemetry_complete=False):
     def total(key):
         values=[c.get(key) for c in calls]
         return sum(values) if values and all(type(v) in (int,float) for v in values) else None
     return {'latency_seconds':elapsed,'input_tokens':total('input_tokens'),
-            'output_tokens':total('output_tokens'),'tool_calls':execution.get('tool_calls_attempted',0),
+            'output_tokens':total('output_tokens'),'tool_calls':execution.get('tool_calls_attempted',0) if telemetry_complete else None,
             'tool_call_scope':'ALL_BOUNDED_RESEARCH_TOOLS',
-            'spatial_tool_calls':sum(r.get('tool_id')=='spatial.query' for r in execution.get('receipts',[]))}
+            'spatial_tool_calls':sum(r.get('tool_id')=='spatial.query' for r in execution.get('receipts',[])),
+            'model_calls':len(calls), 'retries':0,
+            'human_escalation':False,'human_escalation_scope':'RESEARCH_RUNNER_HAS_NO_HUMAN_ESCALATION_BRANCH; clarification not escalation',
+            'model_call_events':[model_event(c) for c in calls],
+            'all_sql_events':copy.deepcopy(sql_events) if telemetry_complete else None,
+            'sql_call_scope':'ALL_RESEARCH_QUERY_SUBMISSIONS_INCLUDING_VALIDATOR_METADATA; atomic guard shares submission; file packet retrieval has no SQL',
+            'telemetry_complete':telemetry_complete,
+            'model_telemetry_complete':True,
+            'retry_scope':'NO_AUTOMATIC_RETRY_IN_RESEARCH_CALLER; paired reviewer is not a retry',
+            'sql_calls':len(sql_events) if telemetry_complete and sql_events is not None else None}
 
 
 def ensure_identity(profile,benchmark):
@@ -188,21 +200,52 @@ def verified_p1(path, profile, cases):
 
 
 def p1_costs(raw):
+    model_telemetry_complete=isinstance(raw.get('_imported_model_calls'),list)
     calls=raw.get('_imported_model_calls',[])
-    generation=[c for c in calls if c.get('path') in ('/api/generate','/api/chat')]
-    embeddings=[c for c in calls if c.get('path') in ('/api/embed','/api/embeddings')]
+    generation=[c for c in calls if c.get('path') in ('/api/generate','/api/chat','/v1/chat/completions')]
+    embeddings=[c for c in calls if c.get('path') in ('/api/embed','/api/embeddings','/v1/embeddings')]
     def tokens(rows,key):
-        values=[(c.get('response') or {}).get(key) for c in rows]
+        if not model_telemetry_complete:return None
+        def value(call):
+            response=call.get('response') or next((part for part in reversed(call.get('response_chunks',[]))
+                if key in part or part.get('usage')), {})
+            native=response.get(key)
+            return native if native is not None else (response.get('usage') or {}).get(
+                'prompt_tokens' if key=='prompt_eval_count' else 'completion_tokens')
+        values=[value(c) for c in rows]
         return sum(values) if all(type(v) in (int,float) for v in values) else None
     trace=raw.get('execution_observation') or {}
     tools=(sum(e.get('kind')=='spatial_tool_called' for e in trace.get('events',[]))
            if trace.get('observation_complete') is True and 'events' in trace else None)
     latency=raw.get('latency_ms')
+    telemetry=raw.get('reliability_telemetry') or {}
+    complete=telemetry.get('complete') is True
+    events=[]
+    for index,call in enumerate(generation+embeddings):
+        response=call.get('response') or next((part for part in reversed(call.get('response_chunks',[]))
+            if 'prompt_eval_count' in part or part.get('usage')), {})
+        usage=response.get('usage') or {}
+        input_count=response.get('prompt_eval_count',usage.get('prompt_tokens'))
+        output_count=response.get('eval_count',usage.get('completion_tokens'))
+        is_embedding=call in embeddings
+        events.append(model_event({'event_id':raw['case_id']+':P1_model:'+str(index) if raw.get('case_id') else None,
+            'kind':'embedding' if is_embedding else 'generation','input_tokens':input_count,
+            'output_tokens':0 if is_embedding else output_count,'latency_ms':call.get('latency_ms'),
+            'status':call.get('status'),'proxy_raw_sha256':plan_hash(call)}))
     return {'latency_seconds':latency/1000 if isinstance(latency,(int,float)) else None,
             'input_tokens':tokens(generation,'prompt_eval_count'),'output_tokens':tokens(generation,'eval_count'),
-            'embedding_input_tokens':tokens(embeddings,'prompt_eval_count'),'generation_calls':len(generation),
-            'embedding_calls':len(embeddings),'tool_calls':None,'spatial_tool_calls':tools,
-            'tool_call_scope':'ALL_DOMAIN_TOOL_COUNT_UNMEASURED; SPATIAL_ONLY_COUNT_REPORTED_SEPARATELY'}
+            'embedding_input_tokens':tokens(embeddings,'prompt_eval_count'),'generation_calls':len(generation) if model_telemetry_complete else None,
+            'model_telemetry_complete':model_telemetry_complete,
+            'embedding_calls':len(embeddings) if model_telemetry_complete else None,'model_calls':len(generation)+len(embeddings) if model_telemetry_complete else None,
+            'model_call_events':events if model_telemetry_complete else None,'all_sql_events':[e for e in telemetry.get('events',[]) if e.get('kind')=='sql_submitted'] if complete and isinstance(telemetry.get('events'),list) else None,
+            'telemetry_complete':complete,'sql_call_scope':telemetry.get('sql_call_scope'),
+            'tool_calls':telemetry.get('tool_calls') if complete else None,'spatial_tool_calls':tools,
+            'sql_calls':telemetry.get('sql_calls') if complete else None,
+            'retries':telemetry.get('retries') if complete else None,
+            'human_escalation':telemetry.get('human_escalation') if complete else None,
+            'identity_check_retries':sum(max(0,len(c.get('identity_checks',[]))-1) for c in calls),
+            'tool_call_scope':telemetry.get('tool_call_scope','ALL_DOMAIN_TOOL_COUNT_UNMEASURED; SPATIAL_ONLY_COUNT_REPORTED_SEPARATELY'),
+            'retry_scope':telemetry.get('retry_scope')}
 
 
 def run(output,profile_path,benchmark,*,execute=False,inputs=None,p1_rows=None):
@@ -259,6 +302,8 @@ def run(output,profile_path,benchmark,*,execute=False,inputs=None,p1_rows=None):
             prompt=make_prompt(case,packet,profile,tools=method=='B3')
             call=call_model(prompt,model=model,seed=seed,max_tokens=768,timeout=180,
                             **({'response_schema':TOOL_PLAN_SCHEMA} if method=='B3' else {}))
+            call['event_id']=case['case_id']+':'+('shared_generation' if method=='B3' else method+'_generation')+':0'
+            shared_generation_seconds=time.perf_counter()-start
             plan,valid,errors=parse_candidate(call.get('raw_response'),
                                               schema=TOOL_PLAN_SCHEMA if method=='B3' else None)
             if method!='B3':
@@ -266,7 +311,7 @@ def run(output,profile_path,benchmark,*,execute=False,inputs=None,p1_rows=None):
                      'plan':plan,'candidate_answer':plan.get('answer') if isinstance(plan,dict) else None,
                      'schema_errors':errors,'calls':[call],'domain_tools_enabled':False,
                      'emitted_answer':{'answer_text':plan.get('answer')} if isinstance(plan,dict) else None,
-                     'execution_observation':copy.deepcopy(NO_SPATIAL),'costs':costs([call],{},time.perf_counter()-start)}
+                     'execution_observation':copy.deepcopy(NO_SPATIAL),'costs':costs([call],{},time.perf_counter()-start,sql_events=[],telemetry_complete=True)}
                 path=directory/(method+'_raw.json');save_new(path,row);emit(row,path)
                 continue
             initial=directory/'initial_plan.json'
@@ -281,7 +326,7 @@ def run(output,profile_path,benchmark,*,execute=False,inputs=None,p1_rows=None):
                         'lossless_compilation_verified':False,'compilation_status':'NOT_ATTEMPTED_INVALID_INITIAL',
                         'compilation_failure_reason':'INVALID_INITIAL_PLAN',
                         'execution_callback_invoked':False,'emitted_answer':None,
-                        'execution_observation':copy.deepcopy(NO_SPATIAL),'costs':costs([call],{},time.perf_counter()-start)}
+                        'execution_observation':copy.deepcopy(NO_SPATIAL),'costs':costs([call],{},shared_generation_seconds,sql_events=[],telemetry_complete=True)}
                     path=directory/(branch+'_invalid.json');save_new(path,row);emit(row,path)
                 continue
             frozen=freeze_initial(initial,case_id=case['case_id'],repeat=0,plan=plan,generation=call)
@@ -290,7 +335,8 @@ def run(output,profile_path,benchmark,*,execute=False,inputs=None,p1_rows=None):
                 return review_candidate(candidate,case=case,packet=packet,profile=profile,
                     model=model,seed=seed,artifact=directory/'review_call_raw.json',calls=review_calls)
             branch_rows=run_branches(initial,directory/'paired',reviewer=reviewer,validator=validator,
-                                    executor=executor.execute,query=case['query'])
+                                    executor=executor.execute,query=case['query'],
+                                    sql_events=(lambda:executor.db.events) if hasattr(getattr(executor,'db',None),'events') else None)
             review_path=directory/'review_call_raw.json'
             for branch in branch_rows:
                 method=branch['method'];execution=branch.get('execution') or {}
@@ -301,9 +347,16 @@ def run(output,profile_path,benchmark,*,execute=False,inputs=None,p1_rows=None):
                     calls=[call]+(review_calls if method in ('B4','H') else []),
                     candidate_answer=(branch.get('candidate_plan') or {}).get('answer'),
                     costs=costs([call]+(review_calls if method in ('B4','H') else []),execution,
-                        call['latency_ms']/1000+sum(c['latency_ms']/1000 for c in review_calls if method in ('B4','H'))+branch['branch_latency_ms']/1000))
+                        shared_generation_seconds+(branch['shared_review_latency_ms']/1000 if method in ('B4','H') else 0)+branch['branch_latency_ms']/1000,
+                        sql_events=branch['all_sql_events'],telemetry_complete=branch['sql_telemetry_complete']))
                 if branch.get('execution_observation') is None and not branch['execution_callback_invoked']:
                     branch['execution_observation']=copy.deepcopy(NO_SPATIAL)
+                if branch['execution_callback_invoked'] and not branch.get('execution'):
+                    branch['costs']['tool_calls']=None
+                    branch['costs']['spatial_tool_calls']=None
+                if method in ('B4','H') and branch['status']=='REVIEW_ERROR' and not review_calls:
+                    branch['costs']['model_telemetry_complete']=False
+                    for field in ('model_calls','input_tokens','output_tokens'):branch['costs'][field]=None
                 if method in ('P0','H'):
                     branch['compilation_status']=('VERIFIED' if branch['lossless_compilation_verified'] else
                         'NOT_ATTEMPTED_REVIEW_ERROR' if branch['status']=='REVIEW_ERROR' else 'REJECTED')
@@ -324,6 +377,7 @@ def run(output,profile_path,benchmark,*,execute=False,inputs=None,p1_rows=None):
     manifest.update(status='COMPLETED_OBSERVATIONS' if imported else 'BASELINES_COMPLETE_P1_PENDING',
                     p1_import=p1_provenance,rows_sha256=digest(output/'observations.jsonl'),
                     source_integrity_after=True,model_digest_after_verified=True)
+    save_new(output/'rq5_event_ledger.json',event_ledger(rows))
     state();return manifest
 
 

@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 import uuid
 from research.marine_geollm_scie.baselines.production_adapter import observable,extract_artifacts
 from research.marine_geollm_scie.runners.model_graph_conditions import graph_condition,validate_condition_environment
-from research.marine_geollm_scie.runners.spatial_execution_observer import SpatialExecutionObserver as ExecutionObserver
+from research.marine_geollm_scie.runners.reliability_telemetry import ReliabilityObserver as ExecutionObserver
 
 METHOD='P_current_production_model_enabled_restricted'
 
@@ -37,6 +37,9 @@ def current_case(out, payload):
 def main(benchmark,output,profile_path,snapshot_path):
     out=Path(output); profile=json.loads(Path(profile_path).read_text());snapshot=json.loads(Path(snapshot_path).read_text())
     require_profile(profile,snapshot)
+    from research.marine_geollm_scie.runners.graph_source_scope import install
+    source_scope=install(snapshot,'/research_snapshot')
+    (out/'source_scope_install.json').write_text(json.dumps(source_scope,indent=2),encoding='utf-8')
     condition=graph_condition(profile)
     rows=[json.loads(x) for x in Path(benchmark).read_text(encoding='utf-8').splitlines() if x.strip()]
     if len(rows)!=18 or len({r['case_id'] for r in rows})!=18:raise ValueError('Immutable 18-case benchmark required')
@@ -52,12 +55,13 @@ def main(benchmark,output,profile_path,snapshot_path):
             current_case(out, {'case_id':case['case_id'],'task_id':identifier,'repeat':0})
             # Prevent earlier benchmark answers from becoming semantic-cache hits.
             cache.vectorstore=None
-            state={'task_id':identifier,'query':case['query'],'organization_id':'scie_isolated','user_id':'scie_research','status':AgentStatus.RECEIVED,'spatial_context':case.get('spatial_context') or {},'state_history':[]}
+            state={'task_id':identifier,'query':case['query'],'organization_id':'scie_isolated','user_id':'scie_research','status':AgentStatus.RECEIVED,'spatial_context':case.get('spatial_context') or {},'state_history':[], 'retry_count':0}
             row={'method':METHOD,'case_id':case['case_id'],'query':case['query'],'source_case':case,'repeat':0,'initial_state':observable(state),'semantic_correct':None,'spatial_correct':None,'execution_success':None,'comparison_condition':'actual production graph with its own prompts and budgets; not planning-baseline equivalent'}
             row['method']=condition['method']
             row['graph_condition']=condition
             signal.alarm(600)
             observer = ExecutionObserver(identifier)
+            final = None
             try:
                 with observer:
                     final=observable(asyncio.run(orchestrator_graph.ainvoke(state,config={'configurable':{'thread_id':identifier},'recursion_limit':30})))
@@ -65,6 +69,7 @@ def main(benchmark,output,profile_path,snapshot_path):
             except Exception as exc:row.update(status='GRAPH_ERROR',error_type=type(exc).__name__)
             finally:signal.alarm(0)
             row['execution_observation'] = observer.result()
+            row['reliability_telemetry'] = observer.telemetry(final)
             row['latency_ms']=(time.perf_counter()-start)*1000
             stream.write(json.dumps(row,ensure_ascii=False)+'\n');stream.flush()
             print(case['case_id'],row['status'],row.get('graph_status'),flush=True)

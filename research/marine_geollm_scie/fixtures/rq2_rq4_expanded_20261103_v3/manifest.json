@@ -1,0 +1,15 @@
+{
+  "version": "rq2_rq4_expanded_nonempty_v3_single_fault_units",
+  "status": "READY_FOR_FROZEN_MODEL_RUN",
+  "model_calls": 0,
+  "database_writes": false,
+  "holdout_used": false,
+  "cases": 69,
+  "expected_observations": 207,
+  "nonempty_bases": 3,
+  "files": {
+    "contract.json": "ca15ccf99ed4f6397951556eb111731be6880a9a0351b9349bb70d771cb70d70",
+    "oracles.json": "ce6b7383dbb878e811606094b9c0db0430f8476c597dd3cc588f6186d0acd608",
+    "clean_verification.json": "4591677f953ea9158f6257ae0f89b94b05362ba0f1b81ec43bc6cfa1a9288968"
+  }
+}

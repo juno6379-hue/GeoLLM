@@ -36,3 +36,6 @@ research/marine_geollm_scie/operational/** -text -working-tree-encoding whitespa
 
 # RQ1 annotations pin exact source and package bytes.
 research/marine_geollm_scie/benchmark/grounding_atoms_20261102_v1/** -text -working-tree-encoding whitespace=cr-at-eol
+
+# Expanded development fixtures are immutable byte-hashed inputs, not holdout.
+research/marine_geollm_scie/fixtures/rq2_rq4_expanded_20261103_v3/** -text -working-tree-encoding whitespace=cr-at-eol

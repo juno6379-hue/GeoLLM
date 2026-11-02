@@ -77,11 +77,37 @@ def execution_files(root=ROOT):
     for name in ('structured_review_v1.json', 'structured_review_v2.json', 'structured_review_v3.json',
                  'eight_execution_contract_v3.json', 'eight_execution_contract_v4.json',
                  'eight_execution_contract_v5.json',
+                 'development_k1_rq_contract_20261103.json',
+                 'development_k1_execution_20261103_KR.md',
+                 'rq1_prediction_review_contract_20261103_KR.md',
+                 'rq2_rq4_expanded_20261103_KR.md',
+                 'rq3_execution_faults_20261103_KR.md',
+                 'rq5_telemetry_20261103_KR.md',
                  'execution_success_v3_20261101_KR.md'):
         path = root/'research/marine_geollm_scie/protocol'/name
         if path.is_file():
             files.add(path)
+    # Development-only measurement assets. Never traverse holdout directories.
+    for relative in ('benchmark/grounding_atoms_20261102_v1',
+                     'fixtures/rq2_rq4_expanded_20261103_v3'):
+        folder=root/'research/marine_geollm_scie'/relative
+        files.update(p for p in folder.rglob('*') if p.is_file() and p.suffix in {'.json','.jsonl','.md'})
     return sorted(files)
+
+
+def verify_parent_for_new_code(parent, parent_dir, fresh_files, root=ROOT):
+    """Old data remains immutable; explicitly captured runtime code may change."""
+    allowed={p.resolve() for p in fresh_files}
+    for record in parent['relations']:
+        if digest(safe_child(parent_dir,record['csv_path']))!=record['sha256']:
+            raise ValueError('Parent source data changed')
+    changes=[]
+    for record in parent.get('files',[]):
+        path=safe_child(root,record['path']);actual=digest(path)
+        if actual!=record['sha256']:
+            if path not in allowed:raise ValueError('Non-execution parent asset changed: '+record['path'])
+            changes.append({'path':record['path'],'old_sha256':record['sha256'],'new_sha256':actual})
+    return changes
 
 
 def freeze(parent_path, output):
@@ -95,12 +121,13 @@ def freeze(parent_path, output):
         raise ValueError('Expected verified research database')
     if len(parent['relations']) != 6 or {r['relation'] for r in parent['relations']} != set(RELATION_KEYS):
         raise ValueError('All six research relations required')
-    verify_files(parent, parent_path.parent)
+    fresh_files=execution_files()
+    source_changes=verify_parent_for_new_code(parent,parent_path.parent,fresh_files)
     info=json.loads(subprocess.check_output(['docker','inspect',TARGET_CONTAINER]))[0]
     if info['Config'].get('Labels',{}).get('marine.scie.research') != 'true':
         raise ValueError('Research container label required')
     files={x['path']:x for x in parent['files']}
-    for path in execution_files():
+    for path in fresh_files:
         rel=path.relative_to(ROOT).as_posix()
         files[rel]={'path':rel,'sha256':digest(path),'role':'CURRENT_EXECUTION_SOURCE_NOT_GOLD'}
     result=deepcopy(parent)
@@ -109,6 +136,7 @@ def freeze(parent_path, output):
             'git_sha':subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
             'git_dirty':bool(subprocess.check_output(['git','status','--porcelain'],cwd=ROOT)),
             'parent_manifest_sha256':parent_hash,'parent_path':str(parent_path),
+            'explicit_execution_source_changes':source_changes,
             'data_rebaselined':False,'production_database_writes':False,
             'old_run_outputs_reusable':False,'requires_full_eight_method_rerun':True})
     output.mkdir(parents=True,exist_ok=False)
@@ -121,6 +149,8 @@ def freeze(parent_path, output):
             result['loaded_verification'].append(export_relation(record,dest));save()
         if digest(parent_path)!=parent_hash:
             raise ValueError('Parent changed during verification')
+        if verify_parent_for_new_code(parent,parent_path.parent,fresh_files)!=source_changes:
+            raise ValueError('Parent source lineage changed during verification')
         verify_files(result,output)
         result['status']='LOADED_VERIFIED';save()
     except BaseException as exc:

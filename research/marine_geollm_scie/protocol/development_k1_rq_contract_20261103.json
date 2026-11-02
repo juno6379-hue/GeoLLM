@@ -1,0 +1,51 @@
+{
+  "version": "development_k1_rq_contract_v1",
+  "scope": "RQ1_RQ5_DEVELOPMENT_NOT_HOLDOUT_NOT_HUMAN_ACCURACY",
+  "methods": ["B0", "B1", "B2", "B3", "B4", "P0", "H", "P1"],
+  "cases": 18,
+  "repeats": 1,
+  "base_observations": 144,
+  "fault_observations": 207,
+  "fault_independent_bases": 3,
+  "spatial_fault_diagnostics": 8,
+  "p1_source_scope": "p1_frozen_research_source_scope_v1; same finite research corpus; operational registry unchanged",
+  "rq1": {
+    "methods": ["B1", "B2"],
+    "prediction_annotation": "AI raw-response annotation under fixed extraction contract; never human labels",
+    "metrics": ["Semantic F1", "Strict Match", "B2-B1", "paired equivalence-cluster 95% CI"],
+    "failure_policy": "Keep every case including malformed, timeout and invalid outputs; annotate only observed raw assertions",
+    "completion": "36 new raw-linked complete annotations; no previous answer reuse"
+  },
+  "rq2": {
+    "metrics": ["binary invalid recall", "target fault-code recall", "False Ready", "False Block", "paired source-base cluster 95% CI"],
+    "false_block_denominator": "valid executable clean controls only; clarification and safe abstention separate",
+    "pairing": "one shared reviewer response for B4/H; P0 native initial validation; 3 source-base clusters"
+  },
+  "rq3": {
+    "methods": "all 8 on the same GOLD-selected spatial cases",
+    "metrics": ["ESR", "Spatial Correctness", "CGE", "SSFR", "EVQSR"],
+    "zero_success_policy": "CGE and SSFR undefined/null when successful-execution denominator is zero",
+    "fault_diagnostics": "8 separately labelled real executor diagnostics; not claimed as 8-method fault mitigation results"
+  },
+  "rq4": {
+    "metrics": ["recovery success", "first repair execution and joint success", "semantic preservation", "semantic drift", "spatial restoration", "observed forbidden recovery proposal", "human escalation or explicit unmeasured"],
+    "eligible": "recoverable fault AND independent nonempty object Oracle",
+    "success": "execution success AND object restoration AND semantic preservation",
+    "empty_oracle": "exclude with explicit reason, never successful recovery",
+    "missing_oracle": "unmeasured, never empty",
+    "permission_and_absence": "safe abstention; not automatic recovery targets"
+  },
+  "rq5": {
+    "metrics": ["latency P50/P95", "tokens", "model calls", "tool calls", "SQL calls", "retries", "human escalation", "evidence completeness", "provenance completeness"],
+    "cost_policy": "shared generation/review unique event ledger; standalone charges each consumer in full, allocated divides by consumer count, physical totals deduplicate events. Allocated latency is work accounting, not response latency",
+    "sql_scope": "all research query submissions including validator metadata; packet retrieval is file-only; atomic guard shares submission. P1 all instrumented DBAPI submissions, scope disclosed separately",
+    "report_cli": "python -m research.marine_geollm_scie.runners.report_rq5 --observations <comparison/observations.jsonl> --output <new/rq5> [--scores <observation-hash-bound-score-envelope>] [--judgments <exact-raw-hash-bound-label-envelope>]",
+    "evidence_policy": "returned object source-hash/ID presence and machine evidence-binding checks reported separately; presence is not correctness or full-answer completeness",
+    "unknown_policy": "unknown is null; no inferred zero or semantic correctness from presence of citations",
+    "evqsr_policy": "machine contract joint success separate from independent human semantic quality"
+  },
+  "ablation": "Table13 module-removal study is separate; this RQ1-RQ5 run does not claim ablation completion",
+  "holdout": "NO_READ_NO_EXECUTION_BEFORE_FINAL_SYSTEM_FREEZE",
+  "mutation_policy": "source/contract/input/model/budget immutable during run; bug requires preserved failed run and new whole freeze",
+  "k5": "only after Development K1 gates; 8x18x5=720 base observations, repetitions not independent cases"
+}

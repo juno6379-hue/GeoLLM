@@ -1,0 +1,358 @@
+{
+  "WRECK_A": {
+    "object_ids": [
+      "524189",
+      "560079",
+      "602612",
+      "712978"
+    ],
+    "rows": [
+      {
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            129.0507505,
+            34.9240517
+          ]
+        },
+        "source_id": "524189",
+        "attributes": {
+          "scaleMinimum": "9999999",
+          "valueOfSounding": "49",
+          "surroundingDepth": "30",
+          "waterLevelEffect": "3",
+          "qualityOfVerticalMeasurement": "6"
+        },
+        "distance_m": 0,
+        "geometry_sha256": "d582a2ec0a9d2ff7f884e7f36056181c1c57dc47dc737a02e4de0ccc60c913d1"
+      },
+      {
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            129.0507505,
+            34.9240517
+          ]
+        },
+        "source_id": "560079",
+        "attributes": {
+          "valueOfSounding": "49",
+          "surroundingDepth": "50",
+          "waterLevelEffect": "3",
+          "expositionOfSounding": "2",
+          "qualityOfVerticalMeasurement": "6"
+        },
+        "distance_m": 0,
+        "geometry_sha256": "d582a2ec0a9d2ff7f884e7f36056181c1c57dc47dc737a02e4de0ccc60c913d1"
+      },
+      {
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            129.0507505,
+            34.9240517
+          ]
+        },
+        "source_id": "602612",
+        "attributes": {
+          "valueOfSounding": "49",
+          "surroundingDepth": "50",
+          "waterLevelEffect": "3",
+          "expositionOfSounding": "2",
+          "qualityOfVerticalMeasurement": "6"
+        },
+        "distance_m": 0,
+        "geometry_sha256": "d582a2ec0a9d2ff7f884e7f36056181c1c57dc47dc737a02e4de0ccc60c913d1"
+      },
+      {
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            129.0507505,
+            34.9240517
+          ]
+        },
+        "source_id": "712978",
+        "attributes": {
+          "valueOfSounding": "49",
+          "surroundingDepth": "50",
+          "waterLevelEffect": "3",
+          "expositionOfSounding": "2",
+          "qualityOfVerticalMeasurement": "6"
+        },
+        "distance_m": 0,
+        "geometry_sha256": "d582a2ec0a9d2ff7f884e7f36056181c1c57dc47dc737a02e4de0ccc60c913d1"
+      }
+    ],
+    "sql": "SELECT feature_instance_id::text AS source_id,\n ST_AsGeoJSON(geometry)::jsonb AS geometry,\n encode(sha256(ST_AsEWKB(geometry)),'hex') AS geometry_sha256,attributes,\n ST_Distance(geometry::geography,ST_GeomFromText(i.args->>'reference_geometry',4326)::geography) AS distance_m\n FROM projection.s101_feature_current,input i\n WHERE feature_type_name='Wreck' AND geometry IS NOT NULL AND ST_IsValid(geometry)\n AND ST_Distance(geometry::geography,ST_GeomFromText(i.args->>'reference_geometry',4326)::geography)<=(i.args->>'radius_m')::float8\n ORDER BY feature_instance_id",
+    "parameters": {
+      "reference_geometry": "POINT(129.0507505 34.9240517)",
+      "radius_m": 250
+    },
+    "source_snapshot": {
+      "path": "D:\\An_GeoLLM\\outputs\\scie_gold_v2_eight_snapshot_20261102_v6\\snapshot_manifest.json",
+      "sha256": "ff37cdeb3d3038c915393dbe2da32a2455253e39f5381b58e64873ca6e0629ad"
+    },
+    "source_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+    "db_events": [
+      {
+        "scope": "metadata",
+        "sql_submission_attempted": true,
+        "sql_executed": true,
+        "succeeded": true,
+        "process_returncode": 0,
+        "row_count": 4,
+        "latency_ms": 4959.643599999254
+      }
+    ]
+  },
+  "WRECK_B": {
+    "object_ids": [
+      "1153266",
+      "560060",
+      "598393",
+      "697097",
+      "923653"
+    ],
+    "rows": [
+      {
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            128.9441022,
+            35.0006394
+          ]
+        },
+        "source_id": "560060",
+        "attributes": {
+          "valueOfSounding": "23.6",
+          "surroundingDepth": "20",
+          "waterLevelEffect": "3",
+          "qualityOfVerticalMeasurement": "6"
+        },
+        "distance_m": 0,
+        "geometry_sha256": "fabfce325ecbe422cb7ff67520162bb12e8f067d1fc628466f84a3fc366f8582"
+      },
+      {
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            128.9441022,
+            35.0006394
+          ]
+        },
+        "source_id": "598393",
+        "attributes": {
+          "valueOfSounding": "23.6",
+          "surroundingDepth": "20",
+          "waterLevelEffect": "3",
+          "qualityOfVerticalMeasurement": "6"
+        },
+        "distance_m": 0,
+        "geometry_sha256": "fabfce325ecbe422cb7ff67520162bb12e8f067d1fc628466f84a3fc366f8582"
+      },
+      {
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            128.9441022,
+            35.0006394
+          ]
+        },
+        "source_id": "697097",
+        "attributes": {
+          "valueOfSounding": "23.6",
+          "surroundingDepth": "20",
+          "waterLevelEffect": "3",
+          "qualityOfVerticalMeasurement": "6"
+        },
+        "distance_m": 0,
+        "geometry_sha256": "fabfce325ecbe422cb7ff67520162bb12e8f067d1fc628466f84a3fc366f8582"
+      },
+      {
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            128.9441022,
+            35.0006394
+          ]
+        },
+        "source_id": "923653",
+        "attributes": {
+          "valueOfSounding": "23.6",
+          "surroundingDepth": "20",
+          "waterLevelEffect": "3",
+          "qualityOfVerticalMeasurement": "6"
+        },
+        "distance_m": 0,
+        "geometry_sha256": "fabfce325ecbe422cb7ff67520162bb12e8f067d1fc628466f84a3fc366f8582"
+      },
+      {
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                128.9433774,
+                35.0000032
+              ],
+              [
+                128.943231,
+                35.000131
+              ],
+              [
+                128.9440693,
+                35.0007429
+              ],
+              [
+                128.9442219,
+                35.0006092
+              ],
+              [
+                128.9433774,
+                35.0000032
+              ]
+            ]
+          ]
+        },
+        "source_id": "1153266",
+        "attributes": {
+          "categoryOfWreck": "2",
+          "surroundingDepth": "30",
+          "waterLevelEffect": "3",
+          "defaultClearanceDepth": "-15"
+        },
+        "distance_m": 0,
+        "geometry_sha256": "c39ae21b31436e81a3b212d9234f171dbb63ab93e2b9c00dfea4091af4177163"
+      }
+    ],
+    "sql": "SELECT feature_instance_id::text AS source_id,\n ST_AsGeoJSON(geometry)::jsonb AS geometry,\n encode(sha256(ST_AsEWKB(geometry)),'hex') AS geometry_sha256,attributes,\n ST_Distance(geometry::geography,ST_GeomFromText(i.args->>'reference_geometry',4326)::geography) AS distance_m\n FROM projection.s101_feature_current,input i\n WHERE feature_type_name='Wreck' AND geometry IS NOT NULL AND ST_IsValid(geometry)\n AND ST_Distance(geometry::geography,ST_GeomFromText(i.args->>'reference_geometry',4326)::geography)<=(i.args->>'radius_m')::float8\n ORDER BY feature_instance_id",
+    "parameters": {
+      "reference_geometry": "POINT(128.9441022 35.0006394)",
+      "radius_m": 750
+    },
+    "source_snapshot": {
+      "path": "D:\\An_GeoLLM\\outputs\\scie_gold_v2_eight_snapshot_20261102_v6\\snapshot_manifest.json",
+      "sha256": "ff37cdeb3d3038c915393dbe2da32a2455253e39f5381b58e64873ca6e0629ad"
+    },
+    "source_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+    "db_events": [
+      {
+        "scope": "metadata",
+        "sql_submission_attempted": true,
+        "sql_executed": true,
+        "succeeded": true,
+        "process_returncode": 0,
+        "row_count": 5,
+        "latency_ms": 2317.411899995932
+      }
+    ]
+  },
+  "WRECK_C": {
+    "object_ids": [
+      "560063",
+      "602336",
+      "712179",
+      "969480"
+    ],
+    "rows": [
+      {
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            128.9799682,
+            34.9546421
+          ]
+        },
+        "source_id": "560063",
+        "attributes": {
+          "scaleMinimum": "999999",
+          "valueOfSounding": "50",
+          "surroundingDepth": "20",
+          "waterLevelEffect": "3",
+          "qualityOfVerticalMeasurement": "6"
+        },
+        "distance_m": 0,
+        "geometry_sha256": "454921137c82ff0990544e7ac9ff3e5c580a4d9de8c4ea315cecc3d83b1cbf9f"
+      },
+      {
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            128.9799682,
+            34.9546421
+          ]
+        },
+        "source_id": "602336",
+        "attributes": {
+          "scaleMinimum": "499999",
+          "valueOfSounding": "50",
+          "surroundingDepth": "30",
+          "waterLevelEffect": "3",
+          "qualityOfVerticalMeasurement": "6"
+        },
+        "distance_m": 0,
+        "geometry_sha256": "454921137c82ff0990544e7ac9ff3e5c580a4d9de8c4ea315cecc3d83b1cbf9f"
+      },
+      {
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            128.9799682,
+            34.9546421
+          ]
+        },
+        "source_id": "712179",
+        "attributes": {
+          "valueOfSounding": "50",
+          "surroundingDepth": "50",
+          "waterLevelEffect": "3",
+          "expositionOfSounding": "2",
+          "qualityOfVerticalMeasurement": "6"
+        },
+        "distance_m": 0,
+        "geometry_sha256": "454921137c82ff0990544e7ac9ff3e5c580a4d9de8c4ea315cecc3d83b1cbf9f"
+      },
+      {
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            128.9799682,
+            34.9546421
+          ]
+        },
+        "source_id": "969480",
+        "attributes": {
+          "valueOfSounding": "50",
+          "surroundingDepth": "0",
+          "waterLevelEffect": "3",
+          "expositionOfSounding": "2",
+          "qualityOfVerticalMeasurement": "6"
+        },
+        "distance_m": 0,
+        "geometry_sha256": "454921137c82ff0990544e7ac9ff3e5c580a4d9de8c4ea315cecc3d83b1cbf9f"
+      }
+    ],
+    "sql": "SELECT feature_instance_id::text AS source_id,\n ST_AsGeoJSON(geometry)::jsonb AS geometry,\n encode(sha256(ST_AsEWKB(geometry)),'hex') AS geometry_sha256,attributes,\n ST_Distance(geometry::geography,ST_GeomFromText(i.args->>'reference_geometry',4326)::geography) AS distance_m\n FROM projection.s101_feature_current,input i\n WHERE feature_type_name='Wreck' AND geometry IS NOT NULL AND ST_IsValid(geometry)\n AND ST_Distance(geometry::geography,ST_GeomFromText(i.args->>'reference_geometry',4326)::geography)<=(i.args->>'radius_m')::float8\n ORDER BY feature_instance_id",
+    "parameters": {
+      "reference_geometry": "POINT(128.9799682 34.9546421)",
+      "radius_m": 1500
+    },
+    "source_snapshot": {
+      "path": "D:\\An_GeoLLM\\outputs\\scie_gold_v2_eight_snapshot_20261102_v6\\snapshot_manifest.json",
+      "sha256": "ff37cdeb3d3038c915393dbe2da32a2455253e39f5381b58e64873ca6e0629ad"
+    },
+    "source_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+    "db_events": [
+      {
+        "scope": "metadata",
+        "sql_submission_attempted": true,
+        "sql_executed": true,
+        "succeeded": true,
+        "process_returncode": 0,
+        "row_count": 4,
+        "latency_ms": 4622.497999996995
+      }
+    ]
+  }
+}

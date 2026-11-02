@@ -35,7 +35,7 @@ def load_frozen(path):
     return artifact
 
 
-def run_branches(initial_path, output, *, reviewer, validator, executor, query=None):
+def run_branches(initial_path, output, *, reviewer, validator, executor, query=None, sql_events=None):
     """Reviewer returns {plan, call}; validator accepts and returns actual QEC.
 
     Caller must supply research-isolated, source-pinned adapters. No production
@@ -47,7 +47,7 @@ def run_branches(initial_path, output, *, reviewer, validator, executor, query=N
     out=Path(output);out.mkdir(parents=True,exist_ok=False)
     original=load_frozen(initial_path)
     root_hash=original['plan_hash']
-    review=None;review_error=None
+    review=None;review_error=None;review_started=time.perf_counter()
     try:
         review=reviewer(copy.deepcopy(original['plan']))
         save_new(out/'reviewed_plan.json',{'initial_plan_hash':root_hash,
@@ -55,9 +55,11 @@ def run_branches(initial_path, output, *, reviewer, validator, executor, query=N
     except Exception as exc:
         review_error=type(exc).__name__
         save_new(out/'review_failure.json',{'initial_plan_hash':root_hash,'error_type':review_error})
+    review_latency_ms=(time.perf_counter()-review_started)*1000
     rows=[]
     for method in ('B3','B4','P0','H'):
         branch_started=time.perf_counter()
+        sql_start=len(sql_events()) if sql_events is not None else None
         row={'method':method,'case_id':original['case_id'],'repeat':original['repeat'],
              'initial_plan_hash':root_hash,'execution_callback_invoked':False,
              'execution_observation':None,'status':'STARTED'}
@@ -90,6 +92,9 @@ def run_branches(initial_path, output, *, reviewer, validator, executor, query=N
         if load_frozen(initial_path)['plan_hash']!=root_hash:
             raise ValueError('Frozen initial artifact changed during branching')
         row['branch_latency_ms']=(time.perf_counter()-branch_started)*1000
+        row['shared_review_latency_ms']=review_latency_ms
+        row['all_sql_events']=copy.deepcopy(sql_events()[sql_start:]) if sql_events is not None else None
+        row['sql_telemetry_complete']=sql_events is not None
         save_new(out/(method+'.json'),row)
         rows.append(row)
     save_new(out/'manifest.json',{'initial_plan_hash':root_hash,

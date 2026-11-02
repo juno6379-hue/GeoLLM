@@ -132,7 +132,8 @@ def serve(profile_path, output, upstream='http://host.docker.internal:11434', po
                     stopped.set(); connection.close()
                 if self.path in {'/api/embed','/api/embeddings','/v1/embeddings'}:
                     obj=json.loads(raw); vectors=obj.get('embeddings') or ([obj['embedding']] if 'embedding' in obj else [x['embedding'] for x in obj.get('data',[])])
-                    row['response']={'vector_count':len(vectors),'dimensions':[len(x) for x in vectors], 'sha256':hashlib.sha256(raw).hexdigest()}
+                    row['response']={'vector_count':len(vectors),'dimensions':[len(x) for x in vectors], 'sha256':hashlib.sha256(raw).hexdigest(),
+                                     'prompt_eval_count':obj.get('prompt_eval_count'),'usage':obj.get('usage')}
                 else:
                     try: row['response']=clean(json.loads(raw))
                     except ValueError:

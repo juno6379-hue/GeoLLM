@@ -78,6 +78,13 @@ def main(output,snapshot_path,profile_path,benchmark_path=None):
     condition=graph_condition(profile)
     manifest['method']=condition['method']
     manifest['graph_condition']=condition
+    manifest['research_source_scope']={
+        'version':'p1_frozen_research_source_scope_v1',
+        'scope':'Isolated graph process binds the same finite frozen research corpus as the comparison methods',
+        'operational_registry_changed':False,
+        'source_receipt':'source_scope_install.json',
+        'real_world_complete':False,
+        'limitation':'Production graph entry with explicit research source authority bridge; not an unchanged operational deployment'}
     manifest['conditions'].update(graph_condition_environment(profile))
     manifest['identity_check_policy']={'timeout_seconds':10,'max_attempts':2,'retry_scope':'transport error on read-only tags only; digest mismatch never retried','backoff_seconds':.5}
     manifest['registry_sha256']={'data/tool_registry.yaml':sha(ROOT/'data/tool_registry.yaml')}
@@ -103,7 +110,7 @@ def main(output,snapshot_path,profile_path,benchmark_path=None):
         db='postgresql://postgres:scie_local_pilot@marine-scie-pilot-db:5432/'+DB
         env={'SCIE_MODEL_GRAPH':'1','DISABLE_LLM_API':'0','S101_DB_URL':db,'POSTGIS_URL':db,'PGOPTIONS':'-c default_transaction_read_only=on -c statement_timeout=10000','OLLAMA_BASE_URL':'http://'+PROXY+':11434','OPENAI_BASE_URL':'http://'+PROXY+':11434/v1','OPENAI_API_KEY':'research-local-ollama','LLM_MODEL':'qwen2.5:1.5b','GEOLLM_OLLAMA_MODEL':'qwen2.5:1.5b','OLLAMA_MODEL':'qwen2.5:1.5b','GEOLLM_WEB_SHADOW_MODEL':'qwen2.5:1.5b','EMBEDDING_MODEL':'bge-m3','GEOLLM_CAPABILITY_PGVECTOR':'true','HF_HUB_OFFLINE':'1','TRANSFORMERS_OFFLINE':'1','OMP_NUM_THREADS':'1','OPENBLAS_NUM_THREADS':'1','MKL_NUM_THREADS':'1','APP_DATA_DIR':'/tmp'}
         env.update(graph_condition_environment(profile))
-        cmd=['docker','run','--rm','--name','marine-scie-model-worker','--network',NETWORK,'--label','marine.scie.research=true',*common,'--mount',f'type=bind,source={snapshot_path},target=/snapshot.json,readonly','--tmpfs','/work/logs:rw','--tmpfs','/work/data/feedback:rw']
+        cmd=['docker','run','--rm','--name','marine-scie-model-worker','--network',NETWORK,'--label','marine.scie.research=true',*common,'--mount',f'type=bind,source={snapshot_path},target=/snapshot.json,readonly','--mount',f'type=bind,source={snapshot_path.parent},target=/research_snapshot,readonly','--tmpfs','/work/logs:rw','--tmpfs','/work/data/feedback:rw']
         for key,value in env.items():cmd+=['--env',key+'='+value]
         cmd += [image,'python','-m','research.marine_geollm_scie.runners.model_graph_session','--benchmark','/work/'+benchmark.relative_to(ROOT).as_posix(),'--output','/out','--profile','/model_profile.json','--snapshot','/snapshot.json']
         try:
