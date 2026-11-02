@@ -18,7 +18,7 @@ JSON: http://localhost:8001/research/scie-results/api/dashboard
 
 ## 근거 우선순위
 
-`research/marine_geollm_scie/RESULTS_INDEX_KR.md`의 **최신 완료** 행이 결과 선택 기준입니다. 현 인덱스에서는 v5가 선택되고 v6는 별도 진행 현황입니다. v6 worker가 종료돼도 검증 인계와 인덱스 갱신 전에는 v5를 자동 대체하지 않습니다. 과거 `results/latest`와 6방법 K5는 합산하지 않습니다.
+`research/marine_geollm_scie/RESULTS_INDEX_KR.md`의 **최신 완료** 행이 결과 선택 기준입니다. 2026-11-02 최종 검증 인계 후 현 인덱스는 v6를 선택합니다. 새 worker가 종료돼도 검증 인계와 인덱스 갱신 전에는 완료 결과를 자동 대체하지 않습니다. 과거 `results/latest`와 6방법 K5는 합산하지 않습니다.
 
 - `benchmark/gold_v2_immutable_20261101_v1`: manifest, 질의, 답안계약, 독립 SQL/GIS 검산 근거.
 - 선택 run의 `report_with_faults/summary.json`: RQ별 기계 계약과 비용.

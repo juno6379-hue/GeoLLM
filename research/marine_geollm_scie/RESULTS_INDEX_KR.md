@@ -4,8 +4,8 @@
 
 | 구분 | 폴더/파일 | 현재 해석 |
 |---|---|---|
-| 실행 중 v6 | [실행 상태](runs/20261102_gold_v2_eight_k1_v6/status.json), [조건·한계](protocol/eight_execution_v6_20261102_KR.md) | 범위 사전 차단 후 새 전체144+27 실행. 완료 보고서 아직 없음; 정상차단 비용 포함 |
-| 최신 완료 v5 | [결과·한계](protocol/eight_results_v5_20261101_KR.md), [통합 보고서](runs/20261101_gold_v2_eight_k1_v5/report_with_faults/comparison_KR.md) | 144+27관측·무결성 검증 완료. LLM 의미 오류/범위 차단·독립GOLD 미완료 |
+| 최신 완료 v6 | [결과·한계](protocol/eight_results_v6_20261102_KR.md), [통합 보고서](runs/20261102_gold_v2_eight_k1_v6/report_with_faults/comparison_KR.md) | 144+27·무결성/교차검증 완료. Q5-03 미실행 개선, P0/H 정상 오차단1/1·P1 ESR0/5·공간정답3미측정. 전체 신뢰성 개선 주장 불가 |
+| 이전 완료 v5 | [결과·한계](protocol/eight_results_v5_20261101_KR.md), [통합 보고서](runs/20261101_gold_v2_eight_k1_v5/report_with_faults/comparison_KR.md) | 144+27관측·무결성 검증 완료. LLM 의미 오류/범위 차단·독립GOLD 미완료 |
 | 중단 원본 v4 | [실행 상태](runs/20261101_gold_v2_eight_k1_v4/status.json) | 144수집 후 공유 검토 gate 실패. 17문항 검토 미호출·fault미실행, 완성된 비교로 인용 금지 |
 | 최신 재실행 v3 | [결과 해설](protocol/eight_results_v3_20261101_KR.md), [통합 보고서](runs/20261101_gold_v2_eight_k1_v3/report_with_faults/comparison_KR.md) | 144+27관측 완료·무결성 검증. 공통 실행 성공 v3 적용. 독립 GOLD/전체 논문 결론 미완료 |
 | 최신 8방법 v2 실행 | [runs/20261101_gold_v2_eight_k1_v2](runs/20261101_gold_v2_eight_k1_v2) | 관측144+fault27 완료. 독립 GOLD/RQ 전체 결론은 미완료 |
@@ -19,6 +19,6 @@
 | 신뢰성 정책·감사 | [reliability](reliability) | 운영 gap과 RQ1~RQ5 연결. 실측 점수와 구분 |
 | 독립 검수 양식 | [review/20261031_independent_gold_v3](review/20261031_independent_gold_v3) | 검수자 선정됨. 독립 결과 수령·완료는 아직 확인되지 않음 |
 
-**새 GOLD v2 8방법 관측 보고서가 생성됐다.** [결과와 제한](protocol/eight_results_20261101_KR.md), [통합 보고서](runs/20261101_gold_v2_eight_k1_v2/report_with_faults/comparison_KR.md)를 먼저 확인한다. 관측 수집 완료와 논문 검증 완료는 구분한다. 이전 K5 결과를 이름만 변경하거나 재사용하지 않는다. `results/latest` 등 과거 파일럿 폴더를 최신 8방법 결과로 읽지 않는다.
+**최신 GOLD v2 8방법 v6 관측 보고서를 검증했다.** [결과와 제한](protocol/eight_results_v6_20261102_KR.md), [통합 보고서](runs/20261102_gold_v2_eight_k1_v6/report_with_faults/comparison_KR.md)를 먼저 확인한다. 관측 수집 완료와 논문 검증 완료는 구분한다. 이전 K5 결과를 이름만 변경하거나 재사용하지 않는다. `results/latest` 등 과거 파일럿 폴더를 최신 8방법 결과로 읽지 않는다.
 
 운영 수정은 [운영·연구 분리 정책](../../docs/geollm/reliability_delivery_policy.md)에 따라 별도 검증한다. 운영 버그 수정 이후 비교에는 새 source hash와 전체 재실행이 필요하다. 독립 GOLD 미수령 항목은 의미 정확도를 만들지 않고 미측정으로 남긴다.

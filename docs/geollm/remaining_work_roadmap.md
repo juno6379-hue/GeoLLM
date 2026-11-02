@@ -1,5 +1,14 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-11-02 v6 최종 관측·교차검증 완료
+
+- v6 12:38:40 KST COMPLETED_OBSERVATIONS/DONE, 약83분15초. 144+fault27·모든단계exit0·supervisor18760종료·stderr없음. [최신 결과·한계](../../research/marine_geollm_scie/protocol/eight_results_v6_20261102_KR.md), 통합원본 runs/20261102_gold_v2_eight_k1_v6/report_with_faults/comparison_KR.md.
+- 주검증144raw/27fault계약·Oracle/281소스/6관계export/기존512보존hash·모델사후·완료gate·공통ESR분모5통과. outputs/gold_v2_eight_v6_final_verification_20261102.json. 독립감사18공유plan/9통제reviewhash·27원본/P0lossless17+초기무효1확인.
+- Q5_03 공간SQL1→0·네실행필드false로사전차단개선. 그러나P0/H정상fault오차단0/1→1/1, Q4세표현도coverage미검증차단. P1 ESR3/5→0/5, SCR는0점아닌null(측정2/5·누락3), SafeAbstention전체계약0/3유지. native7+compiler1오류차단8/8과B4미검출8/8유지. H공동복구3/6→0/6, B4는3/6. 정상가용성비용과전체계약미충족을숨기지않는다.
+- P1기계검사5/15측정/18전체, 독립인간GOLD/K1/holdout·전체RQ미완료. Q3_01/Q5_01미지원사유차단을coverage성과로합산금지. 운영승인범위/실DBsnapshot identity·corpus조회분리·대상별차단/문서부분응답·nearest/canonical/복합완결성이 다음P0. 코드변경후새동결전체run필요.
+- RESULTS_INDEX를v6최신완료로갱신해연구UI도v6를표시한다. UI출처해설경로의날짜를선택run에서추출하도록수정·8tests통과. 운영/frozen소스변경없음. 후속heartbeat geollm-gold-v2-8-v6는완료점검종료로삭제하며추가실험을자동시작하지않는다. 관련로컬커밋,새push요청없음. 기존dirty UI/feedback/인계보존.
+
+
 ## 2026-11-02 논문 결과 전용 UI 연결·검증
 
 - 사용자 UI 프롬프트 기준으로 adapter/화면/독립 감사 3역할을 분리했다. 구현은 tools/scie_results_ui/에만 격리하며 운영8000/DB/Ollama/동결 연구소스를 변경하지 않는다. 별도 http://localhost:8001/research/scie-results 실행 중. 재기동은 .venv/Scripts/python.exe -m tools.scie_results_ui.server --port 8001.

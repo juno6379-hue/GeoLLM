@@ -178,7 +178,7 @@ class ResultsAdapter:
             self.load(prefix + '/report_with_faults/comparison_KR.md', '')
             self.load(prefix + '/fault_report/comparison_KR.md', '')
             version = selected.rsplit('_', 1)[-1]
-            self.load(f'protocol/eight_results_{version}_20261101_KR.md', '')
+            self.load(f'protocol/eight_results_{version}_{selected[:8]}_KR.md', '')
         # The index is authoritative: a newer finished worker is not silently promoted.
         selected_info = next((r for r in runs if r['run_id'] == selected), {})
         overall = summary.get('overall_by_method', {})
