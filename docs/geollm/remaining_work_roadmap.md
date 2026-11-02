@@ -1,5 +1,15 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-11-03 사용자 요청 중단·커밋/푸시 — 다음 접속 최우선 인계
+
+- 사용자 요청: **현재 작업까지 GitHub 커밋·푸시, K1과 임베딩 오류는 다음 작업에 남김**. 아래 실행 중/자동후속 기록보다 이 중단 지시가 우선한다. 명시적인 재개 요청 전에는 실행하지 않는다.
+- K1 `20261103_development_k1_rq_v1`은 `PAUSED_BY_USER`. 실제 supervisor25104와 graph launcher 종료, 연구 worker/proxy 컨테이너 중단·부재 확인. 운영 웹/연구DB는 유지. heartbeat `geollm-rq1-rq5-k1`도 PAUSED. 별도 임베딩 worker 없음 확인.
+- 완료 범위: source6관계/337파일 동결, SQL 진단8건, P1 raw4/18건(Q1-01 PARTIAL, Q1-02/03 COMPLETED, Q2-01 PARTIAL). 기본 비교144·fault207·새36답변 RQ1 주석·최종 보고서는 **미완료**. [중단 영수증·원본 SHA](../../research/marine_geollm_scie/operational/20261103_k1_user_pause/pause_receipt.json). status/lock 변경 전 사본도 보존했다.
+- 중단 로그의 exit137 및 semantic-prior 연결 종료/embedding connection refused는 worker/proxy 종료 과정에 발생했다. 자발적 모델 오류로 합산하지 않는다. 중단 전 proxy 영수증95건은 RETURNED/HTTP200이며, 이것이 답변 정확성이나 전체 임베딩 정상성을 증명하지는 않는다.
+- **다음 K1 점검:** 연구DB `public.codeinformation` 없음에 따른 FC fallback, 낮은 graph-scoped 유사도(0.4737/0.5354, threshold0.6)와 metadata fallback/PARTIAL 응답 원인을 원문·trace로 대조한다. 현재는 원인 수정하지 않았다. 코드 변경 시 회귀 검증·새 frozen run 전체 실행. supervisor는 append/resume를 지원하지 않으므로 보존된 v1에 이어 쓰지 않는다. 중단 lock은 PID/컨테이너 부재를 재확인한 뒤 별도 보관하고 새 경로로 시작한다.
+- **다음 임베딩 점검(운영 분리):** PDF2215 재임베딩/운영적용은 기존 인계의 완료 기록이며, API에서 신규 PDF청크 활용·쪽/좌표/그림 보존은 미검증. 호스트5433 포트가 다른 PostgreSQL로 연결되는 문제와 UnicodeDecodeError를 확인한다. 원본 영수증 `outputs/pdf_revision_apply_20261103_v1/receipt.json`, 검증 `db_verification.txt` 및 PDF embedded verification을 먼저 확인하고 무조건 재임베딩하지 않는다. Dataset 누락/원문 완전성·공간 객체 연결도 별도 남은 일이다.
+- 검증된 연구 코드 a5f7147·인계4a63e98 및 이번 중단 인계를 푸시한다. 기존 Antigravity UI/PDF worker/feedback의 미커밋 변경과 대형 런타임 원본은 현 상태로 보존하며 이 중단 커밋에 섞지 않는다. 홀드아웃 열람/실행 없음. K5·ablation·새답변 독립인간평가는 다음 단계로 유지한다.
+
 ## 2026-11-03 RQ1–RQ5 측정계약 완성·새 Development K1 실행
 
 - 최신 사용자 요청: 여러 에이전트로 측정계약 완성·검증 후 **개발 K1까지 진행**. 운영 변경과 연구 분리, 최종 동결 전 홀드아웃 사용 금지. [상세 인계](development_k1_measurement_20261103.md), [실행계약](../../research/marine_geollm_scie/protocol/development_k1_execution_20261103_KR.md).

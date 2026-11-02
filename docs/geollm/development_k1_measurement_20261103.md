@@ -1,5 +1,7 @@
 # RQ1–RQ5 측정계약과 Development K1 인계
 
+**최신 상태: 2026-11-03 사용자 요청으로 K1과 자동 후속 점검을 중단했다.** SQL진단8건·P1 raw4건을 보존했고 최종 비교는 미완료다. K1·임베딩 오류는 다음 작업에서 점검한다. [중단 영수증](../../research/marine_geollm_scie/operational/20261103_k1_user_pause/pause_receipt.json), [최신 재개 절차](remaining_work_roadmap.md)를 먼저 확인한다. 아래 실행 시작 기록은 과거 이력이며 자동 재개 권한을 의미하지 않는다.
+
 사용자 요청: RQ1–RQ5 측정계약을 병렬 완성·검증한 뒤 새 동결 개발 K1 실행. 운영 수정과 논문 실험은 분리하고 최종 동결 전 홀드아웃 사용 금지.
 
 ## 완료한 준비
