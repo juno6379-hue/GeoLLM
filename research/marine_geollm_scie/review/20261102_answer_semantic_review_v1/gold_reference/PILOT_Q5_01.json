@@ -1,0 +1,348 @@
+{
+  "case_id": "PILOT_Q5_01",
+  "query": "독도 주변 5km의 등대와 난파선을 찾아 각각의 근거를 알려줘.",
+  "category": "Q5",
+  "equivalence_group": "Q5_01",
+  "contract_version": "frozen_v5",
+  "finalization_status": "AGENT_FINALIZED_UNDER_USER_DIRECTION",
+  "annotation_status": "AGENT_FINALIZED",
+  "human_approval": false,
+  "independent_human_review": false,
+  "independent_expert_review": false,
+  "source_v3_user_approval": true,
+  "holdout_eligible": false,
+  "post_hoc": true,
+  "required_task_obligations": [
+    "resolve_reference",
+    "resolve_lighthouse_target_conditions",
+    "verify_both_target_coverages",
+    "search_both_targets_5000m",
+    "provide_per_target_evidence",
+    "separate_partial_document_answer"
+  ],
+  "required_qec_fields": {
+    "slots.location_text": "독도",
+    "slots.distance_m": 5000.0
+  },
+  "single_intent_match_is_sufficient": false,
+  "acceptable_capability_combinations": [
+    {
+      "status": "FINALIZED_ACCEPTABLE_CANDIDATE_NOT_EXECUTION_PROOF",
+      "all_of": [
+        {
+          "capability_id": "resolver.place_registry",
+          "registry_status": null,
+          "runtime_availability": "NOT_VERIFIED",
+          "provenance": {
+            "source_path": "D:\\An_GeoLLM\\data\\capability_registry.yaml",
+            "source_sha256": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+            "case_id": "PILOT_Q5_01",
+            "json_pointer": "/capabilities/9/description",
+            "exact_text": "Resolve Korean maritime place names, ports, port entrances, islands, and curated reference points to canonical geometry and provenance.\n",
+            "text_sha256": "62e6d856eb70883beb18a127e64710713ef96d1ab9b4bb1fb2fc19ab2c3cc3f8",
+            "span_start": 0,
+            "span_end": 136,
+            "span_unit": "unicode_code_points",
+            "serialization": "original_string"
+          }
+        },
+        {
+          "capability_id": "resolver.s101_feature_dictionary",
+          "registry_status": null,
+          "runtime_availability": "NOT_VERIFIED",
+          "provenance": {
+            "source_path": "D:\\An_GeoLLM\\data\\capability_registry.yaml",
+            "source_sha256": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+            "case_id": "PILOT_Q5_01",
+            "json_pointer": "/capabilities/15/description",
+            "exact_text": "Resolve S-101 feature class names, aliases, hazard feature groups, geometry type, catalogue references, and portrayal references.\n",
+            "text_sha256": "f39ed0d5227cb3ffc70c30acf23cc9c20534260d784a2d91e99a35bed10f22c1",
+            "span_start": 0,
+            "span_end": 130,
+            "span_unit": "unicode_code_points",
+            "serialization": "original_string"
+          }
+        },
+        {
+          "capability_id": "tool.spatial_radius_search",
+          "registry_status": null,
+          "runtime_availability": "NOT_VERIFIED",
+          "provenance": {
+            "source_path": "D:\\An_GeoLLM\\data\\capability_registry.yaml",
+            "source_sha256": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+            "case_id": "PILOT_Q5_01",
+            "json_pointer": "/capabilities/16/description",
+            "exact_text": "Execute radius-based spatial feature search using a verified anchor geometry, radius in meters, and target feature candidates. Source-backed S-101 term mappings require all validated attribute predicates; missing attributes do not match and unresolved term mappings cannot execute.\n",
+            "text_sha256": "aced129696fc6620013d7c440d5de013af3904e41a2f5ad1b463272c8a083946",
+            "span_start": 0,
+            "span_end": 282,
+            "span_unit": "unicode_code_points",
+            "serialization": "original_string"
+          }
+        },
+        {
+          "capability_id": "tool.graph_scoped_rag",
+          "registry_status": null,
+          "runtime_availability": "NOT_VERIFIED",
+          "provenance": {
+            "source_path": "D:\\An_GeoLLM\\data\\capability_registry.yaml",
+            "source_sha256": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+            "case_id": "PILOT_Q5_01",
+            "json_pointer": "/capabilities/18/description",
+            "exact_text": "Retrieve authoritative document chunks, evidence candidates, legal or standard references, and S-101 catalogue/DCEG text with KG context.\n",
+            "text_sha256": "c96b4661b8418f16a9da294e5305b76e785741a796f6ecdf3b004ab8d524f839",
+            "span_start": 0,
+            "span_end": 138,
+            "span_unit": "unicode_code_points",
+            "serialization": "original_string"
+          }
+        }
+      ],
+      "sufficient_for_execution": false
+    }
+  ],
+  "capability_id_exact_match_required": false,
+  "forbidden_substitutions": [
+    "intent_label_for_task_completion",
+    "registry_hit_for_factual_authority",
+    "plan_json_for_execution_result",
+    "unexecuted_search_for_zero_objects",
+    "partial_result_for_full_completion",
+    "invented_AOI",
+    "invented_snapshot_or_object_ID",
+    "unsupported_zero_object_claim"
+  ],
+  "required_output_fields": [
+    "spatial_tasks",
+    "source_coverage",
+    "execution_observation"
+  ],
+  "spatial_reference": null,
+  "spatial_object_scoring_enabled": false,
+  "source_provenance": {
+    "approved_v3_sha256": "a69cda7558eca74c8d869de6fc80653c51541ab2cc4a7cb628e3fd065b27558c",
+    "v4_contracts_sha256": "de3be5c5b9a69a7b1ab717d64aa724315b131268377ce75cd816395d16fdfdbd",
+    "fc_candidates_sha256": "2ac1bf576ee1adde2334f780d5add4a03beb23ed89ab30e06f7e49780ff0fdf5",
+    "v4_case_id": "PILOT_Q5_01"
+  },
+  "scope_notes": [
+    "User-approved source-bound safe abstention; document explanations are separately evaluated optional partial output."
+  ],
+  "complete_semantic_accuracy_claim_allowed": false,
+  "capability_combination_policy": "Illustrative candidates; equivalent implementations satisfying task/output contracts are allowed. Runtime availability still requires verification.",
+  "document_scope": {
+    "selected_feature_codes": [
+      "Landmark",
+      "Building",
+      "LightAllAround",
+      "LightSectored",
+      "Wreck"
+    ],
+    "features": [
+      {
+        "code": "Landmark",
+        "definition": "Any prominent object at a fixed location on land which can be used in determining a location or a direction.",
+        "permitted_primitives": [
+          "point",
+          "curve",
+          "surface"
+        ],
+        "locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Landmark']]"
+      },
+      {
+        "code": "Building",
+        "definition": "A free-standing self-supporting construction that is roofed, usually walled, and is intended for human occupancy (for example: a place of work or recreation) and/or habitation.",
+        "permitted_primitives": [
+          "point",
+          "surface"
+        ],
+        "locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Building']]"
+      },
+      {
+        "code": "LightAllAround",
+        "definition": "An all around light is a light that is visible over the whole horizon of interest to marine navigation and having no change in the characteristics of the light.",
+        "permitted_primitives": [
+          "point"
+        ],
+        "locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='LightAllAround']]"
+      },
+      {
+        "code": "LightSectored",
+        "definition": "A light presenting different appearances (in particular, different colours) over various parts of the horizon of interest to maritime navigation.",
+        "permitted_primitives": [
+          "point"
+        ],
+        "locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='LightSectored']]"
+      },
+      {
+        "code": "Wreck",
+        "definition": "The ruined remains of a stranded or sunken vessel which has been rendered useless.",
+        "permitted_primitives": [
+          "point",
+          "surface"
+        ],
+        "locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]"
+      }
+    ],
+    "definition_policy": "Source-equivalent paraphrase accepted by substantive review; exact-text agreement is a separate transcription check, not semantic accuracy.",
+    "evidence_requirements": {
+      "edition": "2.0.0",
+      "source_sha256": "2743d0689d8a2130f9b809554591d794f01cd9953f222f065ac891b590bd3cfc",
+      "source_path": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml",
+      "locators": [
+        "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Landmark']]",
+        "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Building']]",
+        "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='LightAllAround']]",
+        "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='LightSectored']]",
+        "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]"
+      ],
+      "claim_source_links_required": true,
+      "DCEG_required": false
+    },
+    "attribute_scope": null
+  },
+  "spatial_condition": "KNOWN_OUT_OF_COVERAGE_NO_SPATIAL_OBJECT_GOLD",
+  "score_reporting_policy": {
+    "components_separate": true,
+    "missing_field_is_failure_for_applicable_contract_check": true,
+    "unsupported_metric_is_null": true,
+    "text_presence_is_not_meaning_correctness": true,
+    "no_spatial_oracle_means_no_spatial_accuracy": true,
+    "no_aggregate_full_semantic_accuracy_without_substantive_review": true
+  },
+  "gold_version": "GOLD_v2_20261031",
+  "parent_contract_sha256": "262597b5b94d01d34f16c12deef0fe60c62c7d6b51cbc0abcd4eb06fc9f61562",
+  "independent_expert_review_complete": false,
+  "coverage_reference": {
+    "snapshot_manifest_sha256": "2dbef0a5fd639ac130617f6e28e13038068a55f14e963b18f0cc28ae35b7f260",
+    "source_relation_sha256": {
+      "serving.navigation_aid_current": "f75d5ceb50049e732433d5b36ca6be03e88a0360bc5f8ba67b3fd92e1425cdd7",
+      "projection.s101_feature_current": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85"
+    }
+  },
+  "evaluation_stratum": "OUT_OF_COVERAGE_SAFE_ABSTENTION",
+  "spatial_gold": null,
+  "spatial_correctness_applicable": false,
+  "execution_correctness_gap_applicable": false,
+  "expected_spatial_behavior": {
+    "accepted_states": [
+      "BLOCKED_DATA",
+      "DATA_OUT_OF_SCOPE"
+    ],
+    "required_disclosure": "Current connected snapshot cannot determine the answer for the requested spatial extent",
+    "per_target": {
+      "Lighthouse": {
+        "status": "BLOCKED_DATA",
+        "object_ids": null
+      },
+      "Wreck": {
+        "status": "BLOCKED_DATA",
+        "object_ids": null
+      }
+    },
+    "empty_result_as_answer_forbidden": true,
+    "claim_spatial_success_forbidden": true
+  },
+  "optional_document_task": {
+    "allowed_status": "PARTIAL_RESPONSE",
+    "source_bound_definitions_and_attributes_allowed": true,
+    "invent_instance_values_forbidden": true,
+    "spatial_full_success": false
+  },
+  "old_machine_checks_not_applicable": [
+    {
+      "id": "required_feature_codes",
+      "kind": "set_inclusion",
+      "expected": [
+        "Landmark",
+        "Building",
+        "LightAllAround",
+        "LightSectored",
+        "Wreck"
+      ],
+      "field": "document_answer.features[].code"
+    },
+    {
+      "id": "feature_geometry",
+      "kind": "per_feature_set_equality",
+      "expected": {
+        "Landmark": [
+          "point",
+          "curve",
+          "surface"
+        ],
+        "Building": [
+          "point",
+          "surface"
+        ],
+        "LightAllAround": [
+          "point"
+        ],
+        "LightSectored": [
+          "point"
+        ],
+        "Wreck": [
+          "point",
+          "surface"
+        ]
+      },
+      "field": "document_answer.features[].permitted_primitives"
+    },
+    {
+      "id": "definitions_present",
+      "kind": "nonempty_per_feature",
+      "field": "document_answer.features[].definition",
+      "expected_codes": [
+        "Landmark",
+        "Building",
+        "LightAllAround",
+        "LightSectored",
+        "Wreck"
+      ]
+    },
+    {
+      "id": "source_binding",
+      "kind": "edition_hash_locator_match",
+      "field": "document_answer.evidence",
+      "expected": {
+        "edition": "2.0.0",
+        "source_sha256": "2743d0689d8a2130f9b809554591d794f01cd9953f222f065ac891b590bd3cfc",
+        "source_path": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml",
+        "locators": [
+          "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Landmark']]",
+          "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Building']]",
+          "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='LightAllAround']]",
+          "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='LightSectored']]",
+          "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]"
+        ],
+        "claim_source_links_required": true,
+        "DCEG_required": false
+      }
+    },
+    {
+      "id": "unverified_scope_disclosed",
+      "kind": "required_structured_disclosure",
+      "field": "source_coverage",
+      "expected": {
+        "benchmark_oracle_available": false,
+        "unverified_conditions_must_be_listed": true
+      }
+    },
+    {
+      "id": "composite_status_complete",
+      "kind": "per_obligation_status",
+      "field": "per_task_status",
+      "expected_obligations": [
+        "resolve_reference",
+        "resolve_lighthouse_target_conditions",
+        "verify_both_target_coverages",
+        "search_both_targets_5000m",
+        "provide_per_target_evidence",
+        "separate_partial_document_answer"
+      ]
+    }
+  ],
+  "machine_checks": [],
+  "oracle_status": "VERIFIED_SOURCE_SCOPE_ABSTENTION",
+  "scope_frozen": true
+}

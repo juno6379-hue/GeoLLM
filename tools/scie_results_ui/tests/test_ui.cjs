@@ -92,3 +92,23 @@ test('initial load and refresh only GET the isolated research endpoint', async (
     assert.equal(options.cache, 'no-store');
   }
 });
+
+test('prepared holdout is shown as awaiting final freeze rather than completed evaluation', () => {
+  const ui=browser();
+  ui.evaluate('DATA={holdout:{status:"PREPARED_PENDING_FINAL_SYSTEM_FREEZE",main_cases:18,rq2_fault_cases:12,rq4_recovery_cases:8,evaluation_executed:false,system_freeze_complete:false},sources:[]}');
+  const html=ui.evaluate('holdoutPanel()');
+  assert.match(html,/준비 완료 · 최종 동결 대기/);
+  assert.match(html,/평가 미실행/);
+  assert.match(html,/RQ2/);
+  assert.match(html,/RQ4/);
+  assert.match(html,/질문·정답·오류 계획을 공개하지/);
+});
+
+test('human scoring missing labels remains unmeasured even if GOLD was approved', () => {
+  const ui=browser();
+  ui.evaluate('DATA={semantic_review:{status:"AWAITING_HUMAN_ANSWER_LABELS",total_answers:144,reviewer_A_completed:0,reviewer_B_completed:0,paired_completed:0,consensus_completed:0,gold_review_complete:true,human_answer_scoring_complete:false,semantic_human_accuracy:1},sources:[]}');
+  const html=ui.evaluate('humanReviewPanel()');
+  assert.match(html,/0 \/ 144/);
+  assert.match(html,/미측정/);
+  assert.doesNotMatch(html,/100%/);
+});

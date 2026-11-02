@@ -1,0 +1,752 @@
+{
+  "case_id": "PILOT_Q5_02",
+  "query": "부산항 주변 2km의 정박지와 제한구역을 찾아 비교해줘.",
+  "category": "Q5",
+  "equivalence_group": "Q5_02",
+  "contract_version": "frozen_v5",
+  "finalization_status": "AGENT_FINALIZED_UNDER_USER_DIRECTION",
+  "annotation_status": "AGENT_FINALIZED",
+  "human_approval": false,
+  "independent_human_review": false,
+  "independent_expert_review": false,
+  "source_v3_user_approval": true,
+  "holdout_eligible": false,
+  "post_hoc": true,
+  "required_task_obligations": [
+    "resolve_reference",
+    "verify_both_target_coverages",
+    "search_both_targets_2000m",
+    "compare_target_results",
+    "disclose_subset_limitations"
+  ],
+  "required_qec_fields": {
+    "slots.location_text": "부산항",
+    "slots.distance_m": 2000.0
+  },
+  "single_intent_match_is_sufficient": false,
+  "acceptable_capability_combinations": [
+    {
+      "status": "FINALIZED_ACCEPTABLE_CANDIDATE_NOT_EXECUTION_PROOF",
+      "all_of": [
+        {
+          "capability_id": "resolver.place_registry",
+          "registry_status": null,
+          "runtime_availability": "NOT_VERIFIED",
+          "provenance": {
+            "source_path": "D:\\An_GeoLLM\\data\\capability_registry.yaml",
+            "source_sha256": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+            "case_id": "PILOT_Q5_02",
+            "json_pointer": "/capabilities/9/description",
+            "exact_text": "Resolve Korean maritime place names, ports, port entrances, islands, and curated reference points to canonical geometry and provenance.\n",
+            "text_sha256": "62e6d856eb70883beb18a127e64710713ef96d1ab9b4bb1fb2fc19ab2c3cc3f8",
+            "span_start": 0,
+            "span_end": 136,
+            "span_unit": "unicode_code_points",
+            "serialization": "original_string"
+          }
+        },
+        {
+          "capability_id": "resolver.s101_feature_dictionary",
+          "registry_status": null,
+          "runtime_availability": "NOT_VERIFIED",
+          "provenance": {
+            "source_path": "D:\\An_GeoLLM\\data\\capability_registry.yaml",
+            "source_sha256": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+            "case_id": "PILOT_Q5_02",
+            "json_pointer": "/capabilities/15/description",
+            "exact_text": "Resolve S-101 feature class names, aliases, hazard feature groups, geometry type, catalogue references, and portrayal references.\n",
+            "text_sha256": "f39ed0d5227cb3ffc70c30acf23cc9c20534260d784a2d91e99a35bed10f22c1",
+            "span_start": 0,
+            "span_end": 130,
+            "span_unit": "unicode_code_points",
+            "serialization": "original_string"
+          }
+        },
+        {
+          "capability_id": "tool.spatial_radius_search",
+          "registry_status": null,
+          "runtime_availability": "NOT_VERIFIED",
+          "provenance": {
+            "source_path": "D:\\An_GeoLLM\\data\\capability_registry.yaml",
+            "source_sha256": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+            "case_id": "PILOT_Q5_02",
+            "json_pointer": "/capabilities/16/description",
+            "exact_text": "Execute radius-based spatial feature search using a verified anchor geometry, radius in meters, and target feature candidates. Source-backed S-101 term mappings require all validated attribute predicates; missing attributes do not match and unresolved term mappings cannot execute.\n",
+            "text_sha256": "aced129696fc6620013d7c440d5de013af3904e41a2f5ad1b463272c8a083946",
+            "span_start": 0,
+            "span_end": 282,
+            "span_unit": "unicode_code_points",
+            "serialization": "original_string"
+          }
+        },
+        {
+          "capability_id": "tool.graph_scoped_rag",
+          "registry_status": null,
+          "runtime_availability": "NOT_VERIFIED",
+          "provenance": {
+            "source_path": "D:\\An_GeoLLM\\data\\capability_registry.yaml",
+            "source_sha256": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+            "case_id": "PILOT_Q5_02",
+            "json_pointer": "/capabilities/18/description",
+            "exact_text": "Retrieve authoritative document chunks, evidence candidates, legal or standard references, and S-101 catalogue/DCEG text with KG context.\n",
+            "text_sha256": "c96b4661b8418f16a9da294e5305b76e785741a796f6ecdf3b004ab8d524f839",
+            "span_start": 0,
+            "span_end": 138,
+            "span_unit": "unicode_code_points",
+            "serialization": "original_string"
+          }
+        }
+      ],
+      "sufficient_for_execution": false
+    }
+  ],
+  "capability_id_exact_match_required": false,
+  "forbidden_substitutions": [
+    "intent_label_for_task_completion",
+    "registry_hit_for_factual_authority",
+    "plan_json_for_execution_result",
+    "unexecuted_search_for_zero_objects",
+    "partial_result_for_full_completion",
+    "invented_AOI",
+    "invented_snapshot_or_object_ID",
+    "unsupported_zero_object_claim"
+  ],
+  "required_output_fields": [
+    "spatial_tasks",
+    "source_coverage",
+    "execution_observation"
+  ],
+  "spatial_reference": null,
+  "spatial_object_scoring_enabled": false,
+  "source_provenance": {
+    "approved_v3_sha256": "a69cda7558eca74c8d869de6fc80653c51541ab2cc4a7cb628e3fd065b27558c",
+    "v4_contracts_sha256": "de3be5c5b9a69a7b1ab717d64aa724315b131268377ce75cd816395d16fdfdbd",
+    "fc_candidates_sha256": "2ac1bf576ee1adde2334f780d5add4a03beb23ed89ab30e06f7e49780ff0fdf5",
+    "v4_case_id": "PILOT_Q5_02"
+  },
+  "scope_notes": [
+    "Object IDs refer to frozen snapshot records, not deduplicated physical facilities or the whole legal port."
+  ],
+  "complete_semantic_accuracy_claim_allowed": false,
+  "capability_combination_policy": "Illustrative candidates; equivalent implementations satisfying task/output contracts are allowed. Runtime availability still requires verification.",
+  "document_scope": {
+    "selected_feature_codes": [
+      "AnchorageArea",
+      "RestrictedArea"
+    ],
+    "features": [
+      {
+        "code": "AnchorageArea",
+        "definition": "An area in which vessels or seaplanes anchor or may anchor.",
+        "permitted_primitives": [
+          "point",
+          "surface"
+        ],
+        "locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='AnchorageArea']]"
+      },
+      {
+        "code": "RestrictedArea",
+        "definition": "A specified area on land or water designated by an appropriate authority within which access or navigation is restricted in accordance with certain specified conditions.",
+        "permitted_primitives": [
+          "surface"
+        ],
+        "locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='RestrictedArea']]"
+      }
+    ],
+    "definition_policy": "Source-equivalent paraphrase accepted by substantive review; exact-text agreement is a separate transcription check, not semantic accuracy.",
+    "evidence_requirements": {
+      "edition": "2.0.0",
+      "source_sha256": "2743d0689d8a2130f9b809554591d794f01cd9953f222f065ac891b590bd3cfc",
+      "source_path": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml",
+      "locators": [
+        "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='AnchorageArea']]",
+        "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='RestrictedArea']]"
+      ],
+      "claim_source_links_required": true,
+      "DCEG_required": false
+    },
+    "attribute_scope": null
+  },
+  "spatial_condition": "FIXED_SINGLE_SNAPSHOT_HARBOUR_POLYGON",
+  "score_reporting_policy": {
+    "components_separate": true,
+    "missing_field_is_failure_for_applicable_contract_check": true,
+    "unsupported_metric_is_null": true,
+    "text_presence_is_not_meaning_correctness": true,
+    "no_spatial_oracle_means_no_spatial_accuracy": true,
+    "no_aggregate_full_semantic_accuracy_without_substantive_review": true
+  },
+  "gold_version": "GOLD_v2_20261031",
+  "parent_contract_sha256": "262597b5b94d01d34f16c12deef0fe60c62c7d6b51cbc0abcd4eb06fc9f61562",
+  "independent_expert_review_complete": false,
+  "coverage_reference": {
+    "snapshot_manifest_sha256": "2dbef0a5fd639ac130617f6e28e13038068a55f14e963b18f0cc28ae35b7f260",
+    "source_relation_sha256": {
+      "serving.navigation_aid_current": "f75d5ceb50049e732433d5b36ca6be03e88a0360bc5f8ba67b3fd92e1425cdd7",
+      "projection.s101_feature_current": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85"
+    }
+  },
+  "evaluation_stratum": "IN_SNAPSHOT_SPATIAL",
+  "reference_geometry": {
+    "id": "1137770",
+    "dataset_id": 540,
+    "dataset_version_id": 540,
+    "dataset_name": "101KR00658D00.000",
+    "min_scale": 16,
+    "max_scale": 18,
+    "srid": 4326,
+    "product_specification": "INT.IHO.S-101.2.0",
+    "geometry_sha256": "af271cb3a14c95cc34cedaade127bfbb87b26bc3c6a96fb1755338e2266a5af0",
+    "dataset_snapshot_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+    "layer_name": "projection.s101_feature_current/HarbourAreaAdministrative",
+    "boundary_source": "snapshot S-101 feature, not independently verified legal full-port boundary",
+    "selection_policy": "single exact-name polygon, most detailed min_scale, full 2km extent inside snapshot bbox, largest area then smallest feature ID",
+    "coverage_bbox": [
+      128.9,
+      34.9,
+      129.3,
+      35.3
+    ],
+    "coverage_boundary_margin_m": 4561.66668103,
+    "selection_status": "FIXED_RESEARCH_REFERENCE_UNDER_USER_SINGLE_POLYGON_POLICY"
+  },
+  "spatial_gold": {
+    "AnchorageArea": {
+      "object_ids": [
+        "1183711",
+        "701233",
+        "937412"
+      ],
+      "objects": [
+        {
+          "id": "1183711",
+          "feature": "AnchorageArea",
+          "attributes": {
+            "name": "N-2 대기정박지",
+            "text": "1,000 to 3,000 DWT x 7 Vessels",
+            "status": "6",
+            "language": "eng",
+            "nameUsage": "2",
+            "featureName": "",
+            "information": "",
+            "scaleMinimum": "11999"
+          },
+          "dataset_name": "101KR00659C81.000",
+          "dataset_version_id": 610,
+          "harbour_distance_m": 1727.14801424
+        },
+        {
+          "id": "701233",
+          "feature": "AnchorageArea",
+          "attributes": {
+            "name": "N-2 대기정박지",
+            "text": "1,000 to 3,000 DWT x 7 Vessels",
+            "status": "6",
+            "language": "eng",
+            "nameUsage": "2",
+            "featureName": "",
+            "information": "",
+            "scaleMinimum": "179999"
+          },
+          "dataset_name": "101KR004G3B30.000",
+          "dataset_version_id": 164,
+          "harbour_distance_m": 1727.14801424
+        },
+        {
+          "id": "937412",
+          "feature": "AnchorageArea",
+          "attributes": {
+            "name": "N-2 대기정박지",
+            "text": "1,000 to 3,000 DWT x 7 Vessels",
+            "status": "6",
+            "language": "eng",
+            "nameUsage": "2",
+            "featureName": "",
+            "information": "",
+            "scaleMinimum": "44999"
+          },
+          "dataset_name": "101KR005G3B33.000",
+          "dataset_version_id": 292,
+          "harbour_distance_m": 1727.14801424
+        }
+      ],
+      "source_snapshot_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+      "evidence_per_object_required": true
+    },
+    "RestrictedArea": {
+      "object_ids": [
+        "1147946",
+        "1147971",
+        "1184476",
+        "1187997",
+        "560530",
+        "598356",
+        "598377",
+        "599612",
+        "602472",
+        "602618",
+        "696657",
+        "697312",
+        "697320",
+        "697371",
+        "697374",
+        "701758",
+        "712477",
+        "713031",
+        "924030",
+        "924204",
+        "938200"
+      ],
+      "objects": [
+        {
+          "id": "1147946",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "text": "이 구역에서는 속력 7knots 이하로 항해하여야 한다",
+            "headline": "속력제한구역",
+            "language": "kor",
+            "speedLimit": "7",
+            "speedUnits": "4",
+            "information": "",
+            "restriction": "27",
+            "scaleMinimum": "17999",
+            "vesselSpeedLimit": ""
+          },
+          "dataset_name": "101KR00658D90.000",
+          "dataset_version_id": 557,
+          "harbour_distance_m": 186.27078269
+        },
+        {
+          "id": "1147971",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "text": "이 구역에서는 속력 10Knots 이하로 항해하여야 한다",
+            "headline": "속력제한구역",
+            "language": "kor",
+            "speedLimit": "10",
+            "speedUnits": "4",
+            "information": "",
+            "restriction": "27",
+            "scaleMinimum": "17999",
+            "vesselSpeedLimit": ""
+          },
+          "dataset_name": "101KR00658D90.000",
+          "dataset_version_id": 557,
+          "harbour_distance_m": 631.27927436
+        },
+        {
+          "id": "1184476",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "text": "이 구역에서는 속력 10Knots 이하로 항해하여야 한다",
+            "headline": "속력제한구역",
+            "language": "kor",
+            "speedLimit": "10",
+            "speedUnits": "4",
+            "information": "",
+            "restriction": "27",
+            "scaleMinimum": "17999",
+            "vesselSpeedLimit": ""
+          },
+          "dataset_name": "101KR00659C81.000",
+          "dataset_version_id": 610,
+          "harbour_distance_m": 369.50223214
+        },
+        {
+          "id": "1187997",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "text": "이 구역에서는 속력 10Knots 이하로 항해하여야 한다",
+            "headline": "속력제한구역",
+            "language": "kor",
+            "speedLimit": "10",
+            "speedUnits": "4",
+            "information": "",
+            "restriction": "27",
+            "scaleMinimum": "17999",
+            "vesselSpeedLimit": ""
+          },
+          "dataset_name": "101KR00659C91.000",
+          "dataset_version_id": 614,
+          "harbour_distance_m": 210.27604778
+        },
+        {
+          "id": "560530",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "headline": "유조선통항금지해역",
+            "language": "kor",
+            "information": "",
+            "restriction": "8",
+            "scaleMinimum": "999999",
+            "fileReference": "101KR000020K100.TXT"
+          },
+          "dataset_name": "101KR002G3000.000",
+          "dataset_version_id": 30,
+          "harbour_distance_m": 0
+        },
+        {
+          "id": "598356",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "headline": "유조선통항금지해역",
+            "language": "kor",
+            "information": "",
+            "restriction": "8",
+            "scaleMinimum": "499999",
+            "fileReference": "101KR000020K100.TXT"
+          },
+          "dataset_name": "101KR003G3A00.000",
+          "dataset_version_id": 86,
+          "harbour_distance_m": 646.04710292
+        },
+        {
+          "id": "598377",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "headline": "유조선통항금지해역",
+            "language": "kor",
+            "information": "",
+            "restriction": "8",
+            "scaleMinimum": "499999",
+            "fileReference": "101KR000020K100.TXT"
+          },
+          "dataset_name": "101KR003G3A00.000",
+          "dataset_version_id": 86,
+          "harbour_distance_m": 0
+        },
+        {
+          "id": "599612",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "headline": "유조선통항금지해역",
+            "language": "kor",
+            "information": "",
+            "restriction": "8",
+            "scaleMinimum": "499999",
+            "fileReference": "101KR000020K100.TXT"
+          },
+          "dataset_name": "101KR003G3B00.000",
+          "dataset_version_id": 87,
+          "harbour_distance_m": 0
+        },
+        {
+          "id": "602472",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "headline": "유조선통항금지해역",
+            "language": "kor",
+            "information": "",
+            "restriction": "8",
+            "scaleMinimum": "499999",
+            "fileReference": "101KR000020K100.TXT"
+          },
+          "dataset_name": "101KR003G3E00.000",
+          "dataset_version_id": 89,
+          "harbour_distance_m": 909.5024182
+        },
+        {
+          "id": "602618",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "headline": "유조선통항금지해역",
+            "language": "kor",
+            "information": "",
+            "restriction": "8",
+            "scaleMinimum": "499999",
+            "fileReference": "101KR000020K100.TXT"
+          },
+          "dataset_name": "101KR003G3F00.000",
+          "dataset_version_id": 90,
+          "harbour_distance_m": 1955.27191547
+        },
+        {
+          "id": "696657",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "text": "유조선통항금지해역",
+            "language": "kor",
+            "information": "",
+            "restriction": "7",
+            "scaleMinimum": "119999",
+            "fileReference": "101KR000020K100.TXT"
+          },
+          "dataset_name": "101KR004G3A40.000",
+          "dataset_version_id": 161,
+          "harbour_distance_m": 85.03087396
+        },
+        {
+          "id": "697312",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "text": "이 구역에서는 속력 7knots 이하로 항해하여야 한다.",
+            "headline": "속력제한구역",
+            "language": "kor",
+            "speedLimit": "7",
+            "speedUnits": "4",
+            "information": "",
+            "restriction": "27",
+            "scaleMinimum": "119999",
+            "vesselSpeedLimit": ""
+          },
+          "dataset_name": "101KR004G3A40.000",
+          "dataset_version_id": 161,
+          "harbour_distance_m": 186.41500674
+        },
+        {
+          "id": "697320",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "text": "유조선통항금지해역",
+            "language": "kor",
+            "information": "",
+            "restriction": "7",
+            "scaleMinimum": "119999",
+            "fileReference": "101KR000020K100.TXT"
+          },
+          "dataset_name": "101KR004G3A40.000",
+          "dataset_version_id": 161,
+          "harbour_distance_m": 0
+        },
+        {
+          "id": "697371",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "text": "유조선통항금지해역",
+            "language": "kor",
+            "information": "",
+            "restriction": "7",
+            "scaleMinimum": "119999",
+            "fileReference": "101KR000020K100.TXT"
+          },
+          "dataset_name": "101KR004G3A40.000",
+          "dataset_version_id": 161,
+          "harbour_distance_m": 631.38954917
+        },
+        {
+          "id": "697374",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "text": "이 구역에서는 속력 10knots 이하로 항해하여야 한다.",
+            "headline": "속력제한구역",
+            "language": "kor",
+            "speedLimit": "10",
+            "speedUnits": "4",
+            "information": "",
+            "restriction": "27",
+            "scaleMinimum": "119999",
+            "vesselSpeedLimit": ""
+          },
+          "dataset_name": "101KR004G3A40.000",
+          "dataset_version_id": 161,
+          "harbour_distance_m": 631.38954917
+        },
+        {
+          "id": "701758",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "headline": "유조선통항금지해역",
+            "language": "kor",
+            "information": "",
+            "restriction": "8",
+            "scaleMinimum": "259999",
+            "fileReference": "101KR000020K100.TXT"
+          },
+          "dataset_name": "101KR004G3B30.000",
+          "dataset_version_id": 164,
+          "harbour_distance_m": 0
+        },
+        {
+          "id": "712477",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "text": "유조선통항금지해역",
+            "language": "kor",
+            "information": "",
+            "restriction": "7",
+            "scaleMinimum": "119999",
+            "fileReference": "101KR000020K100.TXT"
+          },
+          "dataset_name": "101KR004G3E20.000",
+          "dataset_version_id": 169,
+          "harbour_distance_m": 909.54690844
+        },
+        {
+          "id": "713031",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "headline": "유조선통항금지해역",
+            "language": "kor",
+            "information": "",
+            "restriction": "8",
+            "scaleMinimum": "259999",
+            "fileReference": "101KR000020K100.TXT"
+          },
+          "dataset_name": "101KR004G3F10.000",
+          "dataset_version_id": 172,
+          "harbour_distance_m": 1955.27191547
+        },
+        {
+          "id": "924030",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "text": "이 구역에서는 속력 10knots 이하로 항해하여야 함.",
+            "headline": "속력제한구역",
+            "language": "kor",
+            "speedLimit": "10",
+            "speedUnits": "4",
+            "information": "",
+            "restriction": "27",
+            "scaleMinimum": "59999",
+            "vesselSpeedLimit": ""
+          },
+          "dataset_name": "101KR005G3A44.000",
+          "dataset_version_id": 286,
+          "harbour_distance_m": 631.2351645
+        },
+        {
+          "id": "924204",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "text": "이 구역에서는 속력 7knots 이하로 항해하여야 함.",
+            "headline": "속력제한구역",
+            "language": "kor",
+            "speedLimit": "7",
+            "speedUnits": "4",
+            "information": "",
+            "restriction": "27",
+            "scaleMinimum": "59999",
+            "vesselSpeedLimit": ""
+          },
+          "dataset_name": "101KR005G3A44.000",
+          "dataset_version_id": 286,
+          "harbour_distance_m": 186.37063012
+        },
+        {
+          "id": "938200",
+          "feature": "RestrictedArea",
+          "attributes": {
+            "text": "이 구역에서는 속력 10knots 이하로 항해하여야 함.",
+            "headline": "속력제한구역",
+            "language": "kor",
+            "speedLimit": "10",
+            "speedUnits": "4",
+            "information": "",
+            "restriction": "27",
+            "scaleMinimum": "59999",
+            "vesselSpeedLimit": ""
+          },
+          "dataset_name": "101KR005G3B33.000",
+          "dataset_version_id": 292,
+          "harbour_distance_m": 210.26179189
+        }
+      ],
+      "source_snapshot_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+      "evidence_per_object_required": true
+    }
+  },
+  "spatial_correctness_applicable": true,
+  "execution_correctness_gap_applicable": true,
+  "oracle_status": "VERIFIED_SQL_GIS_SOURCE_BOUND",
+  "scope_frozen": true,
+  "spatial_predicate": "ST_DWithin(target::geography,reference::geography,2000,true)",
+  "distance_mode": "minimum polygon-area to target geometry distance; overlapping/inside=0",
+  "object_identity_policy": "snapshot feature_instance_id, not inferred physical facilities",
+  "source_coverage_disclosure_required": true,
+  "old_machine_checks_not_applicable": [
+    {
+      "id": "required_feature_codes",
+      "kind": "set_inclusion",
+      "expected": [
+        "AnchorageArea",
+        "RestrictedArea"
+      ],
+      "field": "document_answer.features[].code"
+    },
+    {
+      "id": "feature_geometry",
+      "kind": "per_feature_set_equality",
+      "expected": {
+        "AnchorageArea": [
+          "point",
+          "surface"
+        ],
+        "RestrictedArea": [
+          "surface"
+        ]
+      },
+      "field": "document_answer.features[].permitted_primitives"
+    },
+    {
+      "id": "definitions_present",
+      "kind": "nonempty_per_feature",
+      "field": "document_answer.features[].definition",
+      "expected_codes": [
+        "AnchorageArea",
+        "RestrictedArea"
+      ]
+    },
+    {
+      "id": "source_binding",
+      "kind": "edition_hash_locator_match",
+      "field": "document_answer.evidence",
+      "expected": {
+        "edition": "2.0.0",
+        "source_sha256": "2743d0689d8a2130f9b809554591d794f01cd9953f222f065ac891b590bd3cfc",
+        "source_path": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml",
+        "locators": [
+          "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='AnchorageArea']]",
+          "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='RestrictedArea']]"
+        ],
+        "claim_source_links_required": true,
+        "DCEG_required": false
+      }
+    },
+    {
+      "id": "unverified_scope_disclosed",
+      "kind": "required_structured_disclosure",
+      "field": "source_coverage",
+      "expected": {
+        "benchmark_oracle_available": false,
+        "unverified_conditions_must_be_listed": true
+      }
+    },
+    {
+      "id": "composite_status_complete",
+      "kind": "per_obligation_status",
+      "field": "per_task_status",
+      "expected_obligations": [
+        "resolve_reference",
+        "verify_both_target_coverages",
+        "search_both_targets_2000m",
+        "compare_target_results",
+        "disclose_subset_limitations"
+      ]
+    }
+  ],
+  "machine_checks": [],
+  "comparison_gold": {
+    "counts": {
+      "AnchorageArea": 3,
+      "RestrictedArea": 21
+    },
+    "criteria": [
+      "per_type_object_count",
+      "per_type_minimum_and_maximum_distance_m",
+      "distinct_FC_feature_definitions",
+      "source_scope_and_reference_disclosure"
+    ],
+    "distance_ranges_m": {
+      "AnchorageArea": {
+        "minimum": 1727.14801424,
+        "maximum": 1727.14801424
+      },
+      "RestrictedArea": {
+        "minimum": 0,
+        "maximum": 1955.27191547
+      }
+    },
+    "both_sets_and_comparison_required_for_full_success": true,
+    "distance_tolerance_m": 0.01
+  }
+}

@@ -1,0 +1,1442 @@
+{
+  "case_id": "PILOT_Q5_03",
+  "query": "Find wrecks within 5 km of Dokdo and explain their S-101 attributes.",
+  "category": "Q5",
+  "equivalence_group": "Q5_03",
+  "contract_version": "frozen_v5",
+  "finalization_status": "AGENT_FINALIZED_UNDER_USER_DIRECTION",
+  "annotation_status": "AGENT_FINALIZED",
+  "human_approval": false,
+  "independent_human_review": false,
+  "independent_expert_review": false,
+  "source_v3_user_approval": true,
+  "holdout_eligible": false,
+  "post_hoc": true,
+  "required_task_obligations": [
+    "resolve_reference",
+    "verify_coverage",
+    "search_wrecks_5000m",
+    "explain_s101_attributes",
+    "distinguish_object_values_from_standard_attributes",
+    "separate_partial_document_answer"
+  ],
+  "required_qec_fields": {
+    "slots.location_text": "독도",
+    "slots.distance_m": 5000.0
+  },
+  "single_intent_match_is_sufficient": false,
+  "acceptable_capability_combinations": [
+    {
+      "status": "FINALIZED_ACCEPTABLE_CANDIDATE_NOT_EXECUTION_PROOF",
+      "all_of": [
+        {
+          "capability_id": "resolver.place_registry",
+          "registry_status": null,
+          "runtime_availability": "NOT_VERIFIED",
+          "provenance": {
+            "source_path": "D:\\An_GeoLLM\\data\\capability_registry.yaml",
+            "source_sha256": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+            "case_id": "PILOT_Q5_03",
+            "json_pointer": "/capabilities/9/description",
+            "exact_text": "Resolve Korean maritime place names, ports, port entrances, islands, and curated reference points to canonical geometry and provenance.\n",
+            "text_sha256": "62e6d856eb70883beb18a127e64710713ef96d1ab9b4bb1fb2fc19ab2c3cc3f8",
+            "span_start": 0,
+            "span_end": 136,
+            "span_unit": "unicode_code_points",
+            "serialization": "original_string"
+          }
+        },
+        {
+          "capability_id": "resolver.s101_feature_dictionary",
+          "registry_status": null,
+          "runtime_availability": "NOT_VERIFIED",
+          "provenance": {
+            "source_path": "D:\\An_GeoLLM\\data\\capability_registry.yaml",
+            "source_sha256": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+            "case_id": "PILOT_Q5_03",
+            "json_pointer": "/capabilities/15/description",
+            "exact_text": "Resolve S-101 feature class names, aliases, hazard feature groups, geometry type, catalogue references, and portrayal references.\n",
+            "text_sha256": "f39ed0d5227cb3ffc70c30acf23cc9c20534260d784a2d91e99a35bed10f22c1",
+            "span_start": 0,
+            "span_end": 130,
+            "span_unit": "unicode_code_points",
+            "serialization": "original_string"
+          }
+        },
+        {
+          "capability_id": "tool.spatial_radius_search",
+          "registry_status": null,
+          "runtime_availability": "NOT_VERIFIED",
+          "provenance": {
+            "source_path": "D:\\An_GeoLLM\\data\\capability_registry.yaml",
+            "source_sha256": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+            "case_id": "PILOT_Q5_03",
+            "json_pointer": "/capabilities/16/description",
+            "exact_text": "Execute radius-based spatial feature search using a verified anchor geometry, radius in meters, and target feature candidates. Source-backed S-101 term mappings require all validated attribute predicates; missing attributes do not match and unresolved term mappings cannot execute.\n",
+            "text_sha256": "aced129696fc6620013d7c440d5de013af3904e41a2f5ad1b463272c8a083946",
+            "span_start": 0,
+            "span_end": 282,
+            "span_unit": "unicode_code_points",
+            "serialization": "original_string"
+          }
+        },
+        {
+          "capability_id": "tool.graph_scoped_rag",
+          "registry_status": null,
+          "runtime_availability": "NOT_VERIFIED",
+          "provenance": {
+            "source_path": "D:\\An_GeoLLM\\data\\capability_registry.yaml",
+            "source_sha256": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+            "case_id": "PILOT_Q5_03",
+            "json_pointer": "/capabilities/18/description",
+            "exact_text": "Retrieve authoritative document chunks, evidence candidates, legal or standard references, and S-101 catalogue/DCEG text with KG context.\n",
+            "text_sha256": "c96b4661b8418f16a9da294e5305b76e785741a796f6ecdf3b004ab8d524f839",
+            "span_start": 0,
+            "span_end": 138,
+            "span_unit": "unicode_code_points",
+            "serialization": "original_string"
+          }
+        }
+      ],
+      "sufficient_for_execution": false
+    }
+  ],
+  "capability_id_exact_match_required": false,
+  "forbidden_substitutions": [
+    "intent_label_for_task_completion",
+    "registry_hit_for_factual_authority",
+    "plan_json_for_execution_result",
+    "unexecuted_search_for_zero_objects",
+    "partial_result_for_full_completion",
+    "invented_AOI",
+    "invented_snapshot_or_object_ID",
+    "unsupported_zero_object_claim"
+  ],
+  "required_output_fields": [
+    "spatial_tasks",
+    "source_coverage",
+    "execution_observation"
+  ],
+  "spatial_reference": null,
+  "spatial_object_scoring_enabled": false,
+  "source_provenance": {
+    "approved_v3_sha256": "a69cda7558eca74c8d869de6fc80653c51541ab2cc4a7cb628e3fd065b27558c",
+    "v4_contracts_sha256": "de3be5c5b9a69a7b1ab717d64aa724315b131268377ce75cd816395d16fdfdbd",
+    "fc_candidates_sha256": "2ac1bf576ee1adde2334f780d5add4a03beb23ed89ab30e06f7e49780ff0fdf5",
+    "v4_case_id": "PILOT_Q5_03"
+  },
+  "scope_notes": [
+    "User-approved source-bound safe abstention; document explanations are separately evaluated optional partial output."
+  ],
+  "complete_semantic_accuracy_claim_allowed": false,
+  "capability_combination_policy": "Illustrative candidates; equivalent implementations satisfying task/output contracts are allowed. Runtime availability still requires verification.",
+  "document_scope": {
+    "selected_feature_codes": [
+      "Wreck"
+    ],
+    "features": [
+      {
+        "code": "Wreck",
+        "definition": "The ruined remains of a stranded or sunken vessel which has been rendered useless.",
+        "permitted_primitives": [
+          "point",
+          "surface"
+        ],
+        "locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]"
+      }
+    ],
+    "definition_policy": "Source-equivalent paraphrase accepted by substantive review; exact-text agreement is a separate transcription check, not semantic accuracy.",
+    "evidence_requirements": {
+      "edition": "2.0.0",
+      "source_sha256": "2743d0689d8a2130f9b809554591d794f01cd9953f222f065ac891b590bd3cfc",
+      "source_path": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml",
+      "locators": [
+        "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]"
+      ],
+      "claim_source_links_required": true,
+      "DCEG_required": false
+    },
+    "attribute_scope": {
+      "mode": "FEATURE_DIRECT_BINDINGS",
+      "bindings": [
+        {
+          "owner": "Wreck",
+          "attribute": "categoryOfWreck",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ],
+          "attribute_definition": "Classification of a wrecked or ruined ship.",
+          "global_listed_values": [
+            {
+              "value": "1",
+              "label": "Non-Dangerous Wreck",
+              "definition": "A wreck which is not considered to be dangerous to surface navigation."
+            },
+            {
+              "value": "2",
+              "label": "Dangerous Wreck",
+              "definition": "A wreck submerged at such a depth as to be considered dangerous to surface navigation."
+            },
+            {
+              "value": "3",
+              "label": "Distributed Remains of Wreck",
+              "definition": "A substantively decayed wreck over which it is safe to navigate but which should be avoided for anchoring, taking the ground or ground fishing."
+            },
+            {
+              "value": "4",
+              "label": "Wreck Showing Mast/Masts",
+              "definition": "Wreck of which only the mast(s) is visible at the sounding datum indicated."
+            },
+            {
+              "value": "5",
+              "label": "Wreck Showing Any Portion of Hull or Superstructure",
+              "definition": "Wreck of which any portion of the hull or superstructure is visible at the sounding datum indicated."
+            }
+          ],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='categoryOfWreck']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "expositionOfSounding",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [
+            "1",
+            "2",
+            "3"
+          ],
+          "attribute_definition": "Indicates the relationship of the depth of a feature to the range of depth of the surrounding depth area.",
+          "global_listed_values": [
+            {
+              "value": "1",
+              "label": "Within the Range of Depth of the Surrounding Depth Area",
+              "definition": "The depth corresponds to the depth range of the surrounding depth area; that is, the depth is not shoaler than the minimum depth of the surrounding depth area or deeper than the maximum depth of the surrounding depth area."
+            },
+            {
+              "value": "2",
+              "label": "Shoaler Than the Range of Depth of the Surrounding Depth Area",
+              "definition": "The depth is shoaler than the minimum depth of the surrounding depth area."
+            },
+            {
+              "value": "3",
+              "label": "Deeper Than the Range of Depth of the Surrounding Depth Area",
+              "definition": "The depth is deeper than the maximum depth of the surrounding depth area."
+            }
+          ],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='expositionOfSounding']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "featureName",
+          "lower": "0",
+          "upper": null,
+          "unbounded": true,
+          "permitted_values": [],
+          "attribute_definition": "Provides the name of an entity, defines the national language of the name, and provides the option to display the name at various system display settings.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_ComplexAttribute'][*[local-name()='code' and text()='featureName']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "height",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [],
+          "attribute_definition": "The value of the vertical distance to the highest point of the feature, measured from a specified vertical datum.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='height']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "interoperabilityIdentifier",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [],
+          "attribute_definition": "A common unique identifier for entities which describe a single real-world feature, and which is used to identify instances of the feature in end-user systems where the feature may be included in multiple data product types.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='interoperabilityIdentifier']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "qualityOfVerticalMeasurement",
+          "lower": "0",
+          "upper": null,
+          "unbounded": true,
+          "permitted_values": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "6",
+            "7",
+            "8",
+            "9"
+          ],
+          "attribute_definition": "The reliability of the value of a sounding.",
+          "global_listed_values": [
+            {
+              "value": "1",
+              "label": "Depth Known",
+              "definition": "The depth from the chart datum to the seabed (or to the top of a drying feature) is known."
+            },
+            {
+              "value": "2",
+              "label": "Depth or Least Depth Unknown",
+              "definition": "The depth from chart datum to the seabed, or the shoalest depth of the feature is unknown."
+            },
+            {
+              "value": "3",
+              "label": "Doubtful Sounding",
+              "definition": "A depth that may be less than indicated."
+            },
+            {
+              "value": "4",
+              "label": "Unreliable Sounding",
+              "definition": "A depth that is considered to be an unreliable value."
+            },
+            {
+              "value": "6",
+              "label": "Least Depth Known",
+              "definition": "The shoalest depth over a feature is of known value."
+            },
+            {
+              "value": "7",
+              "label": "Least Depth Unknown, Safe Clearance at Value Shown",
+              "definition": "The least depth over a feature is unknown, but there is considered to be safe clearance at this depth."
+            },
+            {
+              "value": "8",
+              "label": "Value Reported (Not Surveyed)",
+              "definition": "Depth value obtained from a report, but not fully surveyed."
+            },
+            {
+              "value": "9",
+              "label": "Value Reported (Not Confirmed)",
+              "definition": "Depth value obtained from a report, which it has not been possible to confirm."
+            },
+            {
+              "value": "10",
+              "label": "Maintained Depth",
+              "definition": "The depth at which a channel is kept by human influence, usually by dredging."
+            },
+            {
+              "value": "11",
+              "label": "Not Regularly Maintained",
+              "definition": "Depths may be altered by human influence, but will not be routinely maintained."
+            }
+          ],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='qualityOfVerticalMeasurement']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "radarConspicuous",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [],
+          "attribute_definition": "A feature which returns a strong radar echo.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='radarConspicuous']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "reportedDate",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [],
+          "attribute_definition": "The date that the item was observed, done, or investigated.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='reportedDate']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "status",
+          "lower": "0",
+          "upper": null,
+          "unbounded": true,
+          "permitted_values": [
+            "7",
+            "13",
+            "18"
+          ],
+          "attribute_definition": "The condition of an object at a given instant in time.",
+          "global_listed_values": [
+            {
+              "value": "1",
+              "label": "Permanent",
+              "definition": "Intended to last or function indefinitely."
+            },
+            {
+              "value": "2",
+              "label": "Occasional",
+              "definition": "Acting on special occasions; happening irregularly."
+            },
+            {
+              "value": "3",
+              "label": "Recommended",
+              "definition": "Presented as worthy of confidence, acceptance, use, etc."
+            },
+            {
+              "value": "4",
+              "label": "Not in Use",
+              "definition": "Use has ceased, but the facility still exists intact; disused."
+            },
+            {
+              "value": "5",
+              "label": "Periodic/Intermittent",
+              "definition": "Recurring at intervals."
+            },
+            {
+              "value": "6",
+              "label": "Reserved",
+              "definition": "Set apart for some specific use."
+            },
+            {
+              "value": "7",
+              "label": "Temporary",
+              "definition": "Meant to last only for a time."
+            },
+            {
+              "value": "8",
+              "label": "Private",
+              "definition": "Administered by an individual or corporation, rather than a State or a public body."
+            },
+            {
+              "value": "9",
+              "label": "Mandatory",
+              "definition": "Compulsory; enforced."
+            },
+            {
+              "value": "11",
+              "label": "Extinguished",
+              "definition": "No longer lit."
+            },
+            {
+              "value": "12",
+              "label": "Illuminated",
+              "definition": "Lit by flood lights, strip lights, etc."
+            },
+            {
+              "value": "13",
+              "label": "Historic",
+              "definition": "Famous in history; of historical interest."
+            },
+            {
+              "value": "14",
+              "label": "Public",
+              "definition": "Belonging to, available to, used or shared by, the community as a whole and not restricted to private use."
+            },
+            {
+              "value": "15",
+              "label": "Synchronized",
+              "definition": "Occur at a time, coincide in point of time, be contemporary or simultaneous."
+            },
+            {
+              "value": "16",
+              "label": "Watched",
+              "definition": "Looked at or observed over a period of time especially so as to be aware of any movement or change."
+            },
+            {
+              "value": "17",
+              "label": "Unwatched",
+              "definition": "Usually automatic in operation, without any permanently-stationed personnel to superintend it."
+            },
+            {
+              "value": "18",
+              "label": "Existence Doubtful",
+              "definition": "A feature that has been reported but has not been definitely determined to exist."
+            },
+            {
+              "value": "28",
+              "label": "Buoyed",
+              "definition": "Marked by buoys."
+            }
+          ],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='status']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "techniqueOfVerticalMeasurement",
+          "lower": "0",
+          "upper": null,
+          "unbounded": true,
+          "permitted_values": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "15",
+            "16",
+            "17",
+            "18"
+          ],
+          "attribute_definition": "Survey method used to obtain depth information.",
+          "global_listed_values": [
+            {
+              "value": "1",
+              "label": "Found by Echo Sounder",
+              "definition": "The depth was measured by using an instrument that determines depth of water by measuring the time interval between emission of a sonic or ultrasonic signal and return of its echo from the bottom."
+            },
+            {
+              "value": "2",
+              "label": "Found by Side Scan Sonar",
+              "definition": "The depth was computed from a record produced by active sonar in which fixed acoustic beams are directed into the water perpendicularly to the direction of travel to scan the seabed and generate a record of the seabed configuration."
+            },
+            {
+              "value": "3",
+              "label": "Found by Multi Beam",
+              "definition": "The depth was measured by using a wide swath echo sounder that uses multiple beams to measure depths directly below and transverse to the ship's track."
+            },
+            {
+              "value": "4",
+              "label": "Found by Diver",
+              "definition": "The depth was determined by a person skilled in the practice of diving."
+            },
+            {
+              "value": "5",
+              "label": "Found by Lead Line",
+              "definition": "The depth was measured by using a line, graduated with attached marks and fastened to a sounding lead."
+            },
+            {
+              "value": "8",
+              "label": "Swept by Vertical Acoustic System",
+              "definition": "The given area has been swept using a system comprised of multiple echo sounder transducers attached to booms deployed from the survey vessel."
+            },
+            {
+              "value": "9",
+              "label": "Found by Electromagnetic Sensor",
+              "definition": "The depth was determined by using an instrument that compares electromagnetic signals."
+            },
+            {
+              "value": "10",
+              "label": "Photogrammetry",
+              "definition": "The science or art of obtaining reliable measurements from photographs."
+            },
+            {
+              "value": "11",
+              "label": "Satellite Imagery",
+              "definition": "The depth was determined by using instruments placed aboard an artificial satellite."
+            },
+            {
+              "value": "12",
+              "label": "Found by Levelling",
+              "definition": "The depth was determined by using levelling techniques to find the elevation of the point relative to a datum."
+            },
+            {
+              "value": "13",
+              "label": "Swept by Side Scan Sonar",
+              "definition": "The given area was determined to be free from navigational dangers to a certain depth by towing a side scan sonar."
+            },
+            {
+              "value": "15",
+              "label": "Found by LIDAR",
+              "definition": "The depth was measured by using an instrument that measures distance by emitting timed pulses of laser light and measuring the time between emission and reception of the reflected pulses."
+            },
+            {
+              "value": "16",
+              "label": "Synthetic Aperture Radar",
+              "definition": "A radar with a synthetic aperture antenna which is composed of a large number of elementary transducing elements. The signals are electronically combined into a resulting signal equivalent to that of a single antenna of a given aperture in a given direction."
+            },
+            {
+              "value": "17",
+              "label": "Hyperspectral Imagery",
+              "definition": "Term used to describe the imagery derived from subdividing the electromagnetic spectrum into very narrow bandwidths. These narrow bandwidths may be combined with or subtracted from each other in various ways to form images useful in precise terrain or target analysis."
+            },
+            {
+              "value": "18",
+              "label": "Mechanically Swept",
+              "definition": "The given area was determined to be free from navigational dangers to a certain depth by towing a line or object below the surface at the desired depth; or least depth(s) and position(s) within an area was identified using the same technique."
+            }
+          ],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='techniqueOfVerticalMeasurement']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "valueOfSounding",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [],
+          "attribute_definition": "The value of the measurement of a sounding relative to the chart datum.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='valueOfSounding']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "visualProminence",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [
+            "1",
+            "2",
+            "3"
+          ],
+          "attribute_definition": "The extent to which a feature, either natural or artificial, is visible from seaward.",
+          "global_listed_values": [
+            {
+              "value": "1",
+              "label": "Visually Conspicuous",
+              "definition": "Term applied to an object either natural or artificial which is distinctly and notably visible from seaward."
+            },
+            {
+              "value": "2",
+              "label": "Not Visually Conspicuous",
+              "definition": "An object that may be visible from seaward, but cannot be used as a fixing mark and is not conspicuous."
+            },
+            {
+              "value": "3",
+              "label": "Prominent",
+              "definition": "Objects which are easily identifiable, but do not justify being classed as conspicuous."
+            }
+          ],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='visualProminence']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "waterLevelEffect",
+          "lower": "1",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ],
+          "attribute_definition": "The effect of the surrounding water on an object.",
+          "global_listed_values": [
+            {
+              "value": "1",
+              "label": "Partly Submerged at High Water",
+              "definition": "Partially covered and partially dry at high water."
+            },
+            {
+              "value": "2",
+              "label": "Always Dry",
+              "definition": "Not covered at high water under average meteorological conditions."
+            },
+            {
+              "value": "3",
+              "label": "Always Under Water/Submerged",
+              "definition": "Remains covered by water at all times under average meteorological conditions."
+            },
+            {
+              "value": "4",
+              "label": "Covers and Uncovers",
+              "definition": "Expression intended to indicate an area of a reef or other projection from the bottom of a body of water which periodically extends above and is submerged below the surface. Also referred to as dries or uncovers."
+            },
+            {
+              "value": "5",
+              "label": "Awash",
+              "definition": "Flush with, or washed by the waves at low water under average meteorological conditions."
+            },
+            {
+              "value": "6",
+              "label": "Subject to Inundation or Flooding",
+              "definition": "An area periodically covered by flood water, excluding tidal waters."
+            },
+            {
+              "value": "7",
+              "label": "Floating",
+              "definition": "Resting or moving on the surface of a liquid without sinking."
+            }
+          ],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='waterLevelEffect']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "scaleMinimum",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [],
+          "attribute_definition": "The minimum scale at which the feature may be used for example for ECDIS presentation.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='scaleMinimum']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "information",
+          "lower": "0",
+          "upper": null,
+          "unbounded": true,
+          "permitted_values": [],
+          "attribute_definition": "Textual information about the feature. The information may be provided as a string of text or as a file name of a single external text file that contains the text.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_ComplexAttribute'][*[local-name()='code' and text()='information']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "pictorialRepresentation",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [],
+          "attribute_definition": "The file name of an externally referenced picture file.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='pictorialRepresentation']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "defaultClearanceDepth",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [],
+          "attribute_definition": "The depth value determined for an underwater hazard of unknown depth, based on the depth of the surrounding area.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='defaultClearanceDepth']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "surroundingDepth",
+          "lower": "1",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [],
+          "attribute_definition": "The depth value determined for seabed around an underwater hazard, based on the depth of the surrounding area.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='surroundingDepth']]"
+        }
+      ],
+      "global_enumeration_is_not_binding_permission": true,
+      "empty_permitted_values_means": "No explicit binding-level permitted-values restriction; not an empty global codelist.",
+      "object_instance_values_required": false
+    }
+  },
+  "spatial_condition": "KNOWN_OUT_OF_COVERAGE_NO_SPATIAL_OBJECT_GOLD",
+  "score_reporting_policy": {
+    "components_separate": true,
+    "missing_field_is_failure_for_applicable_contract_check": true,
+    "unsupported_metric_is_null": true,
+    "text_presence_is_not_meaning_correctness": true,
+    "no_spatial_oracle_means_no_spatial_accuracy": true,
+    "no_aggregate_full_semantic_accuracy_without_substantive_review": true
+  },
+  "gold_version": "GOLD_v2_20261031",
+  "parent_contract_sha256": "262597b5b94d01d34f16c12deef0fe60c62c7d6b51cbc0abcd4eb06fc9f61562",
+  "independent_expert_review_complete": false,
+  "coverage_reference": {
+    "snapshot_manifest_sha256": "2dbef0a5fd639ac130617f6e28e13038068a55f14e963b18f0cc28ae35b7f260",
+    "source_relation_sha256": {
+      "serving.navigation_aid_current": "f75d5ceb50049e732433d5b36ca6be03e88a0360bc5f8ba67b3fd92e1425cdd7",
+      "projection.s101_feature_current": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85"
+    }
+  },
+  "evaluation_stratum": "OUT_OF_COVERAGE_SAFE_ABSTENTION",
+  "spatial_gold": null,
+  "spatial_correctness_applicable": false,
+  "execution_correctness_gap_applicable": false,
+  "expected_spatial_behavior": {
+    "accepted_states": [
+      "BLOCKED_DATA",
+      "DATA_OUT_OF_SCOPE"
+    ],
+    "required_disclosure": "Current connected snapshot cannot determine the answer for the requested spatial extent",
+    "per_target": {
+      "Wreck": {
+        "status": "BLOCKED_DATA",
+        "object_ids": null
+      }
+    },
+    "empty_result_as_answer_forbidden": true,
+    "claim_spatial_success_forbidden": true
+  },
+  "optional_document_task": {
+    "allowed_status": "PARTIAL_RESPONSE",
+    "source_bound_definitions_and_attributes_allowed": true,
+    "invent_instance_values_forbidden": true,
+    "spatial_full_success": false
+  },
+  "old_machine_checks_not_applicable": [
+    {
+      "id": "required_feature_codes",
+      "kind": "set_inclusion",
+      "expected": [
+        "Wreck"
+      ],
+      "field": "document_answer.features[].code"
+    },
+    {
+      "id": "feature_geometry",
+      "kind": "per_feature_set_equality",
+      "expected": {
+        "Wreck": [
+          "point",
+          "surface"
+        ]
+      },
+      "field": "document_answer.features[].permitted_primitives"
+    },
+    {
+      "id": "definitions_present",
+      "kind": "nonempty_per_feature",
+      "field": "document_answer.features[].definition",
+      "expected_codes": [
+        "Wreck"
+      ]
+    },
+    {
+      "id": "source_binding",
+      "kind": "edition_hash_locator_match",
+      "field": "document_answer.evidence",
+      "expected": {
+        "edition": "2.0.0",
+        "source_sha256": "2743d0689d8a2130f9b809554591d794f01cd9953f222f065ac891b590bd3cfc",
+        "source_path": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml",
+        "locators": [
+          "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]"
+        ],
+        "claim_source_links_required": true,
+        "DCEG_required": false
+      }
+    },
+    {
+      "id": "attribute_binding_contract",
+      "kind": "exact_structured_bindings",
+      "field": "document_answer.attribute_bindings",
+      "expected": [
+        {
+          "owner": "Wreck",
+          "attribute": "categoryOfWreck",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ],
+          "attribute_definition": "Classification of a wrecked or ruined ship.",
+          "global_listed_values": [
+            {
+              "value": "1",
+              "label": "Non-Dangerous Wreck",
+              "definition": "A wreck which is not considered to be dangerous to surface navigation."
+            },
+            {
+              "value": "2",
+              "label": "Dangerous Wreck",
+              "definition": "A wreck submerged at such a depth as to be considered dangerous to surface navigation."
+            },
+            {
+              "value": "3",
+              "label": "Distributed Remains of Wreck",
+              "definition": "A substantively decayed wreck over which it is safe to navigate but which should be avoided for anchoring, taking the ground or ground fishing."
+            },
+            {
+              "value": "4",
+              "label": "Wreck Showing Mast/Masts",
+              "definition": "Wreck of which only the mast(s) is visible at the sounding datum indicated."
+            },
+            {
+              "value": "5",
+              "label": "Wreck Showing Any Portion of Hull or Superstructure",
+              "definition": "Wreck of which any portion of the hull or superstructure is visible at the sounding datum indicated."
+            }
+          ],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='categoryOfWreck']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "expositionOfSounding",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [
+            "1",
+            "2",
+            "3"
+          ],
+          "attribute_definition": "Indicates the relationship of the depth of a feature to the range of depth of the surrounding depth area.",
+          "global_listed_values": [
+            {
+              "value": "1",
+              "label": "Within the Range of Depth of the Surrounding Depth Area",
+              "definition": "The depth corresponds to the depth range of the surrounding depth area; that is, the depth is not shoaler than the minimum depth of the surrounding depth area or deeper than the maximum depth of the surrounding depth area."
+            },
+            {
+              "value": "2",
+              "label": "Shoaler Than the Range of Depth of the Surrounding Depth Area",
+              "definition": "The depth is shoaler than the minimum depth of the surrounding depth area."
+            },
+            {
+              "value": "3",
+              "label": "Deeper Than the Range of Depth of the Surrounding Depth Area",
+              "definition": "The depth is deeper than the maximum depth of the surrounding depth area."
+            }
+          ],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='expositionOfSounding']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "featureName",
+          "lower": "0",
+          "upper": null,
+          "unbounded": true,
+          "permitted_values": [],
+          "attribute_definition": "Provides the name of an entity, defines the national language of the name, and provides the option to display the name at various system display settings.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_ComplexAttribute'][*[local-name()='code' and text()='featureName']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "height",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [],
+          "attribute_definition": "The value of the vertical distance to the highest point of the feature, measured from a specified vertical datum.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='height']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "interoperabilityIdentifier",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [],
+          "attribute_definition": "A common unique identifier for entities which describe a single real-world feature, and which is used to identify instances of the feature in end-user systems where the feature may be included in multiple data product types.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='interoperabilityIdentifier']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "qualityOfVerticalMeasurement",
+          "lower": "0",
+          "upper": null,
+          "unbounded": true,
+          "permitted_values": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "6",
+            "7",
+            "8",
+            "9"
+          ],
+          "attribute_definition": "The reliability of the value of a sounding.",
+          "global_listed_values": [
+            {
+              "value": "1",
+              "label": "Depth Known",
+              "definition": "The depth from the chart datum to the seabed (or to the top of a drying feature) is known."
+            },
+            {
+              "value": "2",
+              "label": "Depth or Least Depth Unknown",
+              "definition": "The depth from chart datum to the seabed, or the shoalest depth of the feature is unknown."
+            },
+            {
+              "value": "3",
+              "label": "Doubtful Sounding",
+              "definition": "A depth that may be less than indicated."
+            },
+            {
+              "value": "4",
+              "label": "Unreliable Sounding",
+              "definition": "A depth that is considered to be an unreliable value."
+            },
+            {
+              "value": "6",
+              "label": "Least Depth Known",
+              "definition": "The shoalest depth over a feature is of known value."
+            },
+            {
+              "value": "7",
+              "label": "Least Depth Unknown, Safe Clearance at Value Shown",
+              "definition": "The least depth over a feature is unknown, but there is considered to be safe clearance at this depth."
+            },
+            {
+              "value": "8",
+              "label": "Value Reported (Not Surveyed)",
+              "definition": "Depth value obtained from a report, but not fully surveyed."
+            },
+            {
+              "value": "9",
+              "label": "Value Reported (Not Confirmed)",
+              "definition": "Depth value obtained from a report, which it has not been possible to confirm."
+            },
+            {
+              "value": "10",
+              "label": "Maintained Depth",
+              "definition": "The depth at which a channel is kept by human influence, usually by dredging."
+            },
+            {
+              "value": "11",
+              "label": "Not Regularly Maintained",
+              "definition": "Depths may be altered by human influence, but will not be routinely maintained."
+            }
+          ],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='qualityOfVerticalMeasurement']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "radarConspicuous",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [],
+          "attribute_definition": "A feature which returns a strong radar echo.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='radarConspicuous']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "reportedDate",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [],
+          "attribute_definition": "The date that the item was observed, done, or investigated.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='reportedDate']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "status",
+          "lower": "0",
+          "upper": null,
+          "unbounded": true,
+          "permitted_values": [
+            "7",
+            "13",
+            "18"
+          ],
+          "attribute_definition": "The condition of an object at a given instant in time.",
+          "global_listed_values": [
+            {
+              "value": "1",
+              "label": "Permanent",
+              "definition": "Intended to last or function indefinitely."
+            },
+            {
+              "value": "2",
+              "label": "Occasional",
+              "definition": "Acting on special occasions; happening irregularly."
+            },
+            {
+              "value": "3",
+              "label": "Recommended",
+              "definition": "Presented as worthy of confidence, acceptance, use, etc."
+            },
+            {
+              "value": "4",
+              "label": "Not in Use",
+              "definition": "Use has ceased, but the facility still exists intact; disused."
+            },
+            {
+              "value": "5",
+              "label": "Periodic/Intermittent",
+              "definition": "Recurring at intervals."
+            },
+            {
+              "value": "6",
+              "label": "Reserved",
+              "definition": "Set apart for some specific use."
+            },
+            {
+              "value": "7",
+              "label": "Temporary",
+              "definition": "Meant to last only for a time."
+            },
+            {
+              "value": "8",
+              "label": "Private",
+              "definition": "Administered by an individual or corporation, rather than a State or a public body."
+            },
+            {
+              "value": "9",
+              "label": "Mandatory",
+              "definition": "Compulsory; enforced."
+            },
+            {
+              "value": "11",
+              "label": "Extinguished",
+              "definition": "No longer lit."
+            },
+            {
+              "value": "12",
+              "label": "Illuminated",
+              "definition": "Lit by flood lights, strip lights, etc."
+            },
+            {
+              "value": "13",
+              "label": "Historic",
+              "definition": "Famous in history; of historical interest."
+            },
+            {
+              "value": "14",
+              "label": "Public",
+              "definition": "Belonging to, available to, used or shared by, the community as a whole and not restricted to private use."
+            },
+            {
+              "value": "15",
+              "label": "Synchronized",
+              "definition": "Occur at a time, coincide in point of time, be contemporary or simultaneous."
+            },
+            {
+              "value": "16",
+              "label": "Watched",
+              "definition": "Looked at or observed over a period of time especially so as to be aware of any movement or change."
+            },
+            {
+              "value": "17",
+              "label": "Unwatched",
+              "definition": "Usually automatic in operation, without any permanently-stationed personnel to superintend it."
+            },
+            {
+              "value": "18",
+              "label": "Existence Doubtful",
+              "definition": "A feature that has been reported but has not been definitely determined to exist."
+            },
+            {
+              "value": "28",
+              "label": "Buoyed",
+              "definition": "Marked by buoys."
+            }
+          ],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='status']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "techniqueOfVerticalMeasurement",
+          "lower": "0",
+          "upper": null,
+          "unbounded": true,
+          "permitted_values": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "15",
+            "16",
+            "17",
+            "18"
+          ],
+          "attribute_definition": "Survey method used to obtain depth information.",
+          "global_listed_values": [
+            {
+              "value": "1",
+              "label": "Found by Echo Sounder",
+              "definition": "The depth was measured by using an instrument that determines depth of water by measuring the time interval between emission of a sonic or ultrasonic signal and return of its echo from the bottom."
+            },
+            {
+              "value": "2",
+              "label": "Found by Side Scan Sonar",
+              "definition": "The depth was computed from a record produced by active sonar in which fixed acoustic beams are directed into the water perpendicularly to the direction of travel to scan the seabed and generate a record of the seabed configuration."
+            },
+            {
+              "value": "3",
+              "label": "Found by Multi Beam",
+              "definition": "The depth was measured by using a wide swath echo sounder that uses multiple beams to measure depths directly below and transverse to the ship's track."
+            },
+            {
+              "value": "4",
+              "label": "Found by Diver",
+              "definition": "The depth was determined by a person skilled in the practice of diving."
+            },
+            {
+              "value": "5",
+              "label": "Found by Lead Line",
+              "definition": "The depth was measured by using a line, graduated with attached marks and fastened to a sounding lead."
+            },
+            {
+              "value": "8",
+              "label": "Swept by Vertical Acoustic System",
+              "definition": "The given area has been swept using a system comprised of multiple echo sounder transducers attached to booms deployed from the survey vessel."
+            },
+            {
+              "value": "9",
+              "label": "Found by Electromagnetic Sensor",
+              "definition": "The depth was determined by using an instrument that compares electromagnetic signals."
+            },
+            {
+              "value": "10",
+              "label": "Photogrammetry",
+              "definition": "The science or art of obtaining reliable measurements from photographs."
+            },
+            {
+              "value": "11",
+              "label": "Satellite Imagery",
+              "definition": "The depth was determined by using instruments placed aboard an artificial satellite."
+            },
+            {
+              "value": "12",
+              "label": "Found by Levelling",
+              "definition": "The depth was determined by using levelling techniques to find the elevation of the point relative to a datum."
+            },
+            {
+              "value": "13",
+              "label": "Swept by Side Scan Sonar",
+              "definition": "The given area was determined to be free from navigational dangers to a certain depth by towing a side scan sonar."
+            },
+            {
+              "value": "15",
+              "label": "Found by LIDAR",
+              "definition": "The depth was measured by using an instrument that measures distance by emitting timed pulses of laser light and measuring the time between emission and reception of the reflected pulses."
+            },
+            {
+              "value": "16",
+              "label": "Synthetic Aperture Radar",
+              "definition": "A radar with a synthetic aperture antenna which is composed of a large number of elementary transducing elements. The signals are electronically combined into a resulting signal equivalent to that of a single antenna of a given aperture in a given direction."
+            },
+            {
+              "value": "17",
+              "label": "Hyperspectral Imagery",
+              "definition": "Term used to describe the imagery derived from subdividing the electromagnetic spectrum into very narrow bandwidths. These narrow bandwidths may be combined with or subtracted from each other in various ways to form images useful in precise terrain or target analysis."
+            },
+            {
+              "value": "18",
+              "label": "Mechanically Swept",
+              "definition": "The given area was determined to be free from navigational dangers to a certain depth by towing a line or object below the surface at the desired depth; or least depth(s) and position(s) within an area was identified using the same technique."
+            }
+          ],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='techniqueOfVerticalMeasurement']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "valueOfSounding",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [],
+          "attribute_definition": "The value of the measurement of a sounding relative to the chart datum.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='valueOfSounding']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "visualProminence",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [
+            "1",
+            "2",
+            "3"
+          ],
+          "attribute_definition": "The extent to which a feature, either natural or artificial, is visible from seaward.",
+          "global_listed_values": [
+            {
+              "value": "1",
+              "label": "Visually Conspicuous",
+              "definition": "Term applied to an object either natural or artificial which is distinctly and notably visible from seaward."
+            },
+            {
+              "value": "2",
+              "label": "Not Visually Conspicuous",
+              "definition": "An object that may be visible from seaward, but cannot be used as a fixing mark and is not conspicuous."
+            },
+            {
+              "value": "3",
+              "label": "Prominent",
+              "definition": "Objects which are easily identifiable, but do not justify being classed as conspicuous."
+            }
+          ],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='visualProminence']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "waterLevelEffect",
+          "lower": "1",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ],
+          "attribute_definition": "The effect of the surrounding water on an object.",
+          "global_listed_values": [
+            {
+              "value": "1",
+              "label": "Partly Submerged at High Water",
+              "definition": "Partially covered and partially dry at high water."
+            },
+            {
+              "value": "2",
+              "label": "Always Dry",
+              "definition": "Not covered at high water under average meteorological conditions."
+            },
+            {
+              "value": "3",
+              "label": "Always Under Water/Submerged",
+              "definition": "Remains covered by water at all times under average meteorological conditions."
+            },
+            {
+              "value": "4",
+              "label": "Covers and Uncovers",
+              "definition": "Expression intended to indicate an area of a reef or other projection from the bottom of a body of water which periodically extends above and is submerged below the surface. Also referred to as dries or uncovers."
+            },
+            {
+              "value": "5",
+              "label": "Awash",
+              "definition": "Flush with, or washed by the waves at low water under average meteorological conditions."
+            },
+            {
+              "value": "6",
+              "label": "Subject to Inundation or Flooding",
+              "definition": "An area periodically covered by flood water, excluding tidal waters."
+            },
+            {
+              "value": "7",
+              "label": "Floating",
+              "definition": "Resting or moving on the surface of a liquid without sinking."
+            }
+          ],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='waterLevelEffect']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "scaleMinimum",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [],
+          "attribute_definition": "The minimum scale at which the feature may be used for example for ECDIS presentation.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='scaleMinimum']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "information",
+          "lower": "0",
+          "upper": null,
+          "unbounded": true,
+          "permitted_values": [],
+          "attribute_definition": "Textual information about the feature. The information may be provided as a string of text or as a file name of a single external text file that contains the text.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_ComplexAttribute'][*[local-name()='code' and text()='information']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "pictorialRepresentation",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [],
+          "attribute_definition": "The file name of an externally referenced picture file.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='pictorialRepresentation']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "defaultClearanceDepth",
+          "lower": "0",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [],
+          "attribute_definition": "The depth value determined for an underwater hazard of unknown depth, based on the depth of the surrounding area.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='defaultClearanceDepth']]"
+        },
+        {
+          "owner": "Wreck",
+          "attribute": "surroundingDepth",
+          "lower": "1",
+          "upper": "1",
+          "unbounded": false,
+          "permitted_values": [],
+          "attribute_definition": "The depth value determined for seabed around an underwater hazard, based on the depth of the surrounding area.",
+          "global_listed_values": [],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='Wreck']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='surroundingDepth']]"
+        }
+      ]
+    },
+    {
+      "id": "unverified_scope_disclosed",
+      "kind": "required_structured_disclosure",
+      "field": "source_coverage",
+      "expected": {
+        "benchmark_oracle_available": false,
+        "unverified_conditions_must_be_listed": true
+      }
+    },
+    {
+      "id": "composite_status_complete",
+      "kind": "per_obligation_status",
+      "field": "per_task_status",
+      "expected_obligations": [
+        "resolve_reference",
+        "verify_coverage",
+        "search_wrecks_5000m",
+        "explain_s101_attributes",
+        "distinguish_object_values_from_standard_attributes",
+        "separate_partial_document_answer"
+      ]
+    }
+  ],
+  "machine_checks": [],
+  "oracle_status": "VERIFIED_SOURCE_SCOPE_ABSTENTION",
+  "scope_frozen": true
+}

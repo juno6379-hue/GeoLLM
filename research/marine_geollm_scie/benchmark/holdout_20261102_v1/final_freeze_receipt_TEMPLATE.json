@@ -1,0 +1,17 @@
+{
+  "benchmark_manifest_sha256": null,
+  "system_frozen": false,
+  "freeze_at": null,
+  "system_source_sha256": null,
+  "model_digest": null,
+  "prompt_sha256": null,
+  "data_snapshot_sha256": null,
+  "evaluation_code_sha256": null,
+  "human_holdout_gold_approved": false,
+  "reviewer_ids": [],
+  "approved_at": null,
+  "no_holdout_used_for_tuning": false,
+  "freeze_artifact_paths": {},
+  "model_receipt_path": null,
+  "model_receipt_sha256": null
+}

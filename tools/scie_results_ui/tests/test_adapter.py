@@ -130,3 +130,90 @@ def test_delivery_does_not_invent_geometry_or_missing_telemetry():
     assert s['checks']['spatial_objects'] is None
     s['observation']['trace']['observation_complete']=False
     assert delivery_score(s)[0] is None
+
+
+def test_holdout_summary_does_not_expose_reserved_material(tmp_path):
+    fixture(tmp_path)
+    reserved='benchmark/holdout_20261102_v1/'
+    put(tmp_path,reserved+'summary.json',{'status':'PREPARED_PENDING_FINAL_SYSTEM_FREEZE',
+        'main_cases':18,'rq2_fault_cases':12,'rq4_recovery_cases':8,
+        'evaluation_executed':False,'system_freeze_complete':False,
+        'queries':['reserved secret'],'gold':{'answer':'secret'}})
+    put(tmp_path,reserved+'queries.jsonl','{"query":"secret"}\n')
+    adapter=ResultsAdapter(tmp_path);x=adapter.dashboard()
+    assert x['holdout']['main_cases']==18
+    assert x['holdout']['evaluation_executed'] is False
+    assert 'queries' not in x['holdout'] and 'gold' not in x['holdout']
+    assert 'reserved secret' not in json.dumps(x)
+    assert not any('holdout_20261102_v1' in p for p in adapter.allowed)
+    assert x['overview']['holdout_count']==0
+    assert x['overview']['scientific_completion'] is False
+
+
+def test_gold_approval_or_prepared_pack_never_invents_human_accuracy(tmp_path):
+    v5,_=fixture(tmp_path)
+    put(tmp_path,'review/20261102_answer_semantic_review_v1/summary.json',
+        {'status':'AWAITING_HUMAN_ANSWER_LABELS','total_answers':144,
+         'source_run_id':v5,'gold_manifest_sha256':hashlib.sha256((tmp_path/RESEARCH/GOLD/'manifest.json').read_bytes()).hexdigest(),
+         'preparation_complete':True,'gold_review_complete':True,
+         'reviewer_A_completed':0,'reviewer_B_completed':0,'consensus_completed':0,
+         'human_answer_scoring_complete':False,'semantic_human_accuracy':1.0})
+    x=ResultsAdapter(tmp_path).dashboard()
+    assert x['semantic_review']['total_answers']==144
+    assert x['semantic_review']['semantic_human_accuracy'] is None
+    assert x['methods'][0]['metrics']['semantic_human_accuracy'] is None
+
+
+def test_wrong_run_human_review_cannot_attach_to_current_results(tmp_path):
+    fixture(tmp_path)
+    put(tmp_path,'review/20261102_answer_semantic_review_v1/summary.json',
+        {'source_run_id':'different_run','gold_manifest_sha256':'wrong',
+         'human_answer_scoring_complete':True,'semantic_human_accuracy':1.0})
+    x=ResultsAdapter(tmp_path).dashboard()
+    assert x['semantic_review']['source_identity_verified'] is False
+    assert x['semantic_review']['semantic_human_accuracy'] is None
+
+
+def test_only_blinded_human_forms_are_exposed(tmp_path):
+    v5,_=fixture(tmp_path)
+    base='review/20261102_answer_semantic_review_v1/'
+    put(tmp_path,base+'summary.json',{'source_run_id':v5,
+        'gold_manifest_sha256':hashlib.sha256((tmp_path/RESEARCH/GOLD/'manifest.json').read_bytes()).hexdigest()})
+    put(tmp_path,base+'AAA_labels.jsonl','{"blind_id":"R001"}\n')
+    put(tmp_path,base+'gold_reference/PILOT_Q1_01.json',{'case_id':'PILOT_Q1_01'})
+    put(tmp_path,base+'gold_reference/secret_extra.json',{'private':True})
+    put(tmp_path,base+'coordinator_only/method_mapping.jsonl','{"R001":"P1"}\n')
+    put(tmp_path,base+'manifest.json',{'private_mapping':'secret'})
+    adapter=ResultsAdapter(tmp_path);adapter.dashboard()
+    assert any(p.endswith('AAA_labels.jsonl') for p in adapter.allowed)
+    assert any(p.endswith('gold_reference/PILOT_Q1_01.json') for p in adapter.allowed)
+    assert not any(p.endswith('secret_extra.json') for p in adapter.allowed)
+    assert not any('coordinator_only' in p for p in adapter.allowed)
+    assert not any(p.endswith('answer_semantic_review_v1/manifest.json') for p in adapter.allowed)
+
+
+def test_verified_published_human_summary_and_traversal_rejection(tmp_path):
+    v5,_=fixture(tmp_path)
+    ghash=hashlib.sha256((tmp_path/RESEARCH/GOLD/'manifest.json').read_bytes()).hexdigest()
+    base='review/20261102_answer_semantic_review_v1/'
+    put(tmp_path,base+'summary.json',{'source_run_id':v5,'gold_manifest_sha256':ghash,
+        'human_answer_scoring_complete':False,'total_answers':144})
+    package=put(tmp_path,base+'manifest.json',{'prepared':True})
+    published='review/human_result_v1/'
+    summary=put(tmp_path,published+'summary.json',{'source_run_id':v5,'gold_manifest_sha256':ghash,
+        'human_answer_scoring_complete':True,'total_answers':144,'consensus_completed':144,
+        'semantic_human_accuracy':0.5})
+    manifest=put(tmp_path,published+'manifest.json',{
+        'source_package_manifest_sha256':hashlib.sha256(package.read_bytes()).hexdigest(),
+        'files':{'summary.json':hashlib.sha256(summary.read_bytes()).hexdigest()}})
+    put(tmp_path,'review/answer_semantic_latest.json',{'result_relative_path':published,
+        'manifest_sha256':hashlib.sha256(manifest.read_bytes()).hexdigest()})
+    adapter=ResultsAdapter(tmp_path);x=adapter.dashboard()
+    assert x['semantic_review']['semantic_human_accuracy']==0.5
+    assert x['semantic_review']['publication']['status']=='VERIFIED_PUBLISHED_RESULT'
+    assert not any(p.endswith('human_result_v1/manifest.json') for p in adapter.allowed)
+    assert x['methods'][0]['metrics']['semantic_human_accuracy'] is None
+    put(tmp_path,'review/answer_semantic_latest.json',{'result_relative_path':'review/../../outside'})
+    x=ResultsAdapter(tmp_path).dashboard()
+    assert x['semantic_review']['semantic_human_accuracy'] is None
+    assert x['semantic_review']['publication']['status']=='REJECTED_PUBLICATION'

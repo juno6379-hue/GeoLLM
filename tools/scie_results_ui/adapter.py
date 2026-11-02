@@ -165,6 +165,80 @@ class ResultsAdapter:
         if not approval_valid or rescore.get('run_id') != selected:
             rescore = {}
 
+        # Reserved evaluation material is not part of the public query/answer browser.
+        # Only fixed high-level fields are projected; do not allow downloading the
+        # raw holdout summary in case a future producer adds sensitive fields.
+        holdout_path = 'benchmark/holdout_20261102_v1/summary.json'
+        holdout_raw = self.load(holdout_path, {})
+        holdout = {k: holdout_raw.get(k) for k in (
+            'status', 'main_cases', 'rq2_fault_cases', 'rq2_invalid_cases', 'rq2_valid_controls', 'rq4_recovery_cases', 'spatial_oracle_cases',
+            'gold_source_verified', 'human_review_complete', 'evaluation_executed',
+            'system_freeze_complete', 'evaluation_ready', 'split', 'limitations', 'manifest_sha256')}
+        holdout_key = (RESEARCH / holdout_path).as_posix()
+        self.allowed.pop(holdout_key, None)
+        self.sources[holdout_key].pop('artifact_url', None)
+        self.sources[holdout_key]['limitations'].append('Reserved holdout: high-level summary only; no query/GOLD download')
+        semantic_path = 'review/20261102_answer_semantic_review_v1/summary.json'
+        semantic_raw = self.load(semantic_path, {})
+        semantic_publication = {'status': 'PREPARED_FORMS_ONLY'}
+        pointer = self.load('review/answer_semantic_latest.json', {})
+        if pointer:
+            try:
+                relative = pointer.get('result_relative_path')
+                if not isinstance(relative, str) or not relative.startswith('review/'):
+                    raise ValueError('Review result path required')
+                folder = (self.research / relative).resolve()
+                if not folder.is_relative_to((self.research / 'review').resolve()):
+                    raise ValueError('Result outside review root')
+                result_manifest_path = folder / 'manifest.json'
+                result_manifest_raw = result_manifest_path.read_bytes()
+                if hashlib.sha256(result_manifest_raw).hexdigest() != pointer.get('manifest_sha256'):
+                    raise ValueError('Published manifest hash mismatch')
+                published_manifest = json.loads(result_manifest_raw)
+                package_manifest = self.research / 'review/20261102_answer_semantic_review_v1/manifest.json'
+                if published_manifest.get('source_package_manifest_sha256') != hashlib.sha256(package_manifest.read_bytes()).hexdigest():
+                    raise ValueError('Different answer review package')
+                published_summary_raw = (folder / 'summary.json').read_bytes()
+                if hashlib.sha256(published_summary_raw).hexdigest() != published_manifest.get('files', {}).get('summary.json'):
+                    raise ValueError('Published summary hash mismatch')
+                published = json.loads(published_summary_raw)
+                if (published.get('source_run_id') != selected
+                    or published.get('gold_manifest_sha256') != receipt.get('source_sha256')):
+                    raise ValueError('Published run/GOLD mismatch')
+                semantic_path = (folder / 'summary.json').relative_to(self.research).as_posix()
+                semantic_raw = self.load(semantic_path, {})
+                semantic_publication = {'status': 'VERIFIED_PUBLISHED_RESULT', 'manifest_sha256': pointer['manifest_sha256']}
+            except (ValueError, TypeError, OSError):
+                semantic_publication = {'status': 'REJECTED_PUBLICATION', 'reason': '결과 경로·해시·원본 검수자료·실행/GOLD 연결 검증 실패'}
+
+        semantic_review = {k: semantic_raw.get(k) for k in (
+            'status', 'total_answers', 'reviewer_A_completed', 'reviewer_B_completed',
+            'paired_completed', 'consensus_completed', 'semantic_human_accuracy',
+            'human_answer_scoring_complete', 'gold_review_complete', 'gold_review_basis',
+            'limitations', 'preparation_complete', 'by_method', 'agreement', 'source_run_id', 'gold_manifest_sha256')}
+        semantic_identity_valid = (semantic_raw.get('source_run_id') == selected
+            and semantic_raw.get('gold_manifest_sha256') == receipt.get('source_sha256')
+            and bool(receipt.get('source_sha256')))
+        semantic_review['source_identity_verified'] = semantic_identity_valid
+        semantic_review['publication'] = semantic_publication
+        if not semantic_identity_valid:
+            semantic_review = dict(status='UNAVAILABLE_LOCAL_ARTIFACT', source_identity_verified=False,
+                semantic_human_accuracy=None, human_answer_scoring_complete=False,
+                limitations=['선택된 실행·GOLD와 연결된 답변 검수 자료가 아직 확인되지 않았습니다.'])
+        # A prepared pack or approved GOLD alone never supplies human answer scores.
+
+        if semantic_review.get('human_answer_scoring_complete') is not True:
+            semantic_review['semantic_human_accuracy'] = None
+        if semantic_identity_valid:
+            for public_form in ('AAA_labels.jsonl', 'BBB_labels.jsonl', 'consensus_labels.jsonl',
+                                'AAA_144답변_독립채점_KR.md', 'BBB_144답변_독립채점_KR.md', '채점안내_KR.md'):
+                self.load('review/20261102_answer_semantic_review_v1/' + public_form, None)
+            for category in range(1, 7):
+                for number in range(1, 4):
+                    self.load(f'review/20261102_answer_semantic_review_v1/gold_reference/PILOT_Q{category}_{number:02d}.json', {})
+
+
+
         self.load(GOLD + '/oracle_checks.json', {})
         self.load(GOLD + '/source_checks.json', {})
         self.load(GOLD + '/oracle_query.sql', '')
@@ -276,7 +350,7 @@ class ResultsAdapter:
                         repeats=selected_status.get('repeats'), scientific_completion=summary.get('scientific_completion'),
                         completion_gate=summary.get('completion_gate', {}),
                         status='OBSERVATION_COMPLETE' if selected_info.get('can_be_cited') else 'UNAVAILABLE_LOCAL_ARTIFACT')
-        result = dict(rescore=rescore, overview=overview, benchmark=dict(manifest=manifest, freeze_checks=freeze_checks, cases=cases,
+        result = dict(holdout=holdout, semantic_review=semantic_review, rescore=rescore, overview=overview, benchmark=dict(manifest=manifest, freeze_checks=freeze_checks, cases=cases,
                       categories=dict(Counter(c.get('category') for c in cases)), protocol=protocol), methods=methods,
                       rq={'1':dict(status='NOT_FINAL', by_method_query_condition=summary.get('by_method_query_condition', {})),
                           '2':dict(status=fault.get('status', 'NOT_MEASURED'), overall_by_method=fault.get('overall_by_method', {}), by_method_error_type=fault.get('by_method_error_type', {}), detector_breakdown=detector_breakdown, model_digests=selected_info.get('model_digest')),

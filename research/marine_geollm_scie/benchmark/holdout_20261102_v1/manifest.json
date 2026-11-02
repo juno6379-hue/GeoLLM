@@ -1,0 +1,19 @@
+{
+  "version": "holdout_20261102_v1",
+  "status": "CONTENT_FROZEN_EVALUATION_LOCKED",
+  "files": {
+    "queries.jsonl": "c530d5afe0aa54f767a85572c98263ffa841f5fb43e7d071f20556679fcd6167",
+    "gold.jsonl": "2ee4141066c471d1ed9534c9fe3e3e7ba328127e1012c602adcc46c3121a779e",
+    "rq2_faults.jsonl": "cbf8ec33f0c9892c9af22cdd858abe3870bc5312ff6ccfe5358591d0c8464904",
+    "rq4_recovery.jsonl": "fe0b70046b0e36ac7c1ef703cc36be29cab0cb2d8cf710b4ea38680c13ef3070",
+    "spatial_oracles.json": "cf5ab9c967823af441bd8c4209d1f16c09f5addfe73de3b41d0e8f6fa3b69fd8",
+    "oracle.sql": "199357bed9fe0eaac6d8ef1d5ecf58229367271948378567b54de7aab417bc67",
+    "all_distances.jsonl": "5b18c26ff54d3b07859494bcd0d74c111219d48b4787848913b27144ab90351a",
+    "source_manifest.json": "c6815c30fc62d3fe098ad134d4b90d7999528772df2eb64d48fec5d3a3cf6901",
+    "final_freeze_receipt_TEMPLATE.json": "7f17f802e16eb2f3cab17eacdb8d2c14689322d3b8e811d6adeb494ee32b7830",
+    "평가계획_KR.md": "d753f1b7ba23123195560192a37f7736219c72958ae88c7dfb9355536396df86",
+    "pre_freeze_candidate.zip": "d4d63274814aaeee76e6c75dce857d33c10c09da7e8f7bf28b0c4610f7d75df8"
+  },
+  "builder_sha256": "623bc195bd9725e5a43f564f5d9baafbfa16204e346d7ddc017169805b9816ed",
+  "pre_freeze_revision": "Parent audit fixes before delivery: bind actual freeze evidence/source hashes; add CSV location evidence and executable FC locator filter."
+}

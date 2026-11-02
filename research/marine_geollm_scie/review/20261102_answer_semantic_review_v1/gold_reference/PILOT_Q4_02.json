@@ -1,0 +1,543 @@
+{
+  "case_id": "PILOT_Q4_02",
+  "query": "독도 주변 반경 5000m의 해양지명을 찾아줘.",
+  "category": "Q4",
+  "equivalence_group": "dokdo_radius_5km",
+  "contract_version": "frozen_v5",
+  "finalization_status": "AGENT_FINALIZED_UNDER_USER_DIRECTION",
+  "annotation_status": "AGENT_FINALIZED",
+  "human_approval": false,
+  "independent_human_review": false,
+  "independent_expert_review": false,
+  "source_v3_user_approval": true,
+  "holdout_eligible": false,
+  "post_hoc": true,
+  "required_task_obligations": [
+    "resolve_approved_anchor",
+    "search_fixed_gazetteer_5000m",
+    "report_source_bound_objects"
+  ],
+  "required_qec_fields": {
+    "slots.location_text": "독도",
+    "slots.distance_m": 5000.0
+  },
+  "single_intent_match_is_sufficient": false,
+  "acceptable_capability_combinations": [
+    {
+      "status": "FINALIZED_ACCEPTABLE_CANDIDATE_NOT_EXECUTION_PROOF",
+      "all_of": [
+        {
+          "capability_id": "resolver.place_registry",
+          "registry_status": null,
+          "runtime_availability": "NOT_VERIFIED",
+          "provenance": {
+            "source_path": "D:\\An_GeoLLM\\data\\capability_registry.yaml",
+            "source_sha256": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+            "case_id": "PILOT_Q4_02",
+            "json_pointer": "/capabilities/9/description",
+            "exact_text": "Resolve Korean maritime place names, ports, port entrances, islands, and curated reference points to canonical geometry and provenance.\n",
+            "text_sha256": "62e6d856eb70883beb18a127e64710713ef96d1ab9b4bb1fb2fc19ab2c3cc3f8",
+            "span_start": 0,
+            "span_end": 136,
+            "span_unit": "unicode_code_points",
+            "serialization": "original_string"
+          }
+        },
+        {
+          "capability_id": "resolver.marine_gazetteer_spatial",
+          "registry_status": null,
+          "runtime_availability": "NOT_VERIFIED",
+          "provenance": {
+            "source_path": "D:\\An_GeoLLM\\data\\capability_registry.yaml",
+            "source_sha256": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+            "case_id": "PILOT_Q4_02",
+            "json_pointer": "/capabilities/14/description",
+            "exact_text": "Resolve nearby marine place-name and undersea-place-name questions to the executable marine gazetteer spatial layer. Use this for queries asking for 해양지명, 해저지명, 부근 지명, 주변 지명, or marine place names near a resolved anchor such as Dokdo.\n",
+            "text_sha256": "f9f9d33a97a6177eb62225849a075b2cd341faea96dd5da45cbcf148399ac7a0",
+            "span_start": 0,
+            "span_end": 235,
+            "span_unit": "unicode_code_points",
+            "serialization": "original_string"
+          }
+        },
+        {
+          "capability_id": "tool.spatial_radius_search",
+          "registry_status": null,
+          "runtime_availability": "NOT_VERIFIED",
+          "provenance": {
+            "source_path": "D:\\An_GeoLLM\\data\\capability_registry.yaml",
+            "source_sha256": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+            "case_id": "PILOT_Q4_02",
+            "json_pointer": "/capabilities/16/description",
+            "exact_text": "Execute radius-based spatial feature search using a verified anchor geometry, radius in meters, and target feature candidates. Source-backed S-101 term mappings require all validated attribute predicates; missing attributes do not match and unresolved term mappings cannot execute.\n",
+            "text_sha256": "aced129696fc6620013d7c440d5de013af3904e41a2f5ad1b463272c8a083946",
+            "span_start": 0,
+            "span_end": 282,
+            "span_unit": "unicode_code_points",
+            "serialization": "original_string"
+          }
+        }
+      ],
+      "sufficient_for_execution": false
+    }
+  ],
+  "capability_id_exact_match_required": false,
+  "forbidden_substitutions": [
+    "intent_label_for_task_completion",
+    "registry_hit_for_factual_authority",
+    "plan_json_for_execution_result",
+    "unexecuted_search_for_zero_objects",
+    "partial_result_for_full_completion",
+    "invented_AOI",
+    "invented_snapshot_or_object_ID",
+    "unsupported_zero_object_claim"
+  ],
+  "machine_checks": [
+    {
+      "id": "spatial_objects",
+      "kind": "source_bound_set_equality",
+      "field": "returned_object_ids",
+      "expected": [
+        "mof_marine_names_20221231:44",
+        "mof_marine_names_20221231:45",
+        "mof_marine_names_20221231:46",
+        "mof_marine_names_20221231:47",
+        "mof_marine_names_20221231:48",
+        "mof_marine_names_20221231:49",
+        "mof_marine_names_20221231:50",
+        "mof_marine_names_20221231:51",
+        "mof_marine_names_20221231:52",
+        "mof_marine_names_20221231:53",
+        "mof_marine_names_20221231:54"
+      ],
+      "dataset_snapshot_sha256": "bbc3f1c347f6048b0befdf5102959078ffc29c22cdc4412a98586e76cddb0464",
+      "oracle_sha256": "cf7e407ec904661093a187e15391b42bc668a6e6ef5f75ead3f96c3f495cb9fb"
+    }
+  ],
+  "required_output_fields": [
+    "spatial_status",
+    "source_coverage",
+    "execution_status",
+    "returned_object_ids",
+    "dataset_snapshot_sha256",
+    "oracle_sha256"
+  ],
+  "spatial_reference": {
+    "object_ids": [
+      "mof_marine_names_20221231:44",
+      "mof_marine_names_20221231:45",
+      "mof_marine_names_20221231:46",
+      "mof_marine_names_20221231:47",
+      "mof_marine_names_20221231:48",
+      "mof_marine_names_20221231:49",
+      "mof_marine_names_20221231:50",
+      "mof_marine_names_20221231:51",
+      "mof_marine_names_20221231:52",
+      "mof_marine_names_20221231:53",
+      "mof_marine_names_20221231:54"
+    ],
+    "objects": [
+      {
+        "source_id": "44",
+        "object_id": "mof_marine_names_20221231:44",
+        "name": "북향초",
+        "latitude": 37.24944444444444,
+        "longitude": 131.8661111111111,
+        "csv_line": 47,
+        "distance_vincenty_m": 1009.2297312593255,
+        "within_5000m": true,
+        "coordinate_parse_trace": {
+          "latitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "37-14-58N",
+              "37˚14´58˝N"
+            ],
+            "parse_warnings": []
+          },
+          "longitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "131-51-58E",
+              "131˚51´58˝E"
+            ],
+            "parse_warnings": []
+          }
+        },
+        "distance_postgis_m": 1009.22973215,
+        "independent_distance_difference_m": 8.90674527909141e-07,
+        "membership_agrees": true
+      },
+      {
+        "source_id": "45",
+        "object_id": "mof_marine_names_20221231:45",
+        "name": "가지초",
+        "latitude": 37.24916666666667,
+        "longitude": 131.86694444444444,
+        "csv_line": 48,
+        "distance_vincenty_m": 959.4090075635844,
+        "within_5000m": true,
+        "coordinate_parse_trace": {
+          "latitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "37-14-57N",
+              "37˚14´57˝N"
+            ],
+            "parse_warnings": []
+          },
+          "longitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "131-52-1E",
+              "131˚52´1˝E"
+            ],
+            "parse_warnings": []
+          }
+        },
+        "distance_postgis_m": 959.4090081,
+        "independent_distance_difference_m": 5.364156550058397e-07,
+        "membership_agrees": true
+      },
+      {
+        "source_id": "46",
+        "object_id": "mof_marine_names_20221231:46",
+        "name": "강치초",
+        "latitude": 37.2481,
+        "longitude": 131.86625555555554,
+        "csv_line": 49,
+        "distance_vincenty_m": 863.7750788791387,
+        "within_5000m": true,
+        "coordinate_parse_trace": {
+          "latitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "37-14-53.16N",
+              "37˚14´53.16˝N"
+            ],
+            "parse_warnings": []
+          },
+          "longitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "131-51-58.52E",
+              "131˚51´58.52˝E"
+            ],
+            "parse_warnings": []
+          }
+        },
+        "distance_postgis_m": 863.77507984,
+        "independent_distance_difference_m": 9.608612572264974e-07,
+        "membership_agrees": true
+      },
+      {
+        "source_id": "47",
+        "object_id": "mof_marine_names_20221231:47",
+        "name": "가제초",
+        "latitude": 37.246608333333334,
+        "longitude": 131.86343333333332,
+        "csv_line": 50,
+        "distance_vincenty_m": 844.8637232673918,
+        "within_5000m": true,
+        "coordinate_parse_trace": {
+          "latitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "37-14-47.79N",
+              "37˚14´47.79˝N"
+            ],
+            "parse_warnings": []
+          },
+          "longitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "131-51-48.36E",
+              "131˚51´48.36˝E"
+            ],
+            "parse_warnings": []
+          }
+        },
+        "distance_postgis_m": 844.86372327,
+        "independent_distance_difference_m": 2.608203431009315e-09,
+        "membership_agrees": true
+      },
+      {
+        "source_id": "48",
+        "object_id": "mof_marine_names_20221231:48",
+        "name": "삼봉초",
+        "latitude": 37.24608888888889,
+        "longitude": 131.86536944444444,
+        "csv_line": 51,
+        "distance_vincenty_m": 696.700865804542,
+        "within_5000m": true,
+        "coordinate_parse_trace": {
+          "latitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "37-14-45.92N",
+              "37˚14´45.92˝N"
+            ],
+            "parse_warnings": []
+          },
+          "longitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "131-51-55.33E",
+              "131˚51´55.33˝E"
+            ],
+            "parse_warnings": []
+          }
+        },
+        "distance_postgis_m": 696.70086772,
+        "independent_distance_difference_m": 1.9154580286340206e-06,
+        "membership_agrees": true
+      },
+      {
+        "source_id": "49",
+        "object_id": "mof_marine_names_20221231:49",
+        "name": "괭이초",
+        "latitude": 37.245016666666665,
+        "longitude": 131.86721666666668,
+        "csv_line": 52,
+        "distance_vincenty_m": 514.1801960687372,
+        "within_5000m": true,
+        "coordinate_parse_trace": {
+          "latitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "37-14-42.06N",
+              "37˚14´42.06˝N"
+            ],
+            "parse_warnings": []
+          },
+          "longitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "131-52-1.98E",
+              "131˚52´1.98˝E"
+            ],
+            "parse_warnings": []
+          }
+        },
+        "distance_postgis_m": 514.18019688,
+        "independent_distance_difference_m": 8.112627938317019e-07,
+        "membership_agrees": true
+      },
+      {
+        "source_id": "50",
+        "object_id": "mof_marine_names_20221231:50",
+        "name": "서도초",
+        "latitude": 37.244075,
+        "longitude": 131.85758888888887,
+        "csv_line": 53,
+        "distance_vincenty_m": 1123.070571692745,
+        "within_5000m": true,
+        "coordinate_parse_trace": {
+          "latitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "37-14-38.67N",
+              "37˚14´38.67˝N"
+            ],
+            "parse_warnings": []
+          },
+          "longitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "131-51-27.32E",
+              "131˚51´27.32˝E"
+            ],
+            "parse_warnings": []
+          }
+        },
+        "distance_postgis_m": 1123.07057171,
+        "independent_distance_difference_m": 1.7254933482035995e-08,
+        "membership_agrees": true
+      },
+      {
+        "source_id": "51",
+        "object_id": "mof_marine_names_20221231:51",
+        "name": "군함초",
+        "latitude": 37.24373611111111,
+        "longitude": 131.86083888888888,
+        "csv_line": 54,
+        "distance_vincenty_m": 840.2194861787266,
+        "within_5000m": true,
+        "coordinate_parse_trace": {
+          "latitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "37-14-37.45N",
+              "37˚14´37.45˝N"
+            ],
+            "parse_warnings": []
+          },
+          "longitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "131-51-39.02E",
+              "131˚51´39.02˝E"
+            ],
+            "parse_warnings": []
+          }
+        },
+        "distance_postgis_m": 840.21948619,
+        "independent_distance_difference_m": 1.1273414202150889e-08,
+        "membership_agrees": true
+      },
+      {
+        "source_id": "52",
+        "object_id": "mof_marine_names_20221231:52",
+        "name": "넙덕초",
+        "latitude": 37.24256388888889,
+        "longitude": 131.8607,
+        "csv_line": 55,
+        "distance_vincenty_m": 810.3645265974295,
+        "within_5000m": true,
+        "coordinate_parse_trace": {
+          "latitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "37-14-33.23N",
+              "37˚14´33.23˝N"
+            ],
+            "parse_warnings": []
+          },
+          "longitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "131-51-38.52E",
+              "131˚51´38.52˝E"
+            ],
+            "parse_warnings": []
+          }
+        },
+        "distance_postgis_m": 810.36452661,
+        "independent_distance_difference_m": 1.2570467333716806e-08,
+        "membership_agrees": true
+      },
+      {
+        "source_id": "53",
+        "object_id": "mof_marine_names_20221231:53",
+        "name": "부채초",
+        "latitude": 37.23802777777778,
+        "longitude": 131.86732222222224,
+        "csv_line": 56,
+        "distance_vincenty_m": 363.89287903283474,
+        "within_5000m": true,
+        "coordinate_parse_trace": {
+          "latitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "37-14-16.9N",
+              "37˚14´16.9˝N"
+            ],
+            "parse_warnings": []
+          },
+          "longitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "131-52-2.36E",
+              "131˚52´2.36˝E"
+            ],
+            "parse_warnings": []
+          }
+        },
+        "distance_postgis_m": 363.89288007,
+        "independent_distance_difference_m": 1.0371652479079785e-06,
+        "membership_agrees": true
+      },
+      {
+        "source_id": "54",
+        "object_id": "mof_marine_names_20221231:54",
+        "name": "동도초",
+        "latitude": 37.23871388888889,
+        "longitude": 131.87139722222224,
+        "csv_line": 57,
+        "distance_vincenty_m": 281.3718980308276,
+        "within_5000m": true,
+        "coordinate_parse_trace": {
+          "latitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "37-14-19.37N",
+              "37˚14´19.37˝N"
+            ],
+            "parse_warnings": []
+          },
+          "longitude": {
+            "selected_field": "field1",
+            "raw_fields": [
+              "131-52-17.03E",
+              "131˚52´17.03˝E"
+            ],
+            "parse_warnings": []
+          }
+        },
+        "distance_postgis_m": 281.37189895,
+        "independent_distance_difference_m": 9.191724075208185e-07,
+        "membership_agrees": true
+      }
+    ],
+    "dataset_snapshot_sha256": "bbc3f1c347f6048b0befdf5102959078ffc29c22cdc4412a98586e76cddb0464",
+    "oracle_sha256": "cf7e407ec904661093a187e15391b42bc668a6e6ef5f75ead3f96c3f495cb9fb",
+    "oracle_path": "D:\\An_GeoLLM\\outputs\\scie_dokdo_reference_20261030_v2\\spatial_reference.json",
+    "reference_query_sha256": "1b3764ad439df892151c88eb313b9800b732ccc52559cf4d1320e54c7de39a07",
+    "all_distances_sha256": "a26e347dd6405046f9ac96987177a0d03eb03a69e12f55d4b977e6e55466570e",
+    "reference_geometry_source": {
+      "place_id": "mof:dokdo:east-island",
+      "label": "독도",
+      "aliases": [
+        "Dokdo",
+        "독도 동도",
+        "독도(동도)"
+      ],
+      "longitude": 131.86955555555556,
+      "latitude": 37.24077777777778,
+      "source_url": "https://www.mof.go.kr/doc/ko/selectDoc.do?bbsSeq=27&docSeq=20937&menuSeq=929",
+      "source_title": "해양수산부 독도의 주소와 위치",
+      "source_coordinates": "동도 북위 37도 14분 26.8초, 동경 131도 52분 10.4초",
+      "coordinate_role": "published_east_island_reference_point",
+      "note": "독도 부근 검색의 동도 기준점이며 독도 전체 경계 또는 항행 안전 기준점이 아니다."
+    },
+    "reference_crs": "EPSG:4326",
+    "distance_policy": "WGS84 ellipsoidal geodesic, inclusive <=5000m",
+    "crs_policy": "Experiment interprets the two explicit geographic DMS fields as WGS84; unlabelled projected WKT is not used.",
+    "scope": "2022 CSV records with user-fixed east-island anchor. Not all real-world marine places, not S-101 feature IDs.",
+    "independent_expert_review": false,
+    "calculation_verified": true
+  },
+  "spatial_object_scoring_enabled": true,
+  "source_provenance": {
+    "approved_v3_sha256": "a69cda7558eca74c8d869de6fc80653c51541ab2cc4a7cb628e3fd065b27558c",
+    "v4_contracts_sha256": "de3be5c5b9a69a7b1ab717d64aa724315b131268377ce75cd816395d16fdfdbd",
+    "fc_candidates_sha256": "2ac1bf576ee1adde2334f780d5add4a03beb23ed89ab30e06f7e49780ff0fdf5",
+    "v4_case_id": "PILOT_Q4_02"
+  },
+  "scope_notes": [],
+  "complete_semantic_accuracy_claim_allowed": false,
+  "capability_combination_policy": "Illustrative candidates; equivalent implementations satisfying task/output contracts are allowed. Runtime availability still requires verification.",
+  "document_scope": null,
+  "spatial_condition": "FIXED_USER_APPROVED_Q4_REFERENCE",
+  "score_reporting_policy": {
+    "components_separate": true,
+    "missing_field_is_failure_for_applicable_contract_check": true,
+    "unsupported_metric_is_null": true,
+    "text_presence_is_not_meaning_correctness": true,
+    "no_spatial_oracle_means_no_spatial_accuracy": false,
+    "no_aggregate_full_semantic_accuracy_without_substantive_review": true
+  },
+  "gold_version": "GOLD_v2_20261031",
+  "parent_contract_sha256": "262597b5b94d01d34f16c12deef0fe60c62c7d6b51cbc0abcd4eb06fc9f61562",
+  "independent_expert_review_complete": false,
+  "coverage_reference": {
+    "snapshot_manifest_sha256": "2dbef0a5fd639ac130617f6e28e13038068a55f14e963b18f0cc28ae35b7f260",
+    "source_relation_sha256": {
+      "serving.navigation_aid_current": "f75d5ceb50049e732433d5b36ca6be03e88a0360bc5f8ba67b3fd92e1425cdd7",
+      "projection.s101_feature_current": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85"
+    }
+  },
+  "evaluation_stratum": "SOURCE_BOUND_DOCUMENT_OR_EXISTING_Q4",
+  "oracle_status": "INHERITED_FROZEN_V5_REFERENCE",
+  "scope_frozen": true
+}

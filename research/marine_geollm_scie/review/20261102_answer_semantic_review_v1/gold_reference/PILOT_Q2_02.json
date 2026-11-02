@@ -1,0 +1,886 @@
+{
+  "case_id": "PILOT_Q2_02",
+  "query": "제한구역의 제한 종류는 어떤 코드로 표현해?",
+  "category": "Q2",
+  "equivalence_group": "Q2_02",
+  "contract_version": "frozen_v5",
+  "finalization_status": "AGENT_FINALIZED_UNDER_USER_DIRECTION",
+  "annotation_status": "AGENT_FINALIZED",
+  "human_approval": false,
+  "independent_human_review": false,
+  "independent_expert_review": false,
+  "source_v3_user_approval": true,
+  "holdout_eligible": false,
+  "post_hoc": true,
+  "required_task_obligations": [
+    "distinguish_restriction_and_area_category",
+    "explain_restriction_codes"
+  ],
+  "required_qec_fields": {},
+  "single_intent_match_is_sufficient": false,
+  "acceptable_capability_combinations": [
+    {
+      "status": "FINALIZED_ACCEPTABLE_CANDIDATE_NOT_EXECUTION_PROOF",
+      "all_of": [
+        {
+          "capability_id": "resolver.s101_feature_dictionary",
+          "registry_status": null,
+          "runtime_availability": "NOT_VERIFIED",
+          "provenance": {
+            "source_path": "D:\\An_GeoLLM\\data\\capability_registry.yaml",
+            "source_sha256": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+            "case_id": "PILOT_Q2_02",
+            "json_pointer": "/capabilities/15/description",
+            "exact_text": "Resolve S-101 feature class names, aliases, hazard feature groups, geometry type, catalogue references, and portrayal references.\n",
+            "text_sha256": "f39ed0d5227cb3ffc70c30acf23cc9c20534260d784a2d91e99a35bed10f22c1",
+            "span_start": 0,
+            "span_end": 130,
+            "span_unit": "unicode_code_points",
+            "serialization": "original_string"
+          }
+        },
+        {
+          "capability_id": "tool.graph_scoped_rag",
+          "registry_status": null,
+          "runtime_availability": "NOT_VERIFIED",
+          "provenance": {
+            "source_path": "D:\\An_GeoLLM\\data\\capability_registry.yaml",
+            "source_sha256": "779ed159c2cca990a611dfb89d8c440a0912cc747385384d5c8220740ffb8b51",
+            "case_id": "PILOT_Q2_02",
+            "json_pointer": "/capabilities/18/description",
+            "exact_text": "Retrieve authoritative document chunks, evidence candidates, legal or standard references, and S-101 catalogue/DCEG text with KG context.\n",
+            "text_sha256": "c96b4661b8418f16a9da294e5305b76e785741a796f6ecdf3b004ab8d524f839",
+            "span_start": 0,
+            "span_end": 138,
+            "span_unit": "unicode_code_points",
+            "serialization": "original_string"
+          }
+        }
+      ],
+      "sufficient_for_execution": false
+    }
+  ],
+  "capability_id_exact_match_required": false,
+  "forbidden_substitutions": [
+    "intent_label_for_task_completion",
+    "registry_hit_for_factual_authority",
+    "plan_json_for_execution_result",
+    "unexecuted_search_for_zero_objects",
+    "partial_result_for_full_completion"
+  ],
+  "machine_checks": [
+    {
+      "id": "required_feature_codes",
+      "kind": "set_inclusion",
+      "expected": [
+        "RestrictedArea"
+      ],
+      "field": "document_answer.features[].code"
+    },
+    {
+      "id": "feature_geometry",
+      "kind": "per_feature_set_equality",
+      "expected": {
+        "RestrictedArea": [
+          "surface"
+        ]
+      },
+      "field": "document_answer.features[].permitted_primitives"
+    },
+    {
+      "id": "definitions_present",
+      "kind": "nonempty_per_feature",
+      "field": "document_answer.features[].definition",
+      "expected_codes": [
+        "RestrictedArea"
+      ]
+    },
+    {
+      "id": "source_binding",
+      "kind": "edition_hash_locator_match",
+      "field": "document_answer.evidence",
+      "expected": {
+        "edition": "2.0.0",
+        "source_sha256": "2743d0689d8a2130f9b809554591d794f01cd9953f222f065ac891b590bd3cfc",
+        "source_path": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml",
+        "locators": [
+          "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='RestrictedArea']]"
+        ],
+        "claim_source_links_required": true,
+        "DCEG_required": false
+      }
+    },
+    {
+      "id": "attribute_binding_contract",
+      "kind": "exact_structured_bindings",
+      "field": "document_answer.attribute_bindings",
+      "expected": [
+        {
+          "owner": "RestrictedArea",
+          "attribute": "categoryOfRestrictedArea",
+          "lower": "0",
+          "upper": null,
+          "unbounded": true,
+          "permitted_values": [
+            "1",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "12",
+            "14",
+            "18",
+            "19",
+            "20",
+            "21",
+            "22",
+            "23",
+            "24",
+            "25",
+            "27",
+            "28",
+            "29",
+            "30",
+            "31",
+            "32"
+          ],
+          "attribute_definition": "The official legal status of each kind of restricted area defines the kind of restriction(s), for example the restriction for a 'game reserve' may be 'entering prohibited'.",
+          "global_listed_values": [
+            {
+              "value": "1",
+              "label": "Offshore Safety Zone",
+              "definition": "The area around an offshore installation within which vessels are prohibited from entering without permission. Special regulations protect installations within a safety zone and vessels of all nationalities are required to respect the zone."
+            },
+            {
+              "value": "4",
+              "label": "Nature Reserve",
+              "definition": "A tract of land or water managed so as to preserve its flora, fauna, physical features, etc."
+            },
+            {
+              "value": "5",
+              "label": "Bird Sanctuary",
+              "definition": "A place where birds are bred and protected."
+            },
+            {
+              "value": "6",
+              "label": "Game Reserve",
+              "definition": "A place where wild animals or birds hunted for sport or food are kept undisturbed for private use."
+            },
+            {
+              "value": "7",
+              "label": "Seal Sanctuary",
+              "definition": "A place where seals are protected."
+            },
+            {
+              "value": "8",
+              "label": "Degaussing Range",
+              "definition": "An area, usually about two cables diameter, within which ships' magnetic fields may be measured; sensing instruments and cables are installed on the seabed in the range and there are cables leading from the range to a control position ashore."
+            },
+            {
+              "value": "9",
+              "label": "Military Area",
+              "definition": "An area controlled by the military in which restrictions may apply."
+            },
+            {
+              "value": "10",
+              "label": "Historic Wreck Area",
+              "definition": "An area around certain wrecks of historical importance to protect the wrecks from unauthorized interference by diving, salvage or deposition (including anchoring)."
+            },
+            {
+              "value": "12",
+              "label": "Navigational Aid Safety Zone",
+              "definition": "An area around a navigational aid which vessels are prohibited from entering."
+            },
+            {
+              "value": "14",
+              "label": "Minefield",
+              "definition": "An area laid and maintained with explosive mines for defence or practice purposes."
+            },
+            {
+              "value": "18",
+              "label": "Swimming Area",
+              "definition": "An area in which people may swim and therefore vessel movement may be restricted."
+            },
+            {
+              "value": "19",
+              "label": "Waiting Area",
+              "definition": "An area reserved for vessels waiting to enter a harbour."
+            },
+            {
+              "value": "20",
+              "label": "Research Area",
+              "definition": "An area where marine research takes place."
+            },
+            {
+              "value": "21",
+              "label": "Dredging Area",
+              "definition": "An area where dredging is taking place."
+            },
+            {
+              "value": "22",
+              "label": "Fish Sanctuary",
+              "definition": "A place where fish (including shellfish and crustaceans) are protected."
+            },
+            {
+              "value": "23",
+              "label": "Ecological Reserve",
+              "definition": "A tract of land or water managed so as to preserve the relation of plants and living creatures to each other and to their surroundings."
+            },
+            {
+              "value": "24",
+              "label": "No Wake Area",
+              "definition": "An area in which a vessels' speed must be reduced in order to reduce the size of the wake it produces."
+            },
+            {
+              "value": "25",
+              "label": "Swinging Area",
+              "definition": "An area where vessels turn."
+            },
+            {
+              "value": "27",
+              "label": "Environmentally Sensitive Sea Area",
+              "definition": "A generic term which may be used to describe a wide range of areas, considered sensitive for a variety of environmental reasons."
+            },
+            {
+              "value": "28",
+              "label": "Particularly Sensitive Sea Area",
+              "definition": "An area that needs special protection through action by IMO because of its significance for regional ecological, socio-economic or scientific reasons and because it may be vulnerable to damage by international shipping activities."
+            },
+            {
+              "value": "29",
+              "label": "Disengagement Area",
+              "definition": "An area near a fairway where vessels can go to clear the way or make an about turn and possibly return to a waiting area when nautical conditions impose it."
+            },
+            {
+              "value": "30",
+              "label": "Port Security Area",
+              "definition": "An area in which defence, law and treaty enforcement, and counter-terrorism activities that fall within the port and maritime domain apply."
+            },
+            {
+              "value": "31",
+              "label": "Coral Sanctuary",
+              "definition": "A place where coral is protected."
+            },
+            {
+              "value": "32",
+              "label": "Recreation Area",
+              "definition": "An area within which recreational activities regularly take place and therefore vessel movement may be restricted."
+            }
+          ],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='RestrictedArea']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='categoryOfRestrictedArea']]"
+        },
+        {
+          "owner": "RestrictedArea",
+          "attribute": "restriction",
+          "lower": "1",
+          "upper": null,
+          "unbounded": true,
+          "permitted_values": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20",
+            "21",
+            "22",
+            "23",
+            "24",
+            "25",
+            "26",
+            "27",
+            "39",
+            "42"
+          ],
+          "attribute_definition": "The official legal statute of each kind of restricted area.",
+          "global_listed_values": [
+            {
+              "value": "1",
+              "label": "Anchoring Prohibited",
+              "definition": "An area within which anchoring is not permitted."
+            },
+            {
+              "value": "2",
+              "label": "Anchoring Restricted",
+              "definition": "A specified area designated by appropriate authority, within which anchoring is restricted in accordance with certain specified conditions."
+            },
+            {
+              "value": "3",
+              "label": "Fishing Prohibited",
+              "definition": "An area within which fishing is not permitted."
+            },
+            {
+              "value": "4",
+              "label": "Fishing Restricted",
+              "definition": "A specified area designated by appropriate authority, within which fishing is restricted in accordance with certain specified conditions."
+            },
+            {
+              "value": "5",
+              "label": "Trawling Prohibited",
+              "definition": "An area within which trawling is not permitted."
+            },
+            {
+              "value": "6",
+              "label": "Trawling Restricted",
+              "definition": "A specified area designated by appropriate authority, within which trawling is restricted in accordance with certain specified conditions."
+            },
+            {
+              "value": "7",
+              "label": "Entry Prohibited",
+              "definition": "An area within which navigation and/or anchoring is prohibited."
+            },
+            {
+              "value": "8",
+              "label": "Entry Restricted",
+              "definition": "A specified area designated by appropriate authority, within which navigation is restricted in accordance with certain specified conditions."
+            },
+            {
+              "value": "9",
+              "label": "Dredging Prohibited",
+              "definition": "An area within which dredging is not permitted."
+            },
+            {
+              "value": "10",
+              "label": "Dredging Restricted",
+              "definition": "A specified area designated by appropriate authority, within which dredging is restricted in accordance with certain specified conditions."
+            },
+            {
+              "value": "11",
+              "label": "Diving Prohibited",
+              "definition": "An area within which diving is not permitted."
+            },
+            {
+              "value": "12",
+              "label": "Diving Restricted",
+              "definition": "A specified area designated by appropriate authority, within which diving is restricted in accordance with certain specified conditions."
+            },
+            {
+              "value": "13",
+              "label": "No Wake",
+              "definition": "Mariners must adjust the speed of their vessels to reduce the wave or wash which may cause erosion or disturb moored vessels."
+            },
+            {
+              "value": "14",
+              "label": "Area To Be Avoided",
+              "definition": "An IMO declared routeing measure comprising an area within defined limits in which either navigation is particularly hazardous or it is exceptionally important to avoid casualties and which should be avoided by all ships, or certain classes of ships."
+            },
+            {
+              "value": "15",
+              "label": "Construction Prohibited",
+              "definition": "The erection of permanent or temporary fixed structures or artificial islands is prohibited."
+            },
+            {
+              "value": "16",
+              "label": "Discharging Prohibited",
+              "definition": "An area within which discharging or dumping is prohibited."
+            },
+            {
+              "value": "17",
+              "label": "Discharging Restricted",
+              "definition": "A specified area designated by an appropriate authority, within which discharging or dumping is restricted in accordance with specified conditions."
+            },
+            {
+              "value": "18",
+              "label": "Industrial or Mineral Exploration/Development Prohibited",
+              "definition": "An area within which industrial or mineral exploration and development are prohibited."
+            },
+            {
+              "value": "19",
+              "label": "Industrial or Mineral Exploration/Development Restricted",
+              "definition": "A specified area designated by an appropriate authority, within which industrial or mineral exploration and development is restricted in accordance with certain specified conditions."
+            },
+            {
+              "value": "20",
+              "label": "Drilling Prohibited",
+              "definition": "An area within which excavating a hole on the seabed with a drill is prohibited."
+            },
+            {
+              "value": "21",
+              "label": "Drilling Restricted",
+              "definition": "A specified area designated by an appropriate authority, within which excavating a hole on the seabed with a drill is restricted in accordance with certain specified conditions."
+            },
+            {
+              "value": "22",
+              "label": "Removal of Historical Artefacts Prohibited",
+              "definition": "An area within which the removal of historical artefacts is prohibited."
+            },
+            {
+              "value": "23",
+              "label": "Cargo Transhipment (Lightening) Prohibited",
+              "definition": "An area in which cargo transhipment (lightening) is prohibited."
+            },
+            {
+              "value": "24",
+              "label": "Dragging Prohibited",
+              "definition": "An area in which the dragging of anything along the seabed, for example bottom trawling, is prohibited."
+            },
+            {
+              "value": "25",
+              "label": "Stopping Prohibited",
+              "definition": "An area in which a vessel is prohibited from stopping."
+            },
+            {
+              "value": "26",
+              "label": "Landing Prohibited",
+              "definition": "An area in which landing is prohibited."
+            },
+            {
+              "value": "27",
+              "label": "Speed Restricted",
+              "definition": "An area within which speed is restricted."
+            },
+            {
+              "value": "39",
+              "label": "Swimming Prohibited",
+              "definition": "An area in which swimming is prohibited."
+            },
+            {
+              "value": "42",
+              "label": "Power-Driven Vessels Prohibited",
+              "definition": "An area within which any vessel propelled by machinery is prohibited."
+            }
+          ],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='RestrictedArea']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='restriction']]"
+        }
+      ]
+    }
+  ],
+  "required_output_fields": [
+    "document_answer.features",
+    "document_answer.evidence",
+    "document_answer.attribute_bindings"
+  ],
+  "spatial_reference": null,
+  "spatial_object_scoring_enabled": false,
+  "source_provenance": {
+    "approved_v3_sha256": "a69cda7558eca74c8d869de6fc80653c51541ab2cc4a7cb628e3fd065b27558c",
+    "v4_contracts_sha256": "de3be5c5b9a69a7b1ab717d64aa724315b131268377ce75cd816395d16fdfdbd",
+    "fc_candidates_sha256": "2ac1bf576ee1adde2334f780d5add4a03beb23ed89ab30e06f7e49780ff0fdf5",
+    "v4_case_id": "PILOT_Q2_02"
+  },
+  "scope_notes": [
+    "Explain restriction codes separately from categoryOfRestrictedArea. RequiredArea alternatives from another FC edition are not substitutes for FC 2.0.0 RestrictedArea."
+  ],
+  "complete_semantic_accuracy_claim_allowed": false,
+  "capability_combination_policy": "Illustrative candidates; equivalent implementations satisfying task/output contracts are allowed. Runtime availability still requires verification.",
+  "document_scope": {
+    "selected_feature_codes": [
+      "RestrictedArea"
+    ],
+    "features": [
+      {
+        "code": "RestrictedArea",
+        "definition": "A specified area on land or water designated by an appropriate authority within which access or navigation is restricted in accordance with certain specified conditions.",
+        "permitted_primitives": [
+          "surface"
+        ],
+        "locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='RestrictedArea']]"
+      }
+    ],
+    "definition_policy": "Source-equivalent paraphrase accepted by substantive review; exact-text agreement is a separate transcription check, not semantic accuracy.",
+    "evidence_requirements": {
+      "edition": "2.0.0",
+      "source_sha256": "2743d0689d8a2130f9b809554591d794f01cd9953f222f065ac891b590bd3cfc",
+      "source_path": "outputs/staging/s101_feature_catalogue_2_0_0/S-101/CATALOGUES/101_Feature_Catalogue_2.0.0.xml",
+      "locators": [
+        "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='RestrictedArea']]"
+      ],
+      "claim_source_links_required": true,
+      "DCEG_required": false
+    },
+    "attribute_scope": {
+      "mode": "EXPLICIT_ATTRIBUTE_PATHS",
+      "bindings": [
+        {
+          "owner": "RestrictedArea",
+          "attribute": "categoryOfRestrictedArea",
+          "lower": "0",
+          "upper": null,
+          "unbounded": true,
+          "permitted_values": [
+            "1",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "12",
+            "14",
+            "18",
+            "19",
+            "20",
+            "21",
+            "22",
+            "23",
+            "24",
+            "25",
+            "27",
+            "28",
+            "29",
+            "30",
+            "31",
+            "32"
+          ],
+          "attribute_definition": "The official legal status of each kind of restricted area defines the kind of restriction(s), for example the restriction for a 'game reserve' may be 'entering prohibited'.",
+          "global_listed_values": [
+            {
+              "value": "1",
+              "label": "Offshore Safety Zone",
+              "definition": "The area around an offshore installation within which vessels are prohibited from entering without permission. Special regulations protect installations within a safety zone and vessels of all nationalities are required to respect the zone."
+            },
+            {
+              "value": "4",
+              "label": "Nature Reserve",
+              "definition": "A tract of land or water managed so as to preserve its flora, fauna, physical features, etc."
+            },
+            {
+              "value": "5",
+              "label": "Bird Sanctuary",
+              "definition": "A place where birds are bred and protected."
+            },
+            {
+              "value": "6",
+              "label": "Game Reserve",
+              "definition": "A place where wild animals or birds hunted for sport or food are kept undisturbed for private use."
+            },
+            {
+              "value": "7",
+              "label": "Seal Sanctuary",
+              "definition": "A place where seals are protected."
+            },
+            {
+              "value": "8",
+              "label": "Degaussing Range",
+              "definition": "An area, usually about two cables diameter, within which ships' magnetic fields may be measured; sensing instruments and cables are installed on the seabed in the range and there are cables leading from the range to a control position ashore."
+            },
+            {
+              "value": "9",
+              "label": "Military Area",
+              "definition": "An area controlled by the military in which restrictions may apply."
+            },
+            {
+              "value": "10",
+              "label": "Historic Wreck Area",
+              "definition": "An area around certain wrecks of historical importance to protect the wrecks from unauthorized interference by diving, salvage or deposition (including anchoring)."
+            },
+            {
+              "value": "12",
+              "label": "Navigational Aid Safety Zone",
+              "definition": "An area around a navigational aid which vessels are prohibited from entering."
+            },
+            {
+              "value": "14",
+              "label": "Minefield",
+              "definition": "An area laid and maintained with explosive mines for defence or practice purposes."
+            },
+            {
+              "value": "18",
+              "label": "Swimming Area",
+              "definition": "An area in which people may swim and therefore vessel movement may be restricted."
+            },
+            {
+              "value": "19",
+              "label": "Waiting Area",
+              "definition": "An area reserved for vessels waiting to enter a harbour."
+            },
+            {
+              "value": "20",
+              "label": "Research Area",
+              "definition": "An area where marine research takes place."
+            },
+            {
+              "value": "21",
+              "label": "Dredging Area",
+              "definition": "An area where dredging is taking place."
+            },
+            {
+              "value": "22",
+              "label": "Fish Sanctuary",
+              "definition": "A place where fish (including shellfish and crustaceans) are protected."
+            },
+            {
+              "value": "23",
+              "label": "Ecological Reserve",
+              "definition": "A tract of land or water managed so as to preserve the relation of plants and living creatures to each other and to their surroundings."
+            },
+            {
+              "value": "24",
+              "label": "No Wake Area",
+              "definition": "An area in which a vessels' speed must be reduced in order to reduce the size of the wake it produces."
+            },
+            {
+              "value": "25",
+              "label": "Swinging Area",
+              "definition": "An area where vessels turn."
+            },
+            {
+              "value": "27",
+              "label": "Environmentally Sensitive Sea Area",
+              "definition": "A generic term which may be used to describe a wide range of areas, considered sensitive for a variety of environmental reasons."
+            },
+            {
+              "value": "28",
+              "label": "Particularly Sensitive Sea Area",
+              "definition": "An area that needs special protection through action by IMO because of its significance for regional ecological, socio-economic or scientific reasons and because it may be vulnerable to damage by international shipping activities."
+            },
+            {
+              "value": "29",
+              "label": "Disengagement Area",
+              "definition": "An area near a fairway where vessels can go to clear the way or make an about turn and possibly return to a waiting area when nautical conditions impose it."
+            },
+            {
+              "value": "30",
+              "label": "Port Security Area",
+              "definition": "An area in which defence, law and treaty enforcement, and counter-terrorism activities that fall within the port and maritime domain apply."
+            },
+            {
+              "value": "31",
+              "label": "Coral Sanctuary",
+              "definition": "A place where coral is protected."
+            },
+            {
+              "value": "32",
+              "label": "Recreation Area",
+              "definition": "An area within which recreational activities regularly take place and therefore vessel movement may be restricted."
+            }
+          ],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='RestrictedArea']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='categoryOfRestrictedArea']]"
+        },
+        {
+          "owner": "RestrictedArea",
+          "attribute": "restriction",
+          "lower": "1",
+          "upper": null,
+          "unbounded": true,
+          "permitted_values": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20",
+            "21",
+            "22",
+            "23",
+            "24",
+            "25",
+            "26",
+            "27",
+            "39",
+            "42"
+          ],
+          "attribute_definition": "The official legal statute of each kind of restricted area.",
+          "global_listed_values": [
+            {
+              "value": "1",
+              "label": "Anchoring Prohibited",
+              "definition": "An area within which anchoring is not permitted."
+            },
+            {
+              "value": "2",
+              "label": "Anchoring Restricted",
+              "definition": "A specified area designated by appropriate authority, within which anchoring is restricted in accordance with certain specified conditions."
+            },
+            {
+              "value": "3",
+              "label": "Fishing Prohibited",
+              "definition": "An area within which fishing is not permitted."
+            },
+            {
+              "value": "4",
+              "label": "Fishing Restricted",
+              "definition": "A specified area designated by appropriate authority, within which fishing is restricted in accordance with certain specified conditions."
+            },
+            {
+              "value": "5",
+              "label": "Trawling Prohibited",
+              "definition": "An area within which trawling is not permitted."
+            },
+            {
+              "value": "6",
+              "label": "Trawling Restricted",
+              "definition": "A specified area designated by appropriate authority, within which trawling is restricted in accordance with certain specified conditions."
+            },
+            {
+              "value": "7",
+              "label": "Entry Prohibited",
+              "definition": "An area within which navigation and/or anchoring is prohibited."
+            },
+            {
+              "value": "8",
+              "label": "Entry Restricted",
+              "definition": "A specified area designated by appropriate authority, within which navigation is restricted in accordance with certain specified conditions."
+            },
+            {
+              "value": "9",
+              "label": "Dredging Prohibited",
+              "definition": "An area within which dredging is not permitted."
+            },
+            {
+              "value": "10",
+              "label": "Dredging Restricted",
+              "definition": "A specified area designated by appropriate authority, within which dredging is restricted in accordance with certain specified conditions."
+            },
+            {
+              "value": "11",
+              "label": "Diving Prohibited",
+              "definition": "An area within which diving is not permitted."
+            },
+            {
+              "value": "12",
+              "label": "Diving Restricted",
+              "definition": "A specified area designated by appropriate authority, within which diving is restricted in accordance with certain specified conditions."
+            },
+            {
+              "value": "13",
+              "label": "No Wake",
+              "definition": "Mariners must adjust the speed of their vessels to reduce the wave or wash which may cause erosion or disturb moored vessels."
+            },
+            {
+              "value": "14",
+              "label": "Area To Be Avoided",
+              "definition": "An IMO declared routeing measure comprising an area within defined limits in which either navigation is particularly hazardous or it is exceptionally important to avoid casualties and which should be avoided by all ships, or certain classes of ships."
+            },
+            {
+              "value": "15",
+              "label": "Construction Prohibited",
+              "definition": "The erection of permanent or temporary fixed structures or artificial islands is prohibited."
+            },
+            {
+              "value": "16",
+              "label": "Discharging Prohibited",
+              "definition": "An area within which discharging or dumping is prohibited."
+            },
+            {
+              "value": "17",
+              "label": "Discharging Restricted",
+              "definition": "A specified area designated by an appropriate authority, within which discharging or dumping is restricted in accordance with specified conditions."
+            },
+            {
+              "value": "18",
+              "label": "Industrial or Mineral Exploration/Development Prohibited",
+              "definition": "An area within which industrial or mineral exploration and development are prohibited."
+            },
+            {
+              "value": "19",
+              "label": "Industrial or Mineral Exploration/Development Restricted",
+              "definition": "A specified area designated by an appropriate authority, within which industrial or mineral exploration and development is restricted in accordance with certain specified conditions."
+            },
+            {
+              "value": "20",
+              "label": "Drilling Prohibited",
+              "definition": "An area within which excavating a hole on the seabed with a drill is prohibited."
+            },
+            {
+              "value": "21",
+              "label": "Drilling Restricted",
+              "definition": "A specified area designated by an appropriate authority, within which excavating a hole on the seabed with a drill is restricted in accordance with certain specified conditions."
+            },
+            {
+              "value": "22",
+              "label": "Removal of Historical Artefacts Prohibited",
+              "definition": "An area within which the removal of historical artefacts is prohibited."
+            },
+            {
+              "value": "23",
+              "label": "Cargo Transhipment (Lightening) Prohibited",
+              "definition": "An area in which cargo transhipment (lightening) is prohibited."
+            },
+            {
+              "value": "24",
+              "label": "Dragging Prohibited",
+              "definition": "An area in which the dragging of anything along the seabed, for example bottom trawling, is prohibited."
+            },
+            {
+              "value": "25",
+              "label": "Stopping Prohibited",
+              "definition": "An area in which a vessel is prohibited from stopping."
+            },
+            {
+              "value": "26",
+              "label": "Landing Prohibited",
+              "definition": "An area in which landing is prohibited."
+            },
+            {
+              "value": "27",
+              "label": "Speed Restricted",
+              "definition": "An area within which speed is restricted."
+            },
+            {
+              "value": "39",
+              "label": "Swimming Prohibited",
+              "definition": "An area in which swimming is prohibited."
+            },
+            {
+              "value": "42",
+              "label": "Power-Driven Vessels Prohibited",
+              "definition": "An area within which any vessel propelled by machinery is prohibited."
+            }
+          ],
+          "owner_locator": "//*[local-name()='S100_FC_FeatureType'][*[local-name()='code' and text()='RestrictedArea']]",
+          "attribute_locator": "//*[local-name()='S100_FC_SimpleAttribute'][*[local-name()='code' and text()='restriction']]"
+        }
+      ],
+      "global_enumeration_is_not_binding_permission": true,
+      "empty_permitted_values_means": "No explicit binding-level permitted-values restriction; not an empty global codelist.",
+      "object_instance_values_required": false
+    }
+  },
+  "score_reporting_policy": {
+    "components_separate": true,
+    "missing_field_is_failure_for_applicable_contract_check": true,
+    "unsupported_metric_is_null": true,
+    "text_presence_is_not_meaning_correctness": true,
+    "no_spatial_oracle_means_no_spatial_accuracy": true,
+    "no_aggregate_full_semantic_accuracy_without_substantive_review": true
+  },
+  "gold_version": "GOLD_v2_20261031",
+  "parent_contract_sha256": "262597b5b94d01d34f16c12deef0fe60c62c7d6b51cbc0abcd4eb06fc9f61562",
+  "independent_expert_review_complete": false,
+  "coverage_reference": {
+    "snapshot_manifest_sha256": "2dbef0a5fd639ac130617f6e28e13038068a55f14e963b18f0cc28ae35b7f260",
+    "source_relation_sha256": {
+      "serving.navigation_aid_current": "f75d5ceb50049e732433d5b36ca6be03e88a0360bc5f8ba67b3fd92e1425cdd7",
+      "projection.s101_feature_current": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85"
+    }
+  },
+  "evaluation_stratum": "SOURCE_BOUND_DOCUMENT_OR_EXISTING_Q4",
+  "oracle_status": "INHERITED_FROZEN_V5_REFERENCE",
+  "scope_frozen": true
+}

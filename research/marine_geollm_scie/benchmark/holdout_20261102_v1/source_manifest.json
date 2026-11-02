@@ -1,0 +1,16 @@
+{
+  "sources": [
+    {
+      "path": "outputs\\staging\\s101_feature_catalogue_2_0_0\\S-101\\CATALOGUES\\101_Feature_Catalogue_2.0.0.xml",
+      "sha256": "2743d0689d8a2130f9b809554591d794f01cd9953f222f065ac891b590bd3cfc"
+    },
+    {
+      "path": "Dataset\\해양수산부_공동활용체계_해양지명_20221231.csv",
+      "sha256": "bbc3f1c347f6048b0befdf5102959078ffc29c22cdc4412a98586e76cddb0464"
+    }
+  ],
+  "development_manifest_sha256": "feb9ef9851553fe53c12b0733b1747d3c238fb64c7b6bffd2ae848a35e6b1c5c",
+  "development_files_unchanged": true,
+  "source_overlap_with_development": true,
+  "oracle_uses_production_executor": false
+}

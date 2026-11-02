@@ -1,0 +1,78 @@
+{
+  "status": "AWAITING_HUMAN_ANSWER_LABELS",
+  "source_run_id": "20261102_gold_v2_eight_k1_v6",
+  "gold_manifest_sha256": "feb9ef9851553fe53c12b0733b1747d3c238fb64c7b6bffd2ae848a35e6b1c5c",
+  "preparation_complete": true,
+  "total_answers": 144,
+  "reviewer_A_completed": 0,
+  "reviewer_B_completed": 0,
+  "paired_completed": 0,
+  "consensus_completed": 0,
+  "human_answer_scoring_complete": false,
+  "semantic_human_accuracy": null,
+  "agreement": {
+    "paired": 0,
+    "full_dimension_agreements": 0,
+    "binary_agreements": 0,
+    "percent_agreement": null,
+    "cohen_kappa": null
+  },
+  "by_method": {
+    "B0": {
+      "total": 18,
+      "measured": 0,
+      "correct": 0,
+      "accuracy": null
+    },
+    "B1": {
+      "total": 18,
+      "measured": 0,
+      "correct": 0,
+      "accuracy": null
+    },
+    "B2": {
+      "total": 18,
+      "measured": 0,
+      "correct": 0,
+      "accuracy": null
+    },
+    "B3": {
+      "total": 18,
+      "measured": 0,
+      "correct": 0,
+      "accuracy": null
+    },
+    "B4": {
+      "total": 18,
+      "measured": 0,
+      "correct": 0,
+      "accuracy": null
+    },
+    "H": {
+      "total": 18,
+      "measured": 0,
+      "correct": 0,
+      "accuracy": null
+    },
+    "P0": {
+      "total": 18,
+      "measured": 0,
+      "correct": 0,
+      "accuracy": null
+    },
+    "P1": {
+      "total": 18,
+      "measured": 0,
+      "correct": 0,
+      "accuracy": null
+    }
+  },
+  "gold_review_complete": true,
+  "gold_review_basis": "USER_ATTESTATION",
+  "limitations": [
+    "GOLD 검수 승인은 144개 모델 답변에 대한 인간 의미 채점과 별개입니다.",
+    "실험 방법 라벨만 가립니다. 정규화 답변의 문체·내부 식별자로 방법이 추정될 수 있어 완전 블라인딩이 아닙니다. coordinator_only는 검수자에게 공유하지 않습니다.",
+    "AI 보조 GOLD와 개발 문항을 사용하므로 새로운 독립 홀드아웃 평가가 아닙니다.",
+    "인간 작성 여부는 검수자 확인 기록을 근거로 하며 전자서명 인증은 아닙니다."
+  ]
+}

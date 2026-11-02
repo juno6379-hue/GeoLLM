@@ -29,3 +29,9 @@
 - AAA·BBB 검수 완료: 사용자 확인, 합의/승인일 2026-11-02. 기존 동결 manifest는 원본 이력으로 보존.
 - [144답변 재채점](review/20261102_approved_gold_rescore_v1/재채점_결과_KR.md): 승인 GOLD 과업 충족 13/144, 미충족131, 신규 판정29. 인간 의미 정확도가 아닌 별도 과업 지표.
 - [승인 기록](review/20261102_approved_gold_rescore_v1/approval.json), [조건별 집계](review/20261102_approved_gold_rescore_v1/summary.json). 기존 v6 실행 결과와 별도이며 새 모델 실행이 아님.
+
+## 홀드아웃·인간 답변 채점 준비 (2026-11-02)
+
+- [최종 동결 후 평가 계획](protocol/holdout_and_human_scoring_20261102_KR.md): 홀드아웃18/RQ2 12/RQ4 8 준비, 평가 미실행.
+- [인간 답변 채점 안내](review/20261102_answer_semantic_review_v1/채점안내_KR.md): AAA·BBB 각144 입력양식, 실제 채점0/144. GOLD 승인은 기존 기록 유지.
+- 연구 UI의 독립 홀드아웃·인간 답변 채점 메뉴에서 준비 상태와 양식을 확인한다. 운영·개발 자료와 별도이며 새 성능 결과가 아니다.

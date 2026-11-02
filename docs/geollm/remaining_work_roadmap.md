@@ -1,5 +1,16 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-11-02 홀드아웃 분리·144답변 인간 채점 양식 준비
+
+- 사용자 병렬 지시에 따라 holdout_prepare/semantic_review/holdout_ui 3에이전트 및 부모 통합검증 수행. [계획](../../research/marine_geollm_scie/protocol/holdout_and_human_scoring_20261102_KR.md). 기존 개발18/v6원본506파일 hash 불변, 모델/운영API/새평가 미실행.
+- benchmark/holdout_20261102_v1: 주18(FC9/신규공간6/입력·시간원천3), RQ2 오류9+정상3, RQ4 복구6+추가입력2. 원천 FC/CSV 공유 제한 공개. PostGIS READ ONLY 대 Vincenty 전체CSV×6기준점 최대차0.00000384m, 비어있지않은 객체/거리/원본행/근거hash. 부모 FC9 유일locator 재확인. 개발ID/질의/동등군·독도객체44–54분리. 전체과거corpus 중복감사/신규GOLD인간승인/전용harness통합은 별도 남음.
+- verify gate는 신규GOLD승인·최종시스템동결·실제동결artifact hash·model receipt·non-tuning확인 없으면 차단. 운영coverage권위승격 없음. 이전 준비후보zip보존, 임시 rebuild_candidate 삭제는 자동검토 blocked by policy로 남기고 커밋제외.
+- review/20261102_answer_semantic_review_v1: AAA/BBB 각144 Markdown·JSONL, 합의양식, GOLD18참조, 원본/표시답안hash, coordinator_only방법대응표 분리. 사용자 후속은 실제채점이아닌 입력양식 요청으로 확정. 사람판정0/144/정확도null. 실제작업용사본 outputs/human_answer_submission_20261102 생성(coordinator제외). 각Markdown0.83MiB, 표시는불필요geometry/중복제외하고원본보존. 완전블라인딩아닌방법라벨부분가림.
+- prepare_semantic_review --prepare-consensus로 실제A/B hash연결 빈합의양식, --import-labels로유효한사람판정만 정확도·일치도·kappa·방법별집계. --publish-ui명시시 새review결과manifest포인터연결. GOLD변경/답안hash변경/AI승인대체/경로이탈 거부. 작성원본과새결과분리.
+- UI8001에 홀드아웃/인간채점 메뉴,18/12/8 준비·평가미실행·사람0/144·양식/GOLD18 링크. 홀드아웃정답·private대응표 HTTP404. 기존v6 gate/점수 불변. Python37+Node10 통과, 실제HTTP와Chrome렌더링 확인. outputs/holdout_preparation_20261102/final_validation.json 및화면증거.
+- 다음: AAA/BBB 실제독립입력→합의입력→새결과import/명시publish; 운영수정은holdout정답을튜닝에쓰지않고개발셋으로검증→최종동결·새holdoutGOLD승인→전용harness통합후평가. 지금홀드아웃완료성능/인간의미정확도완료로주장하지않음. 관련로컬커밋만,새push요청없음. 무관dirty변경보존.
+
+
 ## 2026-11-02 사용자 확인 인간 GOLD 승인·144답변 파생 재채점
 
 - 사용자가 독립 인간 검수 완료 및 오늘 합의/승인일을 명시했다. AAA·BBB, 2026-11-02 KST, USER_MESSAGE 확인으로 review/20261102_approved_gold_rescore_v1/approval.json에 기록했다. 서명은 생성하지 않았고 기존 AI 제안본은 작성 당시 이력으로 보존한다.
