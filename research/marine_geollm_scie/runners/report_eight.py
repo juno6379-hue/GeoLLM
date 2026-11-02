@@ -56,15 +56,18 @@ def run_report(run_dir, benchmark, output, *, faults=None):
     scores = [score_row(r, by_case[r['case_id']]) for r in rows]
     summary = summarize(scores)
     if faults is not None:
-        from research.marine_geollm_scie.runners.report_eight_faults import load_verified_faults
+        from research.marine_geollm_scie.runners.report_eight_faults import (
+            load_verified_faults,recovery_measurement_summary,recovery_measurement_lines)
         from research.marine_geollm_scie.evaluation.v2_fault_results import summarize_faults
         fault_rows,fault_manifest=load_verified_faults(faults,
             benchmark_sha256=manifest['benchmark_sha256'],execution_identity=manifest.get('execution_identity'))
         diagnostic=summarize_faults(fault_rows)
+        measurement=recovery_measurement_summary(fault_rows)
+        diagnostic['recovery_measurement_coverage']=measurement['coverage_by_method']
         summary['controlled_fault_recovery']=diagnostic
         summary['rq2_fault_comparison']={'status':diagnostic['status'],'artifact':str(Path(faults).resolve()),
             'rows':len(fault_rows),'fault_contract_sha256':fault_manifest['fault_contract_sha256']}
-        summary['rq4_recovery']={'status':diagnostic['status'],'scope':'Fixed task tuple plus source SQL object oracle; independent expert semantics unmeasured'}
+        summary['rq4_recovery']=measurement
         summary['rq5_false_ready_false_block']={'status':diagnostic['status'],'scope':'Controlled fault labels and one valid control, not full benchmark correctness'}
     summary['completion_gate'] = gate
     summary['expected_observations'] = 18*8*len(manifest.get('repeats', []))
@@ -93,6 +96,8 @@ def run_report(run_dir, benchmark, output, *, faults=None):
               ('RQ2·RQ4 및 False Ready/False Block은 summary.json의 controlled_fault_recovery에서 별도 통제된 오류 cohort로 확인합니다. 독립 전문가 의미 정확도가 아닙니다.' if faults is not None else
                'RQ2 fault 검출, RQ4 복구·의미 보존, False Ready/False Block은 실제 별도 대조 관측이 없어 미측정입니다.'),
               '반복 행을 독립 표본으로 세지 않으며, 현재 결과로 전체 의미 정확도나 논문 결론을 선언하지 않습니다.']
+    if faults is not None:
+        lines+=recovery_measurement_lines(summary['rq4_recovery'])
     if gate['errors']:
         lines += ['', '## 완료 gate 미충족', *['- '+e for e in gate['errors']]]
     (output/'comparison_KR.md').write_text('\n'.join(lines)+'\n', encoding='utf-8')

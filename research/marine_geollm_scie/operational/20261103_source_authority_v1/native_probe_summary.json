@@ -1,0 +1,67 @@
+{
+  "kind": "DEVELOPMENT_AUTHORITY_PROBE_NOT_MODEL_COMPARISON",
+  "model_calls": 0,
+  "holdout_used": false,
+  "original_runs_modified": false,
+  "profile_path": "research/marine_geollm_scie/runs/20261102_gold_v2_eight_k1_v6/profiles/baseline_profile.json",
+  "source_before": {
+    "services/orchestrator/spatial_coverage.py": "020b0b56e574d117eba8cb5762168e83a63c9ec04e07c3ca5b19d6f785a36697",
+    "services/orchestrator/execution_validator.py": "2058390b8ade0bd0e66340f67571e8d4d02c698eead83b00ccceb239f6210b6f",
+    "research/marine_geollm_scie/baselines/v2_runtime.py": "dbd4682c0042d809fd246148130493337360bb7ee61a88c91b5978b4df142e06",
+    "research/marine_geollm_scie/baselines/lossless_qec.py": "31ba2ca22e91386dc7e1229aa71fc3862f248f3297d762d95df826e90d911a8b",
+    "research/marine_geollm_scie/runners/source_authority_probe.py": "4b5eb52993335ae01ce32922b8366fd20627f676318b10b5945091c83315ee2e"
+  },
+  "source_after": {
+    "services/orchestrator/spatial_coverage.py": "020b0b56e574d117eba8cb5762168e83a63c9ec04e07c3ca5b19d6f785a36697",
+    "services/orchestrator/execution_validator.py": "2058390b8ade0bd0e66340f67571e8d4d02c698eead83b00ccceb239f6210b6f",
+    "research/marine_geollm_scie/baselines/v2_runtime.py": "dbd4682c0042d809fd246148130493337360bb7ee61a88c91b5978b4df142e06",
+    "research/marine_geollm_scie/baselines/lossless_qec.py": "31ba2ca22e91386dc7e1229aa71fc3862f248f3297d762d95df826e90d911a8b",
+    "research/marine_geollm_scie/runners/source_authority_probe.py": "4b5eb52993335ae01ce32922b8366fd20627f676318b10b5945091c83315ee2e"
+  },
+  "sources_unchanged": true,
+  "cases": [
+    {
+      "case": "q4",
+      "ready": true,
+      "count": 11,
+      "passed": true
+    },
+    {
+      "case": "control",
+      "ready": true,
+      "count": 0,
+      "passed": true
+    },
+    {
+      "case": "outside",
+      "ready": false,
+      "count": null,
+      "passed": true
+    },
+    {
+      "case": "partial",
+      "ready": false,
+      "count": null,
+      "passed": true
+    },
+    {
+      "case": "world",
+      "ready": false,
+      "count": null,
+      "passed": true
+    },
+    {
+      "case": "missing_geometry",
+      "ready": false,
+      "count": null,
+      "passed": true
+    },
+    {
+      "case": "invalid_crs",
+      "ready": false,
+      "count": null,
+      "passed": true
+    }
+  ],
+  "passed": true
+}

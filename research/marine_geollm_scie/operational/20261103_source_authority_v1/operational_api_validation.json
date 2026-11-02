@@ -1,0 +1,40 @@
+{
+  "cases": [
+    {
+      "case": "q4",
+      "status": "COMPLETED",
+      "count": 11,
+      "returned_features": 11,
+      "authorized": true,
+      "search_execution": {
+        "status": "COMPLETED",
+        "authority": "ExecutionValidator",
+        "attempted": true,
+        "started": true,
+        "execution_attempted": true,
+        "execution_started": true,
+        "tool_called": true,
+        "sql_executed": true
+      },
+      "absence_certified": false
+    },
+    {
+      "case": "world",
+      "status": "BLOCKED",
+      "count": null,
+      "returned_features": 0,
+      "authorized": false,
+      "search_execution": {
+        "status": "NOT_RUN",
+        "reason": "DATA_COVERAGE_UNVERIFIED"
+      },
+      "absence_certified": null
+    }
+  ],
+  "checks": {
+    "q4_11": true,
+    "world_blocked": true,
+    "world_count_null": true
+  },
+  "passed": true
+}

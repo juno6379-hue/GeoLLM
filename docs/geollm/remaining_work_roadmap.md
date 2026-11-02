@@ -1,5 +1,16 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-11-03 최우선 Coverage/source authority 보완 → RQ 측정계약 준비
+
+- 사용자 새 우선순위: **Coverage → RQ1–RQ5 측정계약 동결 → Development K1 → 8방법 K5 → 최종 시스템 동결 후 untouched holdout**. 아래 과거 UI/항만 기능 추가 순서보다 우선한다. [상세 인계](coverage_priority_20261103.md).
+- 운영 Q4는 이미 정상화돼 있었고 연구 adapter가 원천 scope를 Validator에 연결하지 못한 것이 남은 오차단 원인이었다. literal source/slot 보존, 명시 snapshot·CSV·실제DB 전체행/열 검증, 동일 READ ONLY REPEATABLE READ transaction의 공간SQL 전 hash guard를 연결했다. 연구bbox는 RESEARCH_SNAPSHOT_DOMAIN이며 운영APPROVED/실세계완전성으로 승격하지 않는다.
+- 독립 연구DB6관계 전체CSV v6SHA 일치. 최신 native_probe_v3 실제7조건 모두통과: Q4 11개/정상CONTROL0개 승인실행, 범위밖·부분겹침·실세계전체성·geometry누락·CRS오류는 비실행. 정상0은 원천내결과이며 부재보증아님. 원본 outputs/coverage_priority_20261103_v1/ 보존.
+- 운영backend 재기동 후 실제SSE Q4 COMPLETED/11개, 실세계전체성 BLOCKED/count=null 확인. 일반화정확도/과거v6재채점이 아니다. 초기감사에서 찾은 commonbbox검사차이·확정미실행false→null·booleanCSV/열목록 검출결함도 보완했다.
+- 연구/운영coverage 통합639tests 통과. RQ4 emptyOracle 성공집계 수정: 빈Oracle 제외/누락Oracle 미측정/null, binary27진단 유지, 결합보고서에 적격분모 공개. 실제nonempty복구성능은 아직 미실행.
+- RQ1 추출계약 준비: 36rawSHA/301witness 검증, canonical후보166·개별처리검토135; 전용14tests통과. task/owner/source/FP·상충·중복 검토 미완료로 prediction_atoms36개 모두null. 독립인간검수나F1완료로 표시하지 않는다.
+- **다음 실행**: RQ1완전예측주석/추출계약, RQ2확장fault+사전targetcode, RQ3방법별silentfault, RQ4nonemptyOracle, RQ5전체telemetry, 실제ablation/8방법K5runner를 완성·검증한 뒤 측정계약을 동결한다. 기존supervise_eight 144+27은 새전체RQ완료가 아니므로 지금 시작하지 않는다. 기존repeat_experiment540도8방법K5(기본720)가 아니다.
+- 새모델비교/K5/홀드아웃 미실행. 홀드아웃본문 미열람/개발사용없음. 기존run/GOLD/원천snapshot 및 무관UI/feedback/PDFworker 변경 보존. 운영계약 수정 커밋3fa1e6f; 연구·문서는 별도 커밋. 새push요청없어push하지않음.
+
 ## 2026-11-03 질의창116개 운영 점검·항만 원문 카드 보완 완료 범위
 
 - 최신 사용자 요청에 따라 소형선항만 안내 카드와 출처를 연결하고 실제 브라우저까지 검증했다. 인천 북항·내항·연안항·남항 각각 선택/지도 표시, 소개·항해·시설·교통·보급수리·주변 안내, 기관·2017년 원천·파일·객체ID·SHA 표시. 원본 DBF 잘림18필드는 byte/hash receipt로 확인된 접두부만 `원문 일부` 표시. 사진20참조의 실체는 미확인으로 미연결 유지. [항만 상세](harbour_evidence_cards_20261103.md).

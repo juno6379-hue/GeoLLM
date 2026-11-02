@@ -1,0 +1,125 @@
+{
+  "started_at": "2026-11-02T16:35:19.859444+00:00",
+  "status": "SIX_RELATIONS_EXACT_MATCH",
+  "snapshot_manifest_sha256": "ff37cdeb3d3038c915393dbe2da32a2455253e39f5381b58e64873ca6e0629ad",
+  "db_identity": {
+    "container": "marine-scie-pilot-db",
+    "database": "scie_model_v3"
+  },
+  "relations": [
+    {
+      "relation": "knowledge.document_chunks",
+      "rows": 23215,
+      "roundtrip_sha256": "32caa70714ddfa864729a5119736831ca542209d239a01c93c7f7ebbc054d34e",
+      "content_match": true,
+      "row_count_basis": "exact entire CSV including header matches parent",
+      "transaction_mode": "per-relation REPEATABLE READ READ ONLY",
+      "verified_at": "2026-11-02T16:36:00.546277+00:00",
+      "frozen_csv_sha256": "32caa70714ddfa864729a5119736831ca542209d239a01c93c7f7ebbc054d34e"
+    },
+    {
+      "relation": "serving.marine_gazetteer_current",
+      "rows": 1146,
+      "roundtrip_sha256": "3f931edd30279f561a129afbaa597db33c985bc59d211b9b64bd33942e4e6d7a",
+      "content_match": true,
+      "row_count_basis": "exact entire CSV including header matches parent",
+      "transaction_mode": "per-relation REPEATABLE READ READ ONLY",
+      "verified_at": "2026-11-02T16:36:01.356455+00:00",
+      "frozen_csv_sha256": "3f931edd30279f561a129afbaa597db33c985bc59d211b9b64bd33942e4e6d7a"
+    },
+    {
+      "relation": "serving.navigation_aid_current",
+      "rows": 314,
+      "roundtrip_sha256": "f75d5ceb50049e732433d5b36ca6be03e88a0360bc5f8ba67b3fd92e1425cdd7",
+      "content_match": true,
+      "row_count_basis": "exact entire CSV including header matches parent",
+      "transaction_mode": "per-relation REPEATABLE READ READ ONLY",
+      "verified_at": "2026-11-02T16:36:01.953436+00:00",
+      "frozen_csv_sha256": "f75d5ceb50049e732433d5b36ca6be03e88a0360bc5f8ba67b3fd92e1425cdd7"
+    },
+    {
+      "relation": "serving.island_gazetteer_current",
+      "rows": 1140,
+      "roundtrip_sha256": "59657fe4047aa975facc67338e4bd7ee40eaf5b834186f83dd5ce21a47188fb5",
+      "content_match": true,
+      "row_count_basis": "exact entire CSV including header matches parent",
+      "transaction_mode": "per-relation REPEATABLE READ READ ONLY",
+      "verified_at": "2026-11-02T16:36:02.983415+00:00",
+      "frozen_csv_sha256": "59657fe4047aa975facc67338e4bd7ee40eaf5b834186f83dd5ce21a47188fb5"
+    },
+    {
+      "relation": "knowledge.capability_embeddings",
+      "rows": 21,
+      "roundtrip_sha256": "1c2e8b8d766ac2dc66d2b7f657e1a2752ca8e64c6ab63fa83bad1206473b78e1",
+      "content_match": true,
+      "row_count_basis": "exact entire CSV including header matches parent",
+      "transaction_mode": "per-relation REPEATABLE READ READ ONLY",
+      "verified_at": "2026-11-02T16:36:03.446293+00:00",
+      "frozen_csv_sha256": "1c2e8b8d766ac2dc66d2b7f657e1a2752ca8e64c6ab63fa83bad1206473b78e1"
+    },
+    {
+      "relation": "projection.s101_feature_current",
+      "rows": 25300,
+      "roundtrip_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+      "content_match": true,
+      "row_count_basis": "exact entire CSV including header matches parent",
+      "transaction_mode": "per-relation REPEATABLE READ READ ONLY",
+      "verified_at": "2026-11-02T16:36:11.230006+00:00",
+      "frozen_csv_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85"
+    }
+  ],
+  "database_writes": false,
+  "model_calls": 0,
+  "holdout_read": false,
+  "scope": "DATA_IDENTITY_ONLY_NOT_NEW_CODE_FREEZE_OR_METHOD_BENCHMARK",
+  "helper": "research/marine_geollm_scie/runners/derive_execution_snapshot.py:export_relation",
+  "helper_sha256": "69f6c12f0265dd756bd720bc9446ef0ad5bd2705c99c1781a567c850aeb50557",
+  "profile_sha256": "c72efa6f41f76596e6b3f450c7f100461e815effebb1ae2c2c527aca6d870bcb",
+  "coverage": {
+    "s101": {
+      "scope_verified": true,
+      "bbox_epsg4326": [
+        128.9,
+        34.9,
+        129.3,
+        35.3
+      ],
+      "source_sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85",
+      "scope_type": "DECLARED_RESEARCH_SNAPSHOT",
+      "real_world_completeness": false,
+      "explanation": "Fixed Busan subset; outside cannot establish real-world absence."
+    },
+    "navigation_aids": {
+      "scope_verified": false,
+      "source_sha256": "f75d5ceb50049e732433d5b36ca6be03e88a0360bc5f8ba67b3fd92e1425cdd7",
+      "real_world_completeness": false,
+      "explanation": "Busan regional aids; nearest around Dokdo not covered."
+    },
+    "marine_places": {
+      "scope_verified": true,
+      "scope_type": "FULL_DECLARED_SOURCE",
+      "source_sha256": "3f931edd30279f561a129afbaa597db33c985bc59d211b9b64bd33942e4e6d7a",
+      "real_world_completeness": false,
+      "explanation": "Entire frozen 2022 gazetteer corpus only; not all real-world places."
+    }
+  },
+  "consistency_scope": "Per-relation REPEATABLE READ READ ONLY; each exact export matches immutable frozen CSV, not one cross-relation transaction.",
+  "container": {
+    "id": "72f328538f2fff3d8ebb4c0010450c9923e90f71f8db3e1217783ca5c48b7fb0",
+    "name": "/marine-scie-pilot-db",
+    "research_label": "true",
+    "started_at": "2026-11-02T16:34:26.261047723Z"
+  },
+  "rq3_prior_receipt_hashes": {
+    "container_identity.json": true,
+    "protocol_before_execution.json": true,
+    "transaction.sql": true,
+    "transaction.stdout": true,
+    "transaction.stderr": true,
+    "spatial_rows.json": true,
+    "summary.json": true
+  },
+  "finished_at": "2026-11-02T16:36:13.016324+00:00",
+  "source_manifest_unchanged": true,
+  "helper_unchanged": true
+}

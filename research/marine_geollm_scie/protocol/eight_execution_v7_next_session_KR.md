@@ -1,5 +1,7 @@
 # 다음 접속: 정상 오차단·검토 모순 보완 후 GOLD v2 8방법 새 동결
 
+> 2026-11-03 우선순위 갱신: 이 문서의 과거 재개 명령을 바로 실행하지 않는다. Coverage 연구 연결은 보완했고 새 실제 검증은 `docs/geollm/coverage_priority_20261103.md`를 참조한다. PDF 이전 진행 숫자와 런타임 차단 기록은 역사적 상태다. 사용자가 Coverage → RQ1–RQ5 측정계약 동결 → 개발 K1 → **8방법 K5** → 최종 untouched holdout 순서를 지정했다. 아래 144+27 수집기는 아직 확장 RQ·non-empty recovery·ablation·K5 전체 실행을 구현하지 않으므로, 측정계약/자산/runner gate 완성 후 새 protocol로 재개한다.
+
 작성일: 2026-11-02 (KST). **현재 상태: PREPARATION_BLOCKED_RUNTIME. 실행하지 않음.** 사용자는 이번 접속에서 수정·검증을 진행하고 전체 비교는 다음 접속에서 시작하도록 요청했다. 이 문서는 시작 승인이나 완료 증거를 대체하지 않는다.
 
 ## 먼저 읽을 파일

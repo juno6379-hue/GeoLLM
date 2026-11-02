@@ -233,7 +233,8 @@ def run(output,profile_path,benchmark,*,execute=False,inputs=None,p1_rows=None):
     model_digest(profile)
     executor=V2Executor(ObservedDatabase(),catalogue=ROOT/profile['catalogue']['path'],
         catalogue_sha256=profile['catalogue']['sha256'],anchors=profile.get('anchors',[]),
-        coverage=profile.get('coverage',{}),reference_geometries=profile.get('reference_geometries',{}))
+        coverage=profile.get('coverage',{}),reference_geometries=profile.get('reference_geometries',{}),
+        snapshot_manifest=profile.get('snapshot_manifest'))
     model=profile['model'];seed=profile.get('seed',42)
     rows=[];manifest['status']='RUNNING';state()
     def emit(row,raw_path):

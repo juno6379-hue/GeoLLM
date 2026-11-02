@@ -138,13 +138,36 @@ def joint_recovery(success, preservation, spatial):
     return True if all(v is True for v in values) else None
 
 
+def recovery_oracle_scope(object_ids):
+    """An empty/unknown object set cannot measure restoration of actual objects."""
+    valid = isinstance(object_ids, list) and all(isinstance(x, str) and x for x in object_ids)
+    if not valid:
+        return {'status': 'UNMEASURED', 'object_count': None, 'nonempty_eligible': False,
+                'reason': 'RECOVERY_ORACLE_MISSING_OR_INVALID'}
+    return {'status': 'ELIGIBLE' if object_ids else 'EXCLUDED', 'object_count': len(object_ids),
+            'nonempty_eligible': bool(object_ids),
+            'reason': None if object_ids else 'RECOVERY_ORACLE_EMPTY'}
+
+
+def recovery_eligibility(case, method, oracle_scope):
+    protocol = case['recovery_eligible'] and method in ('B4', 'H')
+    eligible = protocol and oracle_scope['nonempty_eligible']
+    reason = (None if eligible else oracle_scope['reason'] if protocol
+              else 'VALIDATION_ONLY_METHOD' if method == 'P0' else 'PROTOCOL_NOT_RECOVERABLE')
+    return {'recovery_protocol_eligible': protocol, 'recovery_eligible': eligible,
+            'recovery_exclusion_reason': reason, 'recovery_oracle_scope': dict(oracle_scope),
+            'recovery_measurement_version': 'nonempty_object_restoration_v1'}
+
+
 def run(output, profile_path, benchmark, *, execute=False):
     output=Path(output);profile_path=Path(profile_path);benchmark=Path(benchmark)
     profile=json.loads(profile_path.read_text(encoding='utf-8'))
     ensure_identity(profile,benchmark)
     output.mkdir(parents=True,exist_ok=False)
     cases=cohort()
-    contract={'version':'matched_fault_v2_v3','benchmark_sha256':profile['benchmark_sha256'],
+    contract={'version':'matched_fault_v2_v4_nonempty_recovery','benchmark_sha256':profile['benchmark_sha256'],
+              'recovery_measurement_version':'nonempty_object_restoration_v1',
+              'recovery_oracle_policy':'Nonempty independently queried object set required for restoration; empty/missing excludes recovery, not initial fault diagnosis',
               'execution_identity':profile['execution_identity'],'cases':cases,
               'review_protocol':{'version':REVIEW_VERSION,'schema_sha256':SCHEMA_SHA256},
               'recovery_budget':dict(REVIEW_BUDGET,model_calls_per_fault=1),
@@ -166,20 +189,26 @@ def run(output, profile_path, benchmark, *, execute=False):
     model_digest(profile)
     executor=V2Executor(ObservedDatabase(),catalogue=ROOT/profile['catalogue']['path'],
         catalogue_sha256=profile['catalogue']['sha256'],anchors=profile.get('anchors',[]),
-        coverage=profile.get('coverage',{}),reference_geometries=profile.get('reference_geometries',{}))
+        coverage=profile.get('coverage',{}),reference_geometries=profile.get('reference_geometries',{}),
+        snapshot_manifest=profile.get('snapshot_manifest'))
     validator=validator_for(executor,query=QUERY,spatial_context=CONTEXT)
     # Independent SQL predicate (distance <= radius), not model or executor output.
     oracle=executor.db.query("""SELECT feature_instance_id::text source_id FROM projection.s101_feature_current
       WHERE feature_type_name='Wreck' AND geometry IS NOT NULL AND ST_IsValid(geometry)
       AND ST_Distance(geometry::geography,ST_GeomFromText('POINT(129.05 35.1)',4326)::geography)<=1000
       ORDER BY feature_instance_id""",{})
-    oracle_ids=sorted(str(x['source_id']) for x in oracle)
+    oracle_ids=(sorted(str(x['source_id']) for x in oracle)
+                if isinstance(oracle,list) and all(isinstance(x,dict) and x.get('source_id') is not None for x in oracle)
+                else None)
+    oracle_scope=recovery_oracle_scope(oracle_ids)
     save_new(output/'independent_oracle.json',{'source_snapshot_sha256':profile['execution_identity']['source_snapshot_sha256'],
         'source_sha256':profile.get('coverage',{}).get('s101',{}).get('source_sha256'),
-        'object_ids':oracle_ids,'scope':'same source PostGIS independent SQL, not independent engine/human review'})
+        'object_ids':oracle_ids,'recovery_oracle_scope':oracle_scope,
+        'scope':'same source PostGIS independent SQL, not independent engine/human review'})
     manifest['independent_oracle_sha256']=digest(output/'independent_oracle.json')
+    manifest['recovery_oracle_scope']=oracle_scope
     control=executor.execute(clean_plan());save_new(output/'clean_source_execution.json',control)
-    if execution_success(control) is not True or returned_ids(control)!=oracle_ids:
+    if execution_success(control) is not True or (oracle_ids is not None and returned_ids(control)!=oracle_ids):
         manifest['status']='STOPPED_CONTROL_ORACLE_MISMATCH';state();return manifest
     manifest['status']='RUNNING';state()
     for case in cases:
@@ -203,7 +232,7 @@ def run(output, profile_path, benchmark, *, execute=False):
                 'review_contract_errors':errors,
                 'review_consistency':call.get('review_consistency'),
                 'detector_scope':'BEFORE_COMMON_EXECUTION_FLOOR','recovery_attempted':False,
-                'recovery_eligible':case['recovery_eligible'] and method in ('B4','H'),
+                **recovery_eligibility(case,method,oracle_scope),
                 'recovery_success':None,'semantic_preservation':None,'spatial_correct':None,'joint_success':None}
             row['costs']={'review_shared_B4_H':True,'input_tokens':call.get('input_tokens') if method!='P0' else 0,
                           'output_tokens':call.get('output_tokens') if method!='P0' else 0,
@@ -212,7 +241,7 @@ def run(output, profile_path, benchmark, *, execute=False):
                           'post_recovery_validator_latency_ms':0,'execution_latency_ms':0,
                           'model_calls':1 if method!='P0' else 0,'tool_calls':0}
             # P0 is validation only: no additional reasoning/repair is introduced.
-            if method in ('B4','H') and case['recovery_eligible'] and review:
+            if row['recovery_eligible'] and review:
                 revised=review['plan'];row['recovery_attempted']=True;row['recovered_plan']=revised
                 row['semantic_preservation']=semantic_signature(revised)==semantic_signature(clean_plan())
                 post=detect(revised,validator) if method=='H' else None

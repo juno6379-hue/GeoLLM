@@ -5,8 +5,11 @@ import json
 import math
 import subprocess
 import time
+import hashlib
+import re
+from pathlib import Path
 from shapely import wkt
-from shapely.geometry import mapping
+from shapely.geometry import mapping, box
 from research.marine_geollm_scie.evaluation.execution_semantics import canonical_trace
 from .execution_dsl import Executor, ResearchDatabase, SOURCES, ToolBlocked
 
@@ -15,19 +18,64 @@ OPERATIONS = {'dwithin':'feature_search_by_radius', 'nearest':'nearest_feature',
               'intersects':'feature_search_by_area'}
 
 
+def snapshot_identity_sql(record):
+    """Reproduce PostgreSQL COPY CSV HEADER bytes, in the frozen key order.
+
+    Only fixed spatial relations/identifiers are interpolated. All cell values
+    remain database values. This is inventory identity, never geographic proof.
+    """
+    relation = record['relation']
+    source = next((s for s, spec in SOURCES.items() if spec[0] == relation), None)
+    columns = [column[0] for column in record['columns']]
+    if source is None or not columns or any(not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', c) for c in columns):
+        raise ValueError('RESEARCH_SNAPSHOT_SCHEMA_NOT_ALLOWLISTED')
+    cells = []
+    for column, specification in zip(columns, record['columns']):
+        value = 'p."' + column + '"::text'
+        if specification[1] == 'boolean':
+            value = '(CASE WHEN p."' + column + '" THEN \'t\' WHEN NOT p."' + column + '" THEN \'f\' ELSE NULL END)'
+        cells.append("CASE WHEN " + value + " IS NULL THEN '' WHEN " + value +
+                     " = '' OR " + value + " ~ E'[,\\\"\\r\\n]' THEN '\"' || replace(" + value +
+                     ", '\"', '\"\"') || '\"' ELSE " + value + " END")
+    row = " || ',' || ".join(cells)
+    key = SOURCES[source][1]
+    header = ','.join(columns)
+    schema, table = relation.split('.')
+    schema_check = ("(SELECT array_agg(column_name::text ORDER BY ordinal_position) FROM information_schema.columns "
+                    "WHERE table_schema='" + schema + "' AND table_name='" + table + "') = ARRAY[" +
+                    ','.join("'" + c + "'" for c in columns) + "] AS schema_matches")
+    return ("SELECT encode(sha256(convert_to('" + header + "' || E'\\n' || "
+            "coalesce(string_agg((" + row + ") || E'\\n', '' ORDER BY p.\"" + key +
+            "\"), ''), 'UTF8')), 'hex') AS source_sha256, count(*) AS row_count, " + schema_check + " FROM " + relation + " p")
+
+
+def _snapshot_guard(record):
+    digest = record['sha256']
+    if not re.fullmatch(r'[0-9a-f]{64}', digest):
+        raise ValueError('RESEARCH_SNAPSHOT_HASH_INVALID')
+    return (
+            "DO $source_guard$ BEGIN IF NOT EXISTS (SELECT 1 FROM (" + snapshot_identity_sql(record) +
+            ") observed WHERE schema_matches IS TRUE AND source_sha256 = '" + digest + "' AND row_count = " + str(int(record['rows'])) +
+            ") THEN RAISE EXCEPTION 'RESEARCH_SNAPSHOT_IDENTITY_MISMATCH'; END IF; END $source_guard$; ")
+
+
 class ObservedDatabase(ResearchDatabase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.events=[]
         self.scope='metadata'
+        self.source_guard=None
 
     def query(self, body, arguments):
+        if self.scope == 'spatial' and self.source_guard is None:
+            raise ToolBlocked('RESEARCH_ATOMIC_SOURCE_GUARD_REQUIRED')
         event={'scope':self.scope,'sql_submission_attempted':True,'sql_executed':None,'succeeded':None}
         self.events.append(event)
         start=time.perf_counter()
         try:
             encoded=base64.b64encode(json.dumps(arguments,ensure_ascii=False).encode()).decode('ascii')
-            statement=("BEGIN READ ONLY; SET LOCAL statement_timeout='30000ms'; WITH input AS "
+            guard = _snapshot_guard(self.source_guard) if self.source_guard is not None else ''
+            statement=("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY; SET LOCAL statement_timeout='30000ms'; " + guard + "WITH input AS "
                 "(SELECT convert_from(decode('"+encoded+"','base64'),'UTF8')::jsonb AS args) "
                 "SELECT coalesce(jsonb_agg(result),'[]'::jsonb)::text FROM ("+body+") result; ROLLBACK;")
             # Geometry may contain >13k vertices. Use stdin, never Windows argv
@@ -37,6 +85,9 @@ class ObservedDatabase(ResearchDatabase):
             process=subprocess.run(command,input=statement,capture_output=True,text=True,encoding='utf-8',timeout=self.timeout)
             event['process_returncode']=process.returncode
             if process.returncode:
+                if 'RESEARCH_SNAPSHOT_IDENTITY_MISMATCH' in process.stderr:
+                    event.update(sql_executed=False,succeeded=False,
+                                 source_identity_status='MISMATCH_BEFORE_SPATIAL_SQL')
                 raise RuntimeError('RESEARCH_DB_QUERY_FAILED')
             rows=json.loads(process.stdout.strip())
             event.update(sql_executed=True,succeeded=True,row_count=len(rows))
@@ -74,9 +125,48 @@ class V2Executor(Executor):
     All branches share coverage checks below. Report this common executor floor;
     do not attribute its blocks to the optional deterministic Validator.
     """
-    def __init__(self, db, *, reference_geometries=None, **kwargs):
+    def __init__(self, db, *, reference_geometries=None, snapshot_manifest=None, **kwargs):
+        if isinstance(db, ObservedDatabase) and snapshot_manifest is None:
+            raise ToolBlocked('RESEARCH_SNAPSHOT_PIN_REQUIRED')
         super().__init__(db, **kwargs)
         self.reference_geometries=reference_geometries or {}
+        self.snapshot_manifest = copy.deepcopy(snapshot_manifest)
+
+    def snapshot_record(self, source):
+        """Recheck frozen file identity; never discover a snapshot implicitly."""
+        pin = self.snapshot_manifest
+        if not isinstance(pin, dict) or not re.fullmatch(r'[0-9a-f]{64}', str(pin.get('sha256', ''))):
+            raise ToolBlocked('RESEARCH_SNAPSHOT_PIN_REQUIRED')
+        path = Path(pin['path']).resolve()
+        raw = path.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != pin['sha256']:
+            raise ToolBlocked('RESEARCH_SNAPSHOT_MANIFEST_CHANGED')
+        manifest = json.loads(raw)
+        identity = {'container': getattr(self.db, 'container', None), 'database': getattr(self.db, 'database', None)}
+        if identity != {'container':'marine-scie-pilot-db','database':'scie_model_v3'} or manifest.get('db_identity') != identity or manifest.get('status') != 'LOADED_VERIFIED':
+            raise ToolBlocked('RESEARCH_SNAPSHOT_DATABASE_MISMATCH')
+        records = [r for r in manifest.get('relations', []) if r['relation'] == SOURCES[source][0]]
+        if len(records) != 1:
+            raise ToolBlocked('RESEARCH_SNAPSHOT_RELATION_MISSING')
+        record = records[0]
+        asset = (path.parent / record['csv_path']).resolve()
+        if not asset.is_relative_to(path.parent) or hashlib.sha256(asset.read_bytes()).hexdigest() != record['sha256']:
+            raise ToolBlocked('RESEARCH_SNAPSHOT_SOURCE_CHANGED')
+        if self.coverage.get(source, {}).get('source_sha256') != record['sha256']:
+            raise ToolBlocked('RESEARCH_SCOPE_SOURCE_MISMATCH')
+        declared = self.coverage.get(source, {})
+        frozen_scope = record.get('coverage') or {}
+        # Shared executor floor: B3/B4 must not accept a profile that P0/H's
+        # adapter rejects. Validate scope before any branch reaches spatial SQL.
+        if source == 's101' and (frozen_scope.get('selection') != 'BOUNDED_SUBSET'
+                or declared.get('bbox_epsg4326') != frozen_scope.get('bbox_epsg4326')):
+            raise ToolBlocked('RESEARCH_SUBSET_SCOPE_MISMATCH')
+        if source == 'marine_places' and (frozen_scope.get('selection') != 'ALL_ROWS_IN_SOURCE_RELATION'
+                or declared.get('scope_type') != 'FULL_DECLARED_SOURCE'
+                or declared.get('bbox_epsg4326') is not None):
+            raise ToolBlocked('RESEARCH_CORPUS_SCOPE_MISMATCH')
+        snapshot_identity_sql(record)  # Validate identifiers before any SQL.
+        return record, asset
 
     def reference(self,args):
         explicit=args.get('reference_geometry')
@@ -158,10 +248,21 @@ class V2Executor(Executor):
         if not isinstance(args,dict):
             raise ToolBlocked('ARGUMENTS_MUST_BE_OBJECT')
         arguments=self.spatial_arguments(args)
+        record = None
+        if isinstance(self.db, ObservedDatabase) and self.snapshot_manifest is None:
+            raise ToolBlocked('RESEARCH_SNAPSHOT_PIN_REQUIRED')
+        if self.snapshot_manifest is not None:
+            record, _ = self.snapshot_record(arguments['source'])
+            if not isinstance(self.db, ObservedDatabase):
+                raise ToolBlocked('RESEARCH_ATOMIC_SOURCE_GUARD_UNAVAILABLE')
         self.db.scope='coverage_metadata'
         coverage=self.coverage_check(arguments)
         self.db.scope='spatial'
-        rows=self.db.query(spatial_statement(arguments['source'],arguments['relation']),arguments)
+        self.db.source_guard = record
+        try:
+            rows=self.db.query(spatial_statement(arguments['source'],arguments['relation']),arguments)
+        finally:
+            self.db.source_guard = None
         if len(rows)>1000:
             raise ToolBlocked('RESULT_LIMIT_EXCEEDED_INCOMPLETE_SET')
         return {'rows':rows,'source':arguments['source'],'source_scope':coverage,
@@ -175,7 +276,9 @@ class V2Executor(Executor):
         events=copy.deepcopy(self.db.events[start:])
         spatial=[x for x in events if x['scope']=='spatial']
         calls=[x for x in result.get('receipts',[]) if x['tool_id']=='spatial.query']
-        sql_observed=True if any(x.get('sql_executed') is True or x.get('succeeded') is True for x in spatial) else None if spatial else False
+        sql_observed=(True if any(x.get('sql_executed') is True or x.get('succeeded') is True for x in spatial)
+                      else False if not spatial or all(x.get('sql_executed') is False for x in spatial)
+                      else None)
         result['execution_observation']=canonical_trace({'observation_complete':not spatial or all(type(x.get('succeeded')) is bool for x in spatial),
             'execution_attempted':bool(calls) or bool(spatial),'tool_called':bool(calls),
             'execution_started':sql_observed,'sql_executed':sql_observed,
@@ -189,6 +292,65 @@ class ResearchBindingAdapter:
     def __init__(self,executor):
         self.executor=executor
         self.tool_registry={'tools':{}}
+        self.layer_registry={'layers':{}}
+
+    def verify_corpus_identity(self, binding, contract):
+        source = binding.dataset_id
+        if source not in SOURCES:
+            return {'status':'UNVERIFIED'}
+        try:
+            record, asset = self.executor.snapshot_record(source)
+            if (contract.get('source_sha256') != record['sha256'] or
+                    contract.get('source_asset') != str(asset) or binding.relation != record['relation']):
+                return {'status':'UNVERIFIED'}
+            self.executor.db.scope='source_identity_metadata'
+            rows=self.executor.db.query(snapshot_identity_sql(record), {})
+            if (len(rows)!=1 or rows[0].get('schema_matches') is not True
+                    or rows[0].get('source_sha256')!=record['sha256'] or rows[0].get('row_count')!=record['rows']):
+                return {'status':'UNVERIFIED'}
+            receipt={'status':'VERIFIED','dataset_id':source,'relation':record['relation'],
+                     'snapshot_version':'sha256:'+record['sha256'], 'source_sha256':record['sha256'],
+                     'source_asset':str(asset),'row_count':record['rows'],
+                     'authority_scope':'RESEARCH_FROZEN_SOURCE_ONLY', 'real_world_completeness':'UNKNOWN',
+                     'absence_certified':False}
+            if source=='s101':
+                bounds=(record.get('coverage') or {}).get('bbox_epsg4326')
+                receipt.update(target_features=contract['target_features'], source_scope={
+                    'kind':'RESEARCH_SNAPSHOT_DOMAIN','crs':'EPSG:4326',
+                    'source_locator':str(asset)+'#manifest.coverage.BOUNDED_SUBSET',
+                    'source_sha256':record['sha256'],'geometry_wkt':box(*bounds).wkt})
+            return receipt
+        except (OSError, ValueError, KeyError, TypeError, RuntimeError):
+            return {'status':'UNVERIFIED'}
+
+    def _register_source(self, source):
+        record, asset = self.executor.snapshot_record(source)
+        declared = self.executor.coverage.get(source, {})
+        if declared.get('scope_verified') is not True:
+            raise ToolBlocked('SOURCE_COVERAGE_UNVERIFIED')
+        kind = (record.get('coverage') or {}).get('selection')
+        if source=='s101':
+            bounds=(record.get('coverage') or {}).get('bbox_epsg4326')
+            if kind!='BOUNDED_SUBSET' or bounds != declared.get('bbox_epsg4326') or not isinstance(bounds,list) or len(bounds)!=4:
+                raise ToolBlocked('RESEARCH_SUBSET_SCOPE_MISMATCH')
+            if any(type(v) not in (int,float) or not math.isfinite(v) for v in bounds) or not (-180<=bounds[0]<bounds[2]<=180 and -90<=bounds[1]<bounds[3]<=90):
+                raise ToolBlocked('RESEARCH_SUBSET_SCOPE_INVALID')
+        elif source=='marine_places':
+            if kind!='ALL_ROWS_IN_SOURCE_RELATION' or declared.get('scope_type')!='FULL_DECLARED_SOURCE':
+                raise ToolBlocked('RESEARCH_CORPUS_SCOPE_MISMATCH')
+        else:
+            raise ToolBlocked('RESEARCH_SOURCE_SCOPE_UNSUPPORTED')
+        contract={'kind':'s101_exact_inventory_v1' if source=='s101' else 'csv_exact_inventory_v1',
+                  'dataset_id':source,
+                  'source_sha256':record['sha256'],'source_asset':str(asset),
+                  'snapshot_version':'sha256:'+record['sha256'],
+                  'allowed_operations':[op for op in OPERATIONS.values() if op!='nearest_feature'],
+                  'default_inventory_listing':True,
+                  'target_features':[f['code'] for f in self.executor.catalogue['features']] if source=='s101' else [],
+                  'authority_scope':'RESEARCH_FROZEN_SOURCE_ONLY'}
+        self.layer_registry['layers'][source]={'physical_table':record['relation'],
+                'geometry_column':'geometry','corpus_contract':contract}
+        return record
 
     def build_bindings(self,route,slots):
         from services.orchestrator.schema_binding_adapter import BindingResult
@@ -218,7 +380,13 @@ class ResearchBindingAdapter:
         if operation not in OPERATIONS.values():
             out.blockers.append('BLOCKED_CONFIG: explicit analysis_type required')
             return out
-        out.data_bindings=[DataBinding(dataset_id=source,relation=relation,srid=4326,read_only=True)]
+        try:
+            record = self._register_source(source)
+        except (OSError, ValueError, KeyError, TypeError):
+            out.blockers.append('BLOCKED_DATA: research snapshot source identity or scope unverified')
+            return out
+        out.data_bindings=[DataBinding(dataset_id=source,relation=relation,srid=4326,read_only=True,
+                                      geometry_column='geometry',snapshot_version='sha256:'+record['sha256'])]
         out.tool_bindings=[ToolBinding(tool_id='spatial.query',operation=operation)]
         return out
 
