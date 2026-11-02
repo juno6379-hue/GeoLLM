@@ -9,7 +9,7 @@ import os
 import re
 import zipfile
 from datetime import datetime, timezone
-from io import BytesIO
+from io import BytesIO, StringIO
 from pathlib import Path
 from xml.etree import ElementTree
 
@@ -303,17 +303,36 @@ def make_chunks(
 
 def csv_chunks(path: Path, title: str) -> list[dict]:
     text, encoding = decode_best(path.read_bytes())
-    rows = list(csv.DictReader(text.splitlines()))
+    parsed = list(csv.reader(StringIO(text)))
     result = []
+    if not parsed:
+        return result
+    columns = parsed[0]
+    rows = [row for row in parsed[1:] if row]
     if not rows:
         return result
-    columns = list(rows[0].keys())
+    duplicate_columns = [i for i, name in enumerate(columns) if columns.count(name) > 1]
+    # DictReader loses cells when headings repeat (including empty headings).
+    # Positional rows also retain extra cells and quoted multiline field text.
+    revised = bool(duplicate_columns or any(len(row) != len(columns) or any('\n' in value or '\r' in value for value in row) for row in rows))
+    def identify(metadata, content, index):
+        identity = f"{metadata['source_id']}:{index}"
+        if revised:
+            metadata.update(extraction_method='csv_positional_v2',
+                            source_column_names=list(columns),
+                            duplicate_header_column_indexes=duplicate_columns,
+                            source_column_index_base=0,
+                            source_locators=['csv-header:0', f"csv-rows:{metadata['source_row_start']}-{metadata['source_row_end']}"],
+                            extraction_revision='csv_positional_v2',
+                            requires_new_embedding=True)
+            identity += ':csv_positional_v2:' + hashlib.sha256(content.encode()).hexdigest()
+        return hashlib.sha256(identity.encode()).hexdigest()[:24]
     header = "columns: " + " | ".join(columns)
     current = []
     current_words = len(header.split())
     start_row = 1
     for row_index, row in enumerate(rows, 1):
-        values = " | ".join(str(row.get(column, "")) for column in columns)
+        values = " | ".join(row)
         value_words = len(values.split())
         if current and current_words + value_words > WORD_TARGET:
             content = header + "\n" + "\n".join(current)
@@ -331,7 +350,7 @@ def csv_chunks(path: Path, title: str) -> list[dict]:
             metadata["source_row_start"] = start_row
             metadata["source_row_end"] = row_index - 1
             metadata["chunk_index"] = len(result)
-            chunk_id = hashlib.sha256(f"{metadata['source_id']}:{len(result)}".encode()).hexdigest()[:24]
+            chunk_id = identify(metadata, content, len(result))
             result.append({"chunk_id": chunk_id, "text": content, "metadata": metadata})
             current = []
             current_words = len(header.split())
@@ -354,7 +373,7 @@ def csv_chunks(path: Path, title: str) -> list[dict]:
         metadata["source_row_start"] = start_row
         metadata["source_row_end"] = len(rows)
         metadata["chunk_index"] = len(result)
-        chunk_id = hashlib.sha256(f"{metadata['source_id']}:{len(result)}".encode()).hexdigest()[:24]
+        chunk_id = identify(metadata, content, len(result))
         result.append({"chunk_id": chunk_id, "text": content, "metadata": metadata})
     return result
 

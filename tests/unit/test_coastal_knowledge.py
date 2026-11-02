@@ -55,7 +55,9 @@ def test_spatial_timeout_retains_successful_document_evidence(monkeypatch,tmp_pa
     monkeypatch.setattr(module,'engine',lambda:db)
     observed=retrieve('해양공간관리계획',scope='dataset')
     assert observed['status']=='PARTIAL'
-    assert observed['documents']==[doc]
+    assert len(observed['documents']) == 1
+    assert {k:observed['documents'][0][k] for k in doc} == doc
+    assert observed['documents'][0]['source_text_verification']['coordinate_authority'] is False
     assert observed['document_lookup_status']=='COMPLETED'
     assert observed['spatial_lookup_status']=='UNAVAILABLE'
     assert observed['coordinate_authority'] is False

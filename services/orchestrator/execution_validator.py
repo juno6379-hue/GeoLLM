@@ -622,7 +622,7 @@ def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=No
     else:
         blockers.append(f"BLOCKED_CONFIG: unsupported operation: {analysis_type}")
 
-    from services.orchestrator.spatial_coverage import SPATIAL_OPERATIONS, assess_coverage
+    from services.orchestrator.spatial_coverage import SPATIAL_OPERATIONS, assess_coverage, assess_source_corpus
     if analysis_type in SPATIAL_OPERATIONS:
         from services.orchestrator.request_constraints import check_request_constraints
         request_blockers, request_warnings, request_receipt = check_request_constraints(current, request_constraints)
@@ -630,6 +630,13 @@ def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=No
         warnings.extend(request_warnings)
         current.provenance['request_constraint_validation'] = request_receipt
         receipt = assess_coverage(current, getattr(binding_adapter or schema_binding_adapter, 'layer_registry', {}))
+        if receipt['status'] == 'UNKNOWN':
+            adapter = binding_adapter or schema_binding_adapter
+            corpus = assess_source_corpus(current, getattr(adapter, 'layer_registry', {}),
+                                          getattr(adapter, 'verify_corpus_identity', None))
+            if corpus is not None:
+                receipt = corpus
+                warnings.append('SOURCE_CORPUS_ONLY: results describe the verified source inventory; geographic completeness and real-world absence are not certified')
         current.provenance['coverage_validation'] = receipt
         if receipt['status'] in {'OUT_OF_COVERAGE', 'PARTIAL'}:
             blockers.append('BLOCKED_DATA: DATA_OUT_OF_SCOPE')

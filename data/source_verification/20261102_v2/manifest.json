@@ -1,0 +1,58 @@
+{
+  "complete": true,
+  "completion_scope": "Stored baseline plus six verified CSV revisions; active/superseded lifecycle counts separated",
+  "files": {
+    "receipts.jsonl": "e3f25d35ff28170987064de7df30475c30f88d214b90d4890a7b9e923bb23dac"
+  },
+  "audited_at": "2026-11-02T07:26:50.711018+00:00",
+  "snapshot_sha256": "af2173717804be8f6ee9fcc40491df1951fdf33e3f180ddd1886c1c2e88e6147",
+  "snapshot_kind": "FULL_CURRENT_GZIP_JSONL_WITH_BASELINE_DELTA_LINEAGE",
+  "baseline_snapshot_sha256": "6cac588ce700855a179e032ffe38d1d194f3c95d065ce4d56bcca512665d2b66",
+  "delta_snapshot_sha256": "84f1e0f436ef3d914e7cffc2c1553e82b92a507d4c0367d58a8b910eae73cd90",
+  "baseline_receipt_sha256": "ecb2cfdbcb297472069f824e2d20ce079bfd296ee5e0d0eae3dad011990b6bd7",
+  "rows": 23221,
+  "stored_rows": 23221,
+  "active_rows": 23215,
+  "superseded_rows": 6,
+  "status_counts": {
+    "VERIFIED_TEXT": 19396,
+    "UNVERIFIED": 3822,
+    "MISMATCH": 3
+  },
+  "active_status_counts": {
+    "VERIFIED_TEXT": 19396,
+    "UNVERIFIED": 3819
+  },
+  "object_links": 2329,
+  "spatial_links_sha256": "7f4a12af71785b5200993b69e46309495417b43c9a83c1a38940092e6d3ed8e6",
+  "source_manifest_sha256": "66d5b984793ce519e953deedb0fcba4682f3c34e79216c486e99bc085443939e",
+  "audit_environment": {
+    "python": "3.12.7",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "packages": {
+      "pypdf": "6.18.0",
+      "openpyxl": "3.1.5",
+      "xlrd": "2.0.2",
+      "olefile": "0.47",
+      "pyshp": "3.1.6"
+    },
+    "scope": "host audit environment; production container and lock unchanged"
+  },
+  "limitations": [
+    "지명·좌표 문자열은 미검증 후보이며 객체 동일성이나 좌표 권위를 뜻하지 않습니다.",
+    "PDF 본문 일치는 도표·OCR·레이아웃·최신 판·의미 완결성 검증이 아닙니다.",
+    "벡터 존재와 차원 확인은 생성 모델 이력 검증이 아닙니다.",
+    "미지원 원문 위치·형식과 생성 요약은 미검증입니다. 홀드아웃은 열람하지 않았습니다.",
+    "Unchanged non-target content, metadata, provenance and embedding presence/dimension checked; non-target vector values not re-exported."
+  ],
+  "new_embedding_model_digest": "7907646426070047a77226ac3e684fbbe8410524f7b4a74d02837e43f2146bab",
+  "historical_embedding_model_verified": false,
+  "delta_verifier_sha256": "66e7d1d1b44b6bb112204c9f8ad7660d2ac9dd3c7356484b920a174b65f9afc1",
+  "snapshot_encoding": "gzip-jsonl",
+  "full_current_snapshot_manifest_sha256": "6dff01579000be490e2edb4b62618d8defa16a5fe6e217f5e939ed1c7da7ba87",
+  "unaffected_rows_rechecked": 23209,
+  "full_current_rows_rechecked": 23221,
+  "audit_manifest_sha256": "da9f3cc91aa6a1545cf5698c8d9d07b781ad07e86c2c6d5c6a35684826a876e7",
+  "coordinate_authority": false,
+  "semantic_correctness_verified": false
+}

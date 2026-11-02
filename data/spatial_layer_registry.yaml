@@ -17,6 +17,12 @@ layers:
     - intersects
     - nearest
   marine_gazetteer:
+    corpus_contract:
+      kind: csv_exact_inventory_v1
+      query_scope: SOURCE_CORPUS
+      allowed_operations: [feature_search_by_radius, feature_dwithin]
+      source_asset: Dataset/해양수산부_공동활용체계_해양지명_20221231.csv
+      source_sha256: bbc3f1c347f6048b0befdf5102959078ffc29c22cdc4412a98586e76cddb0464
     zone: serving
     layer_type: place_gazetteer
     execution_status: executable

@@ -3645,9 +3645,13 @@ def _query_dataset_evidence_sources(query: str, limit: int = 12) -> list[dict]:
         logger.warning("Dataset evidence lookup failed", error=str(exc))
         return []
 
+    from services.orchestrator.dataset_verification import load_receipts, verify_document
+    audit_receipts = load_receipts()
     grouped: dict[tuple[str, str, str], dict] = {}
     for row in rows:
         metadata = row.get("metadata") or {}
+        text_audit = verify_document(row, audit_receipts)
+        superseded = metadata.get('retrieval_status') == 'SUPERSEDED'
         title = row.get("title") or metadata.get("title") or row.get("source_id") or "Dataset evidence"
         source_file = row.get("source_file") or metadata.get("source_file") or metadata.get("source_path") or row.get("source_id") or "N/A"
         document_type = row.get("document_type") or metadata.get("document_type") or "dataset_profile"
@@ -3676,17 +3680,23 @@ def _query_dataset_evidence_sources(query: str, limit: int = 12) -> list[dict]:
                 "chunk_ids": [],
                 "score": 0,
                 "excerpt": "",
+                "active_chunk_count": 0,
+                "superseded_chunk_count": 0,
+                "audit_mismatch_chunk_count": 0,
             },
         )
         item["row_count"] += 1
+        item['superseded_chunk_count' if superseded else 'active_chunk_count'] += 1
+        item['audit_mismatch_chunk_count'] += int(text_audit['status'] == 'AUDIT_SNAPSHOT_MISMATCH')
         item["null_embedding"] += 1 if row.get("embedding_missing") else 0
         item["score"] += score
         if row.get("section"):
             item["sections"].add(str(row.get("section")))
         if row.get("chunk_id") and len(item["chunk_ids"]) < 8:
             item["chunk_ids"].append(str(row.get("chunk_id")))
-        if not item["excerpt"] and row.get("content"):
+        if not item["excerpt"] and row.get("content") and not superseded and text_audit['status'] != 'AUDIT_SNAPSHOT_MISMATCH':
             item["excerpt"] = " ".join(str(row.get("content")).split())[:320]
+            item['excerpt_source_text_verification'] = text_audit
 
     results = []
     for item in grouped.values():
@@ -5042,6 +5052,8 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
     qec = qec_model.model_dump(mode="json")
 
     rows: list[dict] = []
+    query_started = False
+    query_completed = False
     try:
         import psycopg2
         import psycopg2.extras
@@ -5050,8 +5062,18 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
         if not db_url:
             raise RuntimeError("POSTGIS_URL or S101_DB_URL is not configured")
         with psycopg2.connect(db_url, connect_timeout=3) as conn:
+            conn.set_session(readonly=True, isolation_level="REPEATABLE READ")
+            with conn.cursor() as timeout_cursor:
+                timeout_cursor.execute("SELECT set_config('statement_timeout', '5000', true)")
+            # Revalidate identity and execute against the same DB snapshot.
+            from services.orchestrator.schema_binding_adapter import SchemaBindingAdapter
+            qec_model = await asyncio.to_thread(validate_execution_context, qec_model, binding_adapter=SchemaBindingAdapter(connection=conn))
+            if not is_execution_authorized(qec_model):
+                return execution_gate_failure(state, qec_model)
+            qec = qec_model.model_dump(mode="json")
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 for target in targets:
+                    query_started = True
                     cur.execute(
                         sql.format(
                             relation=target["relation"],
@@ -5064,13 +5086,20 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
                             "limit": limit_per_layer,
                         },
                     )
+                    query_completed = True
                     for row in cur.fetchall():
                         item = dict(row)
                         item["_target"] = target
                         rows.append(item)
     except Exception as exc:
         logger.warning("Requested spatial layer execution failed", error=str(exc), query=query)
-        return await fast_spatial_or_traffic_block_node(state)
+        failed = _place_lookup_update(state, {**location, "status": "BLOCKED", "error_code": "SPATIAL_SOURCE_UNAVAILABLE",
+            "summary": "원천 공간 조회를 완료하지 못했습니다. 검색 결과 0건을 의미하지 않습니다.",
+            "search_execution": {"status": "FAILED", "attempted": query_started, "started": query_started,
+                                 "execution_attempted": query_started, "execution_started": query_started,
+                                 "tool_called": query_started, "sql_executed": True if query_completed else None}},
+            "feature_search_by_radius")
+        return failed
 
     rows.sort(key=lambda row: float(row.get("distance_m") or 0.0))
     features = []
@@ -5131,6 +5160,14 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
         f"{location_text} \uae30\uc900 {distance_m:g}m \uc774\ub0b4 "
         f"{target_titles} {len(features)}\uac74\uc744 \ucc3e\uc558\uc2b5\ub2c8\ub2e4.{sample_text}"
     )
+    corpus_receipt = qec.get("provenance", {}).get("coverage_validation", {})
+    corpus_only = corpus_receipt.get("status") == "CORPUS_VERIFIED"
+    if corpus_only:
+        answer = "검증된 해양지명 CSV(2022-12-31) 수록 자료에서 " + answer
+        answer += " 이 결과는 해당 원천에 수록된 객체만을 뜻하며, 실제 해역의 전체 지명이나 부재를 보증하지 않습니다."
+    truncated = len(rows) >= limit_per_layer or len(rows) > 200
+    if truncated:
+        answer += " 반환 상한이 적용될 수 있어 전체 일치 건수는 확정하지 않았습니다."
     if default_distance:
         answer += " 반경을 지정하지 않아 지명 검색 기본 반경 10km를 적용했습니다. 다른 반경을 입력하면 변경할 수 있습니다."
     if location.get('place_id') == 'mof:dokdo:east-island':
@@ -5158,10 +5195,17 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
             "status": "COMPLETED",
             "analysis_type": "feature_search_by_radius",
             "query_interpretation": interpretation,
-            "search_execution": {"status": "COMPLETED", "authority": "ExecutionValidator"},
+            "search_execution": {"status": "COMPLETED", "authority": "ExecutionValidator",
+                                 "attempted": True, "started": True, "execution_attempted": True, "execution_started": True,
+                                 "tool_called": True, "sql_executed": True},
+            "coverage_validation": corpus_receipt,
+            "count_scope": "SOURCE_CORPUS_RETURNED_ROWS" if corpus_only else "RETURNED_ROWS",
+            "absence_certified": False,
+            "limit_per_layer": limit_per_layer,
+            "possibly_truncated": truncated,
             "count": len(features),
             "returned_count": len(features),
-            "total_count": len(features),
+            "total_count": None,
             "feature_ids": [feature["id"] for feature in features],
             "location_text": location_text,
             "distance_m": distance_m,

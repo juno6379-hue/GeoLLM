@@ -70,7 +70,8 @@ def retrieve(query, limit=5, semantic=False, scope='coastal', include_spatial=Tr
         conn.execute(text("SET LOCAL statement_timeout = '30000'"))
         rows = conn.execute(text(f'''SELECT chunk_id, source_id, source_sha256, title, page_no,
           section, content, metadata, source_file, document_type, ({score}) AS lexical_matches, {vector_sql} AS similarity FROM knowledge.document_chunks
-          WHERE {"document_type NOT LIKE '%profile'" if scope == 'dataset' else "document_type IN ('coastal_pilot','small_harbour_guide')"} AND ({matches})
+          WHERE COALESCE(metadata->>'retrieval_status','ACTIVE') <> 'SUPERSEDED'
+          AND {"document_type NOT LIKE '%profile'" if scope == 'dataset' else "document_type IN ('coastal_pilot','small_harbour_guide')"} AND ({matches})
           {'AND embedding IS NOT NULL' if semantic else ''}
           ORDER BY CASE WHEN document_type='dataset_profile' OR document_type LIKE '%_profile' THEN 1 ELSE 0 END,
           {guide_order} lexical_matches DESC, {vector_order} CASE WHEN metadata->>'language'='ko' THEN 0 ELSE 1 END,
@@ -80,7 +81,7 @@ def retrieve(query, limit=5, semantic=False, scope='coastal', include_spatial=Tr
         harbours = conn.execute(text(f'''SELECT source_id,name,properties,provenance,
            ST_AsGeoJSON(geom)::json AS geometry FROM serving.small_harbour_guide
            WHERE {harbour_where} ORDER BY source_id LIMIT 5'''),params).mappings().all() if include_spatial else []
-        coverage = conn.execute(text("SELECT count(*) AS total,count(embedding) AS embedded FROM knowledge.document_chunks WHERE " +
+        coverage = conn.execute(text("SELECT count(*) AS total,count(embedding) AS embedded FROM knowledge.document_chunks WHERE COALESCE(metadata->>'retrieval_status','ACTIVE') <> 'SUPERSEDED' AND " +
             ("document_type NOT LIKE '%profile'" if scope == 'dataset' else "document_type IN ('coastal_pilot','small_harbour_guide')"))).mappings().one()
     spatial_records, spatial_error = [], None
     if scope == 'dataset' and include_spatial:
@@ -94,6 +95,8 @@ def retrieve(query, limit=5, semantic=False, scope='coastal', include_spatial=Tr
                   WHERE {record_match} LIMIT 5'''),params).mappings().all()]
         except SQLAlchemyError as exc:
             spatial_error = type(exc).__name__
+    from services.orchestrator.dataset_verification import filter_answer_documents
+    rows, excluded_documents = filter_answer_documents(rows)
     docs, seen = [], set()
     for row in rows:
         item = dict(row)
@@ -117,6 +120,7 @@ def retrieve(query, limit=5, semantic=False, scope='coastal', include_spatial=Tr
                       'provenance':{'source_sha256':d['source_sha256'],'section':d['section'],'page_no':d['page_no']},
                       'authority':'retrieval_only'} for d in docs)
     return {'status':'PARTIAL' if spatial_error else 'COMPLETED','query':query,'search_terms':terms,'documents':docs,'knowledge_links':links,
+            'excluded_audit_documents':excluded_documents,
             'document_lookup_status':'COMPLETED','spatial_lookup_status':('UNAVAILABLE' if spatial_error else 'COMPLETED') if include_spatial else 'NOT_REQUESTED',
             'spatial_lookup_error':spatial_error,
             'harbour_records':[dict(r) for r in harbours],'spatial_records':spatial_records,'embedding_coverage':dict(coverage),

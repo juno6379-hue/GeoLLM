@@ -8,6 +8,7 @@ import data.database as db_module
 from shared.observability.logger import get_logger
 from shared.observability.audit_logger import log_data_access
 from services.llm_config import llm_api_enabled, ollama_base_url
+from services.orchestrator.dataset_verification import load_receipts, filter_answer_documents
 
 logger = get_logger("standard_rag_agent.vdb")
 
@@ -83,6 +84,11 @@ def search_vdb(query: str, top_k: int = 2, user_id: str = "system", clearance_le
     rag_filters = {**_default_metadata_filter(), **(rag_filters or {})}
     if db_available and llm_api_enabled():
         try:
+            audit_receipts = load_receipts()
+            # Bound availability loss from filtering known snapshot mismatches.
+            # The identity check below still decides per current row, never by ID alone.
+            audit_overfetch = min(100, sum(r.get('status') == 'MISMATCH' for r in audit_receipts[0].values()))
+            fetch_limit = top_k + audit_overfetch
             logger.info("Executing real pgvector similarity search")
             query_vector = _query_embedding(query)
 
@@ -102,6 +108,7 @@ def search_vdb(query: str, top_k: int = 2, user_id: str = "system", clearance_le
                            1 - (embedding <=> CAST(:vector AS vector)) AS similarity
                     FROM knowledge.document_chunks
                     WHERE embedding IS NOT NULL
+                      AND COALESCE(metadata->>'retrieval_status','ACTIVE') <> 'SUPERSEDED'
                       AND (:metadata_filter = '{{}}' OR metadata @> CAST(:metadata_filter AS jsonb))
                       {candidate_filter_sql}
                     ORDER BY embedding <=> :vector 
@@ -111,17 +118,17 @@ def search_vdb(query: str, top_k: int = 2, user_id: str = "system", clearance_le
                     sql = sql.bindparams(bindparam("candidate_document_ids", expanding=True))
                 # 벡터를 JSON string 변환하여 바인딩
                 metadata_filter = _normalize_metadata_filter(rag_filters)
-                params = {"vector": str(query_vector), "top_k": top_k, "metadata_filter": json.dumps(metadata_filter)}
+                params = {"vector": str(query_vector), "top_k": fetch_limit, "metadata_filter": json.dumps(metadata_filter)}
                 if candidate_ids:
                     params["candidate_document_ids"] = candidate_ids
                 result = db.execute(sql, params).mappings().all()
 
                 if result:
-                    rows = [dict(r) for r in result]
-                    best_similarity = max(float(row.get("similarity") or 0.0) for row in rows)
+                    rows, excluded = filter_answer_documents(result, audit_receipts)
+                    best_similarity = max((float(row.get("similarity") or 0.0) for row in rows), default=0.0)
                     min_graph_similarity = float(os.getenv("RAG_GRAPH_MIN_SIMILARITY", "0.60"))
-                    if not candidate_ids or best_similarity >= min_graph_similarity:
-                        return rows
+                    if rows and (not candidate_ids or best_similarity >= min_graph_similarity):
+                        return rows[:top_k]
                     logger.warning(
                         "Graph-scoped candidate filter returned low-similarity rows; retrying metadata-scoped vector search",
                         best_similarity=best_similarity,
@@ -141,14 +148,15 @@ def search_vdb(query: str, top_k: int = 2, user_id: str = "system", clearance_le
                                1 - (embedding <=> CAST(:vector AS vector)) AS similarity
                         FROM knowledge.document_chunks
                         WHERE embedding IS NOT NULL
+                          AND COALESCE(metadata->>'retrieval_status','ACTIVE') <> 'SUPERSEDED'
                           AND (:metadata_filter = '{}' OR metadata @> CAST(:metadata_filter AS jsonb))
                         ORDER BY embedding <=> :vector
                         LIMIT :top_k
                     """)
-                    params = {"vector": str(query_vector), "top_k": top_k, "metadata_filter": json.dumps(metadata_filter)}
+                    params = {"vector": str(query_vector), "top_k": fetch_limit, "metadata_filter": json.dumps(metadata_filter)}
                     result = db.execute(sql, params).mappings().all()
                     if result:
-                        return [dict(r) for r in result]
+                        return filter_answer_documents(result, audit_receipts)[0][:top_k]
         except Exception as e:
             logger.error("pgvector search failed; no evidence returned", error=str(e))
             raise RetrievalUnavailable("문서 검색 DB 또는 임베딩 엔진을 사용할 수 없습니다.") from e

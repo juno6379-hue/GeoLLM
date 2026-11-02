@@ -7,6 +7,7 @@ validated data binding snapshot before it can establish scope.
 import hashlib
 import json
 import math
+import re
 from pathlib import Path
 
 from shapely import wkt
@@ -19,6 +20,84 @@ SPATIAL_OPERATIONS = {
     'feature_within_area', 'spatial_feature_search', 'feature_search_by_area',
     'nearest_feature', 'nearest_feature_search',
 }
+
+
+def requests_source_corpus(qec):
+    """Determine whether a bounded inventory listing can answer this task.
+
+    Only the server-registered gazetteer supports a default inventory listing.
+    Explicit completeness/nearest requirements cannot be narrowed by model slots.
+    """
+    operation = qec.route_plan.get('analysis_type') or qec.slots.analysis_type or qec.slots.operation
+    if operation in {'nearest_feature', 'nearest_feature_search'}:
+        return False
+    if qec.slots.filters.get('require_complete_coverage') is True:
+        return False
+    query = qec.original_query or ''
+    if re.search(r'실세계|실제\s*(?:존재|전체)|전체|모든|전부|빠짐없이|누락\s*없이|가장\s*가까|최근접|'
+                 r'real[- ]world|without\s+omission|\b(?:all|every|nearest|closest|complete)\b', query, re.I):
+        return False
+    if (operation in {'feature_dwithin', 'feature_search_by_radius'}
+            and set(qec.slots.target_layers) == {'marine_gazetteer'}
+            and not qec.slots.target_features):
+        return True
+    return bool(re.search(
+        r'(?:자료|데이터|목록|원천|CSV|데이터베이스|DB)\s*(?:에\s*(?:수록|등록|포함)|에서|내에서)|'
+        r'(?:수록|등록)된\s*(?:해양)?지명|'
+        r'\b(?:in|from|within)\s+(?:the\s+)?(?:registered\s+|source\s+)?(?:dataset|corpus|csv|database)\b',
+        query, re.I))
+
+
+def assess_source_corpus(qec, layer_registry, verifier):
+    """Verify a finite source inventory, without certifying geographic absence.
+
+    Called only after geographic coverage is UNKNOWN; an approved boundary's
+    OUT_OF_COVERAGE/PARTIAL decision must never be overridden by this path.
+    ``verifier`` is server code which checks the live relation against its source.
+    """
+    if not callable(verifier) or not requests_source_corpus(qec):
+        return None
+    operation = qec.route_plan.get('analysis_type') or qec.slots.analysis_type or qec.slots.operation
+    try:
+        if _query_envelope(qec) is None or not qec.data_bindings:
+            return None
+    except (ValueError, TypeError, ShapelyError):
+        return None
+    sources = []
+    for binding in qec.data_bindings:
+        layer = (layer_registry.get('layers') or {}).get(binding.dataset_id) or {}
+        contract = layer.get('corpus_contract') or {}
+        # Only an audited verifier and its exact source layer may be used.
+        if (contract.get('kind') != 'csv_exact_inventory_v1'
+                or binding.dataset_id != 'marine_gazetteer'
+                or binding.relation != 'serving.marine_gazetteer_current'
+                or binding.relation != layer.get('physical_table')
+                or binding.geometry_column != layer.get('geometry_column')
+                or binding.srid != 4326
+                or operation not in contract.get('allowed_operations', [])
+                or qec.slots.target_features
+                or set(qec.slots.target_layers) != {'marine_gazetteer'}):
+            return None
+        try:
+            observed = verifier(binding, contract)
+        except Exception:
+            # A source check outage must never turn into execution permission.
+            return None
+        if (not isinstance(observed, dict) or observed.get('status') != 'VERIFIED'
+                or observed.get('dataset_id') != binding.dataset_id
+                or observed.get('relation') != binding.relation
+                or not re.fullmatch(r'sha256:[0-9a-f]{64}', str(observed.get('snapshot_version', '')))
+                or not re.fullmatch(r'[0-9a-f]{64}', str(observed.get('source_sha256', '')))
+                or observed.get('source_sha256') != contract.get('source_sha256')
+                or observed.get('source_asset') != contract.get('source_asset')
+                or type(observed.get('row_count')) is not int
+                or observed['row_count'] <= 0):
+            return None
+        sources.append(dict(observed))
+    return {'authority': 'ServerSourceCoverage', 'version': '3',
+            'status': 'CORPUS_VERIFIED', 'geographic_coverage': 'UNKNOWN',
+            'query_scope': 'SOURCE_CORPUS', 'required': True,
+            'absence_certified': False, 'sources': sources}
 
 
 def _query_envelope(qec):

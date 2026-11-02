@@ -484,5 +484,29 @@ class SchemaBindingAdapter:
             logger.warning("Schema inspection failed", relation=relation, error=str(exc))
             return {"exists": False, "error": f"{type(exc).__name__}: {exc}"}
 
+    def verify_corpus_identity(self, binding, contract):
+        """Observe source identity on the executor transaction when one exists."""
+        if (binding.dataset_id != 'marine_gazetteer'
+                or binding.relation != 'serving.marine_gazetteer_current'
+                or contract.get('kind') != 'csv_exact_inventory_v1'):
+            return {'status': 'UNVERIFIED'}
+        try:
+            from services.orchestrator.gazetteer_corpus import verify_gazetteer_corpus
+            if self.connection is not None:
+                with self.connection.cursor() as cursor:
+                    return verify_gazetteer_corpus(cursor=cursor)
+            import psycopg2
+            url = os.getenv('S101_DB_URL') or os.getenv('POSTGIS_URL')
+            if not url:
+                return {'status': 'UNVERIFIED', 'reason': 'DATABASE_NOT_CONFIGURED'}
+            with psycopg2.connect(url, connect_timeout=3) as connection:
+                connection.set_session(readonly=True, isolation_level='REPEATABLE READ')
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT set_config('statement_timeout', '5000', true)")
+                    return verify_gazetteer_corpus(cursor=cursor)
+        except Exception as exc:
+            # No database connection details or source contents in gate receipts.
+            return {'status': 'UNVERIFIED', 'reason': type(exc).__name__}
+
 
 schema_binding_adapter = SchemaBindingAdapter()
