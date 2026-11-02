@@ -228,3 +228,11 @@ test('RQ2 distinguishes binary and target code counts without generalizing N1',(
  assert.match(html,/8\/8/);assert.match(html,/0\/8/);assert.match(html,/N=1/);
  assert.match(html,/사후 코드 대응/);assert.match(html,/대상 치환과 대상 추가를 구별하지/);
 });
+
+test('RQ3 preserves zero-success undefined SSFR and separates wrong executable development case',()=>{
+ const ui=browser();
+ const html=ui.evaluate('rq3MeasurementPanel({tables:{table11:{rows:[{method:"P1",esr:{value:0,numerator:0,denominator:5},joint_execution_spatial_success:{value:0,numerator:0,denominator:5},spatial_correctness:{value:null,measured:2,denominator:5,missing:3}}]}},development_spatial:{status:"VERIFIED_DEVELOPMENT_DIAGNOSTIC",spatial_cases:[{case_id:"dev",variant:"wrong",execution_success:true,spatial_correct:false,returned_count:1,gold_count:2,missing_ids:["2"],extra_ids:[]}]}})');
+ assert.match(html,/ESR 0\/5/);assert.match(html,/2\/5건 측정, 3건 미측정/);
+ assert.match(html,/SSFR 0%를 뜻하지 않습니다/);assert.match(html,/방법별 분모에 합산하지 않습니다/);
+ assert.match(html,/dev \/ wrong/);assert.match(html,/>true</);assert.match(html,/>false</);
+});

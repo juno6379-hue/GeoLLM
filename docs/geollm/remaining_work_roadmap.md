@@ -1,5 +1,13 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-11-02 RQ3 실제 SQL 성공·공간오답 반례와 Q4 재검증
+
+- [상세검증](rq3_wrong_executable_20261102.md). 기존v6 P1ESR0/5·joint0/5·rawS2측정3누락, CGE/SSFRnull유지. 성공0을SSFR0%로표현하지않음.
+- 운영Q4 실제API11건COMPLETED/4실행flags true. 별도연구DB동일READONLY REPEATABLE READ에서2관계동결CSVhash일치·기준polygon1137770/geometrySHA확인. 정상minimumgeometry2km 선택24행(GOLD3Anchorage+21Restricted), centroid(target)&centroid(reference)2km 선택0행/24누락, Etrue/Sfalse실제반례. 한SELECT의pairedpredicate개발검증이며8방법성능아님.
+- v1 Q4DBhashID vs GOLDCSV일련번호44–54 직접비교오류발견. v1 SQL/raw/manifest/runnerbytes보존→원본CSVhash·properties·provenance·ingestionID식 연결수정→새v2 DB재실행. Q4원본ID11/11 Etrue/Strue(객체집합기준;DMS대WKT좌표정밀도전체검증아님). v1거짓공간오류를UI에노출하지않음.
+- 산출물 outputs/rq3_wrong_executable_20261102_v2, 원본오류기록/당시runner복원/hash/부모검증 outputs/rq3_parent_20261102. 기존GOLD/v6 506파일·v1manifest파일hash불변. 연구/평가기21tests,UI15Python/23Node통과(중복합산금지). UI8001재기동·실HTTP개발카드/기존v6분리확인. 실행에이전트는capacity종료됐지만산출물완성후부모가오류발견·수정·새실행·검증을완료했다.
+- 모델/Recovery/새8방법/holdout실행없음. 다음: 연구scope권위연결·정상control오차단gate→다양한독립geometry/fault/정상대조로확장→실제method executor/postvalidation에주입·새동결전체비교. 직접SQL진단으로P0/P1탐지·복구성공을주장하지않음. 관련로컬커밋만,새push요청없음.
+
 ## 2026-11-02 RQ2 binary·목표 오류 코드 사후 대조 분리
 
 - 사용자 지적대로 오류8종각N1/controlN1의 binary검출을 일반화하지 않는다. [상세사유표](rq2_target_diagnosis_20261102.md), [다음동결계약](../../research/marine_geollm_scie/protocol/rq2_target_fault_contract_20261102_KR.md).

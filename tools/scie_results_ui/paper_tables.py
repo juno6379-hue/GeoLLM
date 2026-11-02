@@ -4,6 +4,7 @@ No re-scoring, pilot substitution, model calls, or inferred metric equivalence.
 Missing observations and zero denominators are distinct and remain visible.
 """
 from __future__ import annotations
+from .rq3_development import load_rq3_development
 from collections import defaultdict
 import hashlib,json,math,re
 from pathlib import Path
@@ -201,4 +202,4 @@ def build_paper_tables(root,selected_run_id):
     t14=table('Table 14. 신뢰성 및 비용', [('method','방법'),('evqsr','EVQSR'),('spatial_correctness','Spatial Correctness'),('false_ready','False Ready'),('false_block','False Block'),('latency_p50','Latency p50 (s)'),('latency_p95','Latency p95 (s)'),('input_tokens','평균 입력 토큰'),('output_tokens','평균 출력 토큰'),('tool_calls','평균 Tool Calls'),('escalation','Escalation'),('evidence_completeness','Evidence Completeness'),('provenance_completeness','Provenance Completeness')],rows14,
         ['지연·토큰·tool call은 18개 주 질의 원본 비용입니다. FR/FB는 별도 통제 fault 9개에서만 산출하므로 같은 모집단의 단일 비용효율 점수로 합치지 않습니다.','B4/H의 공유 review 비용을 서로 독립적인 모델 호출 비용으로 합산하지 않습니다.','근거 존재나 원본 파일 SHA 무결성을 근거 완전성·답변 provenance 완전성으로 대체하지 않습니다.'],source_refs)
     return dict(schema_version='paper_tables_v1',run_id=selected_run_id,tables=dict(table10=t10,table11=t11,table12=t12,table13=t13,table14=t14),sources=reader.sources,errors=reader.errors,source_only=True,models_called=False,research_modified=False,
-                completion_gate=summary.get('completion_gate',{}),execution_identity=manifest.get('execution_identity',{}))
+                development_spatial=load_rq3_development(reader.root),completion_gate=summary.get('completion_gate',{}),execution_identity=manifest.get('execution_identity',{}))

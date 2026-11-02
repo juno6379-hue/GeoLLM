@@ -47,3 +47,7 @@
 ## RQ2 목표 오류 코드 사후 진단 — 2026-11-02
 
 [원시 사유 대조](../../docs/geollm/rq2_target_diagnosis_20261102.md): B4 0/8, P0/H 8/8의 binary 결과와 목표 코드 대응을 분리. 같은 수치이나 subtype진단/일반화 성능이 아니다. 각오류N1·정상control1, compiler1/native7·정상오차단1/1을 공개한다. [새 동결 지표계약](protocol/rq2_target_fault_contract_20261102_KR.md).
+
+## RQ3 wrong-but-executable 개발 진단 — 2026-11-02
+
+[실제 SQL 반례·평가 오류 수정](../../docs/geollm/rq3_wrong_executable_20261102.md): 동일 부산 polygon의 minimum geometry2km는24행/GOLD일치, centroid2km는SQL성공·0행/24누락. Q4운영조회11건 및 연구원본ID11/11확인. 별도개발진단이며 v6 ESR0/5·CGE/SSFRnull은 변경하지 않는다. v1 IDnamespace평가오류원본을보존하고 v2재실행했다.
