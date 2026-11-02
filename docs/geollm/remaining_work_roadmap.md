@@ -1,5 +1,13 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-11-02 논문 결과 전용 UI 연결·검증
+
+- 사용자 UI 프롬프트 기준으로 adapter/화면/독립 감사 3역할을 분리했다. 구현은 tools/scie_results_ui/에만 격리하며 운영8000/DB/Ollama/동결 연구소스를 변경하지 않는다. 별도 http://localhost:8001/research/scie-results 실행 중. 재기동은 .venv/Scripts/python.exe -m tools.scie_results_ui.server --port 8001.
+- RESULTS_INDEX의 최신 완료 v5 144+27과 현재 v6 진행을 분리한다. v6 주비교144 수집·report exit0 후 faults 진행을 확인했으나 최종관측/검증완료로 승격하지 않는다. 각RQ에 실행버전/원본hash/분모/미측정·제약을 표시한다.
+- Python8/Node8 테스트 통과, 독립HTTP 경계·읽기전용6검사 및 공유계획18군/hash 확인. 주검증 실제브라우저 개요/RQ2/RQ3/사례상세·desktop/좁은화면 확인. 모델digest·감사상태·경로경계·공간GOLD존재표시 오류 수정. 빈Oracle도GOLD로유지, P0미사용LLM은null. 동결281파일불변 재검증.
+- [구현·검증·출처·한계](scie_results_ui_20261102.md), 화면증거 outputs/scie_results_ui_verification_20261102/. 독립인간GOLD/holdout/K5/과학적완료는미완료. 새run최종검증후 인덱스갱신해야 완료결과선택이 바뀐다. 현재 v6감시는 유지하며 UI가 실험을 시작하거나승인하지 않는다. 기존dirty UI/feedback/인계변경보존, 새push요청없어로컬커밋만.
+
+
 
 ## 2026-11-02 범위 사전 차단 수정·새 v6 전체 실행
 
