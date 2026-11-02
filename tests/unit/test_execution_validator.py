@@ -184,7 +184,7 @@ def test_accident_spatial_history_ready_only_after_geometry_and_binding(monkeypa
     assert validated.readiness == PlanStatus.EXECUTION_READY
 
 
-def test_execution_validator_marks_ready_with_bindings(monkeypatch):
+def test_bindings_alone_do_not_prove_spatial_coverage(monkeypatch):
     from services.orchestrator import execution_validator
 
     adapter = SchemaBindingAdapter()
@@ -204,8 +204,8 @@ def test_execution_validator_marks_ready_with_bindings(monkeypatch):
 
     validated = validate_execution_context(qec)
 
-    assert validated.readiness == PlanStatus.EXECUTION_READY
-    assert not validated.blockers
+    assert validated.readiness == PlanStatus.BLOCKED_DATA
+    assert 'BLOCKED_DATA: DATA_COVERAGE_UNVERIFIED' in validated.blockers
     assert validated.data_bindings
     assert validated.tool_bindings
 
@@ -229,7 +229,8 @@ def test_area_search_does_not_require_distance(monkeypatch):
 
     validated = validate_execution_context(qec)
 
-    assert validated.readiness == PlanStatus.EXECUTION_READY
+    assert validated.readiness == PlanStatus.BLOCKED_DATA
+    assert "BLOCKED_DATA: DATA_COVERAGE_UNVERIFIED" in validated.blockers
     assert "NEEDS_USER_INPUT: distance_m is required" not in validated.blockers
 
 

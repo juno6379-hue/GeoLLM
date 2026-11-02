@@ -51,6 +51,8 @@ def test_positive_snapshot_observation_is_unchanged():
 
 
 def test_execute_wrapper_preserves_empty_limitation(monkeypatch):
+    # Isolate post-dispatch rendering; real scope denial is tested separately.
+    monkeypatch.setattr(radius, "_preflight_spatial_scope", lambda qec: None)
     qec,layer,params,total,counts,rows,geometry=fixture()
     monkeypatch.setattr(radius,'prepare_radius_request',lambda state:(qec,layer,{},params))
     monkeypatch.setattr(radius,'_fetch_result',lambda *args:(total,counts,rows,geometry))

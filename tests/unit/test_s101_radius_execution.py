@@ -463,6 +463,8 @@ def test_location_clarification_preserves_only_safe_resubmission_context(state, 
 
 
 def test_database_failure_is_not_reported_as_empty_success(state, monkeypatch):
+    # Isolate post-dispatch rendering; real scope denial is tested separately.
+    monkeypatch.setattr(radius, "_preflight_spatial_scope", lambda qec: None)
     monkeypatch.setattr(radius, "_fetch_result", Mock(side_effect=radius.psycopg2.OperationalError("fixture outage")))
     result = radius.execute_radius_request(state)
     assert result["status"] == "FAILED"

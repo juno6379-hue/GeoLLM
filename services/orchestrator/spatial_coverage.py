@@ -50,8 +50,9 @@ def _query_envelope(qec):
 def assess_coverage(qec, layer_registry, *, root=ROOT):
     """Only server-owned layer metadata is read; QEC supplied VERIFIED is ignored."""
     operation = qec.route_plan.get('analysis_type') or qec.slots.analysis_type or qec.slots.operation
-    required = operation in {'nearest_feature', 'nearest_feature_search'} or qec.slots.filters.get('require_complete_coverage') is True
-    receipt = {'authority': 'ServerSourceCoverage', 'version': '1', 'status': 'UNKNOWN',
+    # Execution scope is a server policy, never an opt-in supplied by the plan.
+    required = operation in SPATIAL_OPERATIONS
+    receipt = {'authority': 'ServerSourceCoverage', 'version': '2', 'status': 'UNKNOWN',
                'required': required, 'absence_certified': False, 'sources': []}
     try:
         requested = _query_envelope(qec)

@@ -1,5 +1,7 @@
 """Execution gate regressions with isolated schema bindings, without live DB access."""
 
+import hashlib
+import json
 import pytest
 
 from services.orchestrator import execution_validator
@@ -14,11 +16,12 @@ from shared.schemas.agent import (
 
 
 @pytest.fixture
-def bound_gate(monkeypatch):
+def bound_gate(monkeypatch, tmp_path):
     result = BindingResult(
         data_bindings=[
             DataBinding(
                 dataset_id="fixture_dataset",
+                snapshot_version="fixture-v1",
                 relation="fixture.observations",
                 srid=4326,
                 execution_status="executable",
@@ -31,6 +34,22 @@ def bound_gate(monkeypatch):
         "build_bindings",
         lambda *_: result,
     )
+    # Explicit local fixture scope, not a claim about operational source coverage.
+    from services.orchestrator import spatial_coverage
+    contract = {
+        'approval_status':'APPROVED','source_locator':'fixture-only',
+        'dataset_id':'fixture_dataset','relation':'fixture.observations',
+        'snapshot_version':'fixture-v1','target_features':['Wreck'],'crs':'EPSG:4326',
+        'geometry_wkt':'POLYGON((120 30,140 30,140 45,120 45,120 30))',
+        'nearest_domain_complete':True,
+    }
+    path=tmp_path/'coverage.json'
+    path.write_text(json.dumps(contract),encoding='utf-8')
+    registry={'layers':{'fixture_dataset':{'physical_table':'fixture.observations',
+        'coverage_contract':{'path':'coverage.json','sha256':hashlib.sha256(path.read_bytes()).hexdigest()}}}}
+    monkeypatch.setattr(execution_validator.schema_binding_adapter,'layer_registry',registry)
+    assess=spatial_coverage.assess_coverage
+    monkeypatch.setattr(spatial_coverage,'assess_coverage',lambda q,r:assess(q,r,root=tmp_path))
     return execution_validator.validate_execution_context
 
 

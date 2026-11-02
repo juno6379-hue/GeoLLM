@@ -248,6 +248,13 @@ def execution_gate_failure(state, qec):
     status = "NEEDS_CLARIFICATION" if qec.readiness == PlanStatus.NEEDS_USER_INPUT else "BLOCKED"
     summary = "실행 검증을 통과하지 못했습니다. " + "; ".join(qec.blockers)
     error_code = "EXECUTION_GATE"
+    if qec.readiness == PlanStatus.BLOCKED_DATA:
+        if "BLOCKED_DATA: DATA_OUT_OF_SCOPE" in qec.blockers:
+            error_code = "DATA_OUT_OF_SCOPE"
+            summary = "현재 연결된 데이터의 공간 범위가 요청 영역을 충족하지 않아 공간 검색을 실행하지 않았습니다. 검색 결과가 0건이라는 뜻은 아닙니다."
+        elif "BLOCKED_DATA: DATA_COVERAGE_UNVERIFIED" in qec.blockers:
+            error_code = "DATA_COVERAGE_UNVERIFIED"
+            summary = "현재 연결된 데이터의 공간 범위가 검증되지 않아 공간 검색을 실행하지 않았습니다. 검색 결과가 0건이라는 뜻은 아닙니다."
     if status == "NEEDS_CLARIFICATION" and "NEEDS_USER_INPUT: accident filters are required" in qec.blockers:
         error_code = "ACCIDENT_FILTERS_REQUIRED"
         summary = "조회할 사고의 해역·관할 또는 사고 유형과 기간을 알려주세요. '최근'만으로 임의 기간을 적용하지 않습니다. 사고 검색은 아직 실행하지 않았습니다."
@@ -626,7 +633,8 @@ def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=No
         current.provenance['coverage_validation'] = receipt
         if receipt['status'] in {'OUT_OF_COVERAGE', 'PARTIAL'}:
             blockers.append('BLOCKED_DATA: DATA_OUT_OF_SCOPE')
-        elif receipt['status'] == 'UNKNOWN':
+        elif (receipt['status'] == 'UNKNOWN' and _has_reference_geometry(current) and current.data_bindings
+              and not any(reason.startswith('NEEDS_USER_INPUT:') for reason in blockers)):
             if receipt['required']:
                 blockers.append('BLOCKED_DATA: DATA_COVERAGE_UNVERIFIED')
             else:

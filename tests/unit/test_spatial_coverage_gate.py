@@ -60,17 +60,41 @@ def adapter(request):
         blockers=[],warnings=[],inspected_relations={}))
 
 
-def test_unknown_radius_observation_warns_but_complete_or_nearest_blocks():
-    request=qec()
+@pytest.mark.parametrize('operation', sorted(coverage.SPATIAL_OPERATIONS - {'source_attribute_search'}))
+@pytest.mark.parametrize('client_required', [None, False, True])
+def test_unknown_spatial_scope_blocks_independently_of_client_flag(operation, client_required):
+    request=qec(operation)
+    if client_required is not None:
+        request.slots.filters['require_complete_coverage']=client_required
+    request.provenance['coverage_validation']={'status':'ADEQUATE','required':False}
     result=validate_execution_context(request,binding_adapter=adapter(request))
-    assert is_execution_authorized(result)
-    assert result.provenance['coverage_validation']['status']=='UNKNOWN'
-    result.provenance['coverage_validation']['status']='ADEQUATE'
+    assert result.readiness.value=='BLOCKED_DATA'
+    assert 'BLOCKED_DATA: DATA_COVERAGE_UNVERIFIED' in result.blockers
     assert not is_execution_authorized(result)
-    request.slots.filters['require_complete_coverage']=True
-    assert validate_execution_context(request,binding_adapter=adapter(request)).readiness.value=='BLOCKED_DATA'
-    request=qec('nearest_feature');request.slots.distance_m=None
-    assert validate_execution_context(request,binding_adapter=adapter(request)).readiness.value=='BLOCKED_DATA'
+    assert result.provenance['coverage_validation']['required'] is True
+
+
+def test_missing_selected_geometry_still_requests_input():
+    request=qec('feature_search_by_area'); request.slots.reference_geometry=None
+    result=validate_execution_context(request,binding_adapter=adapter(request))
+    assert result.readiness.value=='NEEDS_USER_INPUT'
+    assert not is_execution_authorized(result)
+    assert 'BLOCKED_DATA: DATA_COVERAGE_UNVERIFIED' not in result.blockers
+
+
+def test_verified_scope_authorizes_and_receipt_tamper_revokes(tmp_path, monkeypatch):
+    request=qec(); bound=adapter(request); bound.layer_registry=declaration(tmp_path)
+    original=coverage.assess_coverage
+    monkeypatch.setattr(coverage,'assess_coverage',lambda q,r:original(q,r,root=tmp_path))
+    result=validate_execution_context(request,binding_adapter=bound)
+    assert is_execution_authorized(result)
+    result.provenance['coverage_validation']['required']=False
+    assert not is_execution_authorized(result)
+
+
+@pytest.mark.parametrize('operation',['document_search','place_lookup','selected_feature_lookup'])
+def test_non_spatial_lookup_does_not_acquire_scope_requirement(operation):
+    assert coverage.assess_coverage(qec(operation),{})['required'] is False
 
 
 def test_known_outside_gate_blocks_before_executor(tmp_path, monkeypatch):
@@ -100,3 +124,75 @@ def test_statement_success_has_completed_receipt():
     _execute_stage(cursor,request,'feature_code_verification','fixture SQL',(1,))
     cursor.execute.assert_called_once_with('fixture SQL',(1,))
     assert request.provenance['execution_stages'][0]['status']=='COMPLETED'
+
+
+@pytest.mark.parametrize('area', [False, True])
+def test_unknown_scope_denies_before_spatial_tool_dispatch(monkeypatch, area):
+    from services.orchestrator import s101_radius_execution as radius
+    request=qec('feature_search_by_area' if area else 'feature_search_by_radius')
+    request.slots.reference_geometry='POINT(131.87 37.24)'
+    bound=adapter(request)
+    monkeypatch.setattr(radius,'SchemaBindingAdapter',lambda **kwargs:bound)
+    monkeypatch.setattr(radius,'prepare_radius_request',lambda state:(request,{}, {}, {}))
+    monkeypatch.setattr(radius,'prepare_bounds_request',lambda state:(request,{}, {}))
+    fetch=Mock(side_effect=AssertionError('spatial tool must not be dispatched'))
+    monkeypatch.setattr(radius,'_fetch_result',fetch)
+    monkeypatch.setattr(radius,'_fetch_bounds_result',fetch)
+    spatial={'map_bounds':[131,37,132,38]} if area else {}
+    result=radius.execute_radius_request({'task_id':'scope-negative','query':'Find wrecks within 5km','spatial_context':spatial})
+    fetch.assert_not_called()
+    assert result['status']=='BLOCKED'
+    assert result['error_code']=='DATA_COVERAGE_UNVERIFIED'
+    assert result['structured_result']['count'] is None
+    assert '실행하지 않았습니다' in result['answer_text']
+    provenance=result['orchestrator_v2']['query_execution_context']['provenance']
+    assert provenance['coverage_validation']['required'] is True
+    assert provenance['spatial_preflight']=={
+        'status':'BLOCKED_BEFORE_DISPATCH','scope':'target_spatial_query',
+        'execution_attempted':False,'execution_started':False,'tool_called':False,'sql_executed':False}
+
+
+def test_direct_radius_executor_denies_before_spatial_select(monkeypatch):
+    from unittest.mock import MagicMock
+    from services.orchestrator import s101_radius_execution as radius
+    request=qec()
+    connection=MagicMock(); connection.__enter__.return_value=connection
+    monkeypatch.setenv('S101_DB_URL','fixture-only')
+    monkeypatch.setattr(radius.psycopg2,'connect',lambda *args,**kwargs:connection)
+    monkeypatch.setattr(radius,'SchemaBindingAdapter',lambda **kwargs:adapter(request))
+    with pytest.raises(radius.RadiusProblem) as exc:
+        radius._fetch_result(request,{}, {}, {})
+    assert exc.value.code=='DATA_COVERAGE_UNVERIFIED'
+    connection.cursor.assert_not_called()
+    assert [stage['stage'] for stage in request.provenance['execution_stages']]==['execution_validation']
+
+
+@pytest.mark.parametrize('crs',[None,'EPSG:3857'])
+def test_unusable_coverage_crs_cannot_authorize(crs):
+    request=qec();request.slots.crs=crs
+    result=validate_execution_context(request,binding_adapter=adapter(request))
+    assert not is_execution_authorized(result)
+    assert 'BLOCKED_DATA: DATA_COVERAGE_UNVERIFIED' in result.blockers
+
+
+def test_out_of_range_geographic_coordinate_cannot_authorize():
+    request=qec();request.slots.reference_geometry='POINT(999 999)'
+    result=validate_execution_context(request,binding_adapter=adapter(request))
+    assert not is_execution_authorized(result)
+    assert 'BLOCKED_DATA: DATA_COVERAGE_UNVERIFIED' in result.blockers
+
+
+@pytest.mark.parametrize('code',['DATA_COVERAGE_UNVERIFIED','DATA_OUT_OF_SCOPE'])
+def test_generic_gate_explains_coverage_denial_without_zero_claim(code):
+    from services.orchestrator.execution_validator import execution_gate_failure
+    from shared.schemas.agent import PlanStatus
+    request=qec('feature_dwithin')
+    request.readiness=PlanStatus.BLOCKED_DATA
+    request.blockers=['BLOCKED_DATA: '+code]
+    final=execution_gate_failure({'task_id':'denied','query':'독도 주변 지명'},request)['final_dict']
+    assert final['error_code']==code
+    assert '공간 검색을 실행하지 않았습니다' in final['answer_text']
+    assert '0건이라는 뜻은 아닙니다' in final['answer_text']
+    assert final['structured_result']['search_execution']=={'status':'NOT_RUN','reason':code}
+    assert final['structured_result']['count'] is None
+    assert final['orchestrator_v2']['query_execution_context']['blockers']==request.blockers

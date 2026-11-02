@@ -1,6 +1,8 @@
 from dataclasses import FrozenInstanceError
 from types import SimpleNamespace
 
+import hashlib
+import json
 import pytest
 
 from services.orchestrator.execution_validator import validate_execution_context, is_execution_authorized
@@ -20,9 +22,25 @@ def request(query=QUERY, **changes):
 
 
 ADAPTER = SimpleNamespace(layer_registry={}, build_bindings=lambda *a: SimpleNamespace(
-    data_bindings=[DataBinding(dataset_id='unit-fixture', relation='fixture.features', srid=4326)],
+    data_bindings=[DataBinding(dataset_id='unit-fixture', relation='fixture.features', srid=4326, snapshot_version='fixture-v1')],
     tool_bindings=[ToolBinding(tool_id='fixture.radius', operation='spatial')],
     blockers=[], warnings=[], inspected_relations={}))
+
+
+@pytest.fixture(autouse=True)
+def approved_fixture_scope(monkeypatch,tmp_path):
+    # Test-only source scope isolates request semantics from missing coverage.
+    from services.orchestrator import spatial_coverage
+    contract={'approval_status':'APPROVED','source_locator':'fixture-only',
+        'dataset_id':'unit-fixture','relation':'fixture.features','snapshot_version':'fixture-v1',
+        'target_features':['Wreck','Obstruction','LightAllAround'],'crs':'EPSG:4326',
+        'geometry_wkt':'POLYGON((120 30,140 30,140 45,120 45,120 30))'}
+    path=tmp_path/'coverage.json';path.write_text(json.dumps(contract),encoding='utf-8')
+    registry={'layers':{'unit-fixture':{'physical_table':'fixture.features','coverage_contract':{
+        'path':'coverage.json','sha256':hashlib.sha256(path.read_bytes()).hexdigest()}}}}
+    monkeypatch.setattr(ADAPTER,'layer_registry',registry)
+    assess=spatial_coverage.assess_coverage
+    monkeypatch.setattr(spatial_coverage,'assess_coverage',lambda q,r:assess(q,r,root=tmp_path))
 
 
 def check(qec, trusted=None):
@@ -120,7 +138,9 @@ def test_multiple_distances_not_guessed_and_depth_not_radius():
 
 def test_feature_and_layer_namespaces_not_conflated():
     checked = check(request('정박지를 반경 1km에서 찾아줘', target_features=[], target_layers=['anchorage_area']))
-    assert is_execution_authorized(checked)
+    # Feature/layer distinction is preserved, but fixture has no layer coverage.
+    assert not is_execution_authorized(checked)
+    assert 'BLOCKED_DATA: DATA_COVERAGE_UNVERIFIED' in checked.blockers
     assert 'target_features' not in checked.provenance['request_constraint_validation']['checks']
 
 
@@ -142,6 +162,8 @@ def test_radius_error_response_preserves_native_denial(monkeypatch):
     def denied(*args):
         raise problem
     monkeypatch.setattr(radius, '_fetch_result', denied)
+    # Preserve the native denial to isolate response rendering.
+    monkeypatch.setattr(radius, '_preflight_spatial_scope', denied)
     result = radius.execute_radius_request({'task_id':'unit-denial', 'query':QUERY, 'spatial_context':{}})
     final_qec = result['orchestrator_v2']['query_execution_context']
     assert result['error_code'] == 'REQUEST_CRS_MISMATCH'

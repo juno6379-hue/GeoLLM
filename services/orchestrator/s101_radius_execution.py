@@ -376,7 +376,7 @@ def prepare_bounds_request(state):
     request_id = str(state["task_id"])
     slots = ExecutionSlots(
         location_text="현재 지도 범위",
-        reference_geometry=bounds.centroid.wkt,
+        reference_geometry=bounds.wkt,
         crs="EPSG:4326",
         resolution_status="MAP_BOUNDS",
         distance_m=None,
@@ -478,8 +478,8 @@ def _fetch_result(qec, layer, template, params):
             coverage = validated.provenance.get('coverage_validation') or {}
             if coverage.get('status') in {'OUT_OF_COVERAGE', 'PARTIAL'}:
                 raise RadiusProblem('BLOCKED_DATA', 'DATA_OUT_OF_SCOPE', '현재 연결된 데이터 범위로는 요청 영역의 결과를 확정할 수 없습니다.')
-            if coverage.get('required') and coverage.get('status') == 'UNKNOWN':
-                raise RadiusProblem('BLOCKED_DATA', 'DATA_COVERAGE_UNVERIFIED', '완전한 결과에 필요한 데이터 범위가 검증되지 않았습니다.')
+            if 'BLOCKED_DATA: DATA_COVERAGE_UNVERIFIED' in validated.blockers:
+                raise RadiusProblem('BLOCKED_DATA', 'DATA_COVERAGE_UNVERIFIED', '현재 연결된 데이터의 공간 범위가 검증되지 않아 공간 검색을 실행하지 않았습니다.')
             raise RadiusProblem(validated.readiness.value, "EXECUTION_GATE", "실행 검증을 통과하지 못했습니다. 데이터 연결과 입력 조건을 확인해 주세요.")
         qec.data_bindings, qec.tool_bindings = validated.data_bindings, validated.tool_bindings
         qec.provenance.update(validated.provenance)
@@ -573,8 +573,8 @@ def _fetch_bounds_result(qec, layer, params):
             coverage = validated.provenance.get('coverage_validation') or {}
             if coverage.get('status') in {'OUT_OF_COVERAGE', 'PARTIAL'}:
                 raise RadiusProblem('BLOCKED_DATA', 'DATA_OUT_OF_SCOPE', '현재 연결된 데이터 범위로는 요청 영역의 결과를 확정할 수 없습니다.')
-            if coverage.get('required') and coverage.get('status') == 'UNKNOWN':
-                raise RadiusProblem('BLOCKED_DATA', 'DATA_COVERAGE_UNVERIFIED', '완전한 결과에 필요한 데이터 범위가 검증되지 않았습니다.')
+            if 'BLOCKED_DATA: DATA_COVERAGE_UNVERIFIED' in validated.blockers:
+                raise RadiusProblem('BLOCKED_DATA', 'DATA_COVERAGE_UNVERIFIED', '현재 연결된 데이터의 공간 범위가 검증되지 않아 공간 검색을 실행하지 않았습니다.')
             raise RadiusProblem(validated.readiness.value, "EXECUTION_GATE", "지도 범위 실행 검증을 통과하지 못했습니다.")
         apply_execution_decision(qec, validated)
         with connection.cursor() as cursor:
@@ -1147,14 +1147,39 @@ def build_result(qec, layer, params, total, counts, rows, search_geometry):
     return _qualify_unverified_empty(result, total)
 
 
+def _preflight_spatial_scope(qec):
+    """Validate before dispatch; executors revalidate inside their read transaction."""
+    validated = validate_execution_context(qec, binding_adapter=SchemaBindingAdapter())
+    apply_execution_decision(qec, validated)
+    if validated.readiness == PlanStatus.EXECUTION_READY:
+        return
+    # This denial is observed before target spatial tool dispatch. Schema
+    # metadata inspection is not represented as a target spatial query.
+    qec.provenance['spatial_preflight'] = {
+        'status': 'BLOCKED_BEFORE_DISPATCH', 'scope': 'target_spatial_query',
+        'execution_attempted': False, 'execution_started': False,
+        'tool_called': False, 'sql_executed': False,
+    }
+    problem = _request_constraint_problem(validated)
+    if problem:
+        raise problem
+    if 'BLOCKED_DATA: DATA_OUT_OF_SCOPE' in validated.blockers:
+        raise RadiusProblem('BLOCKED_DATA', 'DATA_OUT_OF_SCOPE', '현재 연결된 데이터 범위로는 요청 영역의 결과를 확정할 수 없어 공간 검색을 실행하지 않았습니다.')
+    if 'BLOCKED_DATA: DATA_COVERAGE_UNVERIFIED' in validated.blockers:
+        raise RadiusProblem('BLOCKED_DATA', 'DATA_COVERAGE_UNVERIFIED', '현재 연결된 데이터의 공간 범위가 검증되지 않아 공간 검색을 실행하지 않았습니다.')
+    raise RadiusProblem(validated.readiness.value, 'EXECUTION_GATE', '실행 검증을 통과하지 못했습니다. 데이터 연결과 입력 조건을 확인해 주세요.')
+
+
 def execute_radius_request(state):
     qec = None
     try:
         spatial = _spatial(state)
         if _map_bounds_polygon(spatial) is not None and not _has_reference_location(spatial):
             qec, layer, params = prepare_bounds_request(state)
+            _preflight_spatial_scope(qec)
             return build_bounds_result(qec, layer, params, *_fetch_bounds_result(qec, layer, params))
         qec, layer, template, params = prepare_radius_request(state)
+        _preflight_spatial_scope(qec)
         result = build_result(qec, layer, params, *_fetch_result(qec, layer, template, params))
         if result.get("status") != "COMPLETED":
             return result
