@@ -1,6 +1,17 @@
 # GeoLLM 현재 상태와 다음 작업
 
 
+## 2026-11-02 범위 사전 차단 수정·새 v6 전체 실행
+
+- 사용자 승인으로 운영 수정/연구 준비/독립 감사 3에이전트와 부모 검증을 분리했다. 운영85bdb15, 독립감사3822e51, 연구준비2d07bd1. [운영 수정·실제 검증](coverage_preflight_20261102.md), [독립 감사](coverage_preflight_audit_20261102.md), [v6 조건](../../research/marine_geollm_scie/protocol/eight_execution_v6_20261102_KR.md).
+- UNKNOWN을 일반 반경에서 허용하던 정책을 서버 필수 검사로 변경, 공간 도구 호출 전 preflight와 내부 재검증 유지. 지도영역 전체 polygon 검사. 입력 누락/무효의 NEEDS_USER_INPUT 보존. 중간 CRS/좌표 우회와 nonfinite 입력 상태 회귀를 발견·수정했다.
+- 최종 실제 API outputs/coverage_preflight_runtime_20261102_v3: 6개 기대계약 확인, 반경3은 preflight attempted/started/tool_called/sql_executed=false와 count=null, 영역누락은 추가입력, 정의는 완료. 주변지명은 DATA_COVERAGE_UNVERIFIED/NOT_RUN 및 0건아님 설명. 수집·검증시점 소스3hash일치와 독립감사 확인. v2 기동 전 연결종료3건 원본보존. 개발shadow 잔여1건은 재시작으로 INTERRUPTED, 완료로 합산하지 않으며 공식run전 active0 확인.
+- 운영219회귀/추가35/부모85/최종메시지71passed는 중복합산하지 않는다. 전체연구384passed. 오래된 schema진단 테스트에만 명시 synthetic coverage 전제를 격리했고 실제runner/nativeValidator/GOLD에 승인overlay를 넣지 않았다. v5/GOLD/snapshot512원본hash불변 확인.
+- **v6 시작 11:15:26 KST**: research/marine_geollm_scie/runs/20261102_gold_v2_eight_k1_v6/status.json. 실제 supervisor18760(launcher34252), 최초자식3464, 현재실제status/PID우선. freeze/profiles exit0·실제6관계 및281소스 검증 완료, graph자식2596 진입 확인. snapshot outputs/scie_gold_v2_eight_snapshot_20261102_v6, stdout/stderr outputs/scie_eight_v6_20261102.*.log. freeze6관계 재추출→P1→7방법→144보고→fault27→통합보고 순서. 관측완료 아님.
+- 운영승인coverage가 없어 부산S101과지명Q4도차단된다. 정상fault FalseBlock·기존Q4 3성공감소 가능성을 결과로 보존한다. 연구bbox/원천객체범위를 운영권위로 승격금지. 원천범위구축/실DBsnapshot identity 연결·복합문서부분응답·nearest/canonical·독립인간GOLD/반복 미완료. 전체완성/정확도100% 주장금지.
+- 실행중 소스/모델/예산/입력/GOLD변경·중복worker·추가API/Ollama금지. 오류는 원본보존→원인재현→별도수정/테스트, 코드변경시새전체run. 운영UI/feedback/기존dirtytest보존. 새push요청없어로컬커밋만.
+- heartbeat geollm-gold-v2-8-v6 30분 후속검증 활성. 의미있는완료/실패/조치만알리고 최종 report_with_faults/comparison_KR.md 실제검증→한글결과/RESULTS_INDEX/인계/관련커밋 후 삭제. 다음은 실제freeze6hash·digest→공유plan/review/P0lossless/공통ESRv3·미측정포함 완료gate 검증이다.
+
 ## 2026-11-02 사용자 요청 GitHub 푸시 인계
 
 - 사용자 명시 요청으로 origin/main에 누적된 운영·연구 코드와 검증/결과 문서 커밋을 푸시한다. fetch 후 원격에만 있는 커밋0·로컬미푸시30 확인. v5 결과 커밋7805015와 이번 인계를 포함하며 강제 푸시는 사용하지 않는다.

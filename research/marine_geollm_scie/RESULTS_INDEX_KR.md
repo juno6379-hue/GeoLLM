@@ -1,9 +1,10 @@
 # 논문 실험 결과 위치
 
-기준일: 2026-11-01. 논문 연구 루트는 `D:\An_GeoLLM\research\marine_geollm_scie`이다.
+기준일: 2026-11-02. 논문 연구 루트는 `D:\An_GeoLLM\research\marine_geollm_scie`이다.
 
 | 구분 | 폴더/파일 | 현재 해석 |
 |---|---|---|
+| 실행 중 v6 | [실행 상태](runs/20261102_gold_v2_eight_k1_v6/status.json), [조건·한계](protocol/eight_execution_v6_20261102_KR.md) | 범위 사전 차단 후 새 전체144+27 실행. 완료 보고서 아직 없음; 정상차단 비용 포함 |
 | 최신 완료 v5 | [결과·한계](protocol/eight_results_v5_20261101_KR.md), [통합 보고서](runs/20261101_gold_v2_eight_k1_v5/report_with_faults/comparison_KR.md) | 144+27관측·무결성 검증 완료. LLM 의미 오류/범위 차단·독립GOLD 미완료 |
 | 중단 원본 v4 | [실행 상태](runs/20261101_gold_v2_eight_k1_v4/status.json) | 144수집 후 공유 검토 gate 실패. 17문항 검토 미호출·fault미실행, 완성된 비교로 인용 금지 |
 | 최신 재실행 v3 | [결과 해설](protocol/eight_results_v3_20261101_KR.md), [통합 보고서](runs/20261101_gold_v2_eight_k1_v3/report_with_faults/comparison_KR.md) | 144+27관측 완료·무결성 검증. 공통 실행 성공 v3 적용. 독립 GOLD/전체 논문 결론 미완료 |
