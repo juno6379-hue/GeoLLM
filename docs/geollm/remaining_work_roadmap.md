@@ -1,5 +1,13 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-11-02 GOLD v2 AI 사전검토본 작성
+
+- 사용자 요청으로 review/20261102_gold_v2_ai_prereview_v1에 A(답안·작업)/B(근거·반례)/합의제안 각18사례 Markdown·JSONL과 사례별근거부록/manifest를작성했다. A/B는동일AI의관점이며독립인간이나독립에이전트검수로주장하지않는다.
+- 기존immutableGOLD10파일·독립빈양식원본불변,원본경로/hash대조와FC locator50개유일노드확인. 3양식각18사례·링크·출력hash·human_approval=false검증. 저장된공간Oracle을연결했지만이번SQL/GIS재실행은없다. 생성기 tools/scie_results_ui/build_ai_review.py는기존출력덮기거부.
+- AI_PRE_REVIEW_PENDING_HUMAN/AI_SYNTHESIS_PENDING_HUMAN,독립인간검수false유지. 인간이름/일시/독립성/실제불일치/승인빈칸. AI노출후검토는AI보조검수로구분. GOLD수정·재채점·운영변경없음.
+- 주요인간확인: Q3_02빈Oracle, Q5_02polygon거리의미/snapshot객체중복, Q6_02대표부표범위, 독도coverage와문서부분응답. 다음은사용자검토·수정근거수령후새참조버전판단이며자동승인/실험재개없음. 관련로컬커밋,푸시요청없음.
+
+
 ## 2026-11-02 v6 최종 관측·교차검증 완료
 
 - v6 12:38:40 KST COMPLETED_OBSERVATIONS/DONE, 약83분15초. 144+fault27·모든단계exit0·supervisor18760종료·stderr없음. [최신 결과·한계](../../research/marine_geollm_scie/protocol/eight_results_v6_20261102_KR.md), 통합원본 runs/20261102_gold_v2_eight_k1_v6/report_with_faults/comparison_KR.md.

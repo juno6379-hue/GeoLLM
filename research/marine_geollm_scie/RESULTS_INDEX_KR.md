@@ -18,6 +18,7 @@
 | Oracle 원시 출력 | `D:\An_GeoLLM\outputs\gold_v2_oracle_audit_20261031_v3` | 실제 연구DB SQL/GIS 검산. v1/v2 실패·차이 원본 별도 보존 |
 | 신뢰성 정책·감사 | [reliability](reliability) | 운영 gap과 RQ1~RQ5 연결. 실측 점수와 구분 |
 | 독립 검수 양식 | [review/20261031_independent_gold_v3](review/20261031_independent_gold_v3) | 검수자 선정됨. 독립 결과 수령·완료는 아직 확인되지 않음 |
+| AI 사전검토 A/B·합의 제안 | [검토 안내](review/20261102_gold_v2_ai_prereview_v1/검토안내_KR.md) | GOLD v2·원본 근거 연결 18사례. 사용자 검토 대기, 독립 인간 검수 미완료 유지 |
 
 **최신 GOLD v2 8방법 v6 관측 보고서를 검증했다.** [결과와 제한](protocol/eight_results_v6_20261102_KR.md), [통합 보고서](runs/20261102_gold_v2_eight_k1_v6/report_with_faults/comparison_KR.md)를 먼저 확인한다. 관측 수집 완료와 논문 검증 완료는 구분한다. 이전 K5 결과를 이름만 변경하거나 재사용하지 않는다. `results/latest` 등 과거 파일럿 폴더를 최신 8방법 결과로 읽지 않는다.
 
