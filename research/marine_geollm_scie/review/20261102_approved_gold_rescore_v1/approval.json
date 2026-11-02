@@ -1,0 +1,36 @@
+{
+  "status": "USER_CONFIRMED_COMPLETE",
+  "independent_human_review_complete": true,
+  "reviewers": [
+    "AAA",
+    "BBB"
+  ],
+  "agreement_date": "2026-11-02",
+  "approval_date": "2026-11-02",
+  "timezone": "Asia/Seoul",
+  "confirmation_source": "USER_MESSAGE",
+  "confirmation_text": "독립 인간 검수도 완료하였다; 합의일과 승인 기록은 오늘 날짜로 해라",
+  "gold_manifest_sha256": "feb9ef9851553fe53c12b0733b1747d3c238fb64c7b6bffd2ae848a35e6b1c5c",
+  "case_ids": [
+    "PILOT_Q1_01",
+    "PILOT_Q1_02",
+    "PILOT_Q1_03",
+    "PILOT_Q2_01",
+    "PILOT_Q2_02",
+    "PILOT_Q2_03",
+    "PILOT_Q3_01",
+    "PILOT_Q3_02",
+    "PILOT_Q3_03",
+    "PILOT_Q4_01",
+    "PILOT_Q4_02",
+    "PILOT_Q4_03",
+    "PILOT_Q5_01",
+    "PILOT_Q5_02",
+    "PILOT_Q5_03",
+    "PILOT_Q6_01",
+    "PILOT_Q6_02",
+    "PILOT_Q6_03"
+  ],
+  "signatures": null,
+  "scope": "Existing GOLD v2 accepted without answer-contract changes; completion attested by user; signatures not synthesized"
+}

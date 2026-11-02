@@ -1,5 +1,15 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-11-02 사용자 확인 인간 GOLD 승인·144답변 파생 재채점
+
+- 사용자가 독립 인간 검수 완료 및 오늘 합의/승인일을 명시했다. AAA·BBB, 2026-11-02 KST, USER_MESSAGE 확인으로 review/20261102_approved_gold_rescore_v1/approval.json에 기록했다. 서명은 생성하지 않았고 기존 AI 제안본은 작성 당시 이력으로 보존한다.
+- 동일 GOLD v2와 v6 144개 raw receipt hash를 검증하고 tools/scie_results_ui/rescore_approved.py로 별도 재채점했다. 새 지표는 승인 GOLD 과업 충족률이며 기존 기계계약/SCR/인간 의미 정확도와 다르다. 최종 답안 부재5건·필수 source-bound 객체집합 미제공24건을 완료된 관측의 과업 실패로 추가 판정: 144/144 측정, 13충족/131미충족. B0/B1/B2 각0/18, B3/B4/P0/H 각2/18, P1 5/18. 29건 미측정 보완은 공간 좌표 오류 추정이 아니다.
+- 원본 GOLD·v6 전체파일 before/after hash 일치; 보존목록/파생 manifest/scorer hash 저장. 운영·모델 호출 및 동결 소스 변경 없음. 동일 원본 재채점으로 새 모델 실험이 아니다. 결과 summary에는 조건별 집계, scores에는 144개 checks/정규화답변/원문hash/판정이유를 남겼다.
+- 연구 UI 8001에 검수 완료/사용자 확인/합의·승인일 및 별도 재채점 표·원본 링크 연결. GOLD hash와 18 case identity 불일치 시 승인 overlay 거부. 원본 gate·과학적완료·인간의미정확도는 유지. Python10/Node8 테스트 통과, 실제HTTP 144/18 승인상태/보존hash 확인. 브라우저 연결은 browser.user unavailable로 이번 실제 화면 검증 미완료.
+- 남은 항목: 반환객체 없는 조건부 SCR, 성공분모0 SSFR는 수치 생성 불가. GOLD 승인과 144답변에 대한 인간 의미 채점은 다르므로 semantic_human_accuracy=null 유지. K1/독립 holdout 및 운영 coverage 범위구축은 여전히 별도 미완료. 다음은 답변별 의미·근거 적합성 검토와 운영 범위/정상 오차단 보완. 원본 결과의 인간검수 미완료 표시는 당시 상태이며 현재 승인과 구분.
+- 관련 로컬 커밋만; 새 푸시 요청 없음. 기존 UI/feedback/test/인계의 별도 변경 보존.
+
+
 ## 2026-11-02 GOLD v2 AI 사전검토본 작성
 
 - 사용자 요청으로 review/20261102_gold_v2_ai_prereview_v1에 A(답안·작업)/B(근거·반례)/합의제안 각18사례 Markdown·JSONL과 사례별근거부록/manifest를작성했다. A/B는동일AI의관점이며독립인간이나독립에이전트검수로주장하지않는다.

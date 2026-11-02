@@ -100,3 +100,33 @@ def test_spatial_gold_not_legacy_scoring_flag(tmp_path):
     assert cases[0]['spatial_gold_summary']['AnchorageArea']['object_count']==0
     assert cases[1]['evaluation_stratum']=='SOURCE_BOUND_CORPUS_SPATIAL'
     assert cases[1]['equivalence_group']=='dokdo_radius_5km'
+
+
+def test_current_approval_keeps_historical_metrics(tmp_path):
+    v5,_=fixture(tmp_path)
+    folder='review/20261102_approved_gold_rescore_v1/'
+    approval={'independent_human_review_complete':True,
+              'gold_manifest_sha256':hashlib.sha256((tmp_path/RESEARCH/GOLD/'manifest.json').read_bytes()).hexdigest(),
+              'case_ids':['PILOT_Q3_01'],'approval_date':'2026-11-02'}
+    put(tmp_path,folder+'approval.json',approval)
+    put(tmp_path,folder+'summary.json',{'run_id':v5,'rows':144})
+    result=ResultsAdapter(tmp_path).dashboard()
+    assert result['overview']['independent_expert_review_complete'] is True
+    assert result['overview']['historical_independent_expert_review_complete'] is False
+    assert result['overview']['scientific_completion'] is False
+    assert result['methods'][0]['metrics']['semantic_human_accuracy'] is None
+    approval['gold_manifest_sha256']='wrong'
+    put(tmp_path,folder+'approval.json',approval)
+    result=ResultsAdapter(tmp_path).dashboard()
+    assert result['overview']['independent_expert_review_complete'] is False
+    assert result['rescore']=={}
+
+
+def test_delivery_does_not_invent_geometry_or_missing_telemetry():
+    from tools.scie_results_ui.rescore_approved import delivery_score
+    s={'all_applicable_checks_pass':None,'checks':{'spatial_objects':None},
+       'observation':{'output_available':True,'trace':{'observation_complete':True}}}
+    assert delivery_score(s)[0] is False
+    assert s['checks']['spatial_objects'] is None
+    s['observation']['trace']['observation_complete']=False
+    assert delivery_score(s)[0] is None

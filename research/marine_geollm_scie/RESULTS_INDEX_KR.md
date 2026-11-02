@@ -23,3 +23,9 @@
 **최신 GOLD v2 8방법 v6 관측 보고서를 검증했다.** [결과와 제한](protocol/eight_results_v6_20261102_KR.md), [통합 보고서](runs/20261102_gold_v2_eight_k1_v6/report_with_faults/comparison_KR.md)를 먼저 확인한다. 관측 수집 완료와 논문 검증 완료는 구분한다. 이전 K5 결과를 이름만 변경하거나 재사용하지 않는다. `results/latest` 등 과거 파일럿 폴더를 최신 8방법 결과로 읽지 않는다.
 
 운영 수정은 [운영·연구 분리 정책](../../docs/geollm/reliability_delivery_policy.md)에 따라 별도 검증한다. 운영 버그 수정 이후 비교에는 새 source hash와 전체 재실행이 필요하다. 독립 GOLD 미수령 항목은 의미 정확도를 만들지 않고 미측정으로 남긴다.
+
+## 2026-11-02 승인 GOLD 파생 재채점
+
+- AAA·BBB 검수 완료: 사용자 확인, 합의/승인일 2026-11-02. 기존 동결 manifest는 원본 이력으로 보존.
+- [144답변 재채점](review/20261102_approved_gold_rescore_v1/재채점_결과_KR.md): 승인 GOLD 과업 충족 13/144, 미충족131, 신규 판정29. 인간 의미 정확도가 아닌 별도 과업 지표.
+- [승인 기록](review/20261102_approved_gold_rescore_v1/approval.json), [조건별 집계](review/20261102_approved_gold_rescore_v1/summary.json). 기존 v6 실행 결과와 별도이며 새 모델 실행이 아님.

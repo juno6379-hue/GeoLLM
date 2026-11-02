@@ -1,0 +1,11 @@
+{
+  "files": {
+    "approval.json": "c8f0dc045c7b1ed900a86754bd10554f3cce9fc232ce6dbc2705ef16d692ad79",
+    "summary.json": "7f3c763b66e35ad4a7634706a6906980110966771863ec15b854baa3456eb731",
+    "scores.jsonl": "263ffe5fdc38f7ec4fa89ff40a973c6e32c2049b27ba6d03c3b7fe738a3ae2be",
+    "재채점_결과_KR.md": "ce8919bd679b7266945830c9cf614bcfc42ea96c3a2abfbf534fbaef0e9e76c3",
+    "preserved_hashes.json": "a631b3f8ce0cea125a5b25681ded936f17e8e0f7f77ad1e5af01b9020a862f00"
+  },
+  "scorer_sha256": "e1a1adbbd461d425dd18f288fe2a072cdc58f0d9a83069fda9014e26e7ddd18e",
+  "original_files_verified": 506
+}

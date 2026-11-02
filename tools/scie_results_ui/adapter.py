@@ -152,6 +152,19 @@ class ResultsAdapter:
         protocol = self.load(GOLD + '/comparison_protocol.json', {})
         contracts = self.load(GOLD + '/answer_contracts.jsonl', [])
         queries = self.load(GOLD + '/queries.jsonl', [])
+        rescore_path = 'review/20261102_approved_gold_rescore_v1'
+        rescore = self.load(rescore_path + '/summary.json', {})
+        approval = self.load(rescore_path + '/approval.json', {})
+        self.load(rescore_path + '/재채점_결과_KR.md', '')
+        self.load(rescore_path + '/scores.jsonl', [])
+        receipt = self.sources.get((RESEARCH / GOLD / 'manifest.json').as_posix(), {})
+        approval_valid = (approval.get('independent_human_review_complete') is True
+            and bool(receipt.get('source_sha256'))
+            and approval.get('gold_manifest_sha256') == receipt.get('source_sha256')
+            and sorted(approval.get('case_ids', [])) == sorted(c['case_id'] for c in contracts))
+        if not approval_valid or rescore.get('run_id') != selected:
+            rescore = {}
+
         self.load(GOLD + '/oracle_checks.json', {})
         self.load(GOLD + '/source_checks.json', {})
         self.load(GOLD + '/oracle_query.sql', '')
@@ -229,7 +242,7 @@ class ResultsAdapter:
                         coverage_reference=contract.get('coverage_reference'),
                         spatial_predicate=contract.get('spatial_predicate'),
                         safe_abstention_expected=stratum == 'OUT_OF_COVERAGE_SAFE_ABSTENTION',
-                        human_gold_status='COMPLETE' if contract.get('independent_expert_review') is True else 'NOT_READY',
+                        human_gold_status='USER_CONFIRMED_COMPLETE' if approval_valid else 'COMPLETE' if contract.get('independent_expert_review') is True else 'NOT_READY',
                         results=[self.compact_row(r) for r in comparison if r.get('case_id') == cid])
             cases.append(case)
         methods = []
@@ -250,18 +263,20 @@ class ResultsAdapter:
                   'Q4 동등 표현은 독립 공간 문제로 합산하지 않습니다.', '범위 밖 자료는 실세계 0건을 뜻하지 않습니다.',
                   '현재 완료 인용 대상은 RESULTS_INDEX의 최신 완료 행을 따릅니다. 진행 중 실험은 별도 표시합니다.',
                   '정책·구현 감사는 기록 시점 자료이며 이후 운영 수정 완료를 자동 의미하지 않습니다.']
-        limits += selected_manifest.get('limits', [])
+        limits += ['원본 실험 당시: ' + str(x) for x in selected_manifest.get('limits', [])]
         overview = dict(selected_run_id=selected, latest_run_id=runs[0]['run_id'] if runs else None,
                         case_count=manifest.get('case_count'), method_count=len(manifest['methods']) if 'methods' in manifest else None,
                         observed_rows=summary.get('observed_rows'), expected_observations=summary.get('expected_observations'),
                         fault_rows=summary.get('rq2_fault_comparison', {}).get('rows'),
                         benchmark_freeze_complete=(manifest.get('benchmark_freeze_complete') is True and all(c['verified'] for c in freeze_checks)) if freeze_checks else None,
-                        independent_expert_review_complete=manifest.get('independent_expert_review_complete'),
+                        independent_expert_review_complete=True if approval_valid else manifest.get('independent_expert_review_complete'),
+                        historical_independent_expert_review_complete=manifest.get('independent_expert_review_complete'),
+                        review_approval=approval if approval_valid else None,
                         holdout_count=sum(c.get('holdout_eligible') is True for c in contracts) if contracts else None,
                         repeats=selected_status.get('repeats'), scientific_completion=summary.get('scientific_completion'),
                         completion_gate=summary.get('completion_gate', {}),
                         status='OBSERVATION_COMPLETE' if selected_info.get('can_be_cited') else 'UNAVAILABLE_LOCAL_ARTIFACT')
-        result = dict(overview=overview, benchmark=dict(manifest=manifest, freeze_checks=freeze_checks, cases=cases,
+        result = dict(rescore=rescore, overview=overview, benchmark=dict(manifest=manifest, freeze_checks=freeze_checks, cases=cases,
                       categories=dict(Counter(c.get('category') for c in cases)), protocol=protocol), methods=methods,
                       rq={'1':dict(status='NOT_FINAL', by_method_query_condition=summary.get('by_method_query_condition', {})),
                           '2':dict(status=fault.get('status', 'NOT_MEASURED'), overall_by_method=fault.get('overall_by_method', {}), by_method_error_type=fault.get('by_method_error_type', {}), detector_breakdown=detector_breakdown, model_digests=selected_info.get('model_digest')),

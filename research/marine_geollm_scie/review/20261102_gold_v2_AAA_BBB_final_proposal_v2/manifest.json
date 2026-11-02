@@ -1,0 +1,138 @@
+{
+  "status": "FINAL_DOCUMENT_PROPOSAL_PENDING_HUMAN",
+  "reviewers": {
+    "A": "AAA",
+    "B": "BBB"
+  },
+  "case_count": 18,
+  "human_approval": false,
+  "independent_human_review_complete": false,
+  "attachment_sha256": "de75d5208007125f74393a2be559708b370f58541e05bdeaa1ac686b07119d56",
+  "source_gold_unchanged": true,
+  "prior_draft_unchanged": true,
+  "spatial_sql_rerun": false,
+  "verified_sources": [
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\gold_v2_immutable_20261101_v1\\answer_contracts.jsonl",
+      "sha256": "550f85c18d902e6895e9affe87b896785a9d150162181153c0d9dd423621bad4"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\gold_v2_immutable_20261101_v1\\canonical_busan_boundary.json",
+      "sha256": "a0f4408850683c987840531e436ff5698af3b9e39bab700098a453727ff5f63b"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\gold_v2_immutable_20261101_v1\\parent_gold_manifest.json",
+      "sha256": "2c1ce116f03de8b6ae315ec282a2dc13acb5a1c3f943355f17e11ee7cdd6d013"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\gold_v2_immutable_20261101_v1\\queries.jsonl",
+      "sha256": "e0a98769f5bc0375272aa976bba4cb97bdf2a2c8a0e3c43c20910881935023e9"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\gold_v2_immutable_20261101_v1\\comparison_protocol.json",
+      "sha256": "9bfdc4502ac2f841c5039da25b952e2ce5e5e4d19a5b2e31dd5a845d80362af3"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\gold_v2_immutable_20261101_v1\\oracle_checks.json",
+      "sha256": "0b7f30e293b2464cebedc2805b9522f95efca178a05e8c0409d59a0f2338fe7c"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\gold_v2_immutable_20261101_v1\\oracle_query.sql",
+      "sha256": "91df69a4fe25211ead9f3a905c4ec376d08ec188377c2f0353e2dad2c863b9b4"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\gold_v2_immutable_20261101_v1\\source_checks.json",
+      "sha256": "c21d0e768cef625a64feae95d3371dd37826d6af82f61a40302973581ae46461"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\gold_v2_immutable_20261101_v1\\manifest.json",
+      "sha256": "feb9ef9851553fe53c12b0733b1747d3c238fb64c7b6bffd2ae848a35e6b1c5c"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\benchmark\\gold_v2_immutable_20261101_v1\\manifest.sha256",
+      "sha256": "27cc24ef45113d1b949a9a43bf07a6ca0ee0db866f50901bb107a664d25ef0ac"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\review\\20261031_independent_gold_v3\\questions_and_sources.jsonl",
+      "sha256": "10caebfca7cf46fbda4305f4b13c783d2b7f9e841fb13f09a15a67faafc2fc08"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\review\\20261031_independent_gold_v3\\AI_reference_candidates_separate.jsonl",
+      "sha256": "2c9fd0e136bf0349174a400261a1e0ca1e8cb6cc92d245511300a8c283be71e4"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\review\\20261031_independent_gold_v3\\reviewer_A_blank.jsonl",
+      "sha256": "332775fc6ccd842a34451f9af0a140877039d34d76edb165bc4a905e463cd814"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\review\\20261031_independent_gold_v3\\검수자A_18문항_독립검수_빈양식_KR.md",
+      "sha256": "7eded9a6fa654894b55f8e321802f01db002d9608d3e58b8077d2769cf4e015e"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\review\\20261031_independent_gold_v3\\reviewer_B_blank.jsonl",
+      "sha256": "4ce833100befc05350ae08122d69c156a394db3411a1444cbbd9ee3333e99c45"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\review\\20261031_independent_gold_v3\\검수자B_18문항_독립검수_빈양식_KR.md",
+      "sha256": "e211be747bc18d000c197fc1df4be72c8ffbb69dc8fcf4bbd5c907608da425c0"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\review\\20261031_independent_gold_v3\\adjudication_blank.jsonl",
+      "sha256": "82392e6ebfe980c925b64159cfafbc71cbb8ffe4da83b93d3b7136a6bf43f13b"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\review\\20261031_independent_gold_v3\\합의검토_18문항_독립검수_빈양식_KR.md",
+      "sha256": "f99bc07347740c1131ec76e4e89525bff37a3db0683caec52771bd1f79036779"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\review\\20261031_independent_gold_v3\\검수안내_KR.md",
+      "sha256": "03b825707f02275cb2a1eee8f5727f7b20e7ba7b1fa5589e758e6eb07ea172b1"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\research\\marine_geollm_scie\\review\\20261031_independent_gold_v3\\manifest.json",
+      "sha256": "3e5e434ced3e7ebaec0588dee2ae939795e8b807e4a3008c9f1577d05076bd2b"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\outputs\\staging\\s101_feature_catalogue_2_0_0\\S-101\\CATALOGUES\\101_Feature_Catalogue_2.0.0.xml",
+      "sha256": "2743d0689d8a2130f9b809554591d794f01cd9953f222f065ac891b590bd3cfc"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\outputs\\scie_dokdo_reference_20261030_v2\\spatial_reference.json",
+      "sha256": "cf7e407ec904661093a187e15391b42bc668a6e6ef5f75ead3f96c3f495cb9fb"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\Dataset\\해양수산부_공동활용체계_해양지명_20221231.csv",
+      "sha256": "bbc3f1c347f6048b0befdf5102959078ffc29c22cdc4412a98586e76cddb0464"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\outputs\\scie_gold_v2_eight_snapshot_20261102_v6\\snapshot_manifest.json",
+      "sha256": "ff37cdeb3d3038c915393dbe2da32a2455253e39f5381b58e64873ca6e0629ad"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\outputs\\scie_gold_v2_eight_snapshot_20261102_v6\\serving__navigation_aid_current.csv",
+      "sha256": "f75d5ceb50049e732433d5b36ca6be03e88a0360bc5f8ba67b3fd92e1425cdd7"
+    },
+    {
+      "path": "D:\\An_GeoLLM\\outputs\\scie_gold_v2_eight_snapshot_20261102_v6\\projection__s101_feature_current.csv",
+      "sha256": "1300232a3f03d17ea822eeff55fde99c5458b836f86d26bfd445b9afe8bb7f85"
+    }
+  ],
+  "outputs": [
+    {
+      "path": "첨부원본_AI보조검수_A.md",
+      "sha256": "de75d5208007125f74393a2be559708b370f58541e05bdeaa1ac686b07119d56"
+    },
+    {
+      "path": "AAA_BBB_합의검토_최종제안본_KR.md",
+      "sha256": "88093ae8f383ac6aacf762a063d1b103a4a35127859bc6f1434ba477c1f8b596"
+    },
+    {
+      "path": "사례별_원본근거_객체ID_거리_해시_최종_KR.md",
+      "sha256": "a73a368c8bdb2d78481542fb64b1126aae8ad23a03f299d13a40079188eaaead"
+    },
+    {
+      "path": "AAA_BBB_합의제안_18사례.jsonl",
+      "sha256": "735bb6654d675f2cca8cf445aa258fe2a2a8c1e6ce783ebb3c2f676c8fb43135"
+    }
+  ]
+}
