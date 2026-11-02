@@ -10,13 +10,64 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 import subprocess
+import hashlib
+import re
+import yaml
 
 from .binding_snapshot import ROOT, digest, verify_files, TARGET_CONTAINER
 from .derive_execution_snapshot import RELATION_KEYS, export_relation, safe_child
 
 
+def runtime_assets(root):
+    """Pin runtime registry assets, not only the Python/YAML referring to them."""
+    root = root.resolve()
+    assets = set()
+
+    def add(relative, expected, allowed_base=None):
+        if not isinstance(expected, str) or not re.fullmatch(r'[0-9a-f]{64}', expected):
+            raise ValueError('Runtime asset digest is required')
+        path = (root / relative).resolve()
+        if not path.is_relative_to(allowed_base or root) or not path.is_file():
+            raise ValueError('Missing or external runtime asset')
+        if hashlib.sha256(path.read_bytes()).hexdigest() != expected:
+            raise ValueError('Runtime asset differs from registered digest')
+        assets.add(path)
+        return path
+
+    registry = root / 'data/spatial_layer_registry.yaml'
+    if registry.exists():
+        config = yaml.safe_load(registry.read_text(encoding='utf-8')) or {}
+        for layer in (config.get('layers') or {}).values():
+            for key, path_key, hash_key in (
+                ('corpus_contract', 'source_asset', 'source_sha256'),
+                ('coverage_contract', 'path', 'sha256'),
+            ):
+                contract = layer.get(key) or {}
+                if contract.get(path_key):
+                    if not contract.get(hash_key):
+                        raise ValueError('Runtime asset digest is required')
+                    asset = add(contract[path_key], contract[hash_key])
+                    if key == 'corpus_contract' and contract.get('kind') == 's101_target_inventory_v2':
+                        inventory = json.loads(asset.read_text(encoding='utf-8'))
+                        proof = inventory['source_proof']
+                        add(proof['source_asset'], proof['source_sha256'])
+    pointer = root / 'data/source_verification/current.json'
+    if pointer.exists():
+        assets.add(pointer)
+        entry = json.loads(pointer.read_text(encoding='utf-8'))
+        receipt_root = pointer.parent.resolve()
+        manifest_path = add('data/source_verification/' + entry['manifest'], entry['sha256'], receipt_root)
+        manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+        if manifest.get('complete') is not True or not isinstance(manifest.get('files'), dict) or not manifest['files'].get('receipts.jsonl'):
+            raise ValueError('Incomplete runtime receipt manifest')
+        for name, expected in manifest['files'].items():
+            add(manifest_path.parent / name, expected, receipt_root)
+    return assets
+
+
 def execution_files(root=ROOT):
     files = set()
+    files.update(runtime_assets(root))
     for folder in ('services', 'shared', 'research/marine_geollm_scie/baselines',
                    'research/marine_geollm_scie/evaluation', 'research/marine_geollm_scie/runners',
                    'research/marine_geollm_scie/reliability'):

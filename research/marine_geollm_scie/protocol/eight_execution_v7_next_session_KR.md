@@ -11,11 +11,11 @@
 
 ## 시작 전 필수 순서
 
-1. Docker Desktop 정상 기동과 운영 DB/연구 DB/백엔드 상태를 확인한다. 이번 기동은 `Docker/run/dockerInference` 소켓 접근 오류로 실패했다. 소켓 이동도 실패했고 삭제는 자동 승인 검토가 `blocked by policy`로 차단했다. 우회 삭제나 factory reset을 하지 않는다.
+1. Docker Desktop과 운영 DB/백엔드는 후속 세션에서 복구됐고 실제 API 검증을 수행했다. 재개 시 실제 상태를 다시 확인한다. 과거 socket 삭제 차단을 우회하지 않았다.
 2. PDF 임베딩 worker가 실제로 없는지 명령행으로 확인한다. 마지막 독립 검증은 2,215개 중 948개 checkpoint 정상, 1,267개 남음, 최종 embedded.json 없음이다. stale lock은 검증 없이 삭제하지 않는다. 안전 재개·완료 후 원문/hash/vector/CAS/새 receipt/API를 검증한다. 기록은 `outputs/coverage_review_repair_20261102_independent/pdf_checkpoint_validation.json`이다.
-3. 운영 S-101의 원천 DataCoverage와 전체 inventory/live identity를 실제 DB에서 검증한다. 구현된 generic 계약만으로 실제 registry 승인/정상 허용이 완료된 것은 아니다. 연구 bbox를 운영 원천 DataCoverage로 바꾸지 않는다. 정상 bounded 요청은 허용하고 범위 밖·전체성·geometry 누락·원천 변조는 실행 전에 차단되는지 실제 API와 SQL 실행 기록으로 확인한다.
+3. 운영 부산 원본 cell의 DataCoverage 및 Wreck 전체 4,339행 identity 검증을 등록했다. Q4 11건과 부산 source-bound 정상 요청을 실제 API로 확인했다. 최신 근거는 docs/geollm/source_bound_execution_20261102.md 참조. 원천 존재/공간 범위/실세계 완전성을 분리하며, 연구 bbox를 운영 APPROVED로 승격하지 않는다. 각 Wreck 원문 geometry 전수 검증은 미완료다.
 4. 연구 `ResearchBindingAdapter`가 사용하는 source scope와 운영 Validator의 권위 경로를 조정·검증한다. 현재 v6의 연구 CONTROL은 운영 coverage 미등록으로 차단됐다. 운영 generic 지원만으로 연구 CONTROL이 자동 통과하지 않는다. 같은 공개 연구 입력을 모든 방법에 제공하고, 연구 snapshot의 범위·hash를 검증한 별도 연구 경로와 운영 원천 권위를 분리한다. GOLD에서 실행 허용을 주입하지 않는다.
-5. 초기 판정 false + 계약 필드 변경 응답은 사용 불가로 남기는 새 검토 계약을 확인한다. raw false를 true로 바꾸지 않는다. 이 모순 차단은 LLM 의미 오류 검출 개선과 다르다. 기존 v6 3건 읽기 재현은 새 모델 실험이 아니다.
+5. 초기 판정 false + 계약 필드 변경 응답은 사용 불가로 남기는 새 검토 계약을 확인한다. raw false를 true로 바꾸지 않는다. 이 모순 차단은 LLM 의미 오류 검출 개선과 다르다. 기존 v6 읽기 재현과 별도로 개발 probe 4건을 실행했다. 초기 오류 Recall 0/3, 모순 수정 거부 2/4로 의미 오류 탐지는 여전히 미완료다. 개발 결과를 논문 성능으로 재사용하지 않는다.
 6. 최종 소스·데이터·모델·예산·review protocol을 확인한다. 신규 JSON/원천 inventory/coverage 자산도 freeze에 포함하고 실제 연구 6개 관계 재추출 hash를 대조한다. 현재 generic 운영 계약이 미등록이면 먼저 위 3~4단계를 완료한다. 미완료 gate를 우회해 새 실행을 시작하지 않는다.
 
 ## 새 실행 명령
