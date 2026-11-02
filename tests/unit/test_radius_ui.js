@@ -85,6 +85,7 @@ const result = {
 };
 const options = { map, activeLayers: [], originalQuery: "Original full radius query", submit() {} };
 ui.render(result, options);
+assert.equal(elements.get('accuracyScore').textContent, '미측정');
 assert.equal(elements.get("dangerCount").textContent, "119건");
 assert.equal(elements.get("returnedCount").textContent, "표시 2건 / 전체 119건");
 assert.equal(elements.get("answerStatus").textContent, "조회 완료");
@@ -161,6 +162,19 @@ assert.equal(elements.get("dangerCount").textContent, "-");
 assert.equal(elements.get("radiusDetails").dataset.resultId, undefined);
 
 let pointSubmission;
+for (const restriction of [{selection_scope:'PARENT_PLACE_ONLY'}, {qualifier_binding_verified:false}]) {
+    let selected = false;
+    ui.render({status:'NEEDS_CLARIFICATION', structured_result:{analysis_type:'feature_search_by_radius',
+        original_query:'부산항 입구 위험객체', location_candidates:[{place_id:'parent',label:'부산항',
+            geometry:'POINT(129 35)',crs:'EPSG:4326',...restriction}]}},
+        {...options,submit:()=>{selected=true;}});
+    const panel=elements.get('radiusDetails').children.find(n=>n.className==='location-candidate');
+    const button=panel.children.find(n=>n.tag==='button');
+    assert.equal(button.disabled,true);
+    assert.match(button.textContent,/선택 불가/);
+    button.listeners.click();
+    assert.equal(selected,false,'parent geometry must not be resubmitted as entrance');
+}
 ui.render({
     status: "NEEDS_CLARIFICATION",
     structured_result: {
@@ -217,7 +231,10 @@ for (const analysisType of ["place_lookup", "nearest_feature"]) {
     assert.equal(ui.isRadius(generic), true);
     assert.equal(ui.isRadius({ ...generic, status: "COMPLETED" }), analysisType === "place_lookup");
     assert.equal(ui.isRadius({ ...generic, structured_result: { ...generic.structured_result, analysis_type: "unrelated_analysis" } }), false);
+    const candidatePointsBefore = drawnPoints.length;
     ui.render(generic, { ...options, submit: value => { selectedSubmission = value; } });
+    assert.equal(drawnPoints.length, candidatePointsBefore + 1);
+    assert.match(elements.get('returnedCount').textContent, /위치 후보 1곳 · 분석 미실행/);
     const genericDetails = elements.get("radiusDetails");
     assert.equal(genericDetails.children.some(node => node.className === "radius-surface"), false);
     genericDetails.children.find(node => node.className === "location-candidate").children.find(node => node.tag === "button").listeners.click();

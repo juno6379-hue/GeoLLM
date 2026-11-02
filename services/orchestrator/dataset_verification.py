@@ -36,9 +36,20 @@ def load_receipts(root=None):
             if key in rows:
                 raise ValueError('Duplicate chunk identity')
             rows[key] = row
+        quality_sha = manifest.get('extraction_quality_sha256')
+        quality_bound = None
+        if quality_sha is not None:
+            try:
+                quality_path = (manifest_path.parent / 'quality_evidence.jsonl').resolve()
+                if (quality_path.is_relative_to(base) and _sha(quality_path.read_bytes()) == quality_sha
+                        and manifest.get('files', {}).get('quality_evidence.jsonl') == quality_sha):
+                    quality_bound = quality_sha
+            except OSError:
+                pass
         return rows, {'manifest_sha256': pointer['sha256'], 'audited_at': manifest.get('audited_at'),
                       'snapshot_sha256': manifest.get('snapshot_sha256'),
-                      'spatial_links_sha256': manifest.get('spatial_links_sha256')}
+                      'spatial_links_sha256': manifest.get('spatial_links_sha256'),
+                      'extraction_quality_sha256': quality_bound}
     except (OSError, ValueError, KeyError, TypeError):
         return {}, {}
 
@@ -59,11 +70,27 @@ def verify_document(document, receipts=None):
         return result
     if (row.get('content_sha256') != content_hash or row.get('source_sha256') != document.get('source_sha256')
             or (document.get('content_sha256') and document['content_sha256'] != content_hash)):
+        if row.get('extraction_quality'):
+            return {**result, 'status': 'SOURCE_EXTRACTION_UNVERIFIED',
+                    'reason': 'EXTRACTION_QUALITY_CURRENT_IDENTITY_CHANGED'}
         return {**result, 'reason': 'CURRENT_CHUNK_IDENTITY_CHANGED'}
     result.update(audit)
     result['source_locator'] = row.get('source_locator')
     result['audit_reason'] = row.get('reason')
     result['audit_retrieval_status'] = row.get('retrieval_status')
+    extraction = row.get('extraction_quality')
+    if isinstance(extraction, dict):
+        expected = audit.get('extraction_quality_sha256')
+        bound = (isinstance(expected, str) and len(expected) == 64
+                 and all(c in '0123456789abcdef' for c in expected)
+                 and extraction.get('evidence_sha256') == expected
+                 and extraction.get('scope') == 'XLSX_DECODED_CELL_VALUES_AT_AUDIT_TIME'
+                 and str(extraction.get('source_member') or '').lower().endswith('.xlsx'))
+        result['extraction_quality'] = {**extraction, 'current_database_rechecked': False,
+                                      'semantic_authority': False, 'coordinate_authority': False}
+        if not bound or extraction.get('status') != 'VERIFIED_CELL_TEXT':
+            return {**result, 'status': 'SOURCE_EXTRACTION_UNVERIFIED',
+                    'reason': extraction.get('reason') if bound else 'EXTRACTION_QUALITY_EVIDENCE_UNBOUND'}
     derived = row.get('derived_field_verification')
     if isinstance(derived, dict) and derived.get('status') in (
             'VERIFIED_DERIVED_FIELDS', 'INCOMPLETE_DERIVED_FIELDS'):
@@ -117,7 +144,7 @@ def filter_answer_documents(documents, receipts=None):
         identity = {**item, 'chunk_id': item.get('chunk_id') or item.get('doc_id')}
         verification = verify_document(identity, receipts)
         item['source_text_verification'] = verification
-        if verification['status'] in ('AUDIT_SNAPSHOT_MISMATCH', 'CURRENT_CHUNK_SUPERSEDED'):
+        if verification['status'] in ('AUDIT_SNAPSHOT_MISMATCH', 'CURRENT_CHUNK_SUPERSEDED', 'SOURCE_EXTRACTION_UNVERIFIED'):
             excluded.append({'chunk_id': identity['chunk_id'], 'source_id': item.get('source_id'),
                              'source_text_verification': verification})
         else:

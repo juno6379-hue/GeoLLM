@@ -23,6 +23,12 @@ def build_definition_response(state: dict[str, Any]) -> dict[str, Any] | None:
     evidence_id = f"definition:{entry['term_id']}:v1"
     feature_code = entry["term_id"] if entry["source_kind"] == "s101_feature_catalogue" else None
     answer = f"{canonical}" + (f" ({feature_code})" if feature_code else "") + f"란 {definition} 근거: {source_title}."
+    comparison = entry.get("comparison_entries") or []
+    if comparison:
+        answer = "등록된 원문의 정의를 나란히 비교하면 다음과 같습니다.\n\n" + "\n\n".join(
+            f"**{item['canonical_term']} ({item['term_id']})**: {item['definition_ko']}\n근거: {item['source_title']} ({item['source_ref']})"
+            for item in comparison
+        ) + "\n\n이는 용어 정의 비교이며 특정 위치의 객체 존재 여부를 조회한 결과는 아닙니다."
     if lexical:
         answer = (f"해양수산부 순화 자료에서 ‘{canonical}’의 바꿔 쓰는 용어는 ‘{entry['recommended_label']}’입니다. "
                   f"근거: {source_title}. 이 자료의 용어 관계이며, 현재 법적 의무나 S-101 객체 매핑을 확정한 것은 아닙니다.")
@@ -33,13 +39,13 @@ def build_definition_response(state: dict[str, Any]) -> dict[str, Any] | None:
         "analysis_type": analysis_type, "derived_concept": None,
         "primary_agent": "Standard RAG Agent", "secondary_agents": [],
         "slots": {"target_term": canonical, "analysis_type": analysis_type},
-        "tools": ["definition.registry_lookup"], "data": [entry["source_kind"]],
+        "tools": ["definition.registry_lookup"], "data": list(dict.fromkeys(item["source_kind"] for item in (comparison or [entry]))),
         "outputs": ["StandardDocumentOutput", "EvidenceBundle", "Summary"],
         "clarification_required": False, "confidence": None if lexical else 1.0,
         "execution_ready": False, "route_plan_status": "PLAN_READY",
     }
     evidence = {
-        "evidence_id": evidence_id, "evidence_type": "verified_definition",
+        "evidence_id": evidence_id, "evidence_type": "verified_definition" if entry.get("verification_status") == "VERIFIED" else "source_definition",
         "source_ref": source_ref, "summary": f"{source_title}: {canonical}",
         "data": {"term_id": entry["term_id"], "canonical_term": canonical,
                  "definition": definition, "verification_status": entry["verification_status"]},
@@ -50,6 +56,13 @@ def build_definition_response(state: dict[str, Any]) -> dict[str, Any] | None:
     bundle = {"rag_evidence": [evidence], "kg_provenance": [],
               "regulatory_evidence": [], "spatial_feature_evidence": [],
               "spatial_layer_evidence": [], "accident_relation_evidence": []}
+    if comparison:
+        bundle["rag_evidence"] = [{
+            "evidence_id": f"definition:{item['term_id']}:v1", "evidence_type": "source_definition",
+            "source_ref": item["source_ref"], "summary": item["source_title"],
+            "data": {"term_id": item["term_id"], "definition": item["definition_ko"],
+                     "verification_status": item["verification_status"]},
+        } for item in comparison]
     qec = {
         "readiness": validated.readiness.value, "blockers": validated.blockers, "warnings": [],
         "semantic_resolution": {"intent": "DEFINITION", "canonical_term": canonical,
@@ -80,12 +93,20 @@ def build_definition_response(state: dict[str, Any]) -> dict[str, Any] | None:
                             "query_execution_context": qec,
                             "embedding_independent": True,
                             "fast_path": "verified_definition_registry"},
-        "evidence_bundle": bundle, "rag_evidence": [evidence],
+        "evidence_bundle": bundle, "rag_evidence": bundle["rag_evidence"],
         "kg_provenance": [], "contract_version": "geollm.execution.v1",
         "request_id": task_id,
     }
     if lexical:
         final['structured_result']['terminology_relation'] = entry['source_relation']
         final['orchestrator_v2']['fast_path'] = 'source_terminology_relation'
+    if entry['source_kind'] == 's100_product_registry':
+        final['orchestrator_v2']['fast_path'] = 'source_product_registry'
+        final['structured_result']['verification_status'] = entry['verification_status']
+    if comparison:
+        final['structured_result']['definitions'] = comparison
+        final['structured_result']['definition'] = None
+        final['structured_result']['analysis_type'] = 'definition_comparison'
+        final['orchestrator_v2']['fast_path'] = 'source_definition_comparison'
     return {"final_dict": final, "task_plan": route_plan,
             "query_execution_context": qec}

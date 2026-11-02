@@ -87,7 +87,7 @@ def search_vdb(query: str, top_k: int = 2, user_id: str = "system", clearance_le
             audit_receipts = load_receipts()
             # Bound availability loss from filtering known snapshot mismatches.
             # The identity check below still decides per current row, never by ID alone.
-            audit_overfetch = min(100, sum(r.get('status') == 'MISMATCH' for r in audit_receipts[0].values()))
+            audit_overfetch = min(100, sum(r.get('status') == 'MISMATCH' or (r.get('extraction_quality') or {}).get('status') == 'CELL_TEXT_UNVERIFIED' for r in audit_receipts[0].values()))
             fetch_limit = top_k + audit_overfetch
             logger.info("Executing real pgvector similarity search")
             query_vector = _query_embedding(query)

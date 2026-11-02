@@ -1,5 +1,10 @@
 version: '2.0'
 tools:
+  diagnostics.traffic_layer_description:
+    operation: traffic_layer_description
+    source: data/traffic_layer_registry.yaml
+    read_only: true
+    provenance_required: true
   catalogue.document_lookup:
     operation: public_catalogue_document_lookup
     source: data/s101_feature_catalogue_v2_parsed.json

@@ -1,0 +1,50 @@
+{
+  "complete": true,
+  "completion_scope": "Pinned baseline receipt overlay with XLSX cell-order checks; no DB mutation",
+  "snapshot_kind": "BASELINE_RECEIPTS_PLUS_XLSX_CELL_QUALITY_AUDIT",
+  "full_current_db_export": false,
+  "snapshot_sha256": "fbd9c7eeff93e6b0dde56afbc034b778a8cd80acd9b09ebf83a4802de25dd772",
+  "snapshot_file": "quality_lineage.json",
+  "spatial_links_sha256": "7f4a12af71785b5200993b69e46309495417b43c9a83c1a38940092e6d3ed8e6",
+  "spatial_links_scope": "Inherited unchanged baseline links; new revision rows have no object links",
+  "files": {
+    "receipts.jsonl": "1bb6d355dc3a379a0db78fd6c3f12969d86542f189bd3930f01349f926186043",
+    "quality_evidence.jsonl": "a5c6f5cfbc946dd457e00c755a5fe56ce91fe71c8ce844aec414326a36b66376",
+    "quality_lineage.json": "fbd9c7eeff93e6b0dde56afbc034b778a8cd80acd9b09ebf83a4802de25dd772"
+  },
+  "rows": 23523,
+  "stored_rows": 23523,
+  "active_rows": 23215,
+  "superseded_rows": 308,
+  "status_counts": {
+    "VERIFIED_TEXT": 19503,
+    "UNVERIFIED": 3918,
+    "MISMATCH": 102
+  },
+  "active_status_counts": {
+    "VERIFIED_TEXT": 19503,
+    "UNVERIFIED": 3613,
+    "MISMATCH": 99
+  },
+  "derived_field_checks": 752,
+  "applied_revisions": 302,
+  "baseline_receipt_sha256": "1184d3b80465397e0eef17e4453dbd71319796f582bc37ef2c3da84ceed60491",
+  "baseline_manifest_sha256": "e0c5522673cb8777745c18a000f712b6c5ba9fd8b4cf2fca0e50d9f553c3bc7a",
+  "embedded_artifact_sha256": "303f82c8d72e108c2b11beb88490d388af25fc7b984fa0f8d98ee0b93c16c32a",
+  "apply_receipt_sha256": "a34b19235941f87bbfc8b1d7c738094efea1b371992bde3d40d49bb85473d72f",
+  "source_validation_sha256": "a2d2db0e4c3c645b23da76e56616a5db1fc00f506fb65a78967178452bb6f4c8",
+  "baseline_path": "outputs\\dataset_unverified_followup_20261102\\merged_v3",
+  "embedded_artifact_path": "C:\\Users\\최준오\\.codex\\geollm-audit\\20261102\\locator\\fc_embedded.json",
+  "apply_receipt_path": "C:\\Users\\최준오\\.codex\\geollm-audit\\20261102\\locator\\fc_applied.json",
+  "database_rows_modified": false,
+  "published": false,
+  "audited_at": "2026-11-02T14:52:34.727008+00:00",
+  "limitations": [
+    "Untargeted rows retain baseline evidence; not independently re-exported.",
+    "Derived fields and literal text are distinct; neither grants geographic authority."
+  ],
+  "audit_manifest_sha256": "d745db856cef8f525e72980482b71586e39fb44128152460621b8f25c4690f79",
+  "coordinate_authority": false,
+  "semantic_correctness_verified": false,
+  "extraction_quality_sha256": "a5c6f5cfbc946dd457e00c755a5fe56ce91fe71c8ce844aec414326a36b66376"
+}

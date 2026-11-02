@@ -30,11 +30,13 @@ CONCEPT = "navigation_hazard_object"
 
 
 class RadiusProblem(Exception):
-    def __init__(self, status, code, message, *, candidates=None):
+    def __init__(self, status, code, message, *, candidates=None, missing_slots=None, reference=None):
         super().__init__(message)
         self.status = status
         self.code = code
         self.candidates = candidates or []
+        self.missing_slots = missing_slots or []
+        self.reference = reference
 
 
 @contextmanager
@@ -285,6 +287,62 @@ def _has_reference_location(spatial):
     return bool(spatial.get("geometry") or spatial.get("base_location") or spatial.get("location_text") or spatial.get("place_id"))
 
 
+def _reference_hint(state, spatial):
+    """Carry grounded place signals as text only, never as coordinate authority."""
+    existing = spatial.get('base_location') or spatial.get('location_text')
+    if existing:
+        return str(existing)
+    query = str(state.get('query') or '')
+    trace = state.get('candidate_trace') or {}
+    trace = trace if isinstance(trace, dict) else {}
+    signals = trace.get('deterministic_signals') if trace.get('query') == query else None
+    if not isinstance(signals, list):
+        from services.orchestrator.query_candidate_broker import _signal_scan
+        signals = [vars(item) for item in _signal_scan(query)]
+    values = []
+    for item in signals:
+        if not isinstance(item, dict):
+            continue
+        value = str(item.get('value') or '')
+        if item.get('signal_id') not in {'place_name', 'place_name_utf8'} or not value:
+            continue
+        pattern = r'\s*'.join(re.escape(c) for c in re.sub(r'\s+', '', value))
+        if not re.search(pattern, query, re.I):
+            continue
+        normalized = re.search(pattern, str(state.get('normalized_query') or ''), re.I)
+        value = normalized.group(0) if normalized else value
+        if re.sub(r'\s+', '', value).casefold() not in [re.sub(r'\s+', '', v).casefold() for v in values]:
+            values.append(value)
+    return ' / '.join(values) or None
+
+
+def _request_with_reference_hint(state):
+    spatial = _spatial(state)
+    hint = _reference_hint(state, spatial)
+    if hint and not (spatial.get('base_location') or spatial.get('location_text')):
+        spatial['location_text'] = hint
+    return {**state, 'spatial_context': spatial}
+
+
+def _allows_implicit_map_bounds(query):
+    """A viewport supplies context only when no named reference remains."""
+    if _extract_explicit_distance(query):
+        return False
+    if _looks_like_contextual_hazard_only(query):
+        return True
+    profile = ((_registry('derived_concept_registry_v2.yaml').get('derived_concepts') or {}).get(CONCEPT, {}).get('execution_profiles') or {}).get(PROFILE) or {}
+    aliases = [CONCEPT, '위험객체', '위험 객체', '항행위험', 'hazards', 'hazard']
+    for feature, names in (profile.get('feature_aliases') or {}).items():
+        aliases.extend([feature, *names])
+    residue = query or ''
+    for term in sorted(aliases, key=len, reverse=True):
+        residue = re.sub(re.escape(term), ' ', residue, flags=re.I)
+    for term in ['현재 지도', '현 지도', '지도 범위', '이 근처', '주변', '근처', '여기', '현화면', '화면', '찾아줘', '보여줘', '표시해줘', '검색해줘', '조회해줘', '검색', '조회', '표시', '지도', '내의', '안의', '에서', '를', '을', '의']:
+        residue = residue.replace(term, ' ')
+    residue = re.sub(r'\b(?:find|show|display|search|the|current|map|viewport|area|here|nearby|within|in|on)\b', ' ', residue, flags=re.I)
+    return not re.sub(r'[\s,.;?!]+', '', residue)
+
+
 def _looks_like_contextual_hazard_only(query):
     text = query or ""
     if not any(term in text for term in ["주변", "근처", "여기", "이 근처", "현 지도", "현재 지도", "현화면", "화면"]):
@@ -302,6 +360,7 @@ def _looks_like_contextual_hazard_only(query):
 
 
 def prepare_radius_request(state):
+    state = _request_with_reference_hint(state)
     query, spatial = state.get("query", ""), _spatial(state)
     if state.get("user_id") == "blocked_user":
         raise RadiusProblem("BLOCKED_POLICY", "ACCESS_DENIED", "이 요청에 대한 접근 권한이 없습니다.")
@@ -313,9 +372,35 @@ def prepare_radius_request(state):
         requested_context is None and any(term in query for term in ["해상풍력", "입지 평가", "양식장 적지"])
     ):
         raise RadiusProblem("NEEDS_USER_INPUT", "CONTEXT_CONFIRMATION", "항행안전 기준의 객체 조회인지, 다른 업무 목적의 분석인지 확인해 주세요.")
-    distance = parse_distance(query, spatial)
+    distance_problem = None
+    try:
+        distance = parse_distance(query, spatial)
+    except RadiusProblem as exc:
+        if exc.code != 'DISTANCE_REQUIRED':
+            raise
+        distance_problem = exc
+    try:
+        geometry, label, crs, resolution = resolve_reference(query, spatial, _place_entries())
+    except RadiusProblem as exc:
+        exc.missing_slots = ['reference_geometry']
+        if exc.status == 'NEEDS_USER_INPUT' and _unnamed_hazard_query(query, spatial):
+            exc.code = 'LOCATION_REQUIRED'
+            exc.args = ('기준 위치가 지정되지 않았습니다. 검색할 지명이나 지도 기준점을 지정해 주세요.',)
+        if distance_problem:
+            exc.missing_slots.append('distance_m')
+            if exc.status == 'NEEDS_USER_INPUT':
+                hint = spatial.get('base_location') or spatial.get('location_text')
+                message = (f"'{hint}'의 기준 위치가 아직 확정되지 않았습니다. " if hint else '') + str(exc)
+                exc.args = (message + ' 검색 반경도 함께 지정해 주세요.',)
+                if not hint and _looks_like_contextual_hazard_only(query):
+                    exc.code = 'DISTANCE_REQUIRED'
+                    exc.args = ('기준 위치 또는 지도 범위가 없습니다. 기준 위치와 검색 반경 또는 검색할 지도 영역을 지정해 주세요.',)
+        raise
+    if distance_problem:
+        distance_problem.missing_slots = ['distance_m']
+        distance_problem.reference = (geometry, label, crs, resolution)
+        raise distance_problem
     distance_policy = _distance_policy(query, spatial, distance)
-    geometry, label, crs, resolution = resolve_reference(query, spatial, _place_entries())
     if crs != "EPSG:4326":
         raise RadiusProblem("NEEDS_USER_INPUT", "CRS_REQUIRED", "기준점의 좌표계를 확인해 주세요. EPSG:4326 경도·위도 좌표가 필요합니다.")
     try:
@@ -371,9 +456,12 @@ def prepare_radius_request(state):
 
 
 def prepare_bounds_request(state):
+    state = _request_with_reference_hint(state)
     query, spatial = state.get("query", ""), _spatial(state)
     if state.get("user_id") == "blocked_user":
         raise RadiusProblem("BLOCKED_POLICY", "ACCESS_DENIED", "이 요청에 대한 접근 권한이 없습니다.")
+    if _has_reference_location(spatial) or not _allows_implicit_map_bounds(query):
+        raise RadiusProblem('NEEDS_USER_INPUT', 'REFERENCE_SCOPE_REQUIRED', '질의의 기준 위치를 현재 지도 범위로 대신하지 않았습니다. 사용할 기준 위치와 검색 범위를 확인해 주세요.', missing_slots=['reference_geometry', 'distance_m'])
     bounds = _map_bounds_polygon(spatial)
     if bounds is None:
         raise RadiusProblem("NEEDS_USER_INPUT", "LOCATION_REQUIRED", "현재 지도 범위 또는 기준 지점을 확인해 주세요.")
@@ -825,6 +913,22 @@ def _qualify_unverified_empty(result, observed_total, qec=None):
     return result
 
 
+def _result_target_label(features):
+    """Describe the actual executor target set, never infer it from prose."""
+    names = {"Wreck": "침선", "Obstruction": "장애물"}
+    targets = list(dict.fromkeys(features or []))
+    if targets and all(t in names for t in targets):
+        return "·".join(names[t] for t in targets)
+    return "위험객체"
+
+
+def _unnamed_hazard_query(query, spatial):
+    """Wording-only guard; do not treat an unknown named place as absent input."""
+    if any(spatial.get(k) for k in ('base_location', 'location_text', 'geometry', 'place_id')):
+        return False
+    return bool(re.fullmatch(r"\s*(?:(?:근처|주변|여기|현재 지도)\s*)?(?:위험\s*객체|위험물|항행위험|navigation_hazard_object|침선|장애물)(?:을|를)?\s*(?:찾아줘|알려줘|보여줘)?[.!?]?\s*", query or ""))
+
+
 def build_bounds_result(qec, layer, params, total, counts, rows, search_geometry):
     request_id = qec.request_id
     snapshot_hash = hashlib.sha256(json.dumps(qec.snapshot_versions, sort_keys=True).encode()).hexdigest()[:12]
@@ -886,7 +990,7 @@ def build_bounds_result(qec, layer, params, total, counts, rows, search_geometry
     quality_metrics = _quality_metrics("s101_hazard_bbox_quality_v1", fast_path="validated_s101_hazard_bbox")
     source_layer = _source_layer(layer)
     usage = {"web_used": False, "rag_used": False, "llm_used": False, "execution_path": "postgis.intersects", "embedding_independent": True}
-    text = f"현재 지도 범위 안에서 위험객체 {total}건을 찾았습니다. 지도·표·근거는 같은 객체 목록 {len(rows)}건을 기준으로 표시합니다."
+    text = f"현재 지도 범위 안에서 {_result_target_label(qec.slots.target_features)} {total}건을 찾았습니다. 지도·표·근거는 같은 객체 목록 {len(rows)}건을 기준으로 표시합니다."
     map_layers = [{
         "layer_id": result_id,
         "title": "현재 지도 범위 위험객체",
@@ -1140,7 +1244,7 @@ def build_result(qec, layer, params, total, counts, rows, search_geometry):
         },
     )]
     default_note = " 부근 기본 반경 3km를 먼저 적용했습니다." if distance_policy.get("default_applied") else ""
-    text = f"{qec.slots.location_text} 기준 {qec.slots.distance_m:g}m 이내 위험객체 {total}건을 찾았습니다.{default_note} 지도·표·객체 근거에 동일한 {len(rows)}건을 표시합니다."
+    text = f"{qec.slots.location_text} 기준 {qec.slots.distance_m:g}m 이내 {_result_target_label(qec.slots.target_features)} {total}건을 찾았습니다.{default_note} 지도·표·객체 근거에 동일한 {len(rows)}건을 표시합니다."
     source_layer = {
         "layer_id": qec.route_plan.get("radius_layer_id"),
         "physical_table": layer.get("physical_table"),
@@ -1231,8 +1335,9 @@ def _preflight_spatial_scope(qec):
 def execute_radius_request(state):
     qec = None
     try:
+        state = _request_with_reference_hint(state)
         spatial = _spatial(state)
-        if _map_bounds_polygon(spatial) is not None and not _has_reference_location(spatial):
+        if not _has_reference_location(spatial) and _allows_implicit_map_bounds(state.get('query', '')) and _map_bounds_polygon(spatial) is not None:
             qec, layer, params = prepare_bounds_request(state)
             _preflight_spatial_scope(qec)
             return build_bounds_result(qec, layer, params, *_fetch_bounds_result(qec, layer, params))
@@ -1245,7 +1350,7 @@ def execute_radius_request(state):
         default_note = " 부근 기본 반경 3km를 먼저 적용했습니다." if distance_policy.get("default_applied") else ""
         text = (
             f"{qec.slots.location_text} 기준 {qec.slots.distance_m:g}m 이내 "
-            f"위험객체 {result['structured_result']['total_count']}건을 찾았습니다.{default_note} "
+            f"{_result_target_label(qec.slots.target_features)} {result['structured_result']['total_count']}건을 찾았습니다.{default_note} "
             f"지도에는 객체 {result['structured_result']['returned_count']}건과 검색 범위를 표시합니다."
         )
         result["summary"] = text
@@ -1265,7 +1370,16 @@ def execute_radius_request(state):
     status = "NEEDS_CLARIFICATION" if problem.status == "NEEDS_USER_INPUT" else "FAILED" if problem.status == "FAILED" else "BLOCKED"
     spatial = _spatial(state)
     if qec is None:
-        qec = QueryExecutionContext(request_id=str(state["task_id"]), revision=state.get("execution_revision") or 1, original_query=state.get("query"), route_plan={"analysis_type": OPERATION, "primary_agent": "Spatial Analysis Agent"})
+        reference = problem.reference
+        hint = spatial.get('base_location') or spatial.get('location_text')
+        slots = ExecutionSlots(location=hint, location_text=reference[1] if reference else hint,
+            reference_geometry=reference[0] if reference else None, crs=reference[2] if reference else None,
+            resolution_status=reference[3]['status'] if reference else 'UNRESOLVED',
+            target_term=CONCEPT, concept_id=CONCEPT, analysis_type=OPERATION,
+            unresolved_slots=list(problem.missing_slots))
+        qec = QueryExecutionContext(request_id=str(state["task_id"]), task_id=str(state['task_id']), revision=state.get("execution_revision") or 1, original_query=state.get("query"), normalized_query=state.get('normalized_query'), slots=slots, route_plan={"analysis_type": OPERATION, "primary_agent": "Spatial Analysis Agent", 'slots': slots.model_dump()})
+        qec.provenance['location_resolution'] = reference[3] if reference else {'status':'UNRESOLVED', 'requested_location_text':hint, 'geometry_confirmed':False}
+        qec.provenance['spatial_preflight'] = {'status':'INPUT_NOT_READY', 'scope':'target_spatial_query', 'execution_attempted':False, 'execution_started':False, 'tool_called':False, 'sql_executed':False}
     if problem.status != "FAILED":
         qec.readiness = PlanStatus(problem.status)
     # A validated denial can have multiple reasons. Preserve its native receipt
@@ -1278,6 +1392,9 @@ def execute_radius_request(state):
         distance_hint = parse_distance(state.get("query", ""), spatial)
     except RadiusProblem:
         distance_hint = None
+    if qec.slots.distance_m is None and distance_hint is not None:
+        qec.slots.distance_m = distance_hint
+        qec.route_plan['slots'] = qec.slots.model_dump()
     surface = {
         "total_hazard_count": None,
         "nearest_returned_count": None,
@@ -1286,8 +1403,8 @@ def execute_radius_request(state):
         "feature_type_breakdown": {},
         "returned_feature_type_breakdown": {},
         "source_layer": None,
-        "reference_geometry": spatial.get("geometry"),
-        "reference_crs": spatial.get("crs"),
+        "reference_geometry": qec.slots.reference_geometry,
+        "reference_crs": qec.slots.crs,
         "geojson": {"feature_count": 0, "available": False},
         "map_layers": {"count": 0, "feature_layer_id": None, "search_area_layer_id": None},
         "evidence_bundle": {"spatial_feature_evidence": 0, "spatial_layer_evidence": 0, "rag_evidence": 0, "kg_provenance": 0, "regulatory_evidence": 0},
@@ -1304,15 +1421,17 @@ def execute_radius_request(state):
                               "blockers": list(qec.blockers),
                               "nearest_returned_count": None, "feature_type_breakdown": {},
                               "total_counts_by_type": {}, "returned_counts_by_type": {},
-                              "original_query": state.get("query"), "location_text": spatial.get("base_location"),
+                              "original_query": state.get("query"), "location_text": qec.slots.location_text,
+                              "missing_slots": list(problem.missing_slots),
+                              "search_execution": qec.provenance.get('spatial_preflight') or qec.provenance.get('spatial_execution'),
                               "spatial_context": {key: value for key, value in spatial.items() if key in {
                                   "base_location", "location_text", "geometry", "crs", "buffer_distance",
                                   "target_features", "exclusions", "context", "result_limit", "offset",
                                   "place_id", "place_version",
                               }},
                               "distance_m": distance_hint, "location_candidates": problem.candidates,
-                              "source_layer": None, "reference_geometry": spatial.get("geometry"),
-                              "reference_crs": spatial.get("crs"), "geojson_feature_count": 0,
+                              "source_layer": None, "reference_geometry": qec.slots.reference_geometry,
+                              "reference_crs": qec.slots.crs, "geojson_feature_count": 0,
                               "map_layer_count": 0, "evidence_bundle_counts": surface["evidence_bundle"],
                               "web_rag_usage": surface["web_rag_usage"], "result_surface": surface},
         "map_layers": [], "evidence_bundle": EvidenceBundle().model_dump(mode="json"),

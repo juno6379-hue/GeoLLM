@@ -2,11 +2,18 @@
 from __future__ import annotations
 
 import re
+import hashlib
+from pathlib import Path
+
+SOURCE_ROOT = Path(__file__).resolve().parents[2]
 
 
 def required_outputs(query: str) -> list[str]:
     text = str(query or '').casefold()
     outputs = []
+    if re.search(r'(?<![a-z0-9_])dceg(?![a-z0-9_])|데이터\s*분류.*인코딩\s*지침', text) and re.search(r'근거|출처|정의|설명|지침|evidence|source|definition|explain|guidance', text):
+        if not re.search(r'(?:dceg(?:의)?\s*(?:근거)?\s*(?:제외|생략|필요\s*없)|without\s+dceg)', text):
+            outputs.append('dceg_source_evidence')
     from services.orchestrator.request_semantics import requests_map_output
     if requests_map_output(query):
         outputs.append('map_spatial_result')
@@ -131,6 +138,45 @@ def missing_selected_feature(query: str, spatial_context: dict | None) -> bool:
     return not isinstance(selected, dict) or not (selected.get('id') or (selected.get('properties') or {}).get('feature_id'))
 
 
+
+def _has_dceg_source_evidence(final: dict) -> bool:
+    # A catalogue definition is not a DCEG citation. Require a separately
+    # retrieved, locally hash-bound DCEG source and exact line-bound quote.
+    # PDF/page extraction is not implemented here; such evidence stays unmet.
+    value = (final.get('structured_result') or {}).get('dceg_evidence')
+    if not isinstance(value, dict) or value.get('source_kind') != 'S101_DCEG':
+        return False
+    ref = str(value.get('source_ref') or '')
+    if not re.search(r'dceg', ref, re.I) or not value.get('source_sha256'):
+        return False
+    if not value.get('locators') or not value.get('quote'):
+        return False
+    try:
+        path = (SOURCE_ROOT / ref).resolve()
+        path.relative_to(SOURCE_ROOT.resolve())
+        if not path.is_file() or path.suffix.casefold() not in {'.txt', '.md'}:
+            return False
+        raw = path.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != value['source_sha256']:
+            return False
+        lines = raw.decode('utf-8-sig').splitlines()
+        locators = value['locators']
+        if not isinstance(locators, list) or len(locators) > 32:
+            return False
+        passages = []
+        for locator in locators:
+            match = re.fullmatch(r'line:(\d+)(?:-(\d+))?', str(locator))
+            if not match:
+                return False
+            start, end = int(match[1]), int(match[2] or match[1])
+            if start < 1 or end < start or end > len(lines) or end - start > 1000:
+                return False
+            passages.append('\n'.join(lines[start-1:end]))
+        return str(value['quote']).strip() == '\n'.join(passages).strip()
+    except (OSError, ValueError, UnicodeError):
+        return False
+
+
 def audit_outputs(query: str, final: dict) -> dict:
     """Downgrade an incomplete success; preserve failed/clarification states."""
     obligations = required_outputs(query)
@@ -147,6 +193,7 @@ def audit_outputs(query: str, final: dict) -> dict:
                         and row.get('execution_receipt') and row.get('source_ref')}
     missing_groups = [name for name, candidates in groups.items() if not candidates.intersection(executed_targets)]
     checks = {
+        'dceg_source_evidence': _has_dceg_source_evidence(final) if 'dceg_source_evidence' in obligations else False,
         'grounded_term_explanation': _has_grounded_term_explanation(query, final) if 'grounded_term_explanation' in obligations else False,
         'map_spatial_result': _has_executed_map_output(final) if 'map_spatial_result' in obligations else False,
         'all_requested_feature_groups': not missing_groups,
@@ -179,7 +226,7 @@ def audit_outputs(query: str, final: dict) -> dict:
         if structured.get('status') in {'SUCCESS', 'SUCCESS_EMPTY'}:
             structured.setdefault('execution_result_status', structured['status'])
         final['structured_result']['status'] = 'PARTIAL'
-        labels = {'grounded_term_explanation': '요청한 용어·속성과 출처가 연결된 설명 (관련 문서 검색만으로는 미충족)', 'map_spatial_result': '실제 공간 검색 결과와 지도 레이어', 'all_requested_feature_groups': '모든 요청 대상의 개별 공간 실행 결과 (' + ', '.join(missing_groups) + ')', 'portrayal_rule_evidence': '렌더링 규칙 원문 근거', 'portrayal_symbol_binding': '지도 객체와 심볼의 연결 근거',
+        labels = {'dceg_source_evidence': '요청한 DCEG 원문 근거 (Feature Catalogue 정의로 대체하지 않음)', 'grounded_term_explanation': '요청한 용어·속성과 출처가 연결된 설명 (관련 문서 검색만으로는 미충족)', 'map_spatial_result': '실제 공간 검색 결과와 지도 레이어', 'all_requested_feature_groups': '모든 요청 대상의 개별 공간 실행 결과 (' + ', '.join(missing_groups) + ')', 'portrayal_rule_evidence': '렌더링 규칙 원문 근거', 'portrayal_symbol_binding': '지도 객체와 심볼의 연결 근거',
                   'selected_feature_evidence': '선택한 지도 객체의 원천 정보',
                   'data_processing_provenance': '원천 자료의 좌표 변환·정제 이력',
                   'traffic_aggregation': '통항량 집계 결과', 'accident_evidence': '사고 분석 근거',

@@ -12,6 +12,8 @@ from functools import lru_cache
 from services.orchestrator.execution_validator import validate_lookup_request, is_execution_authorized
 
 router = APIRouter(tags=['coastal-evidence'])
+from services.orchestrator.harbour_evidence import harbour_card, router as harbour_router
+router.include_router(harbour_router)
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -77,10 +79,14 @@ def retrieve(query, limit=5, semantic=False, scope='coastal', include_spatial=Tr
           {guide_order} lexical_matches DESC, {vector_order} CASE WHEN metadata->>'language'='ko' THEN 0 ELSE 1 END,
           CASE WHEN section='VOYAGE_INF' THEN 0 ELSE 1 END, chunk_id LIMIT :limit'''),
           {**params,'limit':limit * 4}).mappings().all()
-        harbour_where = ' OR '.join(f'name=:name{i}' for i in range(len(terms)))
+        # Only an exact harbour name or its explicitly named sub-harbours; no
+        # arbitrary nearby facility is promoted to an identity match.
+        harbour_where = ' OR '.join(f"(name=:name{i} OR name LIKE :subport{i} ESCAPE '!')" for i in range(len(terms)))
+        for i, term in enumerate(terms):
+            params[f'subport{i}'] = term.replace('!','!!').replace('%','!%').replace('_','!_') + '(%'
         harbours = conn.execute(text(f'''SELECT source_id,name,properties,provenance,
            ST_AsGeoJSON(geom)::json AS geometry FROM serving.small_harbour_guide
-           WHERE {harbour_where} ORDER BY source_id LIMIT 5'''),params).mappings().all() if include_spatial else []
+           WHERE {harbour_where} ORDER BY name,source_id LIMIT 20'''),params).mappings().all() if include_spatial else []
         coverage = conn.execute(text("SELECT count(*) AS total,count(embedding) AS embedded FROM knowledge.document_chunks WHERE COALESCE(metadata->>'retrieval_status','ACTIVE') <> 'SUPERSEDED' AND " +
             ("document_type NOT LIKE '%profile'" if scope == 'dataset' else "document_type IN ('coastal_pilot','small_harbour_guide')"))).mappings().one()
     spatial_records, spatial_error = [], None
@@ -123,7 +129,9 @@ def retrieve(query, limit=5, semantic=False, scope='coastal', include_spatial=Tr
             'excluded_audit_documents':excluded_documents,
             'document_lookup_status':'COMPLETED','spatial_lookup_status':('UNAVAILABLE' if spatial_error else 'COMPLETED') if include_spatial else 'NOT_REQUESTED',
             'spatial_lookup_error':spatial_error,
-            'harbour_records':[dict(r) for r in harbours],'spatial_records':spatial_records,'embedding_coverage':dict(coverage),
+            'harbour_records':[dict(r) for r in harbours],
+            'harbour_cards':[harbour_card(dict(r)) for r in harbours],
+            'spatial_records':spatial_records,'embedding_coverage':dict(coverage),
             'retrieval_method':method,'execution_validation':receipt,
             **({'query_execution_context':qec.model_dump(mode='json')} if request_state is not None else {}),
             'scope':'document_explanation_only','coordinate_authority':False,

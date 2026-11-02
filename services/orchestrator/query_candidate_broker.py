@@ -133,7 +133,7 @@ DETERMINISTIC_PATTERNS: list[tuple[str, re.Pattern[str], list[str]]] = [
     ),
     ("traffic_term", re.compile(r"통항량|AIS|V-PASS|vpass|traffic", re.I), ["TRAFFIC_ANALYSIS"]),
     ("nearby_search", re.compile(r"이내|반경|근처|주변|거리|가까운|nearest|closest", re.I), ["SPATIAL_ANALYSIS"]),
-    ("hazard_target", re.compile(r"위험객체|장애물|obstruction|wreck|침선|간출암|노출암|부표", re.I), ["SPATIAL_ANALYSIS", "LAYER_INSPECTION"]),
+    ("hazard_target", re.compile(r"위험\s*객체|위험물|장애물|obstruction|wreck|침선|간출암|노출암|부표", re.I), ["SPATIAL_ANALYSIS", "LAYER_INSPECTION"]),
     ("find_intent", re.compile(r"찾아줘|찾아|위치|어디|좌표", re.I), ["PLACE_LOOKUP"]),
     ("place_name", re.compile(r"독도|[가-힣A-Za-z]+항\s*입구|[가-힣A-Za-z]+항|[가-힣]+해역|도서지명", re.I), ["PLACE_LOOKUP"]),
     ("layer_inspection", re.compile(r"폴리곤|레이어|지도|클릭|상세정보|범례|symbol|아이콘|portrayal", re.I), ["LAYER_INSPECTION"]),

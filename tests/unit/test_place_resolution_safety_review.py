@@ -60,7 +60,7 @@ def test_partial_catalog_preserves_healthy_source_and_discloses_incomplete_cover
 
 
 def test_fresh_verified_selection_does_not_need_unrelated_source():
-    point = candidate("island:1", "Port Alpha")
+    point = candidate("island:1", "Port Alpha entrance")
     geometry, _, _, resolution = resolve_location(
         "Port Alpha entrance within 3km",
         {"place_id": point["place_id"], "place_version": point["place_version"], "geometry": point["geometry"], "crs": point["crs"]},

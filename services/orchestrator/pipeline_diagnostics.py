@@ -6,6 +6,9 @@ from psycopg2.extras import RealDictCursor
 
 
 def diagnostic_request(query):
+    from services.orchestrator.traffic_description import is_hypothetical_traffic_description
+    if is_hypothetical_traffic_description(query):
+        return 'traffic_layer_description'
     text = str(query or '').casefold()
     if not re.search(r'확인|동작|적재|근거|이유|보여|설명|현황', text):
         return None
@@ -37,6 +40,20 @@ def diagnostic_response(state):
     if kind == 'execution_trace':
         status, code = 'NEEDS_CLARIFICATION', 'DIAGNOSTIC_TASK_REQUIRED'
         answer = '검토할 원래 질의 또는 작업 ID를 알려주세요. 해당 작업의 후보·슬롯·validator 기록이 있어야 제거·차단 이유를 판단할 수 있습니다.'
+    elif kind == 'traffic_layer_description':
+        from services.orchestrator.traffic_description import read_traffic_description, describe_traffic_contract
+        import yaml
+        try:
+            entry = read_traffic_description()
+            expected = validated.provenance.get('traffic_description') or {}
+            if entry['source_sha256'] != expected.get('source_sha256'):
+                raise ValueError('TRAFFIC_REGISTRY_CHANGED')
+            rows, relation, snapshot = entry['rows'], entry['source_ref'], {key: entry[key] for key in ('source_sha256','version','verification_scope','live_values_queried')}
+            status = 'PARTIAL'
+            answer = describe_traffic_contract(entry)
+        except (OSError, ValueError, yaml.YAMLError):
+            status, code = 'BLOCKED', 'TRAFFIC_REGISTRY_UNAVAILABLE_OR_CHANGED'
+            answer = '통항량 레이어 설명 원천을 검증하지 못했습니다. 실제 셀이나 선박 정보를 조회하지 않았습니다.'
     elif kind == 'resolver_registry':
         from services.orchestrator.query_candidate_broker import _load_registry
         rows = [{key: entry.get(key) for key in ('capability_id','label','routes','input_slots','output_slots','authority_ref','registry_ref')}

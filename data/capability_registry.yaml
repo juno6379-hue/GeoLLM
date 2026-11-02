@@ -38,6 +38,11 @@ router_policies:
       - 인근
       - 앞바다
       - 해역
+      - 가장 가까운
+      - 가장 가까이
+      - 최근접
+      - nearest
+      - closest
     - signal_id: marine_gazetteer_target
       reason: gazetteer target must use marine gazetteer resolver
       terms:

@@ -1,6 +1,7 @@
 """Source-grounded FC explanations; never an alternative to a spatial operation."""
 from __future__ import annotations
 import re
+from copy import deepcopy
 import hashlib
 import xml.etree.ElementTree as ET
 import yaml
@@ -104,9 +105,17 @@ def build_catalogue_document_response(state: dict) -> dict | None:
     answer='\n\n'.join(parts)
     plan={'analysis_type':'public_catalogue_document_lookup','intent':'STANDARD_RAG','tools':['catalogue.document_lookup'],'outputs':['StandardDocumentOutput','EvidenceBundle','Summary']}
     project_execution_decision(qec,plan)
+    actual_evidence = {'evidence_id': 'fc:' + doc['source_sha256'],
+                       'evidence_type': 'source_catalogue_document',
+                       'source_ref': doc['evidence']['source_ref'],
+                       'source_sha256': doc['evidence']['source_sha256'],
+                       'data': deepcopy(doc['evidence'])}
     final={'status':'COMPLETED','summary':answer,'answer_text':answer,'structured_result':{'status':'COMPLETED','document_answer':doc,'search_execution':{'status':'NOT_RUN','reason':'Catalogue explanation only'}},
            'orchestrator_v2':{'route_plan':plan,'query_execution_context':qec.model_dump(mode='json')},
-           'rag_evidence':[{'source_ref':doc['source_ref'],'source_sha256':doc['source_sha256'],'data':doc}], 'contract_version':'geollm.execution.v1'}
+           'rag_evidence':[actual_evidence],
+           'evidence_bundle':{'rag_evidence':[deepcopy(actual_evidence)]}, 'contract_version':'geollm.execution.v1'}
+    from services.orchestrator.request_obligations import audit_outputs
+    final = audit_outputs(state.get('query', ''), final)
     return {'final_dict':final,'task_plan':plan,'query_execution_context':qec.model_dump(mode='json')}
 
 

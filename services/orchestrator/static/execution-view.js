@@ -23,6 +23,13 @@ window.ExecutionView = (() => {
         if (!rank?.ranking?.length) return '아직 비교 결과가 없습니다.';
         return rank.ranking.map(key => `${names[key] || key}${Number.isFinite(rank.probabilities?.[key]) ? ` (${rank.probabilities[key].toFixed(3)})` : ''}`).join(' / ') + (rank.abstained ? ' · 판단 보류' : '');
     }
+    function comparisonUnavailable(record) {
+        if (record.status === 'FAILED') return /timeout|timed out/i.test(record.error || '')
+            ? 'Qwen 비교 시간이 초과되어 결과를 얻지 못했습니다.' : '비교 처리에 실패하여 결과를 얻지 못했습니다.';
+        if (record.status === 'QUEUE_FULL') return '비교 대기열이 가득 차 결과를 얻지 못했습니다.';
+        if (record.status === 'INTERRUPTED') return '비교가 중단되어 결과를 얻지 못했습니다.';
+        return record.status === 'COMPLETED' ? '비교 기록에 결과가 없습니다.' : '비교 결과를 기다리고 있습니다.';
+    }
     function locationAnalysis() {
         if (result?.status !== 'NEEDS_CLARIFICATION' || !/입구|출구|근처|주변|부근|인근/.test(query)) return null;
         const s = result.structured_result || {};
@@ -36,9 +43,10 @@ window.ExecutionView = (() => {
         }
         const candidates = s.location_candidates || [];
         if (candidates.length) {
-            const usable = candidates.filter(c => c.geometry && c.crs).length;
+            const usable = candidates.filter(c => c.geometry && c.crs && c.selection_scope !== 'PARENT_PLACE_ONLY' && c.qualifier_binding_verified !== false).length;
+            if (candidates.some(c => c.selection_scope === 'PARENT_PLACE_ONLY' || c.qualifier_binding_verified === false)) lines.push('부모 항만 위치만 확인된 후보는 입구·출구 기준점으로 선택할 수 없습니다. 세부 위치의 좌표나 근거가 필요합니다.');
             lines.push(`현재 위치 후보 ${candidates.length}개를 찾았습니다. ${usable ? `좌표·좌표계가 있는 후보 ${usable}개의 출처와 세부 위치를 확인할 수 있습니다.` : '후보의 좌표가 미확정이어서 지도에 표시할 기준점을 확정하지 못했습니다.'}`);
-        } else lines.push(result.error_code === 'DISTANCE_REQUIRED' ? '기준 위치는 확인했으며 검색 범위 확인이 남아 있습니다.' : '현재 연결된 근거에서 요청 위치의 기준점을 확정하지 못했습니다.');
+        } else lines.push(result.error_code === 'DISTANCE_REQUIRED' ? '검색 범위가 필요합니다. 이 오류 코드만으로 기준 위치가 확인됐다고 판단하지 않습니다.' : '현재 연결된 근거에서 요청 위치의 기준점을 확정하지 못했습니다.');
         if (coastal?.documents?.length) {
             const term = coastal.search_terms?.[0] || '';
             const relative = /입구/.test(query) ? '입구' : /출구/.test(query) ? '출구' : '';
@@ -74,7 +82,7 @@ window.ExecutionView = (() => {
             const route = result?.orchestrator_v2?.route_plan?.intent;
             line('규칙 해석', comparison.rankings?.rule ? rankText(comparison.rankings.rule) : route ? `${names[route] || route} · 후보 점수 비교 대기` : rankText(null));
             const judgement = comparison.judgement;
-            line('Qwen 해석', judgement ? `선택 의도: ${names[judgement.selected] || judgement.selected || '판단 보류'} / 추가 확인 판단: ${judgement.needs_clarification === true ? '필요' : judgement.needs_clarification === false ? '불필요' : '미기록'} (모델 의견)` : `비교 ${comparison.status || '대기'} · 아직 모델 해석이 없습니다.`);
+            line('Qwen 해석', judgement ? `선택 의도: ${names[judgement.selected] || judgement.selected || '판단 보류'} / 추가 확인 판단: ${judgement.needs_clarification === true ? '필요' : judgement.needs_clarification === false ? '불필요' : '미기록'} (모델 의견)` : comparisonUnavailable(comparison));
             if (judgement?.reason) {
                 const details = document.createElement('details'), summary = document.createElement('summary'), body = document.createElement('p');
                 summary.textContent = 'Qwen 설명 원문'; body.textContent = judgement.reason;
@@ -84,14 +92,28 @@ window.ExecutionView = (() => {
                 const j = comparison.judgement;
                 line('Qwen이 추출한 조건', `위치 ${j.location || '미지정'} / 반경 ${j.radius || '미지정'} / 시간 ${j.time || '미지정'}`);
             }
-            line('융합 비교', rankText(comparison.rankings?.simple_mix));
+            line('융합 비교', comparison.rankings?.simple_mix?.ranking?.length ? rankText(comparison.rankings.simple_mix) : comparisonUnavailable(comparison));
+            if (['FAILED','QUEUE_FULL','INTERRUPTED'].includes(comparison.status)) {
+                line('비교와 실행 구분', 'Qwen·융합 비교의 실패는 공간 검색 실패나 허용을 뜻하지 않습니다. 실제 실행 상태와 차단·추가 입력 사유를 확인하세요.');
+                if (comparison.error) line('비교 실패 기록', comparison.error);
+            }
             line('비교의 의미', '후보 점수이며 정확도나 실행 승인 값이 아닙니다. Qwen 해석은 검증된 지명·좌표를 대신하지 않습니다.');
         } else line('해석 비교', '규칙·Qwen·융합 비교를 기다리는 중입니다. 실제 처리 상태는 아래에 별도로 표시합니다.');
         if (coastal) {
+            window.HarbourEvidence?.render(host, coastal.harbour_cards, generation);
             if (coastal.status === 'COMPLETED') paint('knowledge','원문 검색 완료',`${coastal.documents.length}개 발췌. 별도 근거 조회이며 지도 실행 승인이 아닙니다.`);
             if (coastal.embedding_coverage) line('본문·임베딩 적재', `검색 본문 ${coastal.embedding_coverage.total}개 / 임베딩 완료 ${coastal.embedding_coverage.embedded}개 · ${coastal.retrieval_method || ''}`);
             line('Dataset 원문 근거 검색', coastal.status === 'COMPLETED' ? `${coastal.documents.length}개 발췌 · ${coastal.knowledge_links?.length || 0}개 출처 연결` : `${coastal.status} · 검색 완료로 보지 않습니다.`);
-            for (const record of coastal.spatial_records || []) line('공간자료 원천 기록', `${record.source_file} / ${record.source_member} / 행 ${record.row_index + 1} · geometry ${record.geometry_valid ? '검증됨' : '검토 필요'} · ${JSON.stringify(record.properties)}`);
+            if (coastal.spatial_records?.length) {
+                const audit=document.createElement('details'), caption=document.createElement('summary');
+                caption.textContent='별도 원천 검색 기록 — 현재 답변의 직접 근거와 구분'; audit.appendChild(caption);
+                for (const record of coastal.spatial_records) {
+                    const row=document.createElement('p');
+                    row.textContent=`${record.source_file} / ${record.source_member} / 행 ${record.row_index + 1} · 기하 형식 ${record.geometry_valid ? '유효' : '검토 필요'}`;
+                    audit.appendChild(row);
+                }
+                host.appendChild(audit);
+            }
             for (const doc of coastal.documents || []) {
                 const title = `${doc.title} / ${doc.page_no ? `PDF ${doc.page_no}쪽` : doc.section}`;
                 const detail = document.createElement('details'), caption = document.createElement('summary'), excerpt = document.createElement('p');
@@ -131,7 +153,9 @@ window.ExecutionView = (() => {
             const steps = result.processing_steps || [];
             for (const step of steps.filter(s => ['실행 승인','도구 실행'].includes(s.step))) line(step.step, step.detail);
             if (structured.location_candidates?.length) {
-                const selectable = structured.location_candidates.filter(c => c.geometry && c.crs).length;
+                const parentOnly = structured.location_candidates.some(c => c.selection_scope === 'PARENT_PLACE_ONLY' || c.qualifier_binding_verified === false);
+                const selectable = structured.location_candidates.filter(c => c.geometry && c.crs && c.selection_scope !== 'PARENT_PLACE_ONLY' && c.qualifier_binding_verified !== false).length;
+                if (parentOnly) line('세부 위치 확인', '부모 항만 위치는 입구·출구 기준점으로 선택할 수 없습니다. 세부 위치의 좌표나 근거를 지정해 주세요.');
                 line('후보 확인', selectable ? `${structured.location_candidates.length}개 후보 중 좌표·좌표계가 있는 후보 ${selectable}개를 확인할 수 있습니다. 아래 출처·위치를 확인하여 선택하세요. 후보 선택과 권위 지명 등록은 별개입니다.` : `후보 ${structured.location_candidates.length}개는 좌표가 미확정되어 선택할 수 없습니다. 경도·위도를 지정하거나 검증된 위치 근거를 추가해야 합니다.`);
             }
             line('현재 결과·다음 입력', locationAnalysis() || result.answer_text || result.summary || result.status);

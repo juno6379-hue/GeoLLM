@@ -77,7 +77,7 @@ def _place_candidate_features(candidates: list[dict]) -> dict:
             "id": candidate.get("place_id"),
             "geometry": geometry,
             "properties": {
-                "name": candidate.get("label") or candidate.get("base_location"),
+                "name": candidate.get("display_label") or candidate.get("label") or candidate.get("base_location"),
                 "place_id": candidate.get("place_id"),
                 "place_version": candidate.get("place_version"),
                 "authority_level": candidate.get("authority_level"),

@@ -14,6 +14,9 @@ from shared.schemas.agent import QueryExecutionContext
 
 def informational_request(query: str) -> bool:
     q = str(query or '').strip()
+    from services.orchestrator.pipeline_diagnostics import diagnostic_request
+    if diagnostic_request(q):
+        return False
     # Existing specialised source/execution policies remain authoritative.
     if re.search(r'비공개|기밀|무단|실시간|예측|예보|오늘|내일|현재|최신|위험|안전|통항량|교통량|밀도|집계|계산|분석|비교|적재|임베딩|provenance|S[- ]?\d{3}|카탈로그|catalogue|DCEG|portrayal|법령|법률|고시|규정|제한\s*종류|속성|정의|어떤\s*객체|선택|클릭|(?:이|그|해당)\s*(?:객체|항만|수로|양식장)|\b(?:private|classified|forecast|risk|current|latest|attributes?|definition)\b', q, re.I):
         return False
@@ -34,7 +37,7 @@ def _source_passages(query, evidence):
     result, seen = [], set()
     for doc in evidence.get('documents') or []:
         if ((doc.get('metadata') or {}).get('retrieval_status') == 'SUPERSEDED'
-                or (doc.get('source_text_verification') or {}).get('status') in ('AUDIT_SNAPSHOT_MISMATCH', 'CURRENT_CHUNK_SUPERSEDED')):
+                or (doc.get('source_text_verification') or {}).get('status') in ('AUDIT_SNAPSHOT_MISMATCH', 'CURRENT_CHUNK_SUPERSEDED', 'SOURCE_EXTRACTION_UNVERIFIED')):
             continue
         content = str(doc.get('content') or '')
         title = str(doc.get('title') or '')
@@ -95,6 +98,8 @@ def build_dataset_answer(state):
                          for d in diagnostic_documents)
     superseded_count = sum((d.get('source_text_verification') or {}).get('status') == 'CURRENT_CHUNK_SUPERSEDED'
                            for d in diagnostic_documents)
+    extraction_unverified_count = sum((d.get('source_text_verification') or {}).get('status') == 'SOURCE_EXTRACTION_UNVERIFIED'
+                                     for d in diagnostic_documents)
     if passages:
         # Retrieval can support a useful attributed answer without proving that
         # every requested informational aspect has been explained.
@@ -112,6 +117,8 @@ def build_dataset_answer(state):
             parts.append(f'파생 설명 {incomplete}건에는 일부 원천 필드(속성 코드 또는 객체–속성 관계 등)가 빠져 있습니다. 해당 부분을 완전한 속성 설명으로 사용하지 않습니다.')
         if mismatch_count:
             parts.append(f'감사 원문과 불일치한 청크 {mismatch_count}건은 답변 발췌에서 제외했습니다.')
+        if extraction_unverified_count:
+            parts.append(f'워크시트 셀 본문과의 연결이 미검증인 청크 {extraction_unverified_count}건은 답변 발췌에서 제외했습니다. 원문 자료가 없다는 뜻은 아닙니다.')
         if any(p['source_text_verification'].get('coordinate_literal_issues') for p in passages):
             parts.append('원문 좌표 표기에 검토가 필요한 항목이 있어 위치 기준으로 사용하지 않았습니다.')
         linked_objects = {link['source_id'] for p in passages
@@ -131,6 +138,9 @@ def build_dataset_answer(state):
             answer = f'조회된 청크 {mismatch_count}건이 감사 당시 원문과 불일치하여 답변 근거에서 제외했습니다. 원문 대조가 필요하며, 검색 결과가 없거나 Dataset 전체에 자료가 없다는 뜻은 아닙니다.'
         elif mismatch_count:
             answer += f' 감사 원문과 불일치한 청크 {mismatch_count}건은 답변 근거에서 제외했습니다.'
+        elif extraction_unverified_count:
+            error = 'DATASET_SOURCE_EXTRACTION_UNVERIFIED'
+            answer = f'조회된 청크 중 {extraction_unverified_count}건은 워크시트 셀 본문과의 연결을 검증하지 못해 답변 근거에서 제외했습니다. 원문 대조가 필요하며, 검색 결과가 0건이거나 자료가 없다는 뜻은 아닙니다.'
         elif superseded_count:
             error = 'DATASET_SUPERSEDED_EVIDENCE_EXCLUDED'
             answer = f'현재 대체된 자료로 표시된 청크 {superseded_count}건은 답변 근거에서 제외했습니다. 활성 자료에서 사용할 수 있는 발췌를 확인하지 못했습니다.'
@@ -151,6 +161,7 @@ def build_dataset_answer(state):
                                       'unverified_passages':len(passages)-verified_count,
                                       'excluded_mismatch_chunks':mismatch_count,
                                       'excluded_superseded_chunks':superseded_count,
+                                      'excluded_extraction_unverified_chunks':extraction_unverified_count,
                                       'scope':'AUDIT_SNAPSHOT_ONLY', 'semantic_correctness_verified':False},
                                   'coverage_complete':False, 'coordinate_authority':False,
                                   'search_execution':{'status':'NOT_RUN','reason':'Document information request; no spatial operation'},

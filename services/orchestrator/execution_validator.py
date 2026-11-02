@@ -119,6 +119,11 @@ def _validate_lookup(current, adapter):
     current.data_bindings, current.tool_bindings = [], []
     if not _has_document_query(current):
         blockers.append("NEEDS_USER_INPUT: lookup query is required")
+    if operation == "accident_event_lookup" and not current.slots.filters.get("terms"):
+        # Missing user filters are known before DB discovery; an unavailable DB
+        # must not turn an unbounded request into a misleading data outage.
+        current.slots.unresolved_slots = ["accident_filters"]
+        return _finish(current, [*blockers, "NEEDS_USER_INPUT: accident filters are required"], warnings)
     if operation == "public_catalogue_document_lookup":
         from services.orchestrator.catalogue_document import resolve_catalogue_document
         entry = resolve_catalogue_document(current.original_query or "")
@@ -161,13 +166,36 @@ def _validate_lookup(current, adapter):
                 schema_version=str(entry.get("source_version") or ""))]
             current.provenance["catalogue_attribute"] = {key: entry.get(key) for key in (
                 "feature_code", "attribute_code", "source_ref", "source_sha256", "xml_source_sha256", "locators")}
+    elif operation == "traffic_layer_description":
+        import yaml
+        from services.orchestrator.traffic_description import read_traffic_description, is_hypothetical_traffic_description
+        tool_id = "diagnostics.traffic_layer_description"
+        tool = adapter.tool_registry.get('tools', {}).get(tool_id, {})
+        try:
+            entry = read_traffic_description()
+        except (OSError, ValueError, yaml.YAMLError):
+            entry = None
+        if not is_hypothetical_traffic_description(current.original_query):
+            blockers.append("BLOCKED_CONFIG: description-only traffic request required")
+        elif not entry:
+            blockers.append("BLOCKED_DATA: traffic registry evidence unavailable")
+        elif tool.get('operation') != operation or tool.get('source') != entry['source_ref'] or tool.get('read_only') is not True:
+            blockers.append("BLOCKED_CONFIG: traffic description tool unavailable")
+        else:
+            current.data_bindings = [DataBinding(dataset_id='traffic_layer_registry', relation=entry['source_ref'], geometry_column='', snapshot_version=entry['source_sha256'], read_only=True)]
+            current.tool_bindings = [ToolBinding(tool_id=tool_id, operation=operation, schema_version=entry['version'])]
+            current.provenance['traffic_description'] = {key: entry[key] for key in ('source_ref','source_sha256','version','verification_scope','live_values_queried')}
     elif operation in {"definition_lookup", "terminology_relation_lookup"}:
         from services.orchestrator.definition_router import resolve_definition
         entry = resolve_definition(current.original_query or "")
         if not entry or not entry.get("definition_ko") or not entry.get("source_ref"):
             blockers.append("BLOCKED_DATA: grounded definition is unavailable")
         else:
-            current.data_bindings = [DataBinding(dataset_id=entry["source_kind"], relation=entry["source_ref"], geometry_column="")]
+            definitions = entry.get("comparison_entries") or [entry]
+            if not all(item.get("definition_ko") and item.get("source_ref") for item in definitions):
+                blockers.append("BLOCKED_DATA: one or more comparison definitions lack source binding")
+            else:
+                current.data_bindings = [DataBinding(dataset_id=item["source_kind"], relation=item["source_ref"], geometry_column="") for item in definitions]
             current.tool_bindings = [ToolBinding(tool_id="definition.registry_lookup", operation=operation)]
     elif operation in {"local_document_lookup", "resolver_registry", "metadata_discovery", "evidence_validation"}:
         root = Path(__file__).resolve().parents[2]
@@ -206,8 +234,6 @@ def _validate_lookup(current, adapter):
                 blockers.append('BLOCKED_DATA: dataset source records unavailable')
             else:
                 current.data_bindings.append(DataBinding(dataset_id=relation,relation=relation,geometry_column=''))
-        if operation == "accident_event_lookup" and not current.slots.filters.get("terms"):
-            blockers.append("NEEDS_USER_INPUT: accident filters are required")
     return _finish(current, blockers, warnings)
 
 
@@ -278,6 +304,9 @@ def execution_gate_failure(state, qec):
     if status == "NEEDS_CLARIFICATION" and "NEEDS_USER_INPUT: accident filters are required" in qec.blockers:
         error_code = "ACCIDENT_FILTERS_REQUIRED"
         summary = "조회할 사고의 해역·관할 또는 사고 유형과 기간을 알려주세요. '최근'만으로 임의 기간을 적용하지 않습니다. 사고 검색은 아직 실행하지 않았습니다."
+    elif status == "NEEDS_CLARIFICATION" and set(qec.blockers) == {"NEEDS_USER_INPUT: distance_m is required"}:
+        error_code = "DISTANCE_REQUIRED"
+        summary = "기준 위치에서 검색할 반경을 지정해 주세요(0m 초과 50km 이하, 예: 2km). 공간 검색은 아직 실행하지 않았습니다."
     final = {"task_id": state.get("task_id"), "status": status, "error_code": error_code,
              "summary": summary, "answer_text": summary,
              "clarification_questions": [summary] if status == "NEEDS_CLARIFICATION" else [],
@@ -348,6 +377,10 @@ def validate_place_resolution(query, payload, *, task_id=None, revision=1):
         provenance={"location_resolution": resolution, "execution_permission": payload.get("execution_permission")})
     blockers = []
     if payload.get("status") != "RESOLVED":
+        if payload.get("status") == "NEEDS_CLARIFICATION":
+            qec.slots.unresolved_slots = ["location_confirmation"] if payload.get("location_candidates") else ["reference_geometry"]
+            qec.slots.resolution_status = "CANDIDATES_REQUIRE_SELECTION" if payload.get("location_candidates") else "UNRESOLVED"
+            qec.route_plan["clarification_required"] = True
         prefix = "NEEDS_USER_INPUT" if payload.get("status") == "NEEDS_CLARIFICATION" else "BLOCKED_DATA"
         return _finish(qec, [f"{prefix}: {payload.get('error_code') or 'location requires confirmation'}"], [])
     if not _has_reference_geometry(qec) or qec.slots.crs != "EPSG:4326":
@@ -443,7 +476,7 @@ def validate_execution_context(qec: QueryExecutionContext, *, binding_adapter=No
     current.readiness = PlanStatus.DRAFT
     current.route_plan.update(execution_ready=False, status="DRAFT", route_plan_status="DRAFT")
     current.provenance.pop("execution_validation", None)
-    if current.route_plan.get("analysis_type") in {*_LOOKUP_SOURCES, "public_catalogue_document_lookup", "public_catalogue_attribute_lookup", "definition_lookup", "terminology_relation_lookup", "local_document_lookup", "resolver_registry", "metadata_discovery", "evidence_validation"}:
+    if current.route_plan.get("analysis_type") in {*_LOOKUP_SOURCES, "traffic_layer_description", "public_catalogue_document_lookup", "public_catalogue_attribute_lookup", "definition_lookup", "terminology_relation_lookup", "local_document_lookup", "resolver_registry", "metadata_discovery", "evidence_validation"}:
         return _validate_lookup(current, binding_adapter or schema_binding_adapter)
     blockers: List[str] = list(current.blockers or [])
     warnings: List[str] = list(current.warnings or [])

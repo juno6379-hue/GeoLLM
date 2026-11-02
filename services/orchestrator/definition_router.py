@@ -71,6 +71,21 @@ def _add(entries: dict[str, dict[str, Any]], entry: dict[str, Any], values: list
 @lru_cache(maxsize=1)
 def definition_entries() -> dict[str, dict[str, Any]]:
     entries: dict[str, dict[str, Any]] = {}
+    products_path = DATA / "s100_product_registry.yaml"
+    if products_path.exists():
+        products = (yaml.safe_load(products_path.read_text(encoding="utf-8")) or {}).get("products") or {}
+        for product_id, product in products.items():
+            if not isinstance(product, dict) or not product.get("name"):
+                continue
+            name = str(product["name"])
+            entry = {"term_id": product_id, "canonical_term": product_id,
+                     "aliases": [product_id.replace("-", "")],
+                     "definition_ko": f"현재 연결된 제품 레지스트리에 {name}로 등록된 S-100 계열 표준입니다. 등록 버전은 {product.get('version', '미기록')}이며, 자료 유형은 {product.get('data_type', '미기록')}입니다.",
+                     "source_title": "로컬 S-100 제품 레지스트리",
+                     "source_ref": f"data/s100_product_registry.yaml#products/{product_id}",
+                     "context": "standard", "verification_status": "LOCAL_PRODUCT_REGISTRY",
+                     "source_kind": "s100_product_registry"}
+            _add(entries, entry, [product_id, *entry["aliases"]])
     curated = yaml.safe_load((DATA / "definition_term_registry.yaml").read_text(encoding="utf-8")) or {}
     for term_id, raw in (curated.get("terms") or {}).items():
         if not isinstance(raw, dict) or raw.get("verification_status") != "VERIFIED":
@@ -117,6 +132,18 @@ def definition_entries() -> dict[str, dict[str, Any]]:
                 "source_kind": "s101_feature_catalogue",
             }
             _add(entries, entry, [code, name, *aliases])
+    # Korean semantic aliases live separately from the parsed FC. Bind only
+    # unique feature mappings; broad/multi-feature concepts stay unresolved.
+    mapping_path = DATA / "s101_feature_dictionary.yaml"
+    if mapping_path.exists():
+        mappings = (yaml.safe_load(mapping_path.read_text(encoding="utf-8")) or {}).get("s101_features") or {}
+        for label, mapping in mappings.items():
+            candidates = mapping.get("feature_candidates") or [] if isinstance(mapping, dict) else []
+            if len(candidates) != 1:
+                continue
+            entry = entries.get(normalize_term(candidates[0]))
+            if entry:
+                _add(entries, {**entry, "alias_binding_ref": f"data/s101_feature_dictionary.yaml#s101_features/{label}"}, [label])
     return entries
 
 
@@ -129,6 +156,16 @@ def catalogue_mapping_subject(query: str) -> str | None:
 
 
 def resolve_definition(query: str) -> dict[str, Any] | None:
+    # Compare two registered concepts only when no executable spatial/time
+    # obligation exists. Preserve each source; do not infer a spatial result.
+    if not has_operational_slots(query):
+        comparison = re.fullmatch(r"\s*(.+?)(?:과|와|하고|\s+vs\.?\s+)\s*(.+?)(?:의)?\s*차이(?:점)?(?:를)?(?:\s*(?:알려줘|설명해줘))?[?!.\s]*", query, re.I)
+        if comparison:
+            entries = [resolve_definition(part.strip()) for part in comparison.groups()]
+            if all(entries) and entries[0]["term_id"] != entries[1]["term_id"]:
+                return {**entries[0], "source_kind": "definition_comparison",
+                        "canonical_term": " / ".join(item["canonical_term"] for item in entries),
+                        "comparison_entries": entries}
     from services.orchestrator.marine_terminology import resolve_label_request
     label_request = resolve_label_request(query)
     if label_request:
@@ -153,6 +190,8 @@ def is_definition_query(query: str) -> bool:
     if not entry:
         return False
     if entry['source_kind'] == 'mof_terminology_relation':
+        return True
+    if entry['source_kind'] == 'definition_comparison':
         return True
     lowered = text.casefold()
     explicit = any(token in lowered for token in ("definition", "meaning", "what is", "정의", "뜻", "의미", "무엇", "뭐야", "뭔가", "개념"))

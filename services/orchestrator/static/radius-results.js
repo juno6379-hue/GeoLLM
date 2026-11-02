@@ -398,7 +398,7 @@
         return {
             place_id: candidate.place_id,
             place_version: candidate.place_version,
-            label: candidate.label || candidate.base_location || candidate.place_id,
+            label: candidate.display_label || candidate.label || candidate.base_location || candidate.place_id,
             authority_level: candidate.authority_level,
             promotion_status: candidate.promotion_status,
             review_required: candidate.review_required,
@@ -416,10 +416,11 @@
         const originalSpatial = structured.spatial_context || {};
         const container = document.getElementById("radiusDetails");
         for (const candidate of structured.location_candidates || []) {
+            const parentOnly = candidate.selection_scope === "PARENT_PLACE_ONLY" || candidate.qualifier_binding_verified === false;
             const section = element("div", undefined, "location-candidate");
             section.dataset.placeId = candidate.place_id || "";
             section.dataset.placeVersion = candidate.place_version || "";
-            section.append(element("strong", candidate.label || candidate.base_location || candidate.place_id));
+            section.append(element("strong", candidate.display_label || candidate.label || candidate.base_location || candidate.place_id));
             const candidateCoordinates = coordinatePairFromWkt(candidate.geometry);
             const candidateCoordinateText = coordinateTextFromPair(candidateCoordinates);
             section.append(element("div", candidateCoordinateText || `${candidate.geometry || "좌표 미확정"} · ${candidate.crs || "좌표계 미확정"}`, "radius-meta"));
@@ -436,10 +437,12 @@
                 for (const record of candidate.source_records || []) sourceDetails.append(element("div", compactJson(record), "radius-meta"));
                 section.append(sourceDetails);
             }
-            const button = element("button", "이 위치로 조회", "location-confirm");
+            if (parentOnly) section.append(element("div", "부모 항만 위치만 확인된 후보입니다. 입구·출구 기준점으로 선택할 수 없습니다. 해당 세부 위치의 좌표나 근거를 지정해 주세요.", "radius-meta"));
+            const button = element("button", parentOnly ? "세부 위치 미확인 — 선택 불가" : "이 위치로 조회", "location-confirm");
             button.type = "button";
-            button.disabled = !candidate.geometry || !candidate.crs;
+            button.disabled = parentOnly || !candidate.geometry || !candidate.crs;
             button.addEventListener("click", () => {
+                if (parentOnly || !candidate.geometry || !candidate.crs) return;
                 button.disabled = true;
                 submit({
                     query: structured.original_query || originalQuery,
@@ -779,6 +782,30 @@
         window.QuerySummary.show("AIS/V-PASS 통항량 분석", result.answer_text || result.summary || "", structured.original_query || originalQuery);
     }
 
+    function renderCandidateMap(candidates, options) {
+        const features = (candidates || []).map(candidate => {
+            const coordinates = coordinatePairFromWkt(candidate.geometry);
+            if (candidate.crs !== 'EPSG:4326' || !coordinates || Math.abs(coordinates[0]) > 180 || Math.abs(coordinates[1]) > 90) return null;
+            return {type:'Feature', geometry:{type:'Point', coordinates}, properties:{
+                name:candidate.display_label || candidate.label, source_ref:candidate.source_ref,
+                parent_only:candidate.selection_scope === 'PARENT_PLACE_ONLY', place_id:candidate.place_id}};
+        }).filter(Boolean);
+        if (!features.length) return;
+        const layer = L.geoJSON({type:'FeatureCollection',features}, {
+            pointToLayer: (_feature, latlng) => L.circleMarker(latlng, {radius:7,color:'#0f766e',fillOpacity:0.8}),
+            onEachFeature: (feature, marker) => {
+                const popup=element('div'); popup.append(element('strong',feature.properties.name || '위치 후보'));
+                popup.append(element('div',coordinateTextFromFeature(feature)));
+                popup.append(element('div',feature.properties.source_ref || '출처 확인 필요'));
+                popup.append(element('div',feature.properties.parent_only ? '항만 대표점 후보 — 입구 위치 아님' : '위치 후보 표시 — 검색 실행 결과 아님'));
+                marker.bindPopup(popup);
+            },
+        }).addTo(options.map);
+        options.activeLayers.push(layer);
+        if(layer.getBounds().isValid()) options.map.fitBounds(layer.getBounds(), {padding:[24,24],maxZoom:14});
+        document.getElementById('returnedCount').textContent=`위치 후보 ${features.length}곳 · 분석 미실행`;
+    }
+
     function render(result, options) {
         const { map, activeLayers, originalQuery, submit } = options;
         const structured = result.structured_result || {};
@@ -805,6 +832,7 @@
             if (questions.length) details.append(element("p", questions.join("\n"), "radius-message"));
             if (radiusAnalysis) renderSurface(details, result, structured);
             renderCandidates(result, originalQuery, submit);
+            if (needsInput) renderCandidateMap(structured.location_candidates, options);
             if (needsInput) renderPointForm(result, originalQuery, submit, radiusAnalysis);
             const blockers = structured.blockers || result.orchestrator_v2?.query_execution_context?.blockers || [];
             for (const blocker of blockers) evidence.append(element("div", blocker, "evidence-item"));
@@ -829,8 +857,8 @@
         document.getElementById("answerStatus").textContent = total === 0 ? "조회 완료 · 결과 없음" : "조회 완료";
         document.getElementById("dangerCount").textContent = `${numberText(total)}건`;
         document.getElementById("returnedCount").textContent = `표시 ${numberText(returned)}건 / 전체 ${numberText(total)}건`;
-        document.getElementById("similarityScore").textContent = "100%";
-        document.getElementById("accuracyScore").textContent = total === 0 ? "N/A" : "100%";
+        document.getElementById("similarityScore").textContent = "미측정";
+        document.getElementById("accuracyScore").textContent = "미측정";
         details.dataset.resultId = structured.result_id || "";
         details.dataset.queryExecutionId = structured.query_execution_id || "";
         const referenceLabel = structured.location_text || structured.location_resolution?.label || structured.location_resolution?.base_location || "선택 위치";

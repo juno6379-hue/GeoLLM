@@ -9,6 +9,30 @@ function setup(fetch){
  vm.runInNewContext(fs.readFileSync('services/orchestrator/static/execution-view.js','utf8'),context);
  return {ui:context.window.ExecutionView,dom,state:id=>dom['step-'+id].querySelector('.execution-state').textContent,text:()=>{const visit=e=>[e.textContent||'',...e.children.map(visit)].join('\n');return visit(dom.intentAnswer);}};
 }
+test('top answer distinguishes stored Qwen timeout from execution coverage block',()=>{
+ const x=setup();x.ui.begin('부산항입구위험객체');
+ x.ui.handle({event:'completed',final_result:{status:'BLOCKED',error_code:'DATA_COVERAGE_UNVERIFIED',summary:'범위 미검증',processing_steps:[{step:'실행 승인',status:'NOT_APPROVED'},{step:'도구 실행',status:'NOT_RUN'}]}});
+ x.ui.acceptComparison({query:'부산항입구위험객체',status:'FAILED',error:'TimeoutError: timed out',execution:{status:'BLOCKED',error_code:'DATA_COVERAGE_UNVERIFIED'}});
+ assert.match(x.text(),/Qwen 해석: Qwen 비교 시간이 초과/);
+ assert.match(x.text(),/융합 비교: Qwen 비교 시간이 초과/);
+ assert.match(x.text(),/비교의 실패는 공간 검색 실패나 허용을 뜻하지 않습니다/);
+ assert.match(x.text(),/TimeoutError: timed out/);
+ assert.doesNotMatch(x.text(),/아직 모델 해석이 없습니다|융합 비교: 아직 비교 결과/);
+ assert.equal(x.state('validation'),'미승인');
+});
+test('top answer queue full and completed missing result do not imply pending interpretation',()=>{
+ const x=setup();x.ui.begin('위험객체');
+ x.ui.acceptComparison({query:'위험객체',status:'QUEUE_FULL'});
+ assert.match(x.text(),/대기열이 가득/);assert.doesNotMatch(x.text(),/시간이 초과/);
+ x.ui.acceptComparison({query:'위험객체',status:'COMPLETED'});
+ assert.match(x.text(),/비교 기록에 결과가 없습니다/);
+});
+test('distance required alone does not claim that the entrance reference is resolved',()=>{
+ const x=setup();x.ui.begin('부산항입구위험객체');
+ x.ui.handle({event:'completed',final_result:{status:'NEEDS_CLARIFICATION',error_code:'DISTANCE_REQUIRED',structured_result:{}}});
+ assert.doesNotMatch(x.text(),/기준 위치는 확인했으며/);
+ assert.match(x.text(),/기준 위치가 확인됐다고 판단하지 않습니다/);
+});
 test('late source evidence cannot replace a newer query or approve map execution',async()=>{
  const requests=[]; const x=setup(()=>new Promise(resolve=>requests.push(resolve)));
  x.ui.begin('부산항'); x.ui.begin('다대포항');

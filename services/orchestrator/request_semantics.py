@@ -4,9 +4,12 @@ Topic aliases identify candidate evidence, not the operation requested by a user
 This gate prevents topical legal/document hits from satisfying execution requests.
 """
 import re
+from services.orchestrator.traffic_description import is_hypothetical_traffic_description
 
 
 def requires_execution(query: str) -> bool:
+    if is_hypothetical_traffic_description(query):
+        return False
     text = str(query or "").casefold()
     operator = re.search(r"\b(?:within|intersects?)\b", text)
     explanation = re.search(r"정의|뜻|의미|연산자|\b(?:operator|predicate|mean(?:ing)?|definition)\b", text)
@@ -38,6 +41,8 @@ def permits_document_answer(query: str) -> bool:
 
 
 def requests_map_output(query: str) -> bool:
+    if is_hypothetical_traffic_description(query):
+        return False
     return bool(re.search(r'지도(?:에|에서)?[^.!?\n]{0,60}(?:표시|보여|그려)|(?:표시|보여)[^.!?\n]{0,60}지도|\b(?:show|display|plot|draw)\b[^.!?\n]{0,100}\bmap\b', str(query or ''), re.I))
 
 

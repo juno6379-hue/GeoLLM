@@ -1,5 +1,16 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-11-03 질의창116개 운영 점검·항만 원문 카드 보완 완료 범위
+
+- 최신 사용자 요청에 따라 소형선항만 안내 카드와 출처를 연결하고 실제 브라우저까지 검증했다. 인천 북항·내항·연안항·남항 각각 선택/지도 표시, 소개·항해·시설·교통·보급수리·주변 안내, 기관·2017년 원천·파일·객체ID·SHA 표시. 원본 DBF 잘림18필드는 byte/hash receipt로 확인된 접두부만 `원문 일부` 표시. 사진20참조의 실체는 미확인으로 미연결 유지. [항만 상세](harbour_evidence_cards_20261103.md).
+- 실제 현재UI100예시+기존19의 중복제거116건 SSE 수집: 최종응답116/116, transport오류0, 완료17/부분14/추가입력67/차단18. 정확도/전체기능완료가 아님. 원본 outputs/dashboard_full_replay_20261103_v1 보존. Python소스불변, 수집 중 UI3파일 보완 및 별도PDF 데이터작업으로 논문frozen run과 구분.
+- 입구 위치/반경 질문, 부모항 대표점 오선택방지, 인천4항 선택, 단일Wreck/Obstruction 표시, 정의비교/제품registry, 실행계약과shadow계획 분리, 명시파일source 우선순위, 운영진단 선점방지, 가정형통항량셀 설명, FC/DCEG근거 구분·evidence전파, 사고필터 누락과 거리 한글안내, SQLite 연결close 보완. ExecutionValidator 승인 권위 유지.
+- 수정후 대표·부정16건 실제API parent 계약검사15항목 모두통과: outputs/dashboard_repair_followup_20261103_v2/parent_validation.json. 독도5km11개 유지, 항로표지질의1원천, DCEG미충족PARTIAL, 진단/설명형분리 확인. 후속 최종상태 재투영은 별도2건(v3)에서 응답·계약PARTIAL 일치/수집중소스변경0 확인.
+- 최종Python111 passed(2dependency warnings), Node16 passed. 초기95중2실패 원인은 사고필터 없는 요청이 DB점검부터 하던 순서였으며 입력검증 선행 후 최종통과. 각 부분검사 중복합산금지. 화면 outputs/harbour_cards_source_audit_20261103_v1/final_harbour_card.png. [전체 운영 보고](dashboard_full_validation_20261103.md).
+- XLSX 본문셀미검증35개 근거제외 receipt를 20261103_v4_xlsx_quality로게시(manifest bd66cc1257a102afdf8c7c6b1d1253460af62d05717e1edfcbd11e0ee0b7177b). 전체Dataset 재수출/공간권위검증 완료 아님. 이 절 이후에는 아래 과거 공동작업 보류기록의 미게시/재시작대기 상태가 최신이 아님.
+- 남은P0: 미확정 지명·위치 실제원천연결, 해저지명 하위분류, DCEG/portrayal 별도근거, 일부복합/최근접항만/항로안전성 capability, 사진·잘리지않은원문 확보. Qwen 대기열포화/시간초과는 정상효과평가로 취급하지 않음. 과거 목포DB잠금은 이번미재현이며 인과원인 전체해결 주장금지.
+- 다음: 원문/사진 추가확보와 지명·좌표 연결 → 복합요청·별도표준근거 → Qwen 자원/지연 분리진단 → 운영안정 후 새연구동결 비교. 연구/GOLD/holdout 사용·변경 없음. Antigravity관리UI/PDF/기존무관dirty 보존. 관련로컬커밋만, 새push요청없어push안함.
+
 ## 2026-11-02 RQ3 실제 SQL 성공·공간오답 반례와 Q4 재검증
 
 - [상세검증](rq3_wrong_executable_20261102.md). 기존v6 P1ESR0/5·joint0/5·rawS2측정3누락, CGE/SSFRnull유지. 성공0을SSFR0%로표현하지않음.

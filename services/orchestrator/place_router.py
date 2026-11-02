@@ -191,7 +191,7 @@ def resolve_payload(query, spatial_context):
             "summary": f"{label}의 기준 위치를 확인했습니다.",
         }
     except PlaceResolutionProblem as exc:
-        if exc.code in {"GAZETTEER_UNAVAILABLE", "LOCATION_UNCONFIRMED"}:
+        if exc.code in {"GAZETTEER_UNAVAILABLE", "LOCATION_UNCONFIRMED"} and not exc.candidates:
             fallback = external_place_fallback(query)
             if fallback:
                 return fallback

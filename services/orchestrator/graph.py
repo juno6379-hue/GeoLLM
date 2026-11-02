@@ -97,11 +97,8 @@ def _attach_candidate_trace(state: OrchestratorState, final_dict: dict) -> dict:
                 authorized = is_execution_authorized(QueryExecutionContext.model_validate(qec))
             except (ValueError, TypeError):
                 authorized = False
-        contract.update(planning_status=contract.get('planning_status', contract.get('status')),
-                        status=final_dict.get('status') or (qec.get('readiness') if isinstance(qec, dict) else 'NOT_VALIDATED'),
-                        status_scope='FINAL_RESULT', execution_authorized=authorized,
-                        execution_authority='ExecutionValidator',
-                        execution_readiness=qec.get('readiness') if isinstance(qec, dict) else 'NOT_VALIDATED')
+        from services.orchestrator.reporting_and_source_scope import final_execution_contract
+        contract = final_execution_contract(contract, qec, final_dict.get('status'), authorized=authorized)
     final_dict.setdefault("structured_result", {})
     if isinstance(final_dict["structured_result"], dict):
         final_dict["structured_result"]["candidate_trace_summary"] = _candidate_trace_summary(trace)
@@ -1934,6 +1931,7 @@ def _looks_like_s101_hazard_target(query: str) -> bool:
         "navigation_hazard_object",
         "hazard",
         "위험 객체",
+        "위험물",
         "간출암",
         "수중암",
         "장애물",
@@ -1967,12 +1965,10 @@ def _should_fast_execute_s101_hazard_radius(state: OrchestratorState) -> bool:
         return False
     if _looks_like_s101_hazard_radius_query(query):
         return True
-    # Incomplete radius requests enter the same handler to obtain real clarification.
-    return _contract_ready_any(
-        state,
-        route="SPATIAL_ANALYSIS",
-        capability_ids=["resolver.s101_feature_dictionary", "tool.spatial_radius_search", "agent.spatial_analysis"],
-    )
+    # A recognised target with missing slots still needs the radius handler's
+    # input validation. Candidate ranking is not an execution permission gate;
+    # ExecutionValidator in that handler retains sole execution authority.
+    return True
 
 
 def _should_fast_execute_s101_nearest_feature(state: OrchestratorState) -> bool:
@@ -2117,6 +2113,48 @@ def _should_fast_execute_requested_spatial_layer(state: OrchestratorState) -> bo
     if not _requested_spatial_layer_targets(query):
         return False
     return True
+
+
+def _incomplete_operation_response(state):
+    """Preserve explicit operation obligations before any place-only shortcut."""
+    query = str(state.get("query") or "")
+    if _looks_like_definition_question(query):
+        return None
+    status, code, missing, answer = None, None, [], None
+    if re.search(r"빠짐없이|누락\s*없이|실세계.*모든", query) and _looks_like_s101_hazard_target(query):
+        status, code = "BLOCKED", "REAL_WORLD_COMPLETENESS_UNVERIFIED"
+        answer = "현재 연결된 원천으로는 실제 해역의 모든 객체가 빠짐없이 포함됐음을 보증할 수 없어 전수 검색을 실행하지 않았습니다. 연결된 자료에 수록된 객체만 조회하는 요청으로 범위를 정할 수 있습니다."
+    elif re.search(r"항로.*안전(?:성)?.*(?:분석|평가)", query):
+        spatial = _spatial_context_dict(state)
+        if not spatial.get("geometry") and not spatial.get("reference_geometry"):
+            status, code, missing = "NEEDS_CLARIFICATION", "MISSING_ROUTE_GEOMETRY", ["route_geometry"]
+            answer = "안전성을 분석할 항로가 지정되지 않았습니다. 지도에서 항로를 지정하거나 출발지·도착지와 경유 항로를 알려 주세요. 항로와 분석에 필요한 관측·위험물 자료를 확인한 뒤 지원 가능한 분석 범위를 안내하겠습니다."
+        else:
+            status, code = "BLOCKED", "ROUTE_SAFETY_CAPABILITY_UNAVAILABLE"
+            answer = "항로 입력은 확인했지만 현재 연결된 기능으로 항로 전체의 안전성을 검증하는 분석은 지원되지 않습니다. 항로 주변의 원천 수록 위험객체 조회와 안전성 판정은 구분됩니다."
+    elif re.search(r"가장\s*가까운|\b(?:nearest|closest)\b", query, re.I) and re.search(r"항만|항구|\b(?:harbou?r|port)\b", query, re.I):
+        status, code = "BLOCKED", "NEAREST_HARBOUR_CAPABILITY_UNAVAILABLE"
+        answer = "항만의 최근접 검색 요청으로 이해했습니다. 현재 항만 지명 조회는 기준점에서 모든 후보까지 거리를 비교하는 최근접 검색을 지원하지 않아 실행하지 않았습니다. 일반 항만 위치 조회로 대신 실행한 결과를 최근접 결과로 제시하지 않습니다."
+    if status is None:
+        return None
+    readiness = "NEEDS_USER_INPUT" if missing else "BLOCKED_DATA"
+    plan = {"analysis_type": "clarification_required" if missing else "unsupported_operation",
+            "primary_agent": "ClarificationAgent" if missing else "Spatial Analysis Agent",
+            "status": readiness, "route_plan_status": readiness, "execution_ready": False,
+            "clarification_required": bool(missing), "unresolved_slots": missing,
+            "slots": {"unresolved_slots": missing}}
+    qec = {"readiness": readiness, "blockers": [code], "slots": plan["slots"],
+           "route_plan": plan, "data_bindings": [], "tool_bindings": []}
+    final = {"task_id": state["task_id"], "status": status, "error_code": code,
+             "summary": answer, "answer_text": answer, "agent_name": plan["primary_agent"],
+             "clarification_questions": [answer] if missing else [],
+             "structured_result": {"analysis_type": plan["analysis_type"], "count": None,
+                "returned_count": None, "missing_slots": missing,
+                "search_execution": {key: False for key in ("execution_attempted", "execution_started", "tool_called", "sql_executed")}},
+             "orchestrator_v2": {"route_plan": plan, "query_execution_context": qec,
+                                  "fast_path": "operation_obligation_preflight"}}
+    return {"final_dict": final, "task_plan": plan, "query_execution_context": qec,
+            "status": AgentStatus(status), "query_contract_blocked": True}
 
 
 def _spatial_context_has_text_location(state: OrchestratorState) -> bool:
@@ -2503,6 +2541,9 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
     if _looks_like_policy_block_query(original_query):
         blocked = await fast_spatial_or_traffic_block_node(state)
         return {**blocked, "query_contract_blocked": True}
+    operation_response = _incomplete_operation_response(state)
+    if operation_response is not None:
+        return operation_response
     from services.orchestrator.korean_query_analysis import analyze_query, contract_problem, guard_result
     korean_analysis = await asyncio.to_thread(analyze_query, original_query)
     from services.orchestrator.dataset_answer import informational_request
@@ -2548,9 +2589,10 @@ async def parse_intent_node(state: OrchestratorState) -> OrchestratorState:
     document_response = await asyncio.to_thread(build_catalogue_document_response, state)
     if document_response is not None:
         _attach_candidate_trace(state, document_response['final_dict'])
+        document_status = AgentStatus(document_response['final_dict']['status'])
         return {**document_response, 'public_catalogue_handled': True, 'candidate_trace': candidate_trace,
-                'status': AgentStatus.COMPLETED,
-                'state_history': log_transition(AgentStatus.RECEIVED, AgentStatus.COMPLETED, actor='PublicCatalogueDocument')}
+                'status': document_status,
+                'state_history': log_transition(AgentStatus.RECEIVED, document_status, actor='PublicCatalogueDocument')}
     from services.orchestrator.dataset_answer import build_dataset_answer
     dataset_response = await asyncio.to_thread(build_dataset_answer, state)
     if dataset_response is not None:
@@ -3623,7 +3665,11 @@ def _query_dataset_evidence_sources(query: str, limit: int = 12) -> list[dict]:
     if not db_url:
         logger.warning("Dataset evidence lookup skipped: database URL is not configured")
         return []
-    patterns = [f"%{term}%" for term in terms]
+    from services.orchestrator.reporting_and_source_scope import (filename_identities, identity_terms,
+        source_identity, source_rank, literal_ilike_pattern)
+    patterns = [literal_ilike_pattern(term) for term in terms]
+    requested_files = filename_identities(query)
+    scope_patterns = [literal_ilike_pattern(term) for term in (requested_files or identity_terms(terms))]
     try:
         import psycopg2
         import psycopg2.extras
@@ -3647,14 +3693,17 @@ def _query_dataset_evidence_sources(query: str, limit: int = 12) -> list[dict]:
                     FROM knowledge.document_chunks
                     WHERE embedding IS NOT NULL
                       AND document_type = ANY(%s)
+                      AND (%s OR COALESCE(metadata->>'source_file', metadata->>'source_path', '') ILIKE ANY(%s)
+                           OR (%s AND COALESCE(metadata->>'title', '') ILIKE ANY(%s)))
                       AND (
                         metadata::text ILIKE ANY(%s)
                         OR content ILIKE ANY(%s)
                         OR source_id ILIKE ANY(%s)
                       )
+                    ORDER BY COALESCE(metadata->>'source_file', metadata->>'source_path', ''), chunk_id
                     LIMIT 240
                     """,
-                    (list(DATASET_EVIDENCE_DOC_TYPES), patterns, patterns, patterns),
+                    (list(DATASET_EVIDENCE_DOC_TYPES), not bool(scope_patterns), scope_patterns, not bool(requested_files), scope_patterns, patterns, patterns, patterns),
                 )
                 rows = [dict(row) for row in cur.fetchall()]
     except Exception as exc:
@@ -3671,6 +3720,9 @@ def _query_dataset_evidence_sources(query: str, limit: int = 12) -> list[dict]:
         title = row.get("title") or metadata.get("title") or row.get("source_id") or "Dataset evidence"
         source_file = row.get("source_file") or metadata.get("source_file") or metadata.get("source_path") or row.get("source_id") or "N/A"
         document_type = row.get("document_type") or metadata.get("document_type") or "dataset_profile"
+        identity = source_identity(query, terms, source_file, title)
+        if not identity['accepted']:
+            continue
         key = (str(source_file), str(title), str(document_type))
         text_for_score = " ".join([
             str(title),
@@ -3695,6 +3747,12 @@ def _query_dataset_evidence_sources(query: str, limit: int = 12) -> list[dict]:
                 "sections": set(),
                 "chunk_ids": [],
                 "score": 0,
+                "matched_terms": set(),
+                "source_identity_matches": identity['matched'],
+                "source_scope": identity['scope'],
+                "row_count_scope": "MATCHED_CHUNKS_WITHIN_RETRIEVAL_LIMIT_240",
+                "retrieval_limit": 240,
+                "possibly_truncated": len(rows) == 240,
                 "excerpt": "",
                 "active_chunk_count": 0,
                 "superseded_chunk_count": 0,
@@ -3705,12 +3763,13 @@ def _query_dataset_evidence_sources(query: str, limit: int = 12) -> list[dict]:
         item['superseded_chunk_count' if superseded else 'active_chunk_count'] += 1
         item['audit_mismatch_chunk_count'] += int(text_audit['status'] == 'AUDIT_SNAPSHOT_MISMATCH')
         item["null_embedding"] += 1 if row.get("embedding_missing") else 0
-        item["score"] += score
+        item["matched_terms"].update(term.casefold() for term in terms if term.casefold() in text_for_score)
+        item["score"] = len(item["matched_terms"])
         if row.get("section"):
             item["sections"].add(str(row.get("section")))
         if row.get("chunk_id") and len(item["chunk_ids"]) < 8:
             item["chunk_ids"].append(str(row.get("chunk_id")))
-        if not item["excerpt"] and row.get("content") and not superseded and text_audit['status'] != 'AUDIT_SNAPSHOT_MISMATCH':
+        if not item["excerpt"] and row.get("content") and not superseded and text_audit['status'] not in ('AUDIT_SNAPSHOT_MISMATCH', 'SOURCE_EXTRACTION_UNVERIFIED'):
             item["excerpt"] = " ".join(str(row.get("content")).split())[:320]
             item['excerpt_source_text_verification'] = text_audit
 
@@ -3718,8 +3777,9 @@ def _query_dataset_evidence_sources(query: str, limit: int = 12) -> list[dict]:
     for item in grouped.values():
         normalized = dict(item)
         normalized["sections"] = sorted(item["sections"])[:8]
+        normalized["matched_terms"] = sorted(item["matched_terms"])
         results.append(normalized)
-    results.sort(key=lambda item: (item.get("score", 0), item.get("row_count", 0)), reverse=True)
+    results.sort(key=source_rank)
     return results[:limit]
 
 
@@ -4395,10 +4455,11 @@ async def fast_dataset_evidence_answer_node(state: OrchestratorState) -> Orchest
     if found:
         answer = (
             f"live `knowledge.document_chunks`에서 질의와 맞는 Dataset 근거 {len(sources)}개 source, "
-            f"총 {total_chunks}개 embedded chunk를 찾았습니다. "
-            f"문서 유형별로는 {type_summary or '분류 정보 없음'}이며, embedding NULL은 {total_null_embeddings}건입니다. "
+            f"검색 조건에 맞는 임베딩 보유 청크 {total_chunks}개를 찾았습니다. "
+            f"문서 유형별로는 {type_summary or '분류 정보 없음'}입니다. "
             f"주요 원천은 {source_summary}입니다. "
-            "이 fast path는 법령/고시 확정 근거가 아니라 Dataset provenance, 임베딩 coverage, RAG/분석 근거 확인용입니다."
+            "임베딩이 있는 후보를 최대 240개까지 검색한 결과입니다. 원천 전체 청크 수·미임베딩 수·공간 적재 완료를 뜻하지 않습니다. "
+            "파일별 처리 이력과 조회된 근거를 함께 확인해야 합니다."
         )
     else:
         answer = (
@@ -4626,15 +4687,21 @@ async def fast_spatial_or_traffic_block_node(state: OrchestratorState) -> Orches
         f"현재 실행에 필요한 데이터/geometry 바인딩이 준비되지 않아 BLOCKED_DATA로 종료합니다. ({blocker_text})"
     )
     policy_blocked = qec.get("readiness") == "BLOCKED_POLICY"
+    needs_input = analysis_type == "clarification_required" and not policy_blocked
     error_code = "BLOCKED_POLICY" if policy_blocked else "BLOCKED_DATA"
     if policy_blocked:
         answer = "요청에 비공개 또는 접근이 제한된 자료가 포함되어 실행하지 않았습니다. 공개 표준의 코드 설명은 별도로 조회할 수 있습니다."
+    if needs_input:
+        error_code = "MISSING_ANALYSIS_CONTEXT"
+        answer = "어느 위치에서 어떤 위험을 확인할까요? 기준 위치와 확인할 대상(예: 침선·장애물), 검색 반경 또는 지도 영역을 알려 주세요. 아직 공간 검색은 실행하지 않았습니다."
+        route_plan.update(clarification_required=True, unresolved_slots=["reference_geometry", "target_term", "search_scope"])
+        qec["readiness"] = "NEEDS_USER_INPUT"
     final_dict = {
         "task_id": state["task_id"],
         "trace_id": f"tr-{state['task_id']}",
         "agent_name": agent_name,
         "agent_version": "2.2.0-spatial-traffic-fast-block",
-        "status": "BLOCKED",
+        "status": "NEEDS_CLARIFICATION" if needs_input else "BLOCKED",
         "error_code": error_code,
         "summary": answer,
         "answer_text": answer,
@@ -4643,6 +4710,7 @@ async def fast_spatial_or_traffic_block_node(state: OrchestratorState) -> Orches
             "analysis_type": analysis_type,
             "blockers": qec["blockers"],
             "count": None,
+            "search_execution": {key: False for key in ("execution_attempted", "execution_started", "tool_called", "sql_executed")},
             "temporal_window": route_plan.get("slots", {}).get("temporal_window"),
             "quality_metrics": quality_metrics,
             "web_rag_usage": {"web_used": False, "rag_used": False, "llm_used": False, "execution_path": analysis_type, "embedding_independent": True},
@@ -4658,6 +4726,7 @@ async def fast_spatial_or_traffic_block_node(state: OrchestratorState) -> Orches
         "contract_version": "geollm.execution.v1",
         "request_id": state.get("task_id"),
     }
+    final_dict["clarification_questions"] = [answer] if needs_input else []
     _attach_candidate_trace(state, final_dict)
     _record_query_quality_issues(state, final_dict)
     return {
@@ -4665,8 +4734,8 @@ async def fast_spatial_or_traffic_block_node(state: OrchestratorState) -> Orches
         "task_plan": route_plan,
         "query_execution_context": qec,
         "candidate_trace": state.get("candidate_trace"),
-        "status": AgentStatus.BLOCKED,
-        "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.BLOCKED, actor="FastSpatialTrafficBlock"),
+        "status": AgentStatus.NEEDS_CLARIFICATION if needs_input else AgentStatus.BLOCKED,
+        "state_history": log_transition(AgentStatus.INTENT_PARSED, AgentStatus.NEEDS_CLARIFICATION if needs_input else AgentStatus.BLOCKED, actor="FastSpatialTrafficBlock"),
     }
 
 def _spatial_fast_path_contract_problem(query: str, *, supports_nearest: bool = False, selected_targets=()):
@@ -4990,6 +5059,7 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
         "distance_source": "default_marine_place_search_10km" if default_distance else "explicit_query_or_context",
         "source": "query_layer_and_anchor_extraction",
         "execution_authorized": False,
+        "status_scope": "PLANNING_ONLY",
     }
     location = {**location, "query_interpretation": interpretation, "location_text": location.get("location_text") or anchor_query}
     if location["status"] != "RESOLVED":
@@ -5210,7 +5280,9 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
         "structured_result": {
             "status": "COMPLETED",
             "analysis_type": "feature_search_by_radius",
-            "query_interpretation": interpretation,
+            "query_interpretation": {**interpretation, "planning_execution_authorized": False,
+                                     "execution_authorized": is_execution_authorized(qec_model),
+                                     "execution_authority": "ExecutionValidator", "status_scope": "FINAL_RESULT"},
             "search_execution": {"status": "COMPLETED", "authority": "ExecutionValidator",
                                  "attempted": True, "started": True, "execution_attempted": True, "execution_started": True,
                                  "tool_called": True, "sql_executed": True},
@@ -5284,6 +5356,7 @@ async def fast_requested_spatial_layer_execute_node(state: OrchestratorState) ->
         "contract_version": "geollm.execution.v1",
         "request_id": state.get("task_id"),
     }
+    _attach_candidate_trace(state, final_dict)
     return {
         "final_dict": final_dict,
         "task_plan": route_plan,
@@ -5606,9 +5679,11 @@ async def execute_agent_node(state: OrchestratorState) -> OrchestratorState:
             blockers = req.query_execution_context.blockers or []
         summary = "추가 정보가 필요합니다."
         if unresolved:
-            summary = "다음 항목을 확인해 주세요: " + ", ".join(str(item) for item in unresolved)
+            labels = {"location": "기준 위치", "location_text": "기준 위치", "reference_geometry": "확인 가능한 기준점 또는 영역",
+                      "distance_m": "검색 반경", "target_term": "조회할 대상", "target_features": "조회할 객체 종류"}
+            summary = "다음 항목을 확인해 주세요: " + ", ".join(labels.get(str(item), "분석 조건") for item in unresolved)
         elif blockers:
-            summary = "실행 전 확인이 필요합니다: " + "; ".join(str(item) for item in blockers)
+            summary = "요청에 맞는 실행 계획을 확정하지 못했습니다. 조회할 대상과 원하는 작업을 구체적으로 알려 주세요. 공간 검색은 실행하지 않았습니다."
         agent_result = AgentResult(
             task_id=req.task_id,
             trace_id=req.trace_id,
@@ -6229,6 +6304,7 @@ async def verify_output_obligations_node(state: OrchestratorState) -> dict:
             return {'status': state['status']}
         _attach_candidate_trace(state, final)
     final = audit_outputs(state.get('query', ''), final)
+    _attach_candidate_trace(state, final)
     # Graph state retains its enum contract; JSON serialization happens at the API boundary.
     return {'final_dict': final, 'status': AgentStatus(final.get('status', state.get('status')))}
 

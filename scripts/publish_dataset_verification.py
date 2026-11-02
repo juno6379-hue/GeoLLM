@@ -43,10 +43,27 @@ def publish(source, destination, version):
                 raise ValueError('Object links require spatial audit hash')
     if len(seen) != manifest.get('rows'):
         raise ValueError('Incomplete row count')
+    sidecars = {}
+    for filename, expected in [('quality_evidence.jsonl', manifest.get('extraction_quality_sha256')),
+                               (manifest.get('snapshot_file'), manifest.get('snapshot_sha256'))]:
+        if not filename or (filename == 'quality_evidence.jsonl' and expected is None):
+            continue
+        if (not isinstance(filename, str) or Path(filename).name != filename or '/' in filename
+                or '\\' in filename or filename in ('.', '..', 'manifest.json', 'receipts.jsonl')):
+            raise ValueError('Unsafe audit sidecar filename')
+        sidecar_path = (source / filename).resolve()
+        if not sidecar_path.is_relative_to(source.resolve()):
+            raise ValueError('Audit sidecar outside source')
+        sidecar_raw = sidecar_path.read_bytes()
+        if sha(sidecar_raw) != expected:
+            raise ValueError('Audit sidecar hash mismatch')
+        sidecars[filename] = sidecar_raw
     folder = destination / version
     folder.mkdir(parents=True, exist_ok=False)
     (folder / 'receipts.jsonl').write_bytes(raw)
-    published = {**manifest, 'files': {'receipts.jsonl': sha(raw)},
+    for filename, sidecar_raw in sidecars.items():
+        (folder / filename).write_bytes(sidecar_raw)
+    published = {**manifest, 'files': {'receipts.jsonl': sha(raw), **{name:sha(data) for name,data in sidecars.items()}},
                  'audit_manifest_sha256': sha(manifest_raw), 'coordinate_authority': False,
                  'semantic_correctness_verified': False}
     content = (json.dumps(published, ensure_ascii=False, indent=2)+'\n').encode('utf-8')
