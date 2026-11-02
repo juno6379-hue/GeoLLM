@@ -221,3 +221,10 @@ test('RQ1 annotation completion does not fabricate semantic measurement or human
  assert.match(html,/새 독립 인간 주석 검수 완료를 뜻하지 않습니다/);
  assert.match(html,/Semantic F1·Strict Match·CI: 미측정/);
 });
+
+test('RQ2 distinguishes binary and target code counts without generalizing N1',()=>{
+ const ui=browser();const html=ui.evaluate('rq2DiagnosisPanel({methods:[{method:"P0",binary_recall:{value:1,numerator:8,denominator:8},target_code_recall:{value:0,numerator:0,denominator:8},false_block:{value:1,numerator:1,denominator:1}}],rows:[]})');
+ assert.match(html,/Binary Recall/);assert.match(html,/Target-fault-code Recall/);
+ assert.match(html,/8\/8/);assert.match(html,/0\/8/);assert.match(html,/N=1/);
+ assert.match(html,/사후 코드 대응/);assert.match(html,/대상 치환과 대상 추가를 구별하지/);
+});

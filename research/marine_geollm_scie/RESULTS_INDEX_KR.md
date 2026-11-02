@@ -43,3 +43,7 @@
 ## RQ1 GOLD 원자 주석 — 2026-11-02
 
 [18문항 사례별 주석표](benchmark/grounding_atoms_20261102_v1/annotation_KR.md): 필수172·선택5원자 작성/원천 연결 검증 완료. 새 인간 검수 완료 주장은 하지 않는다. B1/B2 원문36개 사전주석과 실제 Semantic F1·CI 측정은 구분한다. [현재 완료와 남은 측정 단계](../../docs/geollm/rq1_annotation_completion_20261102.md).
+
+## RQ2 목표 오류 코드 사후 진단 — 2026-11-02
+
+[원시 사유 대조](../../docs/geollm/rq2_target_diagnosis_20261102.md): B4 0/8, P0/H 8/8의 binary 결과와 목표 코드 대응을 분리. 같은 수치이나 subtype진단/일반화 성능이 아니다. 각오류N1·정상control1, compiler1/native7·정상오차단1/1을 공개한다. [새 동결 지표계약](protocol/rq2_target_fault_contract_20261102_KR.md).

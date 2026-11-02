@@ -1,5 +1,13 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-11-02 RQ2 binary·목표 오류 코드 사후 대조 분리
+
+- 사용자 지적대로 오류8종각N1/controlN1의 binary검출을 일반화하지 않는다. [상세사유표](rq2_target_diagnosis_20261102.md), [다음동결계약](../../research/marine_geollm_scie/protocol/rq2_target_fault_contract_20261102_KR.md).
+- 별도에이전트원문감사/코드·부모UI/교차검증. 기존v6 raw27행을동일faultcontract SHA3802aca3949fda1abff4f12e66a86c5048e82012246f2e2a377c0811707052b1로pin. binary B4 0/8,P0/H8/8; 원문사후코드대응도0/8,8/8,8/8. compiler1/native7분리. B4row에공통validator있어도LLM성과제외. false초기verdict는목표검출실패,전용코드출력미계측은별도표시.
+- wrong_feature/semantic_expansion은동일REQUEST_TARGET_MISMATCH이므로8세부유형정확분류주장금지. strictsubtype=null. 정상P0/H1/1오차단(DATA_COVERAGE_UNVERIFIED)보존. expectedcodes는기존run사전등록아닌POST_HOC대응,원본결과덮어쓰기없음.
+- UI Python76/대응12/Node22통과(중복합산금지). 8001재기동·실HTTP표일치,기존GOLD/v6 506파일해시불변. outputs/rq2_target_diagnosis_20261102_v1 및 rq2_parent_20261102/final_verification.json. 운영변경/모델호출/holdout사용/새실험없음.
+- 다음: 유형별독립입력·정상대조확장/clean→singlefault근거검증→expected/detected코드와subtype사전고정→정상coveragegate완료후새동결8방법+fault실행. seed반복을독립fault사례로합산하지않음. 관련로컬커밋만,새push요청없음.
+
 ## 2026-11-02 RQ1 실제18문항 GOLD grounding atom 작성 완료
 
 - 사용자 지적대로 RQ1 F1/Strict/CI는 미측정이었다. 주석작성·검증/UI·예측원문감사 3에이전트 분리, 부모 의미검토로 복합taskbinding/선택문서/FCsource/단위·CRS정규화를 보완했다. [완료·남은단계](rq1_annotation_completion_20261102.md).
