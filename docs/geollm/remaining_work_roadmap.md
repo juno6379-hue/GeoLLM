@@ -1,5 +1,17 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-11-03 RQ1–RQ5 측정계약 완성·새 Development K1 실행
+
+- 최신 사용자 요청: 여러 에이전트로 측정계약 완성·검증 후 **개발 K1까지 진행**. 운영 변경과 연구 분리, 최종 동결 전 홀드아웃 사용 금지. [상세 인계](development_k1_measurement_20261103.md), [실행계약](../../research/marine_geollm_scie/protocol/development_k1_execution_20261103_KR.md).
+- 연구 소스 커밋 **a5f7147**, 통합 연구 **625 tests passed**(136.55초). 별도 finalizer34·freeze/telemetry12 검사는 중복합산하지 않는다. 실패 receipt 저장 회귀, 중단 시 잠금 해제, parent CSV 동결 도중 변조 누락, 수집 개수만 믿던 완료 gate를 재현·보완했다.
+- 실제 새 run: `research/marine_geollm_scie/runs/20261103_development_k1_rq_v1`. launcher7340/실제supervisor25104, 시작2026-11-03 08:39 KST. `status.json`/실제 PID/단계 log를 대조한다. 실제6관계 재수출 동결 완료: `outputs/scie_development_k1_rq_20261103_v1` LOADED_VERIFIED, source337. 기본144+확장fault207+별도SQL진단8이며 **전체 수집·최종 채점은 아직 실행 중/미완료**다.
+- RQ1: 고정 추출계약·원문 witness 검증, 기존36답변 AI 주석190atom/INVALID11 보존. 새 K1 raw36개는 수집 뒤 **다시 AI 검토**한다. 과거 답변 주석·인간 채점을 새 raw에 복사하지 않는다. RQ2: 오류33/정상36, base3; binary/target-code·paired CI·정상실행가능 FalseBlock. RQ4 nonempty Oracle4/5/4; firstrepair·공동성공·drift·금지복구제안/미관측human escalation 분리.
+- RQ3 방법별 Table11은 원본/GOLD/공간실행 재채점과 paired CI로 작성하며 별도8개 SQL반례를 방법 성능에 합산하지 않는다. 성공0이면 CGE/SSFR null. RQ5 공유호출의unique/standalone/allocated비용과 전체SQL/P1텔레메트리 계측. evidence 존재율을 진실성/전체EVQSR로 바꾸지 않는다.
+- P1만 격리 연구process의 원천binding을 동일frozen corpus에 연결했다. 실제 probe v2 정상Q4/control허용·범위밖DATA_OUT_OF_SCOPE. 운영registry/DB수정없음, sourcebound와실세계완전성분리. 독립감사에서 슬롯/기준좌표/정답ID주입없음을 확인했다.
+- **실행 중 frozen 소스·프로토콜·입력·모델·예산 변경/추가 Ollama·운영API 호출/중복 worker 금지.** 오류 시 원본 보존→재현→별도 수정·테스트→새전체run. 비정상lock은 실제자식/연구worker·proxy부재 확인 전 제거하지 않는다. 원본 v6/GOLD/옛probe/무관UI·feedback·PDF작업 보존.
+- 다음: 수집 완료 상태 `COLLECTED_PENDING_RQ1_ANNOTATION_AND_FINAL_REPORT` 확인 → `rq1_review_template/reviews_REQUIRED.jsonl` 새36raw 실제AI검토 → frozen `finalize_development_k1` 실행 → `report_final_v1/comparison_KR.md`·오류·미측정 검증. heartbeat `geollm-rq1-rq5-k1`이 30분마다 이 작업을 이어서 확인한다. 상태불변 알림없음, 완료·실패만 알림; 최종보고 후 삭제.
+- K5/ablation/새답변 독립인간의미평가/최종동결 holdout은 별도 다음 단계다. 지금 K1 관측을 전체논문완료로 표시하지 않는다. 새로운 push 요청 없어 push하지 않았다.
+
 ## 2026-11-03 최우선 Coverage/source authority 보완 → RQ 측정계약 준비
 
 - 사용자 새 우선순위: **Coverage → RQ1–RQ5 측정계약 동결 → Development K1 → 8방법 K5 → 최종 시스템 동결 후 untouched holdout**. 아래 과거 UI/항만 기능 추가 순서보다 우선한다. [상세 인계](coverage_priority_20261103.md).

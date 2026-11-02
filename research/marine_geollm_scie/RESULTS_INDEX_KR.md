@@ -1,5 +1,11 @@
 # 논문 실험 결과 위치
 
+## 2026-11-03 최신 Development K1 — 실행 중
+
+- [실행 상태](runs/20261103_development_k1_rq_v1/status.json), [새 실행 폴더](runs/20261103_development_k1_rq_v1), [동결 실행계약](protocol/development_k1_execution_20261103_KR.md).
+- 연구625 tests 통과, source a5f7147, 실제6관계/337source 재동결. 새8방법144+확장fault207+별도SQL진단8이며 아직 완료 결과가 아니다.
+- RQ1 새36답변 AI 원문검토와 최종 gate 뒤 `report_final_v1/comparison_KR.md`를 생성한다. K5/ablation/새답변 독립인간 의미평가와 홀드아웃 완료는 별개다. 기존 v6 결과와 새 run을 혼합하지 않는다.
+
 기준일: 2026-11-02. 논문 연구 루트는 `D:\An_GeoLLM\research\marine_geollm_scie`이다.
 
 | 구분 | 폴더/파일 | 현재 해석 |

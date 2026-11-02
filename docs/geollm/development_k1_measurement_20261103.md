@@ -22,7 +22,9 @@
 
 ## 실행·완료 확인
 
-실행 명령·측정 범위·후속 순서는 [실행계약](../../research/marine_geollm_scie/protocol/development_k1_execution_20261103_KR.md)을 따른다. 새 실행은 `research/marine_geollm_scie/runs/20261103_development_k1_rq_v1`, 새 snapshot은 `outputs/scie_development_k1_rq_20261103_v1`을 사용할 예정이다. 실제 시작 여부는 해당 `status.json`과 부모/자식 PID, graph/comparison/fault raw를 확인한다.
+통합 연구 테스트625개가 통과했다(136.55초). 별도 finalizer34개와 freeze/telemetry12개 검사는 중복합산하지 않는다. 소스 커밋은 a5f7147이다.
+
+실행 명령·측정 범위·후속 순서는 [실행계약](../../research/marine_geollm_scie/protocol/development_k1_execution_20261103_KR.md)을 따른다. 새 실행은 `research/marine_geollm_scie/runs/20261103_development_k1_rq_v1`, 새 snapshot은 `outputs/scie_development_k1_rq_20261103_v1`이다. 2026-11-03 08:39 KST에 실제 시작했다(launcher7340/supervisor25104). 실제 연구DB6관계와337개 source 동결 LOADED_VERIFIED를 확인했으며 전체 실험은 아직 진행 중이다. 해당 `status.json`과 부모/자식 PID, graph/comparison/fault raw를 확인한다.
 
 실행 중 동결 소스·입력·계약·모델·예산을 변경하거나 추가 Ollama/API 부하를 주지 않는다. 실패 시 원본 보존, 원인 재현, 별도 수정·테스트 후 새 전체 frozen run을 사용한다. lock은 자식/컨테이너 부재를 실제 확인하기 전 삭제하지 않는다.
 
