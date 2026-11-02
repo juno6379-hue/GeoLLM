@@ -717,13 +717,55 @@ def _feature_rows_to_geojson(qec, layer, rows, result_id, execution_id):
     return properties, {"type": "FeatureCollection", "features": features}, evidence
 
 
-def _qualify_unverified_empty(result, observed_total):
+def _has_verified_source_inventory(qec):
+    receipt = qec.provenance.get('coverage_validation') or {}
+    return (receipt.get('authority') == 'ServerSourceCoverage'
+            and receipt.get('status') == 'CORPUS_VERIFIED'
+            and receipt.get('query_scope') == 'SOURCE_CORPUS'
+            and receipt.get('absence_certified') is False
+            and isinstance(receipt.get('sources'), list) and bool(receipt['sources']))
+
+
+def _qualify_source_inventory(result, qec):
+    """Keep finite-source results distinct from real-world count/absence claims."""
+    if not _has_verified_source_inventory(qec):
+        return result
+    note = '이 결과는 검증된 원천 목록에 수록된 객체만을 뜻하며, 실제 해역의 전체 객체나 부재를 보증하지 않습니다.'
+    text = result.get('summary') or result.get('answer_text') or ''
+    if note not in text:
+        text = '검증된 S-101 원천 목록에서 조회했습니다. ' + text + ' ' + note
+    result.update(summary=text, answer_text=text)
+    scope = dict(query_scope='SOURCE_CORPUS', count_scope='SOURCE_CORPUS_MATCHED_ROWS',
+                 geographic_coverage='UNKNOWN', absence_confirmed=False)
+    for target in (result.setdefault('structured_result', {}),
+                   result.setdefault('spatial_result_summary', {})):
+        target.update(scope)
+        target.setdefault('user_evidence_summary', {})['coverage_basis'] = note
+    surface = result['structured_result'].get('result_surface')
+    if isinstance(surface, dict):
+        surface.update(scope)
+        surface.setdefault('user_evidence_summary', {})['coverage_basis'] = note
+    for layer in result.get('map_layers', []):
+        layer.setdefault('metadata', {}).update(scope)
+    for evidence in result.get('evidence_bundle', {}).get('spatial_layer_evidence', []):
+        evidence.setdefault('data', {}).update(scope)
+        evidence['summary'] = str(evidence.get('summary') or '') + ' ' + note
+    for claim in result.get('claims', []):
+        claim['text'] = text
+    for task in result.get('task_results', []):
+        task.update(scope)
+    return result
+
+
+def _qualify_unverified_empty(result, observed_total, qec=None):
     """A successful SELECT proves snapshot rows, not geographic coverage.
 
     These executors currently have no authoritative coverage verifier. Do not
     trust caller-provided coverage flags or fabricate a verified-empty branch.
     Keep execution evidence while withholding an absence/completeness claim.
     """
+    if qec is not None and _has_verified_source_inventory(qec):
+        return _qualify_source_inventory(result, qec)
     if observed_total != 0:
         return result
     text = ("연결된 공간 데이터에서 조건에 맞는 행은 조회되지 않았습니다. "
@@ -910,7 +952,7 @@ def build_bounds_result(qec, layer, params, total, counts, rows, search_geometry
             "quality_metrics": quality_metrics,
         },
     }
-    return _qualify_unverified_empty(result, total)
+    return _qualify_unverified_empty(result, total, qec)
 
 
 def build_hazard_definition_result(state):
@@ -1144,7 +1186,7 @@ def build_result(qec, layer, params, total, counts, rows, search_geometry):
         "task_results": [{"task_id": request_id, "result_id": result_id, "status": "SUCCESS" if total else "SUCCESS_EMPTY"}],
         "orchestrator_v2": {"route_plan": qec.route_plan, "query_execution_context": qec.model_dump(mode="json"), "embedding_independent": True, "fast_path": "validated_s101_hazard_radius"},
     }
-    return _qualify_unverified_empty(result, total)
+    return _qualify_unverified_empty(result, total, qec)
 
 
 def _preflight_spatial_scope(qec):
@@ -1194,7 +1236,7 @@ def execute_radius_request(state):
         result["answer_text"] = text
         if result.get("claims"):
             result["claims"][0]["text"] = text
-        return result
+        return _qualify_source_inventory(result, qec)
     except RadiusProblem as exc:
         problem = exc
     except psycopg2.Error as exc:

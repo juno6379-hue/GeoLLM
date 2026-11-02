@@ -22,7 +22,7 @@ SPATIAL_OPERATIONS = {
 }
 
 
-def requests_source_corpus(qec):
+def requests_source_corpus(qec, *, registered_default=False):
     """Determine whether a bounded inventory listing can answer this task.
 
     Only the server-registered gazetteer supports a default inventory listing.
@@ -41,6 +41,10 @@ def requests_source_corpus(qec):
             and set(qec.slots.target_layers) == {'marine_gazetteer'}
             and not qec.slots.target_features):
         return True
+    if registered_default and operation in {'feature_dwithin', 'feature_search_by_radius'}:
+        # A server registered finite inventory can be the default listing source.
+        # The receipt/result must retain SOURCE_CORPUS and never imply absence.
+        return True
     return bool(re.search(
         r'(?:자료|데이터|목록|원천|CSV|데이터베이스|DB)\s*(?:에\s*(?:수록|등록|포함)|에서|내에서)|'
         r'(?:수록|등록)된\s*(?:해양)?지명|'
@@ -55,11 +59,17 @@ def assess_source_corpus(qec, layer_registry, verifier):
     OUT_OF_COVERAGE/PARTIAL decision must never be overridden by this path.
     ``verifier`` is server code which checks the live relation against its source.
     """
-    if not callable(verifier) or not requests_source_corpus(qec):
+    layers = (layer_registry or {}).get('layers') or {}
+    default_inventory = bool(qec.data_bindings) and all(
+        ((layers.get(binding.dataset_id) or {}).get('corpus_contract') or {}).get('kind') == 's101_exact_inventory_v1'
+        and ((layers.get(binding.dataset_id) or {}).get('corpus_contract') or {}).get('default_inventory_listing') is True
+        for binding in qec.data_bindings)
+    if not callable(verifier) or not requests_source_corpus(qec, registered_default=default_inventory):
         return None
     operation = qec.route_plan.get('analysis_type') or qec.slots.analysis_type or qec.slots.operation
     try:
-        if _query_envelope(qec) is None or not qec.data_bindings:
+        requested = _query_envelope(qec)
+        if requested is None or not qec.data_bindings:
             return None
     except (ValueError, TypeError, ShapelyError):
         return None
@@ -68,15 +78,21 @@ def assess_source_corpus(qec, layer_registry, verifier):
         layer = (layer_registry.get('layers') or {}).get(binding.dataset_id) or {}
         contract = layer.get('corpus_contract') or {}
         # Only an audited verifier and its exact source layer may be used.
-        if (contract.get('kind') != 'csv_exact_inventory_v1'
-                or binding.dataset_id != 'marine_gazetteer'
-                or binding.relation != 'serving.marine_gazetteer_current'
+        gazetteer = (contract.get('kind') == 'csv_exact_inventory_v1'
+                     and binding.dataset_id == 'marine_gazetteer'
+                     and binding.relation == 'serving.marine_gazetteer_current'
+                     and not qec.slots.target_features
+                     and set(qec.slots.target_layers) == {'marine_gazetteer'})
+        s101 = (contract.get('kind') == 's101_exact_inventory_v1'
+                and binding.relation == 'projection.s101_feature_current'
+                and bool(qec.slots.target_features)
+                and set(qec.slots.target_features) <= set(contract.get('target_features') or [])
+                and not qec.slots.target_layers)
+        if (not (gazetteer or s101)
                 or binding.relation != layer.get('physical_table')
                 or binding.geometry_column != layer.get('geometry_column')
                 or binding.srid != 4326
-                or operation not in contract.get('allowed_operations', [])
-                or qec.slots.target_features
-                or set(qec.slots.target_layers) != {'marine_gazetteer'}):
+                or operation not in contract.get('allowed_operations', [])):
             return None
         try:
             observed = verifier(binding, contract)
@@ -93,6 +109,25 @@ def assess_source_corpus(qec, layer_registry, verifier):
                 or type(observed.get('row_count')) is not int
                 or observed['row_count'] <= 0):
             return None
+        if s101:
+            scope = observed.get('source_scope') or {}
+            try:
+                geometry = wkt.loads(scope['geometry_wkt'])
+                if (scope.get('kind') != 'SOURCE_DECLARED_DATA_COVERAGE'
+                        or scope.get('crs') != 'EPSG:4326'
+                        or not scope.get('source_locator')
+                        or scope.get('source_sha256') != contract.get('source_sha256')
+                        or geometry.geom_type not in ('Polygon', 'MultiPolygon')
+                        or geometry.is_empty or not geometry.is_valid
+                        or not all(math.isfinite(value) for value in geometry.bounds)
+                        or not (-180 <= geometry.bounds[0] <= geometry.bounds[2] <= 180
+                                and -90 <= geometry.bounds[1] <= geometry.bounds[3] <= 90)
+                        or not geometry.covers(requested)
+                        or not set(qec.slots.target_features) <= set(observed.get('target_features') or [])
+                        or observed.get('snapshot_version') != contract.get('snapshot_version')):
+                    return None
+            except (KeyError, ValueError, TypeError, ShapelyError):
+                return None
         sources.append(dict(observed))
     return {'authority': 'ServerSourceCoverage', 'version': '3',
             'status': 'CORPUS_VERIFIED', 'geographic_coverage': 'UNKNOWN',

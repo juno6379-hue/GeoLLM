@@ -486,15 +486,22 @@ class SchemaBindingAdapter:
 
     def verify_corpus_identity(self, binding, contract):
         """Observe source identity on the executor transaction when one exists."""
-        if (binding.dataset_id != 'marine_gazetteer'
-                or binding.relation != 'serving.marine_gazetteer_current'
-                or contract.get('kind') != 'csv_exact_inventory_v1'):
+        gazetteer = (binding.dataset_id == 'marine_gazetteer'
+                     and binding.relation == 'serving.marine_gazetteer_current'
+                     and contract.get('kind') == 'csv_exact_inventory_v1')
+        s101 = (binding.relation == 'projection.s101_feature_current'
+                and contract.get('kind') == 's101_exact_inventory_v1')
+        if not (gazetteer or s101):
             return {'status': 'UNVERIFIED'}
         try:
             from services.orchestrator.gazetteer_corpus import verify_gazetteer_corpus
+            from services.orchestrator.s101_corpus import verify_s101_corpus
+            def verify(cursor):
+                return (verify_gazetteer_corpus(cursor=cursor) if gazetteer else
+                        verify_s101_corpus(cursor, binding, contract))
             if self.connection is not None:
                 with self.connection.cursor() as cursor:
-                    return verify_gazetteer_corpus(cursor=cursor)
+                    return verify(cursor)
             import psycopg2
             url = os.getenv('S101_DB_URL') or os.getenv('POSTGIS_URL')
             if not url:
@@ -503,7 +510,7 @@ class SchemaBindingAdapter:
                 connection.set_session(readonly=True, isolation_level='REPEATABLE READ')
                 with connection.cursor() as cursor:
                     cursor.execute("SELECT set_config('statement_timeout', '5000', true)")
-                    return verify_gazetteer_corpus(cursor=cursor)
+                    return verify(cursor)
         except Exception as exc:
             # No database connection details or source contents in gate receipts.
             return {'status': 'UNVERIFIED', 'reason': type(exc).__name__}
