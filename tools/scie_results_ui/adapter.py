@@ -212,6 +212,7 @@ class ResultsAdapter:
                 semantic_publication = {'status': 'REJECTED_PUBLICATION', 'reason': '결과 경로·해시·원본 검수자료·실행/GOLD 연결 검증 실패'}
 
         semantic_review = {k: semantic_raw.get(k) for k in (
+            'assisted_review_complete', 'assisted_metrics', 'independent_review_confirmed',
             'status', 'total_answers', 'reviewer_A_completed', 'reviewer_B_completed',
             'paired_completed', 'consensus_completed', 'semantic_human_accuracy',
             'human_answer_scoring_complete', 'gold_review_complete', 'gold_review_basis',

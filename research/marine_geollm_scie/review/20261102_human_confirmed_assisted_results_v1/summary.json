@@ -1,0 +1,518 @@
+{
+  "status": "HUMAN_CONFIRMED_AI_ASSISTED_COMPLETE",
+  "source_run_id": "20261102_gold_v2_eight_k1_v6",
+  "gold_manifest_sha256": "feb9ef9851553fe53c12b0733b1747d3c238fb64c7b6bffd2ae848a35e6b1c5c",
+  "total_answers": 144,
+  "reviewer_A_completed": 144,
+  "reviewer_B_completed": 144,
+  "paired_completed": 144,
+  "consensus_completed": 144,
+  "human_answer_scoring_complete": false,
+  "independent_review_confirmed": false,
+  "semantic_human_accuracy": null,
+  "assisted_review_complete": true,
+  "assisted_metrics": {
+    "total": 144,
+    "dimension_correct": {
+      "meaning_correct": 27,
+      "required_tasks_complete": 16,
+      "evidence_supported": 20,
+      "no_unsupported_claims": 44
+    },
+    "dimension_rates": {
+      "meaning_correct": 0.1875,
+      "required_tasks_complete": 0.1111111111111111,
+      "evidence_supported": 0.1388888888888889,
+      "no_unsupported_claims": 0.3055555555555556
+    },
+    "joint_correct": 16,
+    "joint_accuracy": 0.1111111111111111,
+    "by_method": {
+      "B0": {
+        "total": 18,
+        "dimension_correct": {
+          "meaning_correct": 0,
+          "required_tasks_complete": 0,
+          "evidence_supported": 0,
+          "no_unsupported_claims": 2
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.0,
+          "required_tasks_complete": 0.0,
+          "evidence_supported": 0.0,
+          "no_unsupported_claims": 0.1111111111111111
+        },
+        "joint_correct": 0,
+        "joint_accuracy": 0.0
+      },
+      "B1": {
+        "total": 18,
+        "dimension_correct": {
+          "meaning_correct": 5,
+          "required_tasks_complete": 1,
+          "evidence_supported": 4,
+          "no_unsupported_claims": 6
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.2777777777777778,
+          "required_tasks_complete": 0.05555555555555555,
+          "evidence_supported": 0.2222222222222222,
+          "no_unsupported_claims": 0.3333333333333333
+        },
+        "joint_correct": 1,
+        "joint_accuracy": 0.05555555555555555
+      },
+      "B2": {
+        "total": 18,
+        "dimension_correct": {
+          "meaning_correct": 1,
+          "required_tasks_complete": 0,
+          "evidence_supported": 0,
+          "no_unsupported_claims": 4
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.05555555555555555,
+          "required_tasks_complete": 0.0,
+          "evidence_supported": 0.0,
+          "no_unsupported_claims": 0.2222222222222222
+        },
+        "joint_correct": 0,
+        "joint_accuracy": 0.0
+      },
+      "B3": {
+        "total": 18,
+        "dimension_correct": {
+          "meaning_correct": 3,
+          "required_tasks_complete": 2,
+          "evidence_supported": 2,
+          "no_unsupported_claims": 5
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.16666666666666666,
+          "required_tasks_complete": 0.1111111111111111,
+          "evidence_supported": 0.1111111111111111,
+          "no_unsupported_claims": 0.2777777777777778
+        },
+        "joint_correct": 2,
+        "joint_accuracy": 0.1111111111111111
+      },
+      "B4": {
+        "total": 18,
+        "dimension_correct": {
+          "meaning_correct": 3,
+          "required_tasks_complete": 2,
+          "evidence_supported": 2,
+          "no_unsupported_claims": 5
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.16666666666666666,
+          "required_tasks_complete": 0.1111111111111111,
+          "evidence_supported": 0.1111111111111111,
+          "no_unsupported_claims": 0.2777777777777778
+        },
+        "joint_correct": 2,
+        "joint_accuracy": 0.1111111111111111
+      },
+      "H": {
+        "total": 18,
+        "dimension_correct": {
+          "meaning_correct": 3,
+          "required_tasks_complete": 2,
+          "evidence_supported": 2,
+          "no_unsupported_claims": 5
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.16666666666666666,
+          "required_tasks_complete": 0.1111111111111111,
+          "evidence_supported": 0.1111111111111111,
+          "no_unsupported_claims": 0.2777777777777778
+        },
+        "joint_correct": 2,
+        "joint_accuracy": 0.1111111111111111
+      },
+      "P0": {
+        "total": 18,
+        "dimension_correct": {
+          "meaning_correct": 3,
+          "required_tasks_complete": 2,
+          "evidence_supported": 2,
+          "no_unsupported_claims": 5
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.16666666666666666,
+          "required_tasks_complete": 0.1111111111111111,
+          "evidence_supported": 0.1111111111111111,
+          "no_unsupported_claims": 0.2777777777777778
+        },
+        "joint_correct": 2,
+        "joint_accuracy": 0.1111111111111111
+      },
+      "P1": {
+        "total": 18,
+        "dimension_correct": {
+          "meaning_correct": 9,
+          "required_tasks_complete": 7,
+          "evidence_supported": 8,
+          "no_unsupported_claims": 12
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.5,
+          "required_tasks_complete": 0.3888888888888889,
+          "evidence_supported": 0.4444444444444444,
+          "no_unsupported_claims": 0.6666666666666666
+        },
+        "joint_correct": 7,
+        "joint_accuracy": 0.3888888888888889
+      }
+    },
+    "by_case": {
+      "PILOT_Q1_01": {
+        "total": 8,
+        "dimension_correct": {
+          "meaning_correct": 0,
+          "required_tasks_complete": 0,
+          "evidence_supported": 0,
+          "no_unsupported_claims": 1
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.0,
+          "required_tasks_complete": 0.0,
+          "evidence_supported": 0.0,
+          "no_unsupported_claims": 0.125
+        },
+        "joint_correct": 0,
+        "joint_accuracy": 0.0
+      },
+      "PILOT_Q1_02": {
+        "total": 8,
+        "dimension_correct": {
+          "meaning_correct": 2,
+          "required_tasks_complete": 1,
+          "evidence_supported": 2,
+          "no_unsupported_claims": 2
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.25,
+          "required_tasks_complete": 0.125,
+          "evidence_supported": 0.25,
+          "no_unsupported_claims": 0.25
+        },
+        "joint_correct": 1,
+        "joint_accuracy": 0.125
+      },
+      "PILOT_Q1_03": {
+        "total": 8,
+        "dimension_correct": {
+          "meaning_correct": 2,
+          "required_tasks_complete": 2,
+          "evidence_supported": 2,
+          "no_unsupported_claims": 3
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.25,
+          "required_tasks_complete": 0.25,
+          "evidence_supported": 0.25,
+          "no_unsupported_claims": 0.375
+        },
+        "joint_correct": 2,
+        "joint_accuracy": 0.25
+      },
+      "PILOT_Q2_01": {
+        "total": 8,
+        "dimension_correct": {
+          "meaning_correct": 0,
+          "required_tasks_complete": 0,
+          "evidence_supported": 0,
+          "no_unsupported_claims": 1
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.0,
+          "required_tasks_complete": 0.0,
+          "evidence_supported": 0.0,
+          "no_unsupported_claims": 0.125
+        },
+        "joint_correct": 0,
+        "joint_accuracy": 0.0
+      },
+      "PILOT_Q2_02": {
+        "total": 8,
+        "dimension_correct": {
+          "meaning_correct": 1,
+          "required_tasks_complete": 1,
+          "evidence_supported": 1,
+          "no_unsupported_claims": 1
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.125,
+          "required_tasks_complete": 0.125,
+          "evidence_supported": 0.125,
+          "no_unsupported_claims": 0.125
+        },
+        "joint_correct": 1,
+        "joint_accuracy": 0.125
+      },
+      "PILOT_Q2_03": {
+        "total": 8,
+        "dimension_correct": {
+          "meaning_correct": 6,
+          "required_tasks_complete": 5,
+          "evidence_supported": 6,
+          "no_unsupported_claims": 6
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.75,
+          "required_tasks_complete": 0.625,
+          "evidence_supported": 0.75,
+          "no_unsupported_claims": 0.75
+        },
+        "joint_correct": 5,
+        "joint_accuracy": 0.625
+      },
+      "PILOT_Q3_01": {
+        "total": 8,
+        "dimension_correct": {
+          "meaning_correct": 1,
+          "required_tasks_complete": 0,
+          "evidence_supported": 0,
+          "no_unsupported_claims": 1
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.125,
+          "required_tasks_complete": 0.0,
+          "evidence_supported": 0.0,
+          "no_unsupported_claims": 0.125
+        },
+        "joint_correct": 0,
+        "joint_accuracy": 0.0
+      },
+      "PILOT_Q3_02": {
+        "total": 8,
+        "dimension_correct": {
+          "meaning_correct": 0,
+          "required_tasks_complete": 0,
+          "evidence_supported": 0,
+          "no_unsupported_claims": 1
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.0,
+          "required_tasks_complete": 0.0,
+          "evidence_supported": 0.0,
+          "no_unsupported_claims": 0.125
+        },
+        "joint_correct": 0,
+        "joint_accuracy": 0.0
+      },
+      "PILOT_Q3_03": {
+        "total": 8,
+        "dimension_correct": {
+          "meaning_correct": 1,
+          "required_tasks_complete": 1,
+          "evidence_supported": 1,
+          "no_unsupported_claims": 1
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.125,
+          "required_tasks_complete": 0.125,
+          "evidence_supported": 0.125,
+          "no_unsupported_claims": 0.125
+        },
+        "joint_correct": 1,
+        "joint_accuracy": 0.125
+      },
+      "PILOT_Q4_01": {
+        "total": 8,
+        "dimension_correct": {
+          "meaning_correct": 0,
+          "required_tasks_complete": 0,
+          "evidence_supported": 0,
+          "no_unsupported_claims": 0
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.0,
+          "required_tasks_complete": 0.0,
+          "evidence_supported": 0.0,
+          "no_unsupported_claims": 0.0
+        },
+        "joint_correct": 0,
+        "joint_accuracy": 0.0
+      },
+      "PILOT_Q4_02": {
+        "total": 8,
+        "dimension_correct": {
+          "meaning_correct": 0,
+          "required_tasks_complete": 0,
+          "evidence_supported": 0,
+          "no_unsupported_claims": 0
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.0,
+          "required_tasks_complete": 0.0,
+          "evidence_supported": 0.0,
+          "no_unsupported_claims": 0.0
+        },
+        "joint_correct": 0,
+        "joint_accuracy": 0.0
+      },
+      "PILOT_Q4_03": {
+        "total": 8,
+        "dimension_correct": {
+          "meaning_correct": 0,
+          "required_tasks_complete": 0,
+          "evidence_supported": 0,
+          "no_unsupported_claims": 7
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.0,
+          "required_tasks_complete": 0.0,
+          "evidence_supported": 0.0,
+          "no_unsupported_claims": 0.875
+        },
+        "joint_correct": 0,
+        "joint_accuracy": 0.0
+      },
+      "PILOT_Q5_01": {
+        "total": 8,
+        "dimension_correct": {
+          "meaning_correct": 0,
+          "required_tasks_complete": 0,
+          "evidence_supported": 0,
+          "no_unsupported_claims": 1
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.0,
+          "required_tasks_complete": 0.0,
+          "evidence_supported": 0.0,
+          "no_unsupported_claims": 0.125
+        },
+        "joint_correct": 0,
+        "joint_accuracy": 0.0
+      },
+      "PILOT_Q5_02": {
+        "total": 8,
+        "dimension_correct": {
+          "meaning_correct": 2,
+          "required_tasks_complete": 0,
+          "evidence_supported": 0,
+          "no_unsupported_claims": 3
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.25,
+          "required_tasks_complete": 0.0,
+          "evidence_supported": 0.0,
+          "no_unsupported_claims": 0.375
+        },
+        "joint_correct": 0,
+        "joint_accuracy": 0.0
+      },
+      "PILOT_Q5_03": {
+        "total": 8,
+        "dimension_correct": {
+          "meaning_correct": 1,
+          "required_tasks_complete": 0,
+          "evidence_supported": 1,
+          "no_unsupported_claims": 1
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.125,
+          "required_tasks_complete": 0.0,
+          "evidence_supported": 0.125,
+          "no_unsupported_claims": 0.125
+        },
+        "joint_correct": 0,
+        "joint_accuracy": 0.0
+      },
+      "PILOT_Q6_01": {
+        "total": 8,
+        "dimension_correct": {
+          "meaning_correct": 1,
+          "required_tasks_complete": 1,
+          "evidence_supported": 1,
+          "no_unsupported_claims": 5
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.125,
+          "required_tasks_complete": 0.125,
+          "evidence_supported": 0.125,
+          "no_unsupported_claims": 0.625
+        },
+        "joint_correct": 1,
+        "joint_accuracy": 0.125
+      },
+      "PILOT_Q6_02": {
+        "total": 8,
+        "dimension_correct": {
+          "meaning_correct": 4,
+          "required_tasks_complete": 0,
+          "evidence_supported": 0,
+          "no_unsupported_claims": 4
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.5,
+          "required_tasks_complete": 0.0,
+          "evidence_supported": 0.0,
+          "no_unsupported_claims": 0.5
+        },
+        "joint_correct": 0,
+        "joint_accuracy": 0.0
+      },
+      "PILOT_Q6_03": {
+        "total": 8,
+        "dimension_correct": {
+          "meaning_correct": 6,
+          "required_tasks_complete": 5,
+          "evidence_supported": 6,
+          "no_unsupported_claims": 6
+        },
+        "dimension_rates": {
+          "meaning_correct": 0.75,
+          "required_tasks_complete": 0.625,
+          "evidence_supported": 0.75,
+          "no_unsupported_claims": 0.75
+        },
+        "joint_correct": 5,
+        "joint_accuracy": 0.625
+      }
+    },
+    "agreement": {
+      "meaning_correct": {
+        "matches": 131,
+        "total": 144,
+        "agreement": 0.9097222222222222,
+        "cohen_kappa": 0.6945169712793733
+      },
+      "required_tasks_complete": {
+        "matches": 144,
+        "total": 144,
+        "agreement": 1.0,
+        "cohen_kappa": 1.0
+      },
+      "evidence_supported": {
+        "matches": 144,
+        "total": 144,
+        "agreement": 1.0,
+        "cohen_kappa": 1.0
+      },
+      "no_unsupported_claims": {
+        "matches": 144,
+        "total": 144,
+        "agreement": 1.0,
+        "cohen_kappa": 1.0
+      },
+      "all_four": {
+        "matches": 144,
+        "total": 144,
+        "agreement": 1.0,
+        "cohen_kappa": 1.0
+      }
+    }
+  },
+  "preparation_complete": true,
+  "gold_review_complete": true,
+  "gold_review_basis": "USER_ATTESTATION",
+  "limitations": [
+    "AI 보조 판정을 사용자가 검토 확인한 기록입니다. 별도 두 인간 검수자의 독립성은 확인되지 않았습니다.",
+    "의미 정확성 단일 항목과 네 항목 공동 충족률을 구분합니다.",
+    "A/B 일치도는 제출된 보조 판정 간 일치도이며 독립 인간 검수자 간 신뢰도로 해석하지 않습니다.",
+    "개발용 18문항의 K1 결과이며 독립 홀드아웃 성능이 아닙니다."
+  ]
+}

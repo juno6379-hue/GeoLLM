@@ -1,5 +1,14 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-11-02 제출 HUMAN_FINAL 144건 반영 — AI 보조 인간 확인 채점
+
+- 사용자 제출 outputs/human_answer_submission_20261102의 AAA_labels_HUMAN_FINAL/BBB_labels_HUMAN_FINAL/consensus_labels_HUMAN_FINAL 각144 JSONL을 검증했다. author_type=HUMAN_VERIFIED_AI_ASSISTED_*, independent_review_confirmed=false, human_reviewer=USER 기록을 그대로 유지. 독립 두 인간 채점으로 승격하지 않음.
+- import_assisted_review 별도경로로 답안/표시/GOLD hash·144고유ID·4boolean·사람확인 provenance·합의의 AAA/BBB dimensions 일치를 검사. 제출 원문 bytes 사본 및 SHA, import시 A/B/합의 결합hash 보존. 기존 엄격 independent importer 변경없음.
+- review/20261102_human_confirmed_assisted_results_v1: 합의 의미27/144(18.75%), 필수작업16/144, 근거20/144, 무근거주장없음44/144; 공동16/144(11.11%). P1 의미9/18·공동7/18. 의미 A/B 일치131/144·kappa0.694517, 이는AI보조판정간 비교이며 독립인간신뢰도 아님. 기존 기계13/144와 별도 지표.
+- UI latest pointer를새결과manifest로연결, 각144완료 및 사람이확인한AI보조지표표시, independent human accuracy=null 유지. Python39+Node10통과, 실제HTTP결과연결/506원본불변확인. 운영/모델/holdout평가실행없음.
+- 다음은 개발 오류·coverage 정상오차단 보완→최종시스템동결→신규holdoutGOLD 검수·전용harness통합→예약평가. 이번제출은별도holdoutGOLD승인이아님. 원본연구·제출판정변경없음,관련로컬커밋만·새push요청없음.
+
+
 ## 2026-11-02 홀드아웃 분리·144답변 인간 채점 양식 준비
 
 - 사용자 병렬 지시에 따라 holdout_prepare/semantic_review/holdout_ui 3에이전트 및 부모 통합검증 수행. [계획](../../research/marine_geollm_scie/protocol/holdout_and_human_scoring_20261102_KR.md). 기존 개발18/v6원본506파일 hash 불변, 모델/운영API/새평가 미실행.

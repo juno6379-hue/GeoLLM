@@ -1,0 +1,17 @@
+{
+  "source_package_manifest_sha256": "3388c995b16718c83f30b1446063dfbedfcb040b8804afac53876dd24fcc3912",
+  "source_files": {
+    "outputs\\human_answer_submission_20261102\\AAA_labels_HUMAN_FINAL.jsonl": "b6079eeed8ba48201d8391e0aebea14e2f0796778de1963efb8b738004ce1444",
+    "outputs\\human_answer_submission_20261102\\BBB_labels_HUMAN_FINAL.jsonl": "6b14e5280511ff92e23b61d19bb031ba917478c3a13d208c27b24464a4929d1d",
+    "outputs\\human_answer_submission_20261102\\consensus_labels_HUMAN_FINAL.jsonl": "daa20b841aed4eaa1b9d6ab09decbe74921e22a033b1040ed805ce31e46509dd"
+  },
+  "scorer_sha256": "8d0d6a017856dd323810edd129952f5cbc59817e75098ebde58e00fcab7bab54",
+  "files": {
+    "AAA_labels_HUMAN_FINAL.jsonl": "b6079eeed8ba48201d8391e0aebea14e2f0796778de1963efb8b738004ce1444",
+    "BBB_labels_HUMAN_FINAL.jsonl": "6b14e5280511ff92e23b61d19bb031ba917478c3a13d208c27b24464a4929d1d",
+    "consensus_labels_HUMAN_FINAL.jsonl": "daa20b841aed4eaa1b9d6ab09decbe74921e22a033b1040ed805ce31e46509dd",
+    "summary.json": "632b9d1d002ef8656634eef8479c7147c9c204b1e1a379ece2138c73854531f8",
+    "label_bindings.json": "48108c009a83ccdc4236f2d67fbb183a85eb6e50667c308cc656c16e5ed2c775",
+    "결과_KR.md": "7669321bd199cefd0d9dcbc381f8eca880d1d996206642dac1f70d69438c8127"
+  }
+}
