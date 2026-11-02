@@ -7,8 +7,9 @@ import urllib.request
 
 from jsonschema import Draft202012Validator, ValidationError
 from ..baselines.plan_comparison import PLAN_SCHEMA
+from .review_consistency import inspect_review
 
-REVIEW_VERSION = 'structured_review_v2_initial_checks'
+REVIEW_VERSION = 'structured_review_v3_initial_plan_consistency'
 REVIEW_PLAN_SCHEMA = copy.deepcopy(PLAN_SCHEMA)
 REVIEW_PLAN_SCHEMA['properties']['spatial_relation']['enum'].append('covers')
 CHECK_FIELDS = ('target', 'distance', 'crs', 'reference', 'source', 'tool_contract')
@@ -56,6 +57,10 @@ def review_prompt(query, context, plan):
         'source is a failure; a deliberate clarification with no tools is not an attempted search. '
         'invalid is your verdict on the INITIAL plan before any repair. '
         'If any initial check fails, invalid must be true even if you can repair it. '
+        'If invalid is false, copy every INITIAL_PLAN field unchanged except answer may be empty. '
+        'Changing a tool argument, target, CRS, distance, source, missing input or evidence binding '
+        'is a proposed repair and requires invalid true with the failed initial check identified. '
+        'Never describe your corrected plan as evidence that the initial plan was valid. '
         'reason is a short observable explanation, not private reasoning. '
         'Provide at most one full plan preserving the explicit request. '
         'Keep the plan concise and answer empty; do not repeat your explanation inside the plan. '
@@ -91,7 +96,16 @@ def call_review(query, context, plan, *, model, seed):
                       error_type=type(exc).__name__,error=str(exc))
     result['latency_ms']=(time.perf_counter()-start)*1000
     review,errors=parse_review_response(result.get('raw_response'))
+    consistency=inspect_review(plan,result.get('raw_response'))
+    result['review_consistency']=consistency
+    if review is not None and consistency['undeclared_plan_change'] is True:
+        # Transport-contract failure, not deterministic correction of B4's
+        # initial prediction. Both shared branches retain the same failed receipt.
+        review=None
+        errors=errors+['REVIEW_UNDECLARED_PLAN_CHANGE']
     if result['status']!='completed' or result.get('done') is not True or result.get('done_reason')!='stop':
         review=None
         errors=errors+['GENERATION_NOT_COMPLETED']
+    result['review_usable']=review is not None
+    result['review_contract_errors']=list(errors)
     return result,review,errors

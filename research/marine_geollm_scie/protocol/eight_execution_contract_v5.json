@@ -1,0 +1,42 @@
+{
+  "version": "eight_execution_v5_review_plan_consistency",
+  "gold_policy": "immutable GOLD v2 unchanged; fresh all eight methods; no old result reuse",
+  "methods": [
+    "B0",
+    "B1",
+    "B2",
+    "B3",
+    "B4",
+    "P0",
+    "H",
+    "P1"
+  ],
+  "comparison_cases": 18,
+  "repeats": 1,
+  "fault_cases": 9,
+  "fault_methods": [
+    "B4",
+    "P0",
+    "H"
+  ],
+  "initial_plan_policy": "B3 B4 P0 H share frozen B3 initial plan; B4 H share one constrained review",
+  "p0_policy": "lossless compilation only; native validator compares explicit original public request, never repairs or infers missing slots",
+  "request_constraint_version": "explicit_request_constraints_v1",
+  "review_protocol": "research/marine_geollm_scie/protocol/structured_review_v3.json",
+  "execution_semantics_version": "spatial_execution_semantics_v3",
+  "execution_definition": "completed observed no spatial execution=false; confirmed successful spatial SQL=true; failed SQL=false; incomplete/unknown/contradictory=null",
+  "denominator_policy": "same GOLD-selected spatial cases for all methods irrespective of answer shape; separately report attempted-conditional ESR and missingness",
+  "spatial_correctness": "independent object/relation/distance contract, not SQL success",
+  "limits": [
+    "K1 development benchmark",
+    "equivalence-group dependence",
+    "shape correctness does not establish reviewer semantic correctness",
+    "operational deployment separate from research results",
+    "v3 observed failures used for development; no independent holdout claim",
+    "User-confirmed GOLD approval is separate from independent answer meaning scoring",
+    "v6 raw review failures used for development; new whole benchmark required; no holdout tuning"
+  ],
+  "initial_plan_schema": "research/marine_geollm_scie/baselines/tool_contract.py:TOOL_PLAN_SCHEMA",
+  "initial_plan_generation": "typed_tool_plan_v1; B3 only schema-constrained, B0-B2 unchanged",
+  "review_failure_policy": "Retain raw initial model verdict; self-contradictory checks or invalid=false with non-answer contract changes are unusable/missing review predictions, never corrected detections; B4/H share one failed receipt and do not execute the rejected repair"
+}

@@ -8,6 +8,29 @@ from shapely import wkb
 from .binding_snapshot import ROOT, digest, verify_files
 from .freeze_v2_benchmark import verify
 from ..baselines.execution_dsl import ResearchDatabase
+from .structured_review import REVIEW_VERSION, SCHEMA_SHA256, REVIEW_SCHEMA, REVIEW_BUDGET
+
+
+EXECUTION_CONTRACT = 'research/marine_geollm_scie/protocol/eight_execution_contract_v5.json'
+REVIEW_PROTOCOL = 'research/marine_geollm_scie/protocol/structured_review_v3.json'
+
+
+def execution_contract(snapshot):
+    """Bind declared protocol to frozen bytes and the actual review implementation."""
+    contract_path=ROOT/EXECUTION_CONTRACT
+    contract=json.loads(contract_path.read_text(encoding='utf-8'))
+    if contract.get('review_protocol') != REVIEW_PROTOCOL:
+        raise ValueError('Execution contract declares a different review protocol')
+    review_path=ROOT/REVIEW_PROTOCOL
+    review=json.loads(review_path.read_text(encoding='utf-8'))
+    if (review.get('version') != REVIEW_VERSION or review.get('schema_sha256') != SCHEMA_SHA256
+            or review.get('schema') != REVIEW_SCHEMA or review.get('budget') != REVIEW_BUDGET):
+        raise ValueError('Declared review protocol differs from running implementation')
+    for path in (contract_path,review_path):
+        if not any(x['path']==path.relative_to(ROOT).as_posix() and x['sha256']==digest(path)
+                   for x in snapshot['files']):
+            raise ValueError('Execution/review contract must be included in the new source freeze')
+    return contract_path,contract,{'path':REVIEW_PROTOCOL,'sha256':digest(review_path),'version':review['version']}
 
 
 def prepare(snapshot_path, output, benchmark):
@@ -17,6 +40,7 @@ def prepare(snapshot_path, output, benchmark):
     verify(benchmark,expected_manifest_sha256='feb9ef9851553fe53c12b0733b1747d3c238fb64c7b6bffd2ae848a35e6b1c5c')
     snapshot=json.loads(snapshot_path.read_text(encoding='utf-8'));verify_files(snapshot,snapshot_path.parent)
     if snapshot.get('status')!='LOADED_VERIFIED':raise ValueError('Snapshot not verified')
+    contract_path,contract,review_protocol=execution_contract(snapshot)
     # User approved this reference input before comparison. Target answers are
     # absent from this query and from all generation profiles.
     boundary=json.loads((benchmark/'canonical_busan_boundary.json').read_text(encoding='utf-8'))
@@ -45,13 +69,9 @@ def prepare(snapshot_path, output, benchmark):
         'reference_geometries':refs,'coverage':coverage,
         'input_policy':'Same source registry supplied to every method; no per-case geometry substitution or answer injection.',
         'experiment_note':'Fresh GOLD v2 eight-method K1 after reliability changes; not old K5 reuse or equal-compute comparison.'}
-    contract_path=ROOT/'research/marine_geollm_scie/protocol/eight_execution_contract_v4.json'
-    contract=json.loads(contract_path.read_text(encoding='utf-8'))
-    if not any(x['path']==contract_path.relative_to(ROOT).as_posix() and x['sha256']==digest(contract_path)
-               for x in snapshot['files']):
-        raise ValueError('Execution contract must be included in the new source freeze')
     common['execution_contract']={'path':contract_path.relative_to(ROOT).as_posix(),
                                   'sha256':digest(contract_path),'version':contract['version']}
+    common['review_protocol']=review_protocol
     for profile in (baseline,model):profile.update(common)
     model['snapshot_manifest_sha256']=digest(snapshot_path)
     output.mkdir(parents=True,exist_ok=False)
@@ -81,6 +101,7 @@ def prepare(snapshot_path, output, benchmark):
         'benchmark_inputs_sha256':digest(output/'common_inputs.jsonl'),
         'method_definitions_sha256':digest(benchmark/'comparison_protocol.json')}
     baseline['execution_identity']['execution_contract_sha256']=digest(contract_path)
+    baseline['execution_identity']['review_protocol_sha256']=review_protocol['sha256']
     (output/'baseline_profile.json').write_text(json.dumps(baseline,ensure_ascii=False,indent=2),encoding='utf-8')
     (output/'manifest.json').write_text(json.dumps({'contains_gold_answers':False,
         'reference_is_input_not_spatial_gold':True,'files':{p.name:digest(p) for p in output.iterdir()},

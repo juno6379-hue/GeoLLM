@@ -1,5 +1,15 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-11-02 정상 요청·LLM 검토 보완 — 다음 접속 v7 준비, 런타임 미완료
+
+- 사용자 최신 지시: 운영/연구 분리·복수 에이전트 수정/독립검증, 새 동결 8방법 전체 비교는 **다음 접속**에서 진행. 이번에는 모델 비교를 실행하지 않았다. [상세 인계](normal_request_review_repair_20261102.md), [다음 접속 실행 절차](../../research/marine_geollm_scie/protocol/eight_execution_v7_next_session_KR.md).
+- 운영227d3da: s101_exact_inventory_v1 서버 계약·원천 manifest와live전체행/속성/EWKB/hash 비교, 원천DataCoverage polygon이요청전체포함할때만 SOURCE_CORPUS 허용. default_inventory_listing은서버명시만, 전체/최근접/밖/변조차단유지. 본문/지도/근거에원천한정·absencefalse표시. 실제원천manifest/registry미등록·API미검증이므로정상오차단해결완료아님.
+- 연구: structured_review_v3 초기false+계약변경은사용불가, rawfalse/checks/hash/diff보존·B4H공유실패. 기존9review읽기재현3모순확인,나머지5의미미검출남음. 새execution_contract_v5→reviewv3연결,profile준비시frozen path/hash와runtime version/schema/budget일치gate추가. 기존v6재채점/실제모델개선주장없음.
+- 부모통합 운영205tests/전체연구449tests통과. 독립감사513파일(v6/GOLD/snapshot)불변. 독립·부분검사중복합산금지. sourcepolygon CRS/지리범위 및 partialreceipt emptyguard누락을독립발견·수정. 홀드아웃개발사용없음.
+- 실제blocker: Docker기동실패(dockerInference소켓접근불가),소켓이동실패·삭제자동승인검토 blocked by policy. 우회삭제/factoryreset없음. Docker복구후DB/실API필수. 기존worker0,PDF2215중948checkpoint검증/1267남음·최종embedded없음·lock보존. 이전인계의worker진행중은현재상태아님.
+- 다음첫단계: Docker복구→PDF재개/완료및revision/receipt정리→원천DataCoverage/DBidentity검증·등록→운영정상/부정API→연구ResearchBindingAdapter의snapshot범위권위연결검증→추가asset까지freeze→v7 144+27전체실행. 연구bbox운영APPROVED승격금지,미완료gate우회금지. 새실험바로시작가능상태로주장하지않음.
+- 운영·연구관련코드/테스트/문서로컬커밋분리. 새push요청없어이전GitHub e11f7c4게시와구분. 기존무관dirty feedback/UI/사용자문서/인계보존.
+
 ## 2026-11-02 Dataset 후속 대조·RQ 병렬 개발 GitHub 체크포인트
 
 - 상세: [병렬 개발·재개 순서](parallel_rq_checkpoint_20261102.md). 기존 v6 144+27 원본과 홀드아웃을 개발·새 계측과 분리했다. RQ1/RQ3, RQ2/RQ4, RQ5/ablation 역할별 에이전트 작업을 취합했다.

@@ -198,6 +198,10 @@ def run(output, profile_path, benchmark, *, execute=False):
             row={'case_id':case['case_id'],'error_type':case['error_type'],'method':method,
                 'initial_plan_sha256':case['initial_plan_sha256'],'expected_invalid':case['expected_invalid'],
                 'predicted_invalid':invalid,'review_invalid':review_invalid,'validator_detection':detection,
+                'raw_review_invalid':(call.get('review_consistency') or {}).get('raw_initial_invalid'),
+                'review_usable':review is not None,
+                'review_contract_errors':errors,
+                'review_consistency':call.get('review_consistency'),
                 'detector_scope':'BEFORE_COMMON_EXECUTION_FLOOR','recovery_attempted':False,
                 'recovery_eligible':case['recovery_eligible'] and method in ('B4','H'),
                 'recovery_success':None,'semantic_preservation':None,'spatial_correct':None,'joint_success':None}
