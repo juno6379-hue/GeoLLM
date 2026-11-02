@@ -1,0 +1,104 @@
+{
+  "version": "20261102_coverage_availability_v2",
+  "status": "DEVELOPMENT_VERIFIED",
+  "date": "2026-11-02",
+  "paper_experiment": false,
+  "holdout_evaluation_executed": false,
+  "passed_cases": 8,
+  "total_cases": 8,
+  "source_unchanged_at_verification": true,
+  "corpus_row_count": 1146,
+  "query_scope": "SOURCE_CORPUS",
+  "geographic_coverage": "UNKNOWN",
+  "absence_certified": false,
+  "dataset_coordinate_audit_complete": false,
+  "observations": [
+    {
+      "case": "q4_explicit",
+      "passed": true,
+      "status": "COMPLETED",
+      "count": 11,
+      "raw_sha256": "882656f07962e99c78e4107933c45e5e55328fd5041d3d2ba9392e038e056762"
+    },
+    {
+      "case": "q4_english",
+      "passed": true,
+      "status": "COMPLETED",
+      "count": 11,
+      "raw_sha256": "16525401309de746dca8a5236d4c5ea1a3477487054f215bd508162473eb29d3"
+    },
+    {
+      "case": "q4_meters",
+      "passed": true,
+      "status": "COMPLETED",
+      "count": 11,
+      "raw_sha256": "fb45a5681d2528a5b36c251d72b990ecdef3d6104494d6895b86ee8f50acfe9e"
+    },
+    {
+      "case": "gazetteer_completeness_negative",
+      "passed": true,
+      "status": "BLOCKED",
+      "count": null,
+      "raw_sha256": "1bbe85dace4e21ec1c38bde6595964de8b8ce62ab1ba0bfb4f80d8fa7c30658b"
+    },
+    {
+      "case": "s101_dokdo",
+      "passed": true,
+      "status": "BLOCKED",
+      "count": null,
+      "raw_sha256": "1722aab2ab5cca62b0cbb84785fbba7cea10af6905d5b491ffdfe43b6cfd020a"
+    },
+    {
+      "case": "s101_busan_unverified",
+      "passed": true,
+      "status": "BLOCKED",
+      "count": null,
+      "raw_sha256": "473e5e41a16b5d948f7c76709465b023b5f3f7674cb471f91b110f11bf70cd7c"
+    },
+    {
+      "case": "s101_missing_area",
+      "passed": true,
+      "status": "NEEDS_CLARIFICATION",
+      "count": null,
+      "raw_sha256": "a62ee3a84947c1288a6e136663162607624a682ed9a200696a1b13f5b57946c7"
+    },
+    {
+      "case": "s101_definition",
+      "passed": true,
+      "status": "COMPLETED",
+      "count": null,
+      "raw_sha256": "9a84f62228ced78d93c8b6f5738e24eba33a47ca930555cbf3f64b3f72ecf2ab"
+    }
+  ],
+  "limitations": [
+    "운영 보완의 기존 개발 질의 검증이며 새 동결 논문 비교가 아닙니다. v6 ESR·FalseBlock 및 기존 연구 지표는 변경하지 않았습니다.",
+    "검증된 2022 해양지명 CSV 1,146행과 DB의 exact identity에 한정합니다. 원천 수록 객체 조회만 허용하며 실제 해역의 전체 지명·부재를 보증하지 않습니다.",
+    "부산 S-101 정상 가능 요청도 승인 coverage가 없어 여전히 차단됩니다. 정상 가용성 한계는 미해결입니다.",
+    "Dataset 전체 지명·위치·좌표 전수 검증: 미완료. 문서 청크의 지명·좌표 추출 정확성 및 공간객체 연결 전수 검증은 임베딩 완료와 별개입니다.",
+    "검사는 서버 receipt 기반이며 독립 SQL 계측이나 인간 의미 정확도 채점이 아닙니다. Q4 세 표현은 같은 개발 지리조건입니다.",
+    "최초 v1 수집은 재시작 직후 transport 실패로 원본 보존했습니다. 성공 8건에 합산하지 않습니다.",
+    "독립 홀드아웃은 최종 시스템 동결 후 평가 예정이며 미실행입니다. HUMAN_FINAL은 사람이 확인한 AI 보조 채점으로 유지합니다."
+  ],
+  "evidence_sha256": {
+    "outputs/coverage_availability_20261102_final_v3/verification.json": "3cc40e7caebea8bb6e8034167bd1e9b4c83682dfe6d984d786aa80882dc70be9",
+    "outputs/coverage_availability_20261102_final_v3/source_hashes.json": "81f7b095cb83afcd7be95a16160983bd49f0ab57d52923773dc2faff293afc7d",
+    "outputs/coverage_availability_20261102_final_v3/q4_explicit.json": "882656f07962e99c78e4107933c45e5e55328fd5041d3d2ba9392e038e056762",
+    "outputs/coverage_availability_20261102_final_v3/q4_english.json": "16525401309de746dca8a5236d4c5ea1a3477487054f215bd508162473eb29d3",
+    "outputs/coverage_availability_20261102_final_v3/q4_meters.json": "fb45a5681d2528a5b36c251d72b990ecdef3d6104494d6895b86ee8f50acfe9e",
+    "outputs/coverage_availability_20261102_final_v3/gazetteer_completeness_negative.json": "1bbe85dace4e21ec1c38bde6595964de8b8ce62ab1ba0bfb4f80d8fa7c30658b",
+    "outputs/coverage_availability_20261102_final_v3/s101_dokdo.json": "1722aab2ab5cca62b0cbb84785fbba7cea10af6905d5b491ffdfe43b6cfd020a",
+    "outputs/coverage_availability_20261102_final_v3/s101_busan_unverified.json": "473e5e41a16b5d948f7c76709465b023b5f3f7674cb471f91b110f11bf70cd7c",
+    "outputs/coverage_availability_20261102_final_v3/s101_missing_area.json": "a62ee3a84947c1288a6e136663162607624a682ed9a200696a1b13f5b57946c7",
+    "outputs/coverage_availability_20261102_final_v3/s101_definition.json": "9a84f62228ced78d93c8b6f5738e24eba33a47ca930555cbf3f64b3f72ecf2ab",
+    "outputs/coverage_availability_20261102_v1/gazetteer_completeness_negative.json": "83d0fcc21cbe1c1eea95bde10ff88e887d95c954ca108dee40b297195dfeefd5",
+    "outputs/coverage_availability_20261102_v1/q4_english.json": "7380f10d893bfbccf940d3a4e36df9e3a1fe5792945a72125abf9e93318d9eb7",
+    "outputs/coverage_availability_20261102_v1/q4_explicit.json": "459ebaf9b8c5ea2df71dcdfee9dd57ef78c6af1b76203626447839965f9a1a88",
+    "outputs/coverage_availability_20261102_v1/q4_meters.json": "a27016a9042a91a925b9d8e1e797bdd81410cb0d2421af18c0b476c2d4c7c370",
+    "outputs/coverage_availability_20261102_v1/s101_busan_unverified.json": "fd700fc3a231a5cd49dac6ac94ba5e56fc1591aba4471f2d64245893dcf06ea5",
+    "outputs/coverage_availability_20261102_v1/s101_definition.json": "adea6676ed1eb0a94cad5e3ed03b827416c2f545281935ed2f4d836ed71dd4b8",
+    "outputs/coverage_availability_20261102_v1/s101_dokdo.json": "3d36244179c8f3e85d6d8068b23ceef2fa02907edcd9307cdb3ff317e3e60e16",
+    "outputs/coverage_availability_20261102_v1/s101_missing_area.json": "ed5d6aa44e5ed5337cdf323b046fe1a915bb606c81209257f870d97b74598ef5",
+    "outputs/coverage_availability_20261102_v1/source_hashes.json": "a68109fbc3d02eeb93792a6a6f49bf6ef067ce11f2d788690c644241de592464",
+    "outputs/coverage_availability_20261102_v1/verification.json": "d9e62c824777116d3f03b4a6cb27d275c41467fc8e71c04e302f310dac1405aa"
+  }
+}

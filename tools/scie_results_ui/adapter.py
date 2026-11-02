@@ -10,6 +10,8 @@ import re
 from urllib.parse import quote
 
 import yaml
+from .operational import load_summary
+from .dataset_audit import load_progress
 
 RESEARCH = Path('research/marine_geollm_scie')
 GOLD = 'benchmark/gold_v2_immutable_20261101_v1'
@@ -351,7 +353,8 @@ class ResultsAdapter:
                         repeats=selected_status.get('repeats'), scientific_completion=summary.get('scientific_completion'),
                         completion_gate=summary.get('completion_gate', {}),
                         status='OBSERVATION_COMPLETE' if selected_info.get('can_be_cited') else 'UNAVAILABLE_LOCAL_ARTIFACT')
-        result = dict(holdout=holdout, semantic_review=semantic_review, rescore=rescore, overview=overview, benchmark=dict(manifest=manifest, freeze_checks=freeze_checks, cases=cases,
+        operational = load_summary(self)
+        result = dict(dataset_audit=load_progress(self.root), operational=operational, holdout=holdout, semantic_review=semantic_review, rescore=rescore, overview=overview, benchmark=dict(manifest=manifest, freeze_checks=freeze_checks, cases=cases,
                       categories=dict(Counter(c.get('category') for c in cases)), protocol=protocol), methods=methods,
                       rq={'1':dict(status='NOT_FINAL', by_method_query_condition=summary.get('by_method_query_condition', {})),
                           '2':dict(status=fault.get('status', 'NOT_MEASURED'), overall_by_method=fault.get('overall_by_method', {}), by_method_error_type=fault.get('by_method_error_type', {}), detector_breakdown=detector_breakdown, model_digests=selected_info.get('model_digest')),

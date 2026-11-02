@@ -1,5 +1,18 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-11-02 운영 Dataset 전수 대조·CSV 복구·답변 연결 완료
+
+- [통합 결과와 남은 범위](dataset_location_final_20261102.md). source/spatial/coverage/repair/UI 역할 분담과 부모 통합 검증. 원본244파일 SHA 불변. 문서 현재저장23221/활성23215/보존6; 활성 원문확인19396·미검증3819·확정불일치0. 의미/최신성/현실 좌표 정확도 완료로 주장하지 않는다.
+- 정적209952 기하·DBF 속성/CSV1128824 원문행 전수대조. 장소3039·소형항만문서2329 source/content/field/geometry 연결. invalid173/world밖172 모두기존제외,unsafe사용0. 국외섬56은원문일치. 명시좌표초60표기3청크경고, 근접30쌍은동일객체확정0 후보. 좌표/coverage 권위승격없음.
+- CSV 중복빈header DictReader 값소실3청크를재현·추출기수정. 기존6 fullrow/vector archive+CAS보존 후 새6 positional_v2/current bge-m3 1024차원·digest고정재임베딩/원자전환. 연구DB금지guard. 과거모델은미확인. outputs/csv_document_revision_20261102_v1 및 source/revision_v2에독립원문/DB/delta/fullsnapshot검증. 실제rollback미실행,절차문서화.
+- data/source_verification/20261102_v2 게시. triple일치때만감사시점확인·객체대표점링크·좌표경고를실제본문/citation에표시. 현재SUPERSEDED/원문불일치를coastal·벡터주/후퇴·직접발췌에서제외,제한추가조회로정상후보누락완화. 미검증을완료로승격하지않음.
+- 정상지명조회는원본CSV1146↔실DB전체identity 및동일transaction 재검증으로 SOURCE_CORPUS만허용. ExecutionValidator단일권위,지리완전성UNKNOWN/부재보증false 유지. 기존Q4 3표현각11건·기본반경10km실제검증. 전체성/미승인S101사전차단유지.
+- 최종통합225tests, UI Python49/Node12통과(부분실행중복합산금지). backend재시작·health200후 실제API17계약(정보6/범위8/수정·경고·기본반경3)통과. 정보발췌15개중원문확인13/미검증2공개. outputs/dataset_location_audit_20261102/answer/final_verification.json, coverage_availability_20261102_final_v3 원본보존. UI8001 latest운영v2 8/8·MATCHES 및Dataset상태실제HTTP확인,새브라우저지도상호작용미검증.
+- 논문v6/GOLD/holdout531파일SHA불변,새논문비교/holdout개발사용없음. UI에과거논문수치와운영개선을분리. 사용자HUMAN_FINAL author_type/independent_review_confirmed=false 기록에따른 AI보조인간확인표시는유지.
+- 남은P0: 활성3819 원문미검증 분류별검수, 좌표의대상·CRS·현실동일성/현행판/의미관계, 승인S101coverage/canonical/nearest/복합완결성. 부산S101정상가능요청도여전히차단되므로전체오차단해결아님. 공간검색과거timeout은현재재현성공이나부하SLO미확정. 기존QLoRA/의도shadow calibration 조건변경없음.
+- 다음 순서: 위P0 근거구축·검수→운영대표/부정API재검증→새시스템·모델·데이터동결로논문전체비교. 홀드아웃은최종동결후별도gate로만평가. 기존raw재사용으로새비교완료주장금지. 무관UI/feedback/사용자DOCX/dirtytest보존. 관련로컬커밋,새push요청없어push하지않음.
+
+
 ## 2026-11-02 제출 HUMAN_FINAL 144건 반영 — AI 보조 인간 확인 채점
 
 - 사용자 제출 outputs/human_answer_submission_20261102의 AAA_labels_HUMAN_FINAL/BBB_labels_HUMAN_FINAL/consensus_labels_HUMAN_FINAL 각144 JSONL을 검증했다. author_type=HUMAN_VERIFIED_AI_ASSISTED_*, independent_review_confirmed=false, human_reviewer=USER 기록을 그대로 유지. 독립 두 인간 채점으로 승격하지 않음.

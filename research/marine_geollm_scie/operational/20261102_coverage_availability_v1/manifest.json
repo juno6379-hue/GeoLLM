@@ -1,0 +1,40 @@
+{
+  "version": "operational_development_verification_v1",
+  "summary_sha256": "bf0c64ebda8883203a67e130ea740c1c9768da529326cb2ac9f77f6c40102da7",
+  "input_sha256": {
+    "outputs/coverage_availability_20261102_v2/verification.json": "b286205c6379df033ae49fb0207fa6cb8c350625a7169174c99a5d74ca93b74a",
+    "outputs/coverage_availability_20261102_v2/source_hashes.json": "a68109fbc3d02eeb93792a6a6f49bf6ef067ce11f2d788690c644241de592464",
+    "outputs/coverage_availability_20261102_v2/q4_explicit.json": "5dba86a39f2adae11c9fd18a677656acb10ccc2350a6b832723bd6198e60f1ae",
+    "outputs/coverage_availability_20261102_v2/q4_english.json": "e79ba01fed3fec40fb6f50c25a903c10be9637372ec79eb9bd3334d4afb624a9",
+    "outputs/coverage_availability_20261102_v2/q4_meters.json": "d789d601c8e5110d6d8e7c7116ce07b83d86ca1c8edbbfb83b13f1594dee6b9d",
+    "outputs/coverage_availability_20261102_v2/gazetteer_completeness_negative.json": "62aaf4261406fbc6c05ebdd9155b75c8eebb18f94ddbce52835bb22464a2035f",
+    "outputs/coverage_availability_20261102_v2/s101_dokdo.json": "93c82ab9e5a951154628345e232eea3f9e442337450245233c4f0895276ff355",
+    "outputs/coverage_availability_20261102_v2/s101_busan_unverified.json": "a2452c0925104105461a457efdde69fa9ea2be88c6e71a3a9c0716bbb35f77dc",
+    "outputs/coverage_availability_20261102_v2/s101_missing_area.json": "d6b18a696171c28a91c2a572a6ac1cfe496d31f1c0a1dc8f23db4198f8172c3b",
+    "outputs/coverage_availability_20261102_v2/s101_definition.json": "4831345384621757a74d80fc681ddbdcedb5be158dd1d1bef94ca8de9c640f7f",
+    "outputs/coverage_availability_20261102_v1/gazetteer_completeness_negative.json": "83d0fcc21cbe1c1eea95bde10ff88e887d95c954ca108dee40b297195dfeefd5",
+    "outputs/coverage_availability_20261102_v1/q4_english.json": "7380f10d893bfbccf940d3a4e36df9e3a1fe5792945a72125abf9e93318d9eb7",
+    "outputs/coverage_availability_20261102_v1/q4_explicit.json": "459ebaf9b8c5ea2df71dcdfee9dd57ef78c6af1b76203626447839965f9a1a88",
+    "outputs/coverage_availability_20261102_v1/q4_meters.json": "a27016a9042a91a925b9d8e1e797bdd81410cb0d2421af18c0b476c2d4c7c370",
+    "outputs/coverage_availability_20261102_v1/s101_busan_unverified.json": "fd700fc3a231a5cd49dac6ac94ba5e56fc1591aba4471f2d64245893dcf06ea5",
+    "outputs/coverage_availability_20261102_v1/s101_definition.json": "adea6676ed1eb0a94cad5e3ed03b827416c2f545281935ed2f4d836ed71dd4b8",
+    "outputs/coverage_availability_20261102_v1/s101_dokdo.json": "3d36244179c8f3e85d6d8068b23ceef2fa02907edcd9307cdb3ff317e3e60e16",
+    "outputs/coverage_availability_20261102_v1/s101_missing_area.json": "ed5d6aa44e5ed5337cdf323b046fe1a915bb606c81209257f870d97b74598ef5",
+    "outputs/coverage_availability_20261102_v1/source_hashes.json": "a68109fbc3d02eeb93792a6a6f49bf6ef067ce11f2d788690c644241de592464",
+    "outputs/coverage_availability_20261102_v1/verification.json": "d9e62c824777116d3f03b4a6cb27d275c41467fc8e71c04e302f310dac1405aa"
+  },
+  "operational_source_sha256": {
+    "services/orchestrator/spatial_coverage.py": "526c00f26caba4837ed6b36e71545576515326937180c11129c678b460f1c2c8",
+    "services/orchestrator/execution_validator.py": "9fa8b53a6e4fd29e22f7c7c031e209e8d54823a72b669d147619647c751b5545",
+    "services/orchestrator/s101_radius_execution.py": "384936f1cb9e047671c71e3454208197cc1d9c24107b278a4cad1c8bcda24a61",
+    "services/orchestrator/graph.py": "b54303695849fbee5f2c54827a6831cb069ddaac7376c238b8475cdb87b90dff",
+    "services/orchestrator/gazetteer_corpus.py": "9f6a24870dea564bc3a76ba21d4c58aaa979fbca6cb40fbab6a1a201046f7f17",
+    "services/orchestrator/schema_binding_adapter.py": "96b761caedb5aa9b7436ce842e8322d00817d6615d85bb7cad0974f2087e2d07",
+    "data/source_inventory/marine_gazetteer_20221231.csv": "bbc3f1c347f6048b0befdf5102959078ffc29c22cdc4412a98586e76cddb0464",
+    "data/spatial_layer_registry.yaml": "8720b1641a14e4e367abe774677036d7e005bab4201cc54d4b21b9b970b0cfd7"
+  },
+  "generator": "tools/scie_results_ui/operational.py",
+  "generator_sha256": "6ea18ab94ee1e35fb5ef0ad9a0f834a5cc2356702d2ca78e5f8b8985a9111c5a",
+  "original_research_modified": false,
+  "holdout_loaded": false
+}

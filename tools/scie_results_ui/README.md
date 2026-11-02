@@ -35,3 +35,22 @@ JSON: http://localhost:8001/research/scie-results/api/dashboard
 ```
 
 UI 구현/뷰어는 `tools/scie_results_ui/`에 격리되어 실행 중인 연구 runner의 동결 소스와 운영 화면을 수정하지 않습니다. 본 UI는 논문 최종 정확도 또는 운영 릴리스 승인 대시보드가 아닙니다.
+# Dataset 운영 감사 진행 표시
+
+`outputs/dataset_location_audit_20261102/{source,spatial,answer}/status.json`을 읽기 전용으로 투영한다. 원문/근거 파일을 따라 읽거나 내려받기 허용목록에 추가하지 않는다. 상태 파일 예시:
+
+```json
+{"status":"RUNNING","updated_at":"2026-11-02T16:00:00+09:00","summary":"검사 범위 설명","counts":{"chunks_scanned":0,"chunks_total":null},"limitations":["전체 의미 정확성 미검증"],"evidence":[{"path":"outputs/dataset_location_audit_20261102/source/result.json","sha256":null}]}
+```
+
+상태는 `RUNNING`, `PARTIALLY_VERIFIED`, `COMPLETED`, `BLOCKED`, `FAILED`, `NOT_STARTED`를 허용한다. `COMPLETED`는 해당 검사 작업 완료만 뜻하며 Dataset 전수 의미 검증 완료로 승격하지 않는다. 쓰는 중인 JSON 오류는 미확인으로 표시하며, 상단 새로고침 시 서버의 최대 15초 캐시 후 반영한다. 임베딩 완료와 원문·공간·답변 검증은 별개다.
+
+운영 coverage 요약은 `operational/20261102_coverage_availability_v1`의 기존 summary/manifest hash 연결을 유지한다. 검증 당시 결과의 유효성과 현재 운영 소스 일치 여부를 별도로 표시한다. 후속 수정으로 현재 소스가 바뀌어도 과거 관측을 삭제하거나 새 실험 결과로 바꾸지 않는다.
+
+새 운영 검증 완료 후에만 다음 명령으로 새 버전과 `operational/latest.json` 포인터를 게시한다. 8개 원시 기록 재검사와 수집 당시 전체 소스 hash의 현재 일치를 먼저 요구하며 기존 출력 폴더는 덮어쓰지 않는다.
+
+```powershell
+.venv/Scripts/python.exe -m tools.scie_results_ui.operational --source-folder outputs/coverage_availability_20261102_final_v3 --version 20261102_coverage_availability_v2
+```
+
+포인터가 없으면 기존 v1을 사용한다. 포인터가 있지만 형식·경계·manifest hash가 잘못되면 미연결로 표시하고 과거 결과로 조용히 되돌리지 않는다.

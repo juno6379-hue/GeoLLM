@@ -6,6 +6,27 @@ const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '../static/app.js'), 'utf8');
 
+test('Dataset task completion never becomes whole Dataset semantic approval', () => {
+  const ui = browser();
+  ui.evaluate('DATA={dataset_audit:{stages:[{stage:"source",status:"COMPLETED",counts:{chunks_scanned:12},limitations:["의미 미검증"]}]}}');
+  const html = ui.evaluate('datasetAuditPanel()');
+  assert.match(html, /해당 검사 작업 완료/);
+  assert.match(html, /전체 의미 검증은 아직 완료되지/);
+  assert.match(html, /임베딩 생성 완료/);
+  assert.match(html, /홀드아웃은 사용하지/);
+});
+
+test('operational verification remains separate and unknown counts are not zero', () => {
+  const ui = browser();
+  ui.evaluate('DATA={operational:{status:"DEVELOPMENT_VERIFIED",passed_cases:8,total_cases:8,corpus_row_count:1146,observations:[{case:"s101_busan_unverified",status:"BLOCKED",count:null}],limitations:["Dataset 전체 지명·위치·좌표 전수 검증: 미완료"]},sources:[]}');
+  const html = ui.evaluate('operationalPanel()');
+  assert.match(html, /기존 v6 ESR·FalseBlock/);
+  assert.match(html, /정상 가능 요청/);
+  assert.match(html, /미확정 · 0건 아님/);
+  assert.match(html, /coverage UNKNOWN/);
+  assert.match(html, /전수 검증: 미완료/);
+});
+
 // Load the real renderer in an isolated browser shell. No HTTP or operational APIs.
 function browser(fetchImpl = async () => ({ ok: false, status: 503 })) {
   const nodes = new Map();
