@@ -39,3 +39,7 @@
 ## 제출 답변 판정 반영 (2026-11-02)
 
 - [사람이 확인한 AI 보조 채점 결과](review/20261102_human_confirmed_assisted_results_v1/결과_KR.md): 각144건 완료, 의미27/144·공동16/144. 독립 두 인간 검수는 확인되지 않았으며 원본 v6 지표와 별도.
+
+## RQ1 GOLD 원자 주석 — 2026-11-02
+
+[18문항 사례별 주석표](benchmark/grounding_atoms_20261102_v1/annotation_KR.md): 필수172·선택5원자 작성/원천 연결 검증 완료. 새 인간 검수 완료 주장은 하지 않는다. B1/B2 원문36개 사전주석과 실제 Semantic F1·CI 측정은 구분한다. [현재 완료와 남은 측정 단계](../../docs/geollm/rq1_annotation_completion_20261102.md).

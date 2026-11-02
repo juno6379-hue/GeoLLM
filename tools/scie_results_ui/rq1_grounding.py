@@ -5,6 +5,8 @@ run's public summary only. It does not read holdout material or run an evaluator
 """
 from __future__ import annotations
 
+from research.marine_geollm_scie.evaluation.grounding_annotation_validation import validate_annotation_package
+
 from collections import Counter
 import hashlib
 import json
@@ -122,6 +124,7 @@ def build_rq1_grounding(root, queries, selected_run_id):
                          ci_missing_reason='동일 문항의 B1/B2 Semantic F1 및 동등 질의군 단위 paired CI 계약이 없습니다.',
                          strict_interpretation='동일 GOLD의 필수 grounding 전체 일치를 평가해야 하며, 부분 F1·기계계약 통과로 대체하지 않습니다.'))
     return dict(table_id='TABLE_9', title='조건별 Semantic Grounding 비교', status='NOT_MEASURED',
+                gold_atom_annotation=validate_annotation_package(root, valid_queries),
                 selected_run_id=selected_run_id, methods={'B1': 'Text-RAG', 'B2': 'Ontology/KG'}, rows=rows,
                 condition_metadata={**metadata_receipt, 'matched_queries': len(admitted),
                                     'rejected_queries': rejected,

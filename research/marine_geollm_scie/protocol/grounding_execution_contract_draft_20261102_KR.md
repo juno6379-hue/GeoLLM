@@ -1,5 +1,7 @@
 # 명시적 grounding / 실행 신뢰도 계측 계약 초안
 
+> 2026-11-02 후속: 실제 개발18문항 GOLD 원자172개(선택5개 별도)의 작성·원천 연결 검증을 완료했다. `benchmark/grounding_atoms_20261102_v1` 참조. 아래의 미작성 문구는 이전 준비 상태이며, 예측 원자 전체 연결과 RQ1 수치는 여전히 미측정이다. 상세: docs/geollm/rq1_annotation_completion_20261102.md.
+
 상태: **DRAFT / PROPOSED — 합성 테스트용 구현 checkpoint**. 실제 GOLD 원자 주석·실제 답변 원자 추출·동결 run 연결은 아직 수행하지 않았다. 기존 v6 결과, GOLD, 홀드아웃을 변경하거나 새로운 논문 수치를 생성하지 않는다.
 
 ## RQ1 입력과 판정

@@ -1,5 +1,14 @@
 # GeoLLM 현재 상태와 다음 작업
 
+## 2026-11-02 RQ1 실제18문항 GOLD grounding atom 작성 완료
+
+- 사용자 지적대로 RQ1 F1/Strict/CI는 미측정이었다. 주석작성·검증/UI·예측원문감사 3에이전트 분리, 부모 의미검토로 복합taskbinding/선택문서/FCsource/단위·CRS정규화를 보완했다. [완료·남은단계](rq1_annotation_completion_20261102.md).
+- benchmark/grounding_atoms_20261102_v1: 실제18/18, 필수172+선택5 atoms; query/GOLD/sourceSHA/JSONpointer/taskmapping 검증통과. 기존GOLD승인과 새AI원자주석을 구분한다. manifest8ecd26270bdcf1b606831e3aa378bc4b6cff4c67a6652766d378672f363f05d3. 실제FC원본SHA/27featurelocator 유일노드확인. 정답원자작성완료≠새독립인간검수완료≠모델성능측정완료.
+- B1/B2 v6 36raw 별도감사:25completed/11INVALID_RESPONSE(절단1), 본문35/직접span146/구조필드155; raw36hash일치. prediction_atoms는 전체추출미완료로null. 자료 outputs/rq1_prediction_audit_20261102_v1. source원자작성자는 모델답변미참조; holdout개발사용없음.
+- 최종 연구+UI Python531/Node21통과(부분검사중복합산금지). 연구UI8001숨김기동·실HTTP RQ1 18작성/18검증/172원자/F1null확인. 브라우저렌더링검증은아님. 기존GOLD/v6 506파일hash불변, 운영소스/API/모델/DB변경없음.
+- 다음RQ1: 본문/구조필드상충·중복·alias·taskscope·실패처리추출계약고정→36개canonicalprediction완성(추가잘못주장FP포함)→동일hash계약의조건별F1/Strict/pairedCI. 기존binary채점/feature배열로대체금지. 사후개발분석을새동결전체비교로부르지않음. 운영/연구scope연결·Dataset revision·새8방법실험의잔여gate는앞선인계유지.
+- 관련연구/UI/문서커밋만, 새push요청없어push하지않음. 무관dirty인계/운영UI/feedback/사용자파일보존.
+
 ## 2026-11-02 원천 조회·공간 범위·실세계 완전성 분리 — 운영 실API 확인
 
 - [상세 근거](source_bound_execution_20261102.md). 복수 에이전트 구현/독립감사. 원천 identity/지리적 domain/실세계 completeness를 별도 기록하고 ExecutionValidator만 SOURCE_BOUND_EXECUTABLE을 결정한다. 실세계 completeness UNKNOWN, absence=false 유지.

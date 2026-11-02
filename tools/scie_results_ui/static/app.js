@@ -101,10 +101,11 @@ function benchmarkComposition(){
 Object.assign(AUDIT_COUNT_LABELS,{target_chunks:'이번 재검증 대상',scanned_chunks:'이번 검사 완료',verified_chunks:'추가 원문 확인',unresolved_chunks:'추가 확인 필요',coordinate_pairs:'명시 좌표 후보 쌍',coordinate_chunks:'좌표 후보 포함 청크',named_referents_supported:'이름·원천 객체 연결 지원',verified_real_world_identity:'현실 좌표 동일성 확정',attribute_conflicts:'원천 속성 충돌',VERIFIED_TEXT:'원문 대조 확인',UNVERIFIED:'미검증',VERIFIED_DERIVED_FIELDS:'파생 설명 필드 대조',REEXTRACTION_REQUIRED:'파생 설명 보완 필요'});
 
 function rq1GroundingTable(g){
- g=g||{};const f=v=>typeof v==='number'?esc(fmt(v)):'미측정';
+ g=g||{};const f=v=>typeof v==='number'?esc(fmt(v)):'미측정';const a=g.gold_atom_annotation||{};
  return `<h3>Table 9. RQ1 조건별 Semantic Grounding 비교</h3><div class="notice">B1 Text-RAG와 B2 Ontology/KG의 의미 연결 성능을 같은 조건에서 비교합니다. 기계계약 통과율·안전중단·AI 보조 채점 정확도를 Semantic F1로 대체하지 않습니다.</div><p>선택 실험: ${esc(g.selected_run_id||DATA.overview?.selected_run_id||'미확인')} · 조건 라벨은 사후 설명용이며 사전 등록된 층화가 아닙니다.</p>`+
+ `<div class="panel"><h3>GOLD grounding atom 주석</h3><p>작성 ${esc(fmt(a.written_cases))}/${esc(fmt(a.expected_cases))}문항 · 파일/원천 검증 ${esc(fmt(a.validated_cases))}문항 · 필수 원자 ${esc(fmt(a.atom_count))}개 · 선택 원자 ${esc(fmt(a.optional_atom_count))}개</p><p>${a.status==='VALIDATED_AI_ANNOTATION'?'AI 주석 작성·원천 연결 검증 완료':'주석 없음 또는 검증 미완료'} · 새 독립 인간 주석 검수 완료를 뜻하지 않습니다.</p><p>실제 답변의 prediction atom 연결 및 Semantic F1·Strict Match·CI: 미측정</p></div>`+
  table(['Terminology condition','대상 문항 / 동등군','B1 Text-RAG Semantic F1','B2 Ontology/KG Semantic F1','Δ (B2−B1)','95% CI','Strict Match / 해석'],(g.rows||[]).map(r=>[
  `${esc(r.condition)}<br><small>${esc(r.label||'')}</small>`,`${esc(fmt(r.n))} / ${esc(fmt(r.cluster_count))}`,f(r.b1_semantic_f1),f(r.b2_semantic_f1),f(r.delta_b2_b1),r.ci95?esc(JSON.stringify(r.ci95)):'미측정',`${f(r.strict_match)}<br><small>${(r.missing_reasons||[]).map(esc).join(' · ')}</small>`]))+
  `<p>UNSEEN_SYNONYM과 MIXED는 구분합니다. MIXED는 복합 과업이며 한국어·영어 혼용과 다릅니다. 조건은 중첩될 수 있어 행의 문항 수를 합산하지 않습니다.</p><ul>${(g.limitations||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`+
- jsonDetails('Semantic F1·Strict Match·CI 산출 계약 및 결측 사유',g.metric_contract)+jsonDetails('조건 라벨의 출처·질의 해시 연결',g.condition_metadata);
+ jsonDetails('GOLD 원자 주석 검증 기록',g.gold_atom_annotation)+jsonDetails('Semantic F1·Strict Match·CI 산출 계약 및 결측 사유',g.metric_contract)+jsonDetails('조건 라벨의 출처·질의 해시 연결',g.condition_metadata);
 }

@@ -1,0 +1,67 @@
+{
+  "version": "rq1_grounding_annotation.v1",
+  "task_ids": [
+    "comparison",
+    "document:Wreck",
+    "document:lighthouse",
+    "query",
+    "spatial:AnchorageArea",
+    "spatial:RestrictedArea",
+    "spatial:lighthouse",
+    "spatial:wreck"
+  ],
+  "status": "ANNOTATED_18_PENDING_REVIEW_AND_PREDICTION_EXTRACTION",
+  "case_count": 18,
+  "atom_count": 172,
+  "optional_atom_count": 5,
+  "kind_counts": {
+    "task_obligation": 32,
+    "feature": 26,
+    "standard": 11,
+    "attribute_binding": 44,
+    "reference": 10,
+    "requested_object": 5,
+    "operator": 11,
+    "reference_geometry_id": 6,
+    "reference_crs": 6,
+    "input_requirement": 1,
+    "distance_m": 8,
+    "distance_metric": 5,
+    "comparison_criterion": 4,
+    "source_binding": 3
+  },
+  "metric_status": "NOT_MEASURED",
+  "human_approval": false,
+  "parent_gold_approval_status": "USER_CONFIRMED_COMPLETE",
+  "new_annotation_is_independent_human_review": false,
+  "model_outputs_read": false,
+  "holdout_read": false,
+  "sources": [
+    {
+      "path": "research/marine_geollm_scie/benchmark/gold_v2_immutable_20261101_v1/answer_contracts.jsonl",
+      "sha256": "550f85c18d902e6895e9affe87b896785a9d150162181153c0d9dd423621bad4"
+    },
+    {
+      "path": "research/marine_geollm_scie/benchmark/gold_v2_immutable_20261101_v1/queries.jsonl",
+      "sha256": "e0a98769f5bc0375272aa976bba4cb97bdf2a2c8a0e3c43c20910881935023e9"
+    },
+    {
+      "path": "outputs/scie_rq_v2_audit_20261030/condition_metadata.jsonl",
+      "sha256": "19a9cfa0f025265c07bd1c57cabdf1624650727a212d2cd656bb1c0e69caddfd"
+    },
+    {
+      "path": "research/marine_geollm_scie/review/20261102_approved_gold_rescore_v1/approval.json",
+      "sha256": "c8f0dc045c7b1ed900a86754bd10554f3cce9fc232ce6dbc2705ef16d692ad79"
+    },
+    {
+      "path": "research/marine_geollm_scie/benchmark/gold_v2_immutable_20261101_v1/manifest.json",
+      "sha256": "feb9ef9851553fe53c12b0733b1747d3c238fb64c7b6bffd2ae848a35e6b1c5c"
+    }
+  ],
+  "files": {
+    "gold_atoms.jsonl": "0052483d0a049ad0bc2c50299d979bee526a4e84354b13923a6f443741599c11",
+    "schema.json": "6c93f53465cc978906829ab5a943f321091e81223038be01dd9a738a344f6baf",
+    "annotation_KR.md": "cd2ae18d9e7b53071e4ee168e4162a4134a31a8aacbfc0ea053b79cc0b47c0ee",
+    "build.py": "7b13f2499ad637362599d6f1ec087f344b78b44221c44b7644989ab958ffd200"
+  }
+}

@@ -211,3 +211,13 @@ test('Table 13 ablation remains a separate section with no invented full-system 
  assert.match(html,/전체 시스템 결과를 제거 실험의 대용으로 사용하지/);
  assert.doesNotMatch(html,/0%/);
 });
+
+test('RQ1 annotation completion does not fabricate semantic measurement or human approval',()=>{
+ const ui=browser();
+ ui.evaluate('DATA={overview:{}}');
+ const html=ui.evaluate('rq1GroundingTable({gold_atom_annotation:{status:"VALIDATED_AI_ANNOTATION",written_cases:18,expected_cases:18,validated_cases:18,atom_count:120},rows:[]})');
+ assert.match(html,/작성 18\/18문항/);
+ assert.match(html,/원천 연결 검증 완료/);
+ assert.match(html,/새 독립 인간 주석 검수 완료를 뜻하지 않습니다/);
+ assert.match(html,/Semantic F1·Strict Match·CI: 미측정/);
+});

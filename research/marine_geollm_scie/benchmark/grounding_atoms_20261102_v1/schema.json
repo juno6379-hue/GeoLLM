@@ -1,0 +1,92 @@
+{
+  "version": "rq1_grounding_annotation.v1",
+  "task_ids": [
+    "comparison",
+    "document:Wreck",
+    "document:lighthouse",
+    "query",
+    "spatial:AnchorageArea",
+    "spatial:RestrictedArea",
+    "spatial:lighthouse",
+    "spatial:wreck"
+  ],
+  "task_id_policy": "Single-task queries use query. Q5 target searches use spatial:lighthouse, spatial:wreck, spatial:AnchorageArea, spatial:RestrictedArea; comparison uses comparison; explicit Wreck attribute explanation uses document:Wreck. Optional lighthouse fallback uses document:lighthouse. Public task_mapping per row defines role independent of model-specific subtask names.",
+  "kinds": [
+    "attribute_binding",
+    "comparison_criterion",
+    "distance_m",
+    "distance_metric",
+    "feature",
+    "input_requirement",
+    "operator",
+    "reference",
+    "reference_crs",
+    "reference_geometry_id",
+    "requested_object",
+    "source_binding",
+    "standard",
+    "task_obligation"
+  ],
+  "derivations": [
+    "DIRECT_CONTRACT_VALUE",
+    "CONTRACT_PROJECTION",
+    "AI_CANONICALIZATION_PROPOSAL"
+  ],
+  "scorer": "research/marine_geollm_scie/evaluation/grounding_atoms_v1.py",
+  "prediction_policy": "Prediction annotation must be independent of GOLD contents. Canonical task vocabulary and extraction rules must be fixed before scoring. Do not fill missing prediction atoms from GOLD.",
+  "accepted_values_policy": "Canonical JSON values; distance_m is integer metres. Prediction extraction must apply the fixed lossless canonicalization rules before exact scoring; the scorer itself performs no inference. No unvalidated feature aliases.",
+  "not_in_rq1": [
+    "object result IDs",
+    "distance result values",
+    "actual SQL execution",
+    "coverage approval",
+    "real-world completeness",
+    "literal definition-text equality",
+    "full answer semantic correctness"
+  ],
+  "human_review_status": "New atom representation and canonicalization are AI annotations, not a newly attested human review; existing approval covers parent GOLD only.",
+  "canonicalization": {
+    "operator": {
+      "covers": [
+        "covers",
+        "ST_Covers(reference,target)"
+      ],
+      "dwithin": [
+        "dwithin",
+        "ST_DWithin(target::geography,reference::geography,2000,true)"
+      ],
+      "nearest": [
+        "nearest",
+        "find_nearest"
+      ],
+      "intersects": [
+        "intersects",
+        "ST_Intersects"
+      ]
+    },
+    "distance_m": {
+      "json_type": "integer",
+      "rules": [
+        "finite exact whole metres: 5000 and 5000.0 become integer 5000",
+        "explicit km multiplied by 1000; only exact integral metre result admitted",
+        "no missing-distance default; no rounding"
+      ]
+    },
+    "reference_crs": {
+      "canonical": "EPSG:4326",
+      "explicit_literals": [
+        "EPSG:4326",
+        4326,
+        "4326"
+      ],
+      "rules": [
+        "only explicit same CRS identifier conversion; never infer missing CRS or transform geometry"
+      ]
+    },
+    "limits": [
+      "direction/reference arguments of spatial relations are preserved",
+      "Q5_02 distance_metric distinguishes polygon-area minimum geodesic distance from boundary-line distance",
+      "no model output used to choose canonical forms"
+    ]
+  }
+}
